@@ -27,12 +27,6 @@ const S = {
   error: '',
 };
 
-const BADGE_ICON = {
-  first_step: '🌱', d1k: '📿', d10k: '🌙', d100k: '🌟', d1m: '👑', streak7: '🔥', streak30: '🔥', streak100: '🏔️',
-  sunnah1: '🌿', sunnah7: '🌳', sunnah30: '🏞️', verifier10: '🔎', verifier100: '🏛️',
-  recruit1: '📣', recruit5: '🧭', recruit25: '🐪', scholar1: '📖', scholar10: '🎓', circle: '🕌',
-  caravan10k: '🐫', caravan100k: '🐫', caravan1m: '🏜️', caravan10m: '🌍',
-};
 const MILESTONES = [10_000, 100_000, 1_000_000, 10_000_000, 100_000_000];
 
 const t = (k) => I18N[S.lang][k] ?? I18N.en[k] ?? k;
@@ -92,12 +86,21 @@ function celebrate(res) {
   const bits = [];
   if (res.xpGained) bits.push(t('gained')(res.xpGained));
   if (res.levelUp) bits.push(t('level_up')(res.levelUp));
-  for (const b of res.newBadges || []) bits.push(`${t('new_badge')} ${BADGE_ICON[b]} ${t('badge')[b][0]}`);
+  for (const b of res.newBadges || []) bits.push(`${t('new_badge')} ${t('badge')[b][0]}`);
   if (bits.length) toast(bits.join(' · '));
   if (res.levelUp || res.newBadges?.length) navigator.vibrate?.([60, 40, 60]);
 }
 
-// ---- views --------------------------------------------------------------------
+// ---- views (Swiss style: type, hairline rules, flat colour) --------------------------
+const NAV_ICON = {
+  home: '<path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/>',
+  rank: '<path d="M5 20V10M12 20V4M19 20v-7"/>',
+  caravan: '<circle cx="6" cy="14" r="2.4"/><circle cx="12" cy="8" r="2.4"/><circle cx="18" cy="14" r="2.4"/><path d="M4 20h4M10 14h4M16 20h4"/>',
+  bonus: '<path d="M12 3l2.4 5.6L20 9.5l-4.2 3.9L17 19l-5-3-5 3 1.2-5.6L4 9.5l5.6-.9z"/>',
+  me: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/>',
+};
+const navIcon = (k) => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${NAV_ICON[k]}</svg>`;
+
 function langToggle() {
   return `<button class="pill" data-act="lang">${S.lang === 'ur' ? 'English' : 'اردو'}</button>`;
 }
@@ -105,17 +108,14 @@ function langToggle() {
 function authView() {
   const reg = S.authMode === 'register';
   return `
-  <div class="topbar"><div class="in"><span class="brand">☪ ${t('app')}</span>${langToggle()}</div></div>
+  <div class="hd"><span>${t('app')}</span>${langToggle()}</div>
   <div class="wrap">
-    <div class="card hero">
-      <div class="arabic">${t('durood')}</div>
-      <p>${t('tagline')}</p>
-    </div>
+    <div class="intro"><div class="arabic">${t('durood')}</div><p>${t('tagline')}</p></div>
     <div class="seg">
       <button class="${!reg ? 'on' : ''}" data-act="mode" data-mode="login">${t('login')}</button>
       <button class="${reg ? 'on' : ''}" data-act="mode" data-mode="register">${t('register')}</button>
     </div>
-    <form class="card" data-form="${reg ? 'register' : 'login'}" autocomplete="on">
+    <form class="sec" data-form="${reg ? 'register' : 'login'}" autocomplete="on">
       ${S.error ? `<div class="err">${esc(S.error)}</div>` : ''}
       ${reg ? `
         <label>${t('username')}</label>
@@ -139,22 +139,18 @@ function authView() {
         <label>${t('password')}</label>
         <input type="password" name="password" autocomplete="current-password" required dir="ltr">
       `}
-      <div class="spacer"></div>
-      <button class="block gold" type="submit">${reg ? t('register') : t('login')}</button>
+      <button class="blk" type="submit"><span>${reg ? t('register') : t('login')}</span><b>→</b></button>
     </form>
-    <p class="muted center">${t('dedication')}</p>
+    <p class="note">${t('dedication')}</p>
   </div>`;
 }
 
 function shell() {
-  const tabs = [['home', '🏠'], ['rank', '🏆'], ['caravan', '🐫'], ['bonus', '🌿'], ['me', '👤']];
+  const tabs = ['home', 'rank', 'caravan', 'bonus', 'me'];
   return `
-  <div class="topbar"><div class="in">
-    <span class="brand">☪ ${t('app')}</span>
-    <span class="row"><span class="tag" style="background:rgba(255,255,255,.2);color:#fff">${t('level')} ${S.me.level}</span>${langToggle()}</span>
-  </div></div>
+  <div class="hd"><span>${t('app')}</span><span class="row"><span>${S.me.streak} ${t('streak')}</span>${langToggle()}</span></div>
   <div class="wrap">${view()}</div>
-  <nav class="tabs">${tabs.map(([k, ic]) => `<button class="${S.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}"><span class="ic">${ic}</span>${t('nav_' + (k === 'rank' ? 'rank' : k))}</button>`).join('')}</nav>
+  <nav class="tabs">${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}</nav>
   ${S.player ? playerModal() : ''}`;
 }
 
@@ -168,77 +164,67 @@ function home() {
   const m = S.me;
   const title = t('titles')[Math.min(m.level - 1, 9)];
   const natPct = (m.pub.total / m.pub.target) * 100;
+  const live = m.today + S.pending;
   return `
-  <div class="card hero">
-    <div class="arabic">${t('durood')}</div>
-    <p>${t('dedication')}</p>
-  </div>
+  <div class="band arabic">${t('durood')}</div>
+  <div class="sub"><span>${t('today')}</span><span>${t('goal_word')} ${N(fmt(m.dailyGoal))}</span></div>
+  <div class="big" id="big">${fmt(live)}</div>
+  <div id="livebar">${bar((live / m.dailyGoal) * 100)}</div>
 
-  <div class="card center">
-    <button class="tap" data-act="tap" aria-label="${t('tap_hint')}"><span id="pend">${fmt(S.pending)}</span><small>${t('tap_hint')}</small></button>
-    <div class="row quick wrapx" style="justify-content:center">
-      ${[10, 33, 100].map((n) => `<button class="alt" data-act="padd" data-n="${n}">${N('+' + n)}</button>`).join('')}
-      <button class="alt" data-act="preset">${t('reset')}</button>
-    </div>
-    <div class="spacer"></div>
-    <button class="gold block" data-act="submitp" id="submitp" ${S.pending ? '' : 'disabled'}>${t('submit_pending')}</button>
-    <div class="hint" style="margin-top:14px">${t('or_enter')}</div>
-    <div class="row"><input type="number" id="manual" inputmode="numeric" min="1" placeholder="${t('count_ph')}" dir="ltr"><button data-act="manual">${t('add')}</button></div>
+  <button class="tap blk" data-act="tap"><span>${t('tap_hint')}</span><b>${N('+1')}</b></button>
+  <div class="pendrow">
+    <span><b id="pend">${fmt(S.pending)}</b> ${t('pending')}</span>
+    <span class="quick">${[10, 33, 100].map((n) => `<button class="chip" data-act="padd" data-n="${n}">${N('+' + n)}</button>`).join('')}<button class="chip" data-act="preset">${t('reset')}</button></span>
   </div>
+  <button class="blk go" data-act="submitp" id="submitp" ${S.pending ? '' : 'disabled'}><span>${t('submit_pending')}</span><b>→</b></button>
+  <div class="manual"><label for="manual">${t('or_enter')}</label>
+    <div class="row"><input type="number" id="manual" inputmode="numeric" min="1" placeholder="${t('count_ph')}" dir="ltr"><button class="chip solid" data-act="manual">${t('add')}</button></div></div>
 
-  <div class="card"><div class="grid3">
-    <div class="stat"><b>${fmt(m.today)}</b><span>${t('today')}</span></div>
-    <div class="stat"><b>${fmt(m.week)}</b><span>${t('week')}</span></div>
-    <div class="stat"><b>${fmt(m.total)}</b><span>${t('total')}</span></div>
-  </div></div>
-
-  <div class="card">
-    <div class="row">
-      <div class="level-badge">${m.level}</div>
-      <div style="flex:1"><b>${esc(title)}</b><div class="muted">${N(`${fmt(m.xp)} / ${fmt(m.next)}`)} ${t('xp')}</div>${bar(m.pct)}</div>
-    </div>
+  <div class="stats">
+    <div><b>${fmt(m.week)}</b><span>${t('week')}</span></div>
+    <div><b>${fmt(m.total)}</b><span>${t('total')}</span></div>
+    <div><b>${m.level}</b><span>${esc(title)}</span></div>
   </div>
+  <div class="lvl"><div class="row between"><span>${t('level')} ${m.level} · ${N(`${fmt(m.xp)} / ${fmt(m.next)}`)} ${t('xp')}</span><span title="${esc(t('shield_hint'))}">${t('shield')} ${m.shields}</span></div>${bar(m.pct)}</div>
 
-  <div class="card row between">
-    <div class="row"><span class="flame">🔥</span><div><b>${m.streak}</b> ${t('streak')}<div class="muted">${t('best_streak')}: ${m.bestStreak}</div></div></div>
-    <div class="center" title="${esc(t('shield_hint'))}"><span class="flame">🛡️</span> <b>${m.shields}</b></div>
-  </div>
+  <h3>${t('durood_quests')}</h3>
+  ${m.quests.filter((q) => q.group === 'durood').map((q) => quest(q)).join('')}
 
-  <div class="card">
-    <h2>${t('durood_quests')}</h2>
-    ${m.quests.filter((q) => q.group === 'durood').map(quest).join('')}
-  </div>
+  <h3 class="row between"><span>${t('bonus_quests')}</span><button class="chip" data-act="tab" data-tab="bonus">${t('see_bonus')}</button></h3>
+  ${m.quests.filter((q) => q.group === 'bonus').map((q) => quest(q, true)).join('')}
 
-  <div class="card compact">
-    <div class="row between"><h3>🌿 ${t('bonus_quests')}</h3><button class="alt" data-act="tab" data-tab="bonus" style="padding:2px 12px">${t('see_bonus')}</button></div>
-    ${m.quests.filter((q) => q.group === 'bonus').map(quest).join('')}
-  </div>
+  <h3>${t('caravan_title')}</h3>
+  <button class="rowlink" data-act="tab" data-tab="caravan"><span>${fmt(m.team.members)} ${t('members')}</span><b>${fmt(m.team.total)}</b></button>
 
-  <div class="card">
-    <h2>${t('national')}</h2>
-    <div class="muted">${t('national_sub')}</div>
-    <div class="row between"><b>${fmt(m.pub.total)}</b><span class="muted">${t('of')} ${N(fmt(m.pub.target))}</span></div>
-    ${bar(natPct)}
-    <div class="muted" style="margin-top:6px">${fmt(m.pub.members)} ${t('members')}</div>
-    <div class="muted">${t('self_reported')} · ${new Date(m.pub.asOf).toLocaleTimeString(S.lang === 'ur' ? 'ur-PK' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
-  </div>
-  <p class="muted center">${t('reminder_note')}</p>`;
+  <h3>${t('national')}</h3>
+  <div class="row between"><b>${fmt(m.pub.total)}</b><span class="muted">${t('of')} ${N(fmt(m.pub.target))}</span></div>
+  ${bar(natPct)}
+  <p class="note">${fmt(m.pub.members)} ${t('members')} · ${t('self_reported')} · ${new Date(m.pub.asOf).toLocaleTimeString(S.lang === 'ur' ? 'ur-PK' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}</p>
+  <p class="note">${t('reminder_note')}</p>`;
 }
 
-function quest(q) {
-  return `<div class="quest ${q.done ? 'done' : ''}">
-    <span class="tick">${q.done ? '✓' : ''}</span>
-    <div class="grow"><div>${t('q_' + q.id)} <span class="tag">${t(q.period === 'day' ? 'daily' : 'weekly')}</span></div>
-      ${bar((q.cur / q.goal) * 100)}<div class="muted">${N(`${fmt(q.cur)} / ${fmt(q.goal)}`)}</div></div>
-    <b class="ok">${N('+' + q.xp)}</b>
+// keep the big number and its bar in step with taps without redrawing the screen
+function liveHome() {
+  const m = S.me, live = m.today + S.pending;
+  $('#big').textContent = fmt(live);
+  $('#livebar').innerHTML = bar((live / m.dailyGoal) * 100);
+  $('#pend').textContent = fmt(S.pending);
+  $('#submitp').disabled = !S.pending;
+}
+
+function quest(q, dim) {
+  return `<div class="q ${q.done ? 'd' : ''} ${dim ? 'dim' : ''}">
+    <span class="bx"></span>
+    <span class="t">${t('q_' + q.id)} <em>${t(q.period === 'day' ? 'daily' : 'weekly')}</em><small>${N(`${fmt(q.cur)} / ${fmt(q.goal)}`)}</small></span>
+    <b class="p">${N('+' + q.xp)}</b>
   </div>`;
 }
 
 // secondary (sunnah) and tertiary (seerah) activities share one tab, in that order
 function bonus() {
-  return `<p class="muted center">${t('bonus_hint')}</p>
-    <h2 class="sec">🌿 ${t('sunnah_heading')}</h2>${sunnah()}
-    <h2 class="sec">📖 ${t('seerah_heading')}</h2>${learn()}`;
+  return `<p class="note first">${t('bonus_hint')}</p>
+    <h2 class="part"><i>01</i>${t('sunnah_heading')}</h2>${sunnah()}
+    <h2 class="part"><i>02</i>${t('seerah_heading')}</h2>${learn()}`;
 }
 
 function sunnah() {
@@ -246,43 +232,40 @@ function sunnah() {
   if (!d) return '<p class="muted center">…</p>';
   const pick = (en, ur) => (S.lang === 'ur' && ur) || en;
   const sn = d.today.sunnah, mine = d.today.mine, r = d.today.rules;
-  const statusTag = (st) => `<span class="tag">${t('st_' + st)}</span>`;
+  const statusTag = (st) => `<span class="tag ${st}">${t('st_' + st)}</span>`;
   let action = '';
   if (!sn) action = `<p class="muted">${t('no_sunnah')}</p>`;
   else if (mine) action = `<div class="row between"><b>${t('your_post')}</b>${statusTag(mine.status)}</div>
       <img class="shot" src="${esc(mine.photoUrl)}" alt="">
       <div class="muted">${N(`${mine.confirms}/${r.confirmsNeeded}`)} ${t('confirms_so_far')}</div>`;
   else if (S.draft) action = `<b>${t('photo_preview')}</b><img class="shot" src="${esc(S.draft)}" alt="">
-      <div class="row"><button class="gold" style="flex:1" data-act="postit" id="postit">${t('post_it')}</button><button class="alt" data-act="draftx">${t('cancel')}</button></div>`;
-  else action = `<label class="btn gold block" style="margin:0">${t('take_photo')}
+      <div class="row"><button class="blk" style="flex:1" data-act="postit" id="postit"><span>${t('post_it')}</span><b>→</b></button><button class="chip" data-act="draftx">${t('cancel')}</button></div>`;
+  else action = `<label class="blk upload"><span>${t('take_photo')}</span><b>+</b>
       <input type="file" accept="image/*" capture="environment" data-photo hidden></label>`;
   return `
-  <div class="card">
-    <h2>🌿 ${t('sunnah_title')}</h2>
-    ${sn ? `<h3>${esc(pick(sn.titleEn, sn.titleUr))}</h3><p>${esc(pick(sn.descEn, sn.descUr))}</p>${sn.source ? `<div class="muted">${t('source')}: ${esc(sn.source)}</div>` : ''}` : ''}
+  <div class="sec">
+    <h3>${t('sunnah_title')}</h3>
+    ${sn ? `<div class="head">${esc(pick(sn.titleEn, sn.titleUr))}</div><p>${esc(pick(sn.descEn, sn.descUr))}</p>${sn.source ? `<div class="muted">${t('source')}: ${esc(sn.source)}</div>` : ''}` : ''}
     <div class="spacer"></div>${action}
-    ${sn && !mine ? `<p class="hint">${t('photo_rules')}</p>` : ''}
-    ${sn ? `<p class="hint">${t('post_how')(r.confirmsNeeded, r.sunnahXp, r.verifyXp)}</p>` : ''}
+    ${sn && !mine ? `<p class="note">${t('photo_rules')}</p>` : ''}
+    ${sn ? `<p class="note">${t('post_how')(r.confirmsNeeded, r.sunnahXp, r.verifyXp)}</p>` : ''}
   </div>
-  <div class="card">
-    <h2>🔎 ${t('review_title')}</h2>
+  <div class="sec">
+    <h3>${t('review_title')}</h3>
     <p class="muted">${t('review_hint')}</p>
     ${d.feed.length ? d.feed.map((p) => `
       <div class="review" data-post="${p.id}">
         <div class="muted">${esc(pick(p.titleEn, p.titleUr))}</div>
         <img class="shot" loading="lazy" src="${esc(p.photoUrl)}" alt="">
-        <div class="row wrapx"><button style="flex:1" data-act="vote" data-id="${p.id}" data-v="confirm">${t('confirm')}</button>
-          <button class="alt" style="flex:1" data-act="vote" data-id="${p.id}" data-v="reject">${t('reject')}</button></div>
-        <button class="alt" style="margin-top:6px;padding:2px 10px;font-size:.8rem" data-act="report" data-id="${p.id}">${t('report_btn')}</button>
+        <div class="row"><button class="blk fill1" data-act="vote" data-id="${p.id}" data-v="confirm"><span>${t('confirm')}</span></button>
+          <button class="blk out fill1" data-act="vote" data-id="${p.id}" data-v="reject"><span>${t('reject')}</span></button></div>
+        <button class="chip" style="margin-top:8px" data-act="report" data-id="${p.id}">${t('report_btn')}</button>
       </div>`).join('') : `<p class="muted center">${t('no_feed')}</p>`}
   </div>
-  <div class="card">
-    <h2>${t('history')}</h2>
-    <div class="grid3" style="margin-bottom:8px">
-      <div class="stat"><b>${fmt(S.me.sunnah.verified)}</b><span>${t('sunnahs_verified')}</span></div>
-      <div class="stat"><b>${fmt(S.me.sunnah.reviews)}</b><span>${t('reviews_done')}</span></div>
-    </div>
-    ${d.mine.length ? d.mine.map((p) => `<div class="quest"><div class="grow">${esc(pick(p.titleEn, p.titleUr))}<div class="muted">${esc(p.day)}</div></div>${statusTag(p.status)}</div>`).join('') : ''}
+  <div class="sec">
+    <h3>${t('history')}</h3>
+    <div class="stats flat"><div><b>${fmt(S.me.sunnah.verified)}</b><span>${t('sunnahs_verified')}</span></div><div><b>${fmt(S.me.sunnah.reviews)}</b><span>${t('reviews_done')}</span></div></div>
+    ${d.mine.map((p) => `<div class="q"><span class="t">${esc(pick(p.titleEn, p.titleUr))}<small>${esc(p.day)}</small></span>${statusTag(p.status)}</div>`).join('')}
   </div>`;
 }
 
@@ -291,111 +274,95 @@ function rank() {
   const rows = b.data?.rows;
   const list = !rows ? '<p class="muted center">…</p>' : rows.length ? `<ul class="lb">${rows.map((r) => `
     <li class="${r.me ? 'me' : ''}"><span class="rank">${r.rank}</span>
-      <span class="name">${esc(r.username)}${r.me ? ` <span class="tag">${t('you')}</span>` : ''}${r.city ? `<div class="muted">${esc(r.city)}${r.members ? ` · ${fmt(r.members)} ${t('members')}` : ''}</div>` : r.members ? `<div class="muted">${fmt(r.members)} ${t('members')}</div>` : ''}</span>
+      <span class="name">${esc(r.username)}${r.me ? ` <em class="tag">${t('you')}</em>` : ''}${r.city ? `<small>${esc(r.city)}${r.members ? ` · ${fmt(r.members)} ${t('members')}` : ''}</small>` : r.members ? `<small>${fmt(r.members)} ${t('members')}</small>` : ''}</span>
       <span class="score">${fmt(r.score)}</span></li>`).join('')}</ul>` : `<p class="muted center">${t('empty_board')}</p>`;
   return `
   <div class="seg">
     <button class="${b.type === 'users' ? 'on' : ''}" data-act="board" data-type="users">${t('users')}</button>
     <button class="${b.type === 'teams' ? 'on' : ''}" data-act="board" data-type="teams">${t('teams')}</button>
   </div>
-  <div class="seg">
+  <div class="seg thin">
     <button class="${b.period === 'week' ? 'on' : ''}" data-act="board" data-period="week">${t('this_week')}</button>
     <button class="${b.period === 'all' ? 'on' : ''}" data-act="board" data-period="all">${t('all_time')}</button>
   </div>
-  <div class="card">${list}</div>
-  <p class="muted center">${t('self_reported')}</p>
-  <p class="muted center">${t('reminder_note')}</p>`;
+  ${list}
+  <p class="note">${t('self_reported')}</p>
+  <p class="note">${t('reminder_note')}</p>`;
 }
 
 function caravan() {
   const m = S.me, tm = S.team;
   const link = `${location.origin}/?ref=${m.username}`;
-  const total = m.team.total;
-  const next = MILESTONES.find((x) => x > total) || MILESTONES.at(-1);
-  const prev = MILESTONES.filter((x) => x <= total).at(-1) || 0;
+  const down = m.team.total - m.total;
+  const next = MILESTONES.find((x) => x > down) || MILESTONES.at(-1);
+  const prev = MILESTONES.filter((x) => x <= down).at(-1) || 0;
   return `
-  <div class="card">
-    <h2>${t('your_code')}</h2>
-    <div class="code">${esc(m.username)}</div>
-    <div class="spacer"></div>
-    <div class="muted">${t('your_link')}</div>
-    <div class="code" style="font-size:.9rem;font-weight:600">${esc(link)}</div>
-    <div class="spacer"></div>
-    <div class="row">
-      <button class="wa" style="flex:1" data-act="wa">${t('share_wa')}</button>
-      <button class="alt" data-act="copy" data-text="${esc(link)}">${t('copy')}</button>
-    </div>
-  </div>
-  <div class="card">
-    <h2>${t('caravan_title')}</h2>
-    <p class="muted">${t('caravan_sub')}</p>
-    <div class="grid3">
-      <div class="stat"><b>${fmt(m.team.members)}</b><span>${t('c_members')}</span></div>
-      <div class="stat"><b>${fmt(total)}</b><span>${t('c_total')}</span></div>
-      <div class="stat"><b>${tm ? fmt(tm.week) : '…'}</b><span>${t('c_week')}</span></div>
-    </div>
-    <div class="spacer"></div>
-    <div class="muted">${t('next_milestone')}: <b>${fmt(next)}</b></div>
-    ${bar(((total - prev) / (next - prev)) * 100)}
-  </div>
-  <div class="card">
-    <h2>${t('direct_list')} (${fmt(m.team.direct)})</h2>
-    ${!tm ? '…' : tm.direct.length ? `<ul class="lb">${tm.direct.map((d) => `
-      <li><span class="name">${esc(d.username)}<div class="muted">${d.members ? `${fmt(d.members)} ${t('members')} · ` : ''}${d.total == null ? t('hidden') : fmt(d.total)}</div></span><span class="score">${fmt(d.team)}</span></li>`).join('')}</ul>` : `<p class="muted">${t('none_yet')}</p>`}
-    ${tm?.byDepth?.length ? `<div class="muted" style="margin-top:8px">${tm.byDepth.map((d) => `${t('levels_deep')} ${d.depth}: ${fmt(d.n)}`).join(' · ')}</div>` : ''}
-  </div>`;
+  <h3 class="first">${t('your_code')}</h3>
+  <div class="code">${esc(m.username)}</div>
+  <div class="muted" style="margin-top:12px">${t('your_link')}</div>
+  <div class="link">${esc(link)}</div>
+  <div class="row" style="margin-top:12px"><button class="blk wa fill1" data-act="wa"><span>${t('share_wa')}</span><b>→</b></button><button class="chip" data-act="copy" data-text="${esc(link)}">${t('copy')}</button></div>
+
+  <h3>${t('caravan_title')}</h3>
+  <p class="muted">${t('caravan_sub')}</p>
+  <div class="stats"><div><b>${fmt(m.team.members)}</b><span>${t('c_members')}</span></div><div><b>${fmt(m.team.total)}</b><span>${t('c_total')}</span></div><div><b>${tm ? fmt(tm.week) : '…'}</b><span>${t('c_week')}</span></div></div>
+  <div class="lvl"><div class="row between"><span>${t('next_milestone')}</span><b>${fmt(next)}</b></div>${bar(((down - prev) / (next - prev)) * 100)}</div>
+
+  <h3>${t('direct_list')} (${fmt(m.team.direct)})</h3>
+  ${!tm ? '…' : tm.direct.length ? `<ul class="lb">${tm.direct.map((d) => `
+    <li><span class="name">${esc(d.username)}<small>${d.members ? `${fmt(d.members)} ${t('members')} · ` : ''}${d.total == null ? t('hidden') : fmt(d.total)}</small></span><span class="score">${fmt(d.team)}</span></li>`).join('')}</ul>` : `<p class="muted">${t('none_yet')}</p>`}
+  ${tm?.byDepth?.length ? `<p class="note">${tm.byDepth.map((d) => `${t('levels_deep')} ${d.depth}: ${fmt(d.n)}`).join(' · ')}</p>` : ''}`;
 }
 
 function learn() {
   const l = S.learn;
   const title = (x) => (S.lang === 'ur' && x.titleUr) || x.titleEn;
   return `
-  <div class="card">
-    <h2>🕌 ${t('circle_title')}</h2>
+  <div class="sec">
+    <h3>${t('circle_title')}</h3>
     <p class="muted">${t('circle_text')}</p>
-    ${l?.circleUrl ? `<div class="row wrapx"><a class="btn gold" href="${esc(l.circleUrl)}" target="_blank" rel="noopener">${t('circle_open')}</a>
-      ${S.me.badges.includes('circle') ? '<span class="ok">✓</span>' : `<button class="alt" data-act="circle">${t('circle_claim')} (${N('+' + fmt(l.circleXp))} ${t('xp')})</button>`}</div>` : `<p class="muted">${t('circle_none')}</p>`}
+    ${l?.circleUrl ? `<div class="row wrapx"><a class="blk fill1" href="${esc(l.circleUrl)}" target="_blank" rel="noopener"><span>${t('circle_open')}</span><b>↗</b></a>
+      ${S.me.badges.includes('circle') ? '<b class="ok">✓</b>' : `<button class="chip" data-act="circle">${t('circle_claim')} ${N('+' + fmt(l.circleXp))}</button>`}</div>` : `<p class="muted">${t('circle_none')}</p>`}
   </div>
-  <div class="card">
-    <h2>▶️ ${t('lectures')}</h2>
+  <div class="sec">
+    <h3>${t('lectures')}</h3>
     ${!l ? '…' : l.lectures.length ? l.lectures.map((x) => `
-      <div class="quest ${x.done ? 'done' : ''}">
-        <span class="tick">${x.done ? '✓' : ''}</span>
-        <div class="grow"><div>${esc(title(x))}</div><div class="muted">${esc(x.speaker)}</div></div>
-        <button class="${x.done ? 'alt' : ''}" data-act="watch" data-id="${x.id}">${x.done ? t('watched') : `${t('watch')} ${N('+' + x.xp)}`}</button>
+      <div class="q ${x.done ? 'd' : ''}"><span class="bx"></span>
+        <span class="t">${esc(title(x))}<small>${esc(x.speaker)}</small></span>
+        <button class="chip ${x.done ? '' : 'solid'}" data-act="watch" data-id="${x.id}">${x.done ? t('watched') : `${t('watch')} ${N('+' + x.xp)}`}</button>
       </div>`).join('') : `<p class="muted">${t('no_lectures')}</p>`}
   </div>`;
 }
+
+const BADGE_TAG = {
+  first_step: '1', d1k: '1K', d10k: '10K', d100k: '100K', d1m: '1M', streak7: '7D', streak30: '30D', streak100: '100D',
+  sunnah1: 'S1', sunnah7: 'S7', sunnah30: 'S30', verifier10: 'R10', verifier100: 'R100',
+  recruit1: '+1', recruit5: '+5', recruit25: '+25', scholar1: 'L1', scholar10: 'L10', circle: 'SC',
+  caravan10k: 'C10K', caravan100k: 'C100K', caravan1m: 'C1M', caravan10m: 'C10M',
+};
 
 function me() {
   const m = S.me;
   const codes = Object.keys(I18N.en.badge);
   return `
-  <div class="card">
-    <h2>${esc(m.username)}</h2>
-    <div class="muted" dir="ltr">${esc(m.email)} · ${esc(m.phone)}</div>
-    <div class="grid3" style="margin-top:8px">
-      <div class="stat"><b>${m.level}</b><span>${t('level')}</span></div>
-      <div class="stat"><b>${fmt(m.total)}</b><span>${t('total')}</span></div>
-      <div class="stat"><b>${m.bestStreak}</b><span>${t('best_streak')}</span></div>
-    </div>
-  </div>
-  <div class="card">
-    <h2>${t('badges')}</h2>
-    <div class="badges">${codes.map((c) => `<div class="badge ${m.badges.includes(c) ? '' : 'locked'}" title="${esc(t('badge')[c][1])}"><span class="ic">${BADGE_ICON[c]}</span>${esc(t('badge')[c][0])}</div>`).join('')}</div>
-  </div>
-  <form class="card" data-form="settings">
-    <h2>${t('settings')}</h2>
+  <div class="uname">${esc(m.username)}</div>
+  <div class="muted" dir="ltr">${esc(m.email)} · ${esc(m.phone)}</div>
+  <div class="stats"><div><b>${m.level}</b><span>${t('level')}</span></div><div><b>${fmt(m.total)}</b><span>${t('total')}</span></div><div><b>${m.bestStreak}</b><span>${t('best_streak')}</span></div></div>
+
+  <h3>${t('badges')}</h3>
+  <div class="badges">${codes.map((c) => `<div class="badge ${m.badges.includes(c) ? 'got' : ''}" title="${esc(t('badge')[c][1])}"><b>${BADGE_TAG[c]}</b><span>${esc(t('badge')[c][0])}</span></div>`).join('')}</div>
+
+  <h3>${t('settings')}</h3>
+  <form data-form="settings">
     <label>${t('daily_goal')}</label>
     <input type="number" name="dailyGoal" min="1" max="100000" value="${m.dailyGoal}" dir="ltr">
     <label>${t('city')}</label>
     <input type="text" name="city" maxlength="40" value="${esc(m.city)}">
-    <label class="row"><input type="checkbox" name="isPublic" ${m.isPublic ? 'checked' : ''} style="width:auto"> ${t('public_toggle')}</label>
+    <label class="check"><input type="checkbox" name="isPublic" ${m.isPublic ? 'checked' : ''}> ${t('public_toggle')}</label>
     <div class="hint">${t('public_hint')}</div>
-    <div class="spacer"></div>
-    <button class="block" type="submit">${t('save')}</button>
+    <button class="blk" type="submit"><span>${t('save')}</span><b>→</b></button>
   </form>
-  <button class="alt block" data-act="logout">${t('logout')}</button>`;
+  <button class="blk out" data-act="logout" style="margin-top:12px"><span>${t('logout')}</span></button>`;
 }
 
 function playerModal() {
@@ -407,8 +374,8 @@ function playerModal() {
     <div class="muted" id="ptimer">${left ? `${t('watching')} +${x.xp} · ${t('min_left')(left)}` : ''}</div>
     ${bar((p.elapsed / x.minSeconds) * 100).replace('class="bar"', 'class="bar" id="pbar"')}
     <div class="spacer"></div>
-    <div class="row"><button class="gold" style="flex:1" id="pclaim" data-act="pclaim" ${left ? 'disabled' : ''}>${t('can_claim')}</button>
-    <button class="alt" data-act="pclose">${t('close')}</button></div>
+    <div class="row"><button class="blk fill1" id="pclaim" data-act="pclaim" ${left ? 'disabled' : ''}><span>${t('can_claim')}</span></button>
+    <button class="chip" data-act="pclose">${t('close')}</button></div>
   </div></div>`;
 }
 
@@ -481,8 +448,7 @@ app.addEventListener('click', async (ev) => {
   if (act === 'tap' || act === 'padd') {
     S.pending += act === 'tap' ? 1 : Number(el.dataset.n);
     ls.set('pending', S.pending);
-    $('#pend').textContent = fmt(S.pending);
-    $('#submitp').disabled = false;
+    liveHome();
     if (act === 'tap') navigator.vibrate?.(8);
     return;
   }

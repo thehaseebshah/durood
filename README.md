@@ -48,6 +48,10 @@ curl -X POST $URL/api/admin/lectures -H "x-admin-key: $ADMIN_KEY" -H 'content-ty
 - **Seerat Circles & lectures:** circle link (claim bonus once), YouTube lectures embedded with server-verified minimum watch time, one reward per lecture.
 - **National meter:** total durood across everyone vs a target.
 
+## UI style
+
+Swiss/International typographic style: heavy tabular numerals, hairline rules, flat black and green blocks, square corners, one type family (Inter; Nastaliq for Urdu with RTL layout). Durood leads each screen; sunnah and seerah sit in the *Bonus* tab. Screenshots of every screen in English and Urdu are in `docs/ui/`; earlier exploratory prototypes are in `prototypes/`.
+
 ## Daily sunnah with photo verification
 
 - An admin schedules one sunnah per day (`POST /api/admin/sunnahs`, single object or `{"sunnahs":[…]}` for bulk; fields `day` (YYYY-MM-DD, Pakistan time), `title_en`, `title_ur`, `desc_en`, `desc_ur`, `source`). **Content is deliberately not bundled** — supply texts and references that your scholars have checked.
