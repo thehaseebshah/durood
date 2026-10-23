@@ -1,4 +1,5 @@
 import { I18N } from './i18n.js';
+import { uiIcon, badgeSvg } from './icons.js';
 
 const ls = {
   get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
@@ -37,9 +38,9 @@ const $ = (s) => document.querySelector(s);
 const app = $('#app');
 
 let toastTimer;
-function toast(msg) {
+function toast(msg, badge) {
   const el = $('#toast');
-  el.textContent = msg;
+  el.innerHTML = (badge ? `<span class="tbadge">${badgeSvg(badge, true, 44)}</span>` : '') + `<span>${esc(msg)}</span>`;
   el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
@@ -87,19 +88,13 @@ function celebrate(res) {
   if (res.xpGained) bits.push(t('gained')(res.xpGained));
   if (res.levelUp) bits.push(t('level_up')(res.levelUp));
   for (const b of res.newBadges || []) bits.push(`${t('new_badge')} ${t('badge')[b][0]}`);
-  if (bits.length) toast(bits.join(' · '));
+  if (bits.length) toast(bits.join(' · '), (res.newBadges || [])[0]);
   if (res.levelUp || res.newBadges?.length) navigator.vibrate?.([60, 40, 60]);
 }
 
 // ---- views (Swiss style: type, hairline rules, flat colour) --------------------------
-const NAV_ICON = {
-  home: '<path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/>',
-  rank: '<path d="M5 20V10M12 20V4M19 20v-7"/>',
-  caravan: '<circle cx="6" cy="14" r="2.4"/><circle cx="12" cy="8" r="2.4"/><circle cx="18" cy="14" r="2.4"/><path d="M4 20h4M10 14h4M16 20h4"/>',
-  bonus: '<path d="M12 3l2.4 5.6L20 9.5l-4.2 3.9L17 19l-5-3-5 3 1.2-5.6L4 9.5l5.6-.9z"/>',
-  me: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/>',
-};
-const navIcon = (k) => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${NAV_ICON[k]}</svg>`;
+const NAV_GLYPH = { home: 'home', rank: 'bars', caravan: 'caravan', bonus: 'star', me: 'me' };
+const navIcon = (k) => uiIcon(NAV_GLYPH[k], 22, 1.7);
 
 const ICON_SUN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
 const ICON_MOON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
@@ -153,7 +148,7 @@ function authView() {
 function shell() {
   const tabs = ['home', 'rank', 'caravan', 'bonus', 'me'];
   return `
-  <div class="hd"><span>${t('app')}</span><span class="row"><span>${S.me.streak} ${t('streak')}</span>${langToggle()}</span></div>
+  <div class="hd"><span>${t('app')}</span><span class="row"><span class="stk">${uiIcon('flame', 16, 1.8)} ${S.me.streak} ${t('streak')}</span>${langToggle()}</span></div>
   <div class="wrap">${view()}</div>
   <nav class="tabs">${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}</nav>
   ${S.player ? playerModal() : ''}`;
@@ -173,10 +168,10 @@ function home() {
   return `
   <div class="band arabic">${t('durood')}</div>
   <div class="sub"><span>${t('today')}</span><span>${t('goal_word')} ${N(fmt(m.dailyGoal))}</span></div>
-  <div class="big" id="big">${fmt(live)}</div>
+  <div class="big ${bigClass(live)}" id="big">${fmt(live)}</div>
   <div id="livebar">${bar((live / m.dailyGoal) * 100)}</div>
 
-  <button class="tap blk" data-act="tap"><span>${t('tap_hint')}</span><b>${N('+1')}</b></button>
+  <button class="tap blk" data-act="tap"><span class="lab">${uiIcon('tap', 26, 1.9)} ${t('tap_hint')}</span><b>${N('+1')}</b></button>
   <div class="pendrow">
     <span><b id="pend">${fmt(S.pending)}</b> ${t('pending')}</span>
     <span class="quick">${[10, 33, 100].map((n) => `<button class="chip" data-act="padd" data-n="${n}">${N('+' + n)}</button>`).join('')}<button class="chip" data-act="preset">${t('reset')}</button></span>
@@ -190,7 +185,7 @@ function home() {
     <div><b>${fmt(m.total)}</b><span>${t('total')}</span></div>
     <div><b>${m.level}</b><span>${esc(title)}</span></div>
   </div>
-  <div class="lvl"><div class="row between"><span>${t('level')} ${m.level} · ${N(`${fmt(m.xp)} / ${fmt(m.next)}`)} ${t('xp')}</span><span title="${esc(t('shield_hint'))}">${t('shield')} ${m.shields}</span></div>${bar(m.pct)}</div>
+  <div class="lvl"><div class="row between"><span>${uiIcon('bolt', 14, 1.9)} ${t('level')} ${m.level} · ${N(`${fmt(m.xp)} / ${fmt(m.next)}`)} ${t('xp')}</span><span title="${esc(t('shield_hint'))}">${uiIcon('shield', 14, 1.9)} ${m.shields}</span></div>${bar(m.pct)}</div>
 
   <h3>${t('durood_quests')}</h3>
   ${m.quests.filter((q) => q.group === 'durood').map((q) => quest(q)).join('')}
@@ -209,9 +204,12 @@ function home() {
 }
 
 // keep the big number and its bar in step with taps without redrawing the screen
+// the headline numeral shrinks with the number of characters so large counts never clip
+const bigClass = (n) => { const c = fmt(n).length; return c <= 3 ? '' : c <= 5 ? 'l5' : c === 6 ? 'l6' : 'l7'; };
 function liveHome() {
   const m = S.me, live = m.today + S.pending;
   $('#big').textContent = fmt(live);
+  $('#big').className = `big ${bigClass(live)}`;
   $('#livebar').innerHTML = bar((live / m.dailyGoal) * 100);
   $('#pend').textContent = fmt(S.pending);
   $('#submitp').disabled = !S.pending;
@@ -228,8 +226,8 @@ function quest(q, dim) {
 // secondary (sunnah) and tertiary (seerah) activities share one tab, in that order
 function bonus() {
   return `<p class="note first">${t('bonus_hint')}</p>
-    <h2 class="part"><i>01</i>${t('sunnah_heading')}</h2>${sunnah()}
-    <h2 class="part"><i>02</i>${t('seerah_heading')}</h2>${learn()}`;
+    <h2 class="part"><i>01</i>${uiIcon('leaf', 24, 1.8)}${t('sunnah_heading')}</h2>${sunnah()}
+    <h2 class="part"><i>02</i>${uiIcon('book', 24, 1.8)}${t('seerah_heading')}</h2>${learn()}`;
 }
 
 function sunnah() {
@@ -245,7 +243,7 @@ function sunnah() {
       <div class="muted">${N(`${mine.confirms}/${r.confirmsNeeded}`)} ${t('confirms_so_far')}</div>`;
   else if (S.draft) action = `<b>${t('photo_preview')}</b><img class="shot" src="${esc(S.draft)}" alt="">
       <div class="row"><button class="blk" style="flex:1" data-act="postit" id="postit"><span>${t('post_it')}</span><b>→</b></button><button class="chip" data-act="draftx">${t('cancel')}</button></div>`;
-  else action = `<label class="blk upload"><span>${t('take_photo')}</span><b>+</b>
+  else action = `<label class="blk upload"><span class="lab">${uiIcon('camera', 24, 1.8)} ${t('take_photo')}</span><b>+</b>
       <input type="file" accept="image/*" capture="environment" data-photo hidden></label>`;
   return `
   <div class="sec">
@@ -256,7 +254,7 @@ function sunnah() {
     ${sn ? `<p class="note">${t('post_how')(r.confirmsNeeded, r.sunnahXp, r.verifyXp)}</p>` : ''}
   </div>
   <div class="sec">
-    <h3>${t('review_title')}</h3>
+    <h3>${uiIcon('lens', 14, 2)} ${t('review_title')}</h3>
     <p class="muted">${t('review_hint')}</p>
     ${d.feed.length ? d.feed.map((p) => `
       <div class="review" data-post="${p.id}">
@@ -306,7 +304,7 @@ function caravan() {
   <div class="code">${esc(m.username)}</div>
   <div class="muted" style="margin-top:12px">${t('your_link')}</div>
   <div class="link">${esc(link)}</div>
-  <div class="row" style="margin-top:12px"><button class="blk wa fill1" data-act="wa"><span>${t('share_wa')}</span><b>→</b></button><button class="chip" data-act="copy" data-text="${esc(link)}">${t('copy')}</button></div>
+  <div class="row" style="margin-top:12px"><button class="blk wa fill1" data-act="wa"><span class="lab">${uiIcon('share', 22, 1.8)} ${t('share_wa')}</span><b>→</b></button><button class="chip" data-act="copy" data-text="${esc(link)}">${t('copy')}</button></div>
 
   <h3>${t('caravan_title')}</h3>
   <p class="muted">${t('caravan_sub')}</p>
@@ -334,28 +332,21 @@ function learn() {
     ${!l ? '…' : l.lectures.length ? l.lectures.map((x) => `
       <div class="q ${x.done ? 'd' : ''}"><span class="bx"></span>
         <span class="t">${esc(title(x))}<small>${esc(x.speaker)}</small></span>
-        <button class="chip ${x.done ? '' : 'solid'}" data-act="watch" data-id="${x.id}">${x.done ? t('watched') : `${t('watch')} ${N('+' + x.xp)}`}</button>
+        <button class="chip ${x.done ? '' : 'solid'}" data-act="watch" data-id="${x.id}">${x.done ? t('watched') : `${uiIcon('play', 13, 2)} ${t('watch')} ${N('+' + x.xp)}`}</button>
       </div>`).join('') : `<p class="muted">${t('no_lectures')}</p>`}
   </div>`;
 }
 
-const BADGE_TAG = {
-  first_step: '1', d1k: '1K', d10k: '10K', d100k: '100K', d1m: '1M', streak7: '7D', streak30: '30D', streak100: '100D',
-  sunnah1: 'S1', sunnah7: 'S7', sunnah30: 'S30', verifier10: 'R10', verifier100: 'R100',
-  recruit1: '+1', recruit5: '+5', recruit25: '+25', scholar1: 'L1', scholar10: 'L10', circle: 'SC',
-  caravan10k: 'C10K', caravan100k: 'C100K', caravan1m: 'C1M', caravan10m: 'C10M',
-};
-
 function me() {
   const m = S.me;
-  const codes = Object.keys(I18N.en.badge);
+  const codes = Object.keys(I18N.en.badge).sort((x, y) => m.badges.includes(y) - m.badges.includes(x)); // earned first, then the usual order
   return `
   <div class="uname">${esc(m.username)}</div>
   <div class="muted" dir="ltr">${esc(m.email)} · ${esc(m.phone)}</div>
   <div class="stats"><div><b>${m.level}</b><span>${t('level')}</span></div><div><b>${fmt(m.total)}</b><span>${t('total')}</span></div><div><b>${m.bestStreak}</b><span>${t('best_streak')}</span></div></div>
 
   <h3>${t('badges')}</h3>
-  <div class="badges">${codes.map((c) => `<div class="badge ${m.badges.includes(c) ? 'got' : ''}" title="${esc(t('badge')[c][1])}"><b>${BADGE_TAG[c]}</b><span>${esc(t('badge')[c][0])}</span></div>`).join('')}</div>
+  <div class="badges">${codes.map((c) => { const got = m.badges.includes(c); return `<div class="badge ${got ? 'got' : ''}" title="${esc(t('badge')[c][1])}">${badgeSvg(c, got)}<b>${esc(t('badge')[c][0])}</b><span>${esc(t('badge')[c][1])}</span></div>`; }).join('')}</div>
 
   <h3>${t('settings')}</h3>
   <form data-form="settings">

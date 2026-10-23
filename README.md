@@ -52,7 +52,7 @@ curl -X POST $URL/api/admin/lectures -H "x-admin-key: $ADMIN_KEY" -H 'content-ty
 
 Swiss/International typographic style with one accent colour (green): heavy tabular numerals, ruled cells, flat blocks, square corners, and an eight-point star (two overlapping squares) as the single recurring motif (progress marker, quest checks, headings, active tab). One type family: Inter for all Latin text and every digit in both languages, with Nastaliq for Urdu letters (RTL layout).
 
-**White / dark choice:** a sun/moon button in the header switches modes. The choice is saved in the browser; until someone chooses, the app follows the phone's light/dark setting. Both modes share every rule in `public/style.css` and differ only in the colour tokens at the top. Durood leads each screen; sunnah and seerah sit in the *Bonus* tab. Screenshots of every screen in white and dark, English and Urdu, are in `docs/ui/`.
+**White / dark choice:** a sun/moon button in the header switches modes. The choice is saved in the browser; until someone chooses, the app follows the phone's light/dark setting. Both modes share every rule in `public/style.css` and differ only in the colour tokens at the top. **Icons** (`public/icons.js`): Monoline (thin currentColor line pictograms) for UI items such as the tab bar, header, buttons and headings; Offset Duotone (outlined tile, hard offset shadow, green wash, tier squares) for the 23 reward badges. Both are inline SVG using the colour tokens, so white and dark modes just work. Durood leads each screen; sunnah and seerah sit in the *Bonus* tab. Screenshots of every screen in white and dark, English and Urdu, are in `docs/ui/`.
 
 ## Daily sunnah with photo verification
 
