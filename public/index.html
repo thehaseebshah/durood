@@ -14,10 +14,12 @@
 </head>
 <body>
   <script>
-    /* design review only: ?theme=signal|board|calm|geometry|dark loads an alternative stylesheet */
+    /* white / dark choice: saved choice wins, otherwise follow the phone's setting; set before paint to avoid a flash */
     (function () {
-      var t = new URLSearchParams(location.search).get('theme');
-      if (t && /^[a-z]+$/.test(t)) document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/themes/' + t + '.css">');
+      var m = null;
+      try { m = localStorage.getItem('mode'); } catch (e) {}
+      if (m !== 'dark' && m !== 'light') m = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-mode', m);
     })();
   </script>
   <div id="app"></div>

@@ -50,7 +50,9 @@ curl -X POST $URL/api/admin/lectures -H "x-admin-key: $ADMIN_KEY" -H 'content-ty
 
 ## UI style
 
-Swiss/International typographic style: heavy tabular numerals, hairline rules, flat black and green blocks, square corners, one type family (Inter; Nastaliq for Urdu with RTL layout). Durood leads each screen; sunnah and seerah sit in the *Bonus* tab. Design variations on the Swiss style (Signal, Board, Calm, Geometry, Dark) are theme layers in `public/themes/`, previewed by opening the app with `?theme=signal|board|calm|geometry|dark|combined` (`combined` blends Signal + Board + Geometry + Dark); their screenshots are in `docs/ui/variants/`. Screenshots of every screen in English and Urdu are in `docs/ui/`; earlier exploratory prototypes are in `prototypes/`.
+Swiss/International typographic style with one accent colour (green): heavy tabular numerals, ruled cells, flat blocks, square corners, and an eight-point star (two overlapping squares) as the single recurring motif (progress marker, quest checks, headings, active tab). One type family: Inter for all Latin text and every digit in both languages, with Nastaliq for Urdu letters (RTL layout).
+
+**White / dark choice:** a sun/moon button in the header switches modes. The choice is saved in the browser; until someone chooses, the app follows the phone's light/dark setting. Both modes share every rule in `public/style.css` and differ only in the colour tokens at the top. Durood leads each screen; sunnah and seerah sit in the *Bonus* tab. Screenshots of every screen in white and dark, English and Urdu, are in `docs/ui/`.
 
 ## Daily sunnah with photo verification
 
