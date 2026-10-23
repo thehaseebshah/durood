@@ -1,0 +1,13 @@
+{
+  "name": "durood-qafila",
+  "version": "0.1.0",
+  "description": "Durood Qafila - a social RPG for daily durood Shareef, supporting Seerat Circles",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test --no-warnings test/*.test.js",
+    "icons": "node scripts/make-icons.js"
+  }
+}
