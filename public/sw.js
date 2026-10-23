@@ -1,5 +1,5 @@
 // App-shell cache so the app opens offline; API calls always go to the network.
-const CACHE = 'qafila-v3';
+const CACHE = 'quest-v1';
 const SHELL = ['/', '/app.js', '/style.css', '/i18n.js', '/icons.js', '/privacy.html', '/manifest.webmanifest', '/icons/icon-192.png'];
 
 self.addEventListener('install', (e) => {

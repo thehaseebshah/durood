@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 // a database exactly as the first release created it: old ledger (count > 0, no edit columns) and users without the new columns
-const dir = mkdtempSync(path.join(os.tmpdir(), 'qafila-mig-'));
+const dir = mkdtempSync(path.join(os.tmpdir(), 'quest-mig-'));
 const file = path.join(dir, 'old.db');
 const old = new DatabaseSync(file);
 old.exec(`

@@ -3,7 +3,7 @@
 // and in tests, and an admin can still copy a reset link by hand (see the admin page).
 export const outbox = [];
 
-const FROM = () => process.env.MAIL_FROM || 'Durood Qafila <no-reply@example.org>';
+const FROM = () => process.env.MAIL_FROM || 'Seerah Quest <no-reply@example.org>';
 
 async function viaResend({ to, subject, text }) {
   const r = await fetch('https://api.resend.com/emails', {
@@ -53,17 +53,17 @@ export const baseUrl = () => (process.env.PUBLIC_URL || `http://localhost:${proc
 export const resetEmail = (to, url) => ({
   to,
   subject: 'Reset your password · پاس ورڈ بدلیں',
-  text: `Assalamu alaikum,\n\nUse this link to choose a new password for Durood Qafila. It works once and expires in one hour:\n${url}\n\nIf you did not ask for this, ignore this email.\n\n— — —\n\nالسلام علیکم،\n\nدرود قافلہ کا نیا پاس ورڈ منتخب کرنے کے لیے یہ لنک استعمال کریں۔ یہ ایک بار چلتا ہے اور ایک گھنٹے میں ختم ہو جاتا ہے:\n${url}\n\nاگر آپ نے یہ درخواست نہیں کی تو اس ای میل کو نظر انداز کر دیں۔`,
+  text: `Assalamu alaikum,\n\nUse this link to choose a new password for Seerah Quest. It works once and expires in one hour:\n${url}\n\nIf you did not ask for this, ignore this email.\n\n— — —\n\nالسلام علیکم،\n\nسیرت کوئسٹ کا نیا پاس ورڈ منتخب کرنے کے لیے یہ لنک استعمال کریں۔ یہ ایک بار چلتا ہے اور ایک گھنٹے میں ختم ہو جاتا ہے:\n${url}\n\nاگر آپ نے یہ درخواست نہیں کی تو اس ای میل کو نظر انداز کر دیں۔`,
 });
 
 export const confirmEmail = (to, url) => ({
   to,
   subject: 'Confirm your email · ای میل کی تصدیق کریں',
-  text: `Assalamu alaikum,\n\nWelcome to Durood Qafila. Confirm this email address so we can reach you if you forget your password:\n${url}\n\n— — —\n\nالسلام علیکم،\n\nدرود قافلہ میں خوش آمدید۔ اس ای میل کی تصدیق کریں تاکہ پاس ورڈ بھول جانے پر ہم آپ سے رابطہ کر سکیں:\n${url}`,
+  text: `Assalamu alaikum,\n\nWelcome to Seerah Quest. Confirm this email address so we can reach you if you forget your password:\n${url}\n\n— — —\n\nالسلام علیکم،\n\nسیرت کوئسٹ میں خوش آمدید۔ اس ای میل کی تصدیق کریں تاکہ پاس ورڈ بھول جانے پر ہم آپ سے رابطہ کر سکیں:\n${url}`,
 });
 
 export const inviteEmail = (to, code) => ({
   to,
-  subject: 'Your Durood Qafila invite code · آپ کا دعوتی کوڈ',
+  subject: 'Your Seerah Quest invite code · آپ کا دعوتی کوڈ',
   text: `Assalamu alaikum,\n\nYour request was approved. Your single-use invite code is:\n${code}\n\nOpen the app and enter it when you register.\n\n— — —\n\nالسلام علیکم،\n\nآپ کی درخواست منظور ہو گئی۔ آپ کا ایک بار استعمال ہونے والا دعوتی کوڈ:\n${code}\n\nرجسٹر کرتے وقت اسے درج کریں۔`,
 });

@@ -16,7 +16,7 @@ const one = (sql, ...a) => db.prepare(sql).get(...a);
 const run = (sql, ...a) => db.prepare(sql).run(...a);
 
 // ---- validation -----------------------------------------------------------
-const RESERVED = new Set(['admin', 'root', 'support', 'durood', 'qafila', 'seerat', 'api', 'null', 'undefined']);
+const RESERVED = new Set(['admin', 'root', 'support', 'durood', 'qafila', 'quest', 'seerah', 'seerat', 'api', 'null', 'undefined']);
 const isReserved = (u) => RESERVED.has(u.toLowerCase()) || /^member_\d+$/i.test(u); // member_<id> is what deleted accounts become
 const USERNAME = /^[a-z0-9_]{3,20}$/i;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -405,5 +405,5 @@ if (process.env.PUBLIC_FOUNDERS_CODE && !getSetting('public_code')) access.setPu
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const port = Number(process.env.PORT) || 3000;
-  createServer().listen(port, () => console.log(`Durood Qafila running on http://localhost:${port}`));
+  createServer().listen(port, () => console.log(`Seerah Quest running on http://localhost:${port}`));
 }

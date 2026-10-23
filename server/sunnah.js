@@ -11,7 +11,7 @@ const all = (sql, ...a) => db.prepare(sql).all(...a);
 const run = (sql, ...a) => db.prepare(sql).run(...a);
 
 export const UPLOAD_DIR = process.env.UPLOAD_DIR
-  || (process.env.DB_PATH === ':memory:' ? mkdtempSync(path.join(os.tmpdir(), 'qafila-')) : 'data/uploads');
+  || (process.env.DB_PATH === ':memory:' ? mkdtempSync(path.join(os.tmpdir(), 'quest-')) : 'data/uploads');
 mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const MAX_IMAGE = 1_500_000;

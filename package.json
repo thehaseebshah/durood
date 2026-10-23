@@ -1,7 +1,7 @@
 {
-  "name": "durood-qafila",
+  "name": "seerah-quest",
   "version": "0.1.0",
-  "description": "Durood Qafila - a social RPG for daily durood Shareef, supporting Seerat Circles",
+  "description": "Seerah Quest - a social RPG for daily durood Shareef, supporting Seerat Circles",
   "type": "module",
   "private": true,
   "engines": { "node": ">=22.13" },

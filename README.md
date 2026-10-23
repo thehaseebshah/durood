@@ -1,4 +1,5 @@
-# Durood Qafila · درود قافلہ
+# Seerah Quest · سیرت کوئسٹ
+
 
 A bilingual (English / Urdu, RTL) social-RPG web app for reciting durood Shareef daily, installable on Android as a PWA.
 Every durood is dedicated to facilitating the work of the Seerat Circles across Pakistan.
@@ -40,7 +41,7 @@ Environment variables:
 | `TEAM_MAX_DEPTH` | Cap how deep a caravan counts (default unlimited) |
 | `INVITE_ONLY` | `0` allows open sign-up (development only; default is invite-only) |
 | `PUBLIC_FOUNDERS_CODE` | Seeds the public founders code on first start (change or switch off later on the admin page) |
-| `PUBLIC_URL` | Base URL used in emailed links, e.g. `https://qafila.example.org` |
+| `PUBLIC_URL` | Base URL used in emailed links, e.g. `https://quest.example.org` |
 | `MAIL_PROVIDER` | `resend`, `sendgrid`, or unset for the log-only console sender |
 | `RESEND_API_KEY` / `SENDGRID_API_KEY`, `MAIL_FROM` | Credentials and sender for the chosen provider |
 | `TRUST_PROXY` | Set when behind a reverse proxy so rate limits use `X-Forwarded-For` |

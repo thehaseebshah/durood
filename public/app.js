@@ -334,12 +334,12 @@ async function shareCard() {
   g.fillStyle = soft; g.font = `600 40px ${family}`;
   g.fillText(`${human(total)} ${t('of')} ${human(target)} · ${t('challenge_title')}`, left, 1190);
   const blob = await new Promise((ok) => c.toBlob(ok, 'image/png'));
-  const file = new File([blob], 'durood-qafila.png', { type: 'image/png' });
+  const file = new File([blob], 'seerah-quest.png', { type: 'image/png' });
   const text = `${t('share_text')(x.done ? human(x.target).split(' ')[0] : x.k, x.day)} ${location.origin}`;
   try {
     if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], text }); return; }
   } catch (e) { if (e.name === 'AbortError') return; }
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'durood-qafila.png'; a.click(); // no file sharing here: save the image
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'seerah-quest.png'; a.click(); // no file sharing here: save the image
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
 }
 

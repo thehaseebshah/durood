@@ -1,4 +1,4 @@
-# Durood Qafila: product spec after the feature interview
+# Seerah Quest: product spec after the feature interview
 
 Status: decisions from the interview. **Step 1 (access and accuracy) is built**; steps 2 and 3 are not. See section 7 for what step 1 does exactly and the defaults I chose where the interview left a gap.
 
@@ -122,3 +122,9 @@ Defaults I chose:
 
 ## 9. Correction: Sunnah and Seerah stay (after step 1)
 The earlier "cut from v1" was a misreading. Both stay as secondary and tertiary features and the Bonus tab remains (so five tabs: Home, Ranks, Caravan, Bonus, Me). Defaults I chose (the "no preference" answers): tick 20 XP, verified photo +40; quizzes of up to 10 questions written by an admin through `POST /api/admin/lectures` (`questions: [{q_en,q_ur,options_en,options_ur,answer}]`), wrong answers are marked but the key is never sent; class attendance is proven by one photo a week reviewed like a sunnah photo. Caravan model (hide ancestors, depth, pyramid concerns) is **still open** and not built.
+
+## 10. Name and caravan terms (decided)
+- The app is **Seerah Quest · سیرت کوئسٹ** (was Durood Qafila). Seerah is where it is headed; durood stays the daily habit and first on Home.
+- **"Caravan" (قافلہ) is the only member-facing word** for the tree of people you referred. "Qabila" is an internal name for the same tree and never appears in the UI.
+- Everyone starts their own tree. **No money anywhere:** no payments requested, no monetary rewards. Rewards are XP, badges and milestones only, and the app should say so plainly.
+- Still open: whether to hide the inviter's caravan from the member, and depth of caravan roll-up.
