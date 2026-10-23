@@ -12,6 +12,10 @@ npm start            # http://localhost:3000
 npm test             # API tests (in-memory DB)
 ```
 
+### The 40-day challenge
+
+10 crore (100,000,000) durood in 40 days, i.e. 2,500,000 a day. **Day 1 is the Pakistan-time day the first member joins**; an admin can correct the start date, length and target on the admin page (Challenge tab). The meter counts **everything reported since the start day and keeps counting after day 40**. Home shows a card under the number box: day X of 40, total in digits and in crore/lakh, a plan marker on the bar, *needed today* (the amount that finishes exactly on day 40 from where the community really is), *reported today*, *days left*, an honest ahead/behind figure and a projection from the last 7 complete days. Each crore reached is recorded the moment it is crossed and never un-happens, and members get a celebration (with a shareable image drawn on their phone); so does the finish. Ranks has a **Challenge** board for individuals and caravans covering the 40 days only, frozen when they end.
+
 ### Access, accuracy and accounts (step 1 of the spec)
 
 - **Invite-only sign-up.** A code is required. Codes are: a member's own username; an admin-issued **founder code** (optional label and max uses, revocable); the **public founders code** (one code, switch it on or off); and a single-use code created when the admin approves a **waitlist** request. Members start with **10 invites, +10 for every 7-day streak** they reach; founder and waitlist sign-ups never use up anyone's invites.

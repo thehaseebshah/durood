@@ -9,7 +9,7 @@ import { audit } from './audit.js';
 import * as access from './access.js';
 import { sendMail, resetEmail, confirmEmail, inviteEmail, baseUrl } from './mail.js';
 import * as sunnah from './sunnah.js';
-import { CFG, dayOf, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, claimCircle, getMe, leaderboard, teamView, publicStats } from './game.js';
+import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, claimCircle, getMe, leaderboard, teamView, publicStats } from './game.js';
 
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -113,6 +113,7 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
       username, email, phone, pass, lang(body.lang), String(body.city || '').trim().slice(0, 40), referrerId, dayOf(), Date.now(),
       r ? r.kind : 'open', r?.invite ? r.code : (r?.kind === 'public' ? r.code : null));
     const uid = Number(res.lastInsertRowid);
+    startChallengeIfNeeded(); // day 1 of the challenge is the day the first member joins
     run('INSERT INTO ancestors (user_id, ancestor_id, depth) VALUES (?,?,0)', uid, uid);
     if (referrerId) {
       run(`INSERT INTO ancestors (user_id, ancestor_id, depth)
@@ -217,10 +218,12 @@ route('DELETE', '/api/me', { admin: false }, async ({ user, body }) => {
 
 route('GET', '/api/leaderboard', ({ user, query }) => {
   const type = query.get('type') === 'teams' ? 'teams' : 'users';
-  const period = query.get('period') === 'all' ? 'all' : 'week';
+  const p = query.get('period');
+  const period = p === 'all' ? 'all' : p === 'challenge' ? 'challenge' : 'week';
   return leaderboard(user, type, period);
 });
 
+route('GET', '/api/challenge', ({ user }) => ({ summary: challengeSummary(), series: challengeSeries() }));
 route('GET', '/api/team', ({ user }) => teamView(user));
 
 route('GET', '/api/lectures', ({ user }) => {
@@ -278,6 +281,8 @@ route('POST', '/api/admin/members/:username', adm, ({ params, body }) => {
 });
 route('GET', '/api/admin/flags', adm, ({ query }) => ({ flags: listFlags(query.get('status') || 'open') }));
 route('POST', '/api/admin/flags/:id', adm, ({ params, body }) => resolveFlag(Number(params.id), body.action));
+route('GET', '/api/admin/challenge', adm, () => ({ summary: challengeSummary(), series: challengeSeries() }));
+route('POST', '/api/admin/challenge', adm, ({ body }) => ({ summary: setChallenge({ start: body.start, days: body.days, target: body.target, clearMilestones: !!body.clearMilestones }) }));
 route('GET', '/api/admin/audit', { auth: false, admin: true }, () => audit());
 route('POST', '/api/admin/lectures', { auth: false, admin: true }, ({ body }) => {
   const yt = String(body.youtube_id || '').trim();

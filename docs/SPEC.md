@@ -107,3 +107,15 @@ Defaults I picked where the interview didn't say. Tell me if any is wrong:
 8. **Deleted accounts** become `member_<id>`, can't be invited from, and drop off every board.
 9. The admin page is a normal web page at `/admin`; what protects it is the admin key on every API call. Use a long random `ADMIN_KEY`.
 10. The privacy notice wording is my draft and has bracketed gaps for the organiser's name and contact.
+
+## 8. The 40-day challenge (added after step 1)
+Decisions: clock starts when the first founders join; everything reported since the app opened counts; a card under the number box on Home; honest pace ("needed today", ahead or behind); celebrate each crore and the finish; challenge boards for individuals and caravans; keep counting after day 40.
+
+Defaults I chose:
+1. **Day 1 = the Pakistan-time day of the first sign-up.** If a test account starts the clock too early, the admin corrects the date (Challenge tab).
+2. **"Needed today"** = (target - reported before today) / days left including today, rounded up. **Ahead/behind** compares the total at the start of today with a straight line to the target.
+3. **Projection** uses the average of the last up to 7 complete days. It is hidden on day 1.
+4. **The meter** counts all durood from the start day with no end date. **Challenge boards** count only the 40 days and freeze when they end (so the all-time and challenge boards differ once the challenge is over).
+5. Crores are recorded when the next write crosses them, so the timestamp is accurate to seconds. A later edit can lower the total but never removes a crore already reached.
+6. The old "whole Qafila" national meter on Home is replaced by the challenge card.
+7. Honest note: 10 crore in 40 days needs roughly 1,250 durood a day from each of 2,000 active members, so the target depends on the community growing well past the first launch.

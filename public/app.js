@@ -39,6 +39,14 @@ const MILESTONES = [10_000, 100_000, 1_000_000, 10_000_000, 100_000_000];
 const t = (k) => I18N[S.lang][k] ?? I18N.en[k] ?? k;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (n) => (n == null ? '—' : Number(n).toLocaleString('en-US'));
+// Pakistan counts in lakh and crore; numerals stay ASCII (Inter) in both languages
+const trim2 = (x) => String(Math.round(x * 100) / 100);
+function human(n) {
+  const a = Math.abs(n);
+  if (a >= 1e7) return `${trim2(a / 1e7)} ${t('crore')}`;
+  if (a >= 1e5) return `${trim2(a / 1e5)} ${t('lakh')}`;
+  return fmt(a);
+}
 const N = (x) => `<span class="n">${x}</span>`; // keeps '+50' and '475 / 900' left-to-right inside Urdu text
 const $ = (s) => document.querySelector(s);
 const app = $('#app');
@@ -183,7 +191,8 @@ function shell() {
   <div class="hd"><span>${t('app')}</span><span class="row"><span class="stk">${uiIcon('flame', 16, 1.8)} ${S.me.streak} ${t('streak')}</span>${langToggle()}</span></div>
   <div class="wrap">${view()}</div>
   <nav class="tabs">${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}</nav>
-  ${S.player ? playerModal() : ''}`;
+  ${S.player ? playerModal() : ''}
+  ${S.celebrate ? celebrateModal() : ''}`;
 }
 
 function view() {
@@ -213,6 +222,8 @@ function home() {
   <div class="manual"><label for="manual">${t('or_enter')}</label>
     <div class="row"><input type="number" id="manual" inputmode="numeric" min="1" placeholder="${t('count_ph')}" dir="ltr"><button class="chip solid" data-act="manual">${t('add')}</button></div></div>
 
+  ${challengeCard(m)}
+
   <div class="stats">
     <div><b>${fmt(m.week)}</b><span>${t('week')}</span></div>
     <div><b>${fmt(m.total)}</b><span>${t('total')}</span></div>
@@ -229,10 +240,6 @@ function home() {
   <h3>${t('caravan_title')}</h3>
   <button class="rowlink" data-act="tab" data-tab="caravan"><span>${fmt(m.team.members)} ${t('members')}</span><b>${fmt(m.team.total)}</b></button>
 
-  <h3>${t('national')}</h3>
-  <div class="row between"><b>${fmt(m.pub.total)}</b><span class="muted">${t('of')} ${N(fmt(m.pub.target))}</span></div>
-  ${bar(natPct)}
-  <p class="note">${fmt(m.pub.members)} ${t('members')} · ${t('self_reported')} · ${new Date(m.pub.asOf).toLocaleTimeString(S.lang === 'ur' ? 'ur-PK' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}</p>
   <p class="note">${t('reminder_note')}</p>`;
 }
 
@@ -246,6 +253,94 @@ function liveHome() {
   $('#livebar').innerHTML = bar((live / m.dailyGoal) * 100);
   $('#pend').textContent = fmt(S.pending);
   $('#submitp').disabled = !S.pending;
+}
+
+function challengeCard(m) {
+  const c = m.pub.challenge;
+  if (!c || c.state === 'waiting') return '';
+  const pct = Math.min(100, (c.total / c.target) * 100);
+  const head = `<div class="chead"><span>${uiIcon('star', 14, 2)} ${t('challenge_title')}</span><span>${c.state === 'running' || c.state === 'over' ? t('day_of')(c.dayIndex, c.days) : ''}</span></div>`;
+  const tot = `<div class="ctotal"><b>${fmt(c.total)}</b><span>${t('of')} ${N(fmt(c.target))}</span></div><div class="chuman">${human(c.total)} ${t('of')} ${human(c.target)}</div>`;
+  const markPct = c.state === 'running' ? ((c.dayIndex - 1) / c.days) * 100 : 0;
+  const barEl = `<div class="cbar">${bar(pct)}${c.state === 'running' && markPct > 0 ? `<span class="pace" style="inset-inline-start:${markPct}%" title="plan"></span>` : ''}</div>`;
+  let body = '';
+  if (c.state === 'running') {
+    const gap = c.gap;
+    const status = gap === 0 ? t('on_plan') : gap > 0 ? t('ahead')(human(gap)) : t('behind')(human(gap));
+    const proj = c.projectedTotal == null ? t('plan_each_day')(human(c.plannedPerDay))
+      : t('projected')(human(c.projectedTotal), Math.round((c.projectedTotal / c.target) * 100), c.days);
+    body = `<div class="cells"><div><b>${fmt(c.neededToday)}</b><span>${t('needed_today')}</span></div><div><b>${fmt(c.today)}</b><span>${t('reported_today')}</span></div><div><b>${c.daysLeft}</b><span>${t('days_left')}</span></div></div>
+      <div class="cstatus ${gap < 0 ? 'behind' : 'ahead'}">${status}</div><div class="cnote">${proj}</div>`;
+  } else if (c.state === 'upcoming') {
+    body = `<div class="cstatus ahead">${c.startsIn === 1 ? t('starts_tomorrow') : t('starts_in')(c.startsIn)}</div>`;
+  } else if (c.state === 'over') {
+    body = `<div class="cstatus behind">${t('over_msg')(c.dayIndex, c.days, human(c.short))}</div>`;
+  } else if (c.state === 'done') {
+    body = `<div class="cstatus ahead">${t('done_msg')(human(c.target))}</div>`;
+  }
+  return `<div class="challenge">${head}${tot}${barEl}${body}<div class="cnote">${fmt(m.pub.members)} ${t('members')} · ${t('self_reported')}</div></div>`;
+}
+
+// ---- celebration: each crore reached, and the finish ---------------------------------------------------------------
+function checkCelebrate() {
+  const c = S.me?.pub?.challenge;
+  if (!c || c.state === 'waiting' || S.celebrate) return;
+  const key = `seen:${S.me.username}`;
+  const done = c.state === 'done' ? 1 : 0;
+  let seen = null;
+  try { seen = JSON.parse(ls.get(key)); } catch { /* none */ }
+  if (!seen) { ls.set(key, JSON.stringify({ r: c.reached, d: done })); return; } // new here: don't replay old milestones
+  if (c.reached > seen.r || (done && !seen.d)) {
+    S.celebrate = { k: c.reached, done: !!(done && !seen.d), day: c.dayIndex, target: c.target };
+    ls.set(key, JSON.stringify({ r: c.reached, d: done }));
+    navigator.vibrate?.([80, 50, 80, 50, 160]);
+  }
+}
+
+function celebrateModal() {
+  const x = S.celebrate;
+  return `<div class="modal celebrate"><div class="box">
+    <div class="cnum">${x.done ? human(x.target).split(' ')[0] : x.k}</div>
+    <div class="ctitle">${x.done ? t('celebrate_done') : t('celebrate_crore')(x.k)}</div>
+    <p>${t('celebrate_text')(x.day)}</p>
+    <div class="row"><button class="blk fill1" data-act="shareCard"><span class="lab">${uiIcon('share', 20, 1.8)} ${t('share')}</span><b>→</b></button><button class="chip" data-act="celebrateX">${t('close')}</button></div>
+  </div></div>`;
+}
+
+// a portrait card in the app's own style, drawn in the browser so nothing is uploaded
+async function shareCard() {
+  const x = S.celebrate, dark = isDark();
+  const ink = dark ? '#f4f1ea' : '#0b0b0b', paper = dark ? '#0b0b0b' : '#ffffff', sig = dark ? '#22d68f' : '#00a86b', soft = dark ? '#92928b' : '#66665f';
+  const W = 1080, H = 1350;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  const family = S.lang === 'ur' ? "Inter, 'Noto Nastaliq Urdu', serif" : 'Inter, Helvetica, Arial, sans-serif';
+  try { await Promise.all(['800 100px Inter', '600 40px Inter', S.lang === 'ur' ? '400 40px "Noto Nastaliq Urdu"' : '400 40px Inter'].map((f) => document.fonts.load(f))); } catch { /* fall back */ }
+  g.fillStyle = paper; g.fillRect(0, 0, W, H);
+  g.fillStyle = sig; g.fillRect(0, 0, W, 28);
+  g.textBaseline = 'alphabetic'; g.direction = S.lang === 'ur' ? 'rtl' : 'ltr';
+  const left = S.lang === 'ur' ? W - 80 : 80; g.textAlign = S.lang === 'ur' ? 'right' : 'left';
+  g.fillStyle = soft; g.font = `600 44px ${family}`; g.fillText(t('app'), left, 130);
+  g.fillStyle = ink; g.font = `800 560px ${family}`; g.direction = 'ltr'; g.textAlign = 'left';
+  const big = x.done ? human(x.target).split(' ')[0] : String(x.k);
+  g.fillText(big, 60, 760);
+  g.direction = S.lang === 'ur' ? 'rtl' : 'ltr'; g.textAlign = S.lang === 'ur' ? 'right' : 'left';
+  g.fillStyle = sig; g.font = `800 120px ${family}`; g.fillText(t('crore'), left, 900);
+  g.fillStyle = ink; g.font = `600 56px ${family}`; g.fillText(t('celebrate_text')(x.day), left, 990);
+  const total = S.me.pub.challenge.total, target = x.target;
+  g.fillStyle = dark ? '#1c1c1a' : '#ecece6'; g.fillRect(80, 1090, W - 160, 36);
+  g.fillStyle = sig; const w = (W - 160) * Math.min(1, total / target);
+  if (S.lang === 'ur') g.fillRect(W - 80 - w, 1090, w, 36); else g.fillRect(80, 1090, w, 36);
+  g.fillStyle = soft; g.font = `600 40px ${family}`;
+  g.fillText(`${human(total)} ${t('of')} ${human(target)} · ${t('challenge_title')}`, left, 1190);
+  const blob = await new Promise((ok) => c.toBlob(ok, 'image/png'));
+  const file = new File([blob], 'durood-qafila.png', { type: 'image/png' });
+  const text = `${t('share_text')(x.done ? human(x.target).split(' ')[0] : x.k, x.day)} ${location.origin}`;
+  try {
+    if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], text }); return; }
+  } catch (e) { if (e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'durood-qafila.png'; a.click(); // no file sharing here: save the image
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
 }
 
 function quest(q, dim) {
@@ -319,9 +414,11 @@ function rank() {
   </div>
   <div class="seg thin">
     <button class="${b.period === 'week' ? 'on' : ''}" data-act="board" data-period="week">${t('this_week')}</button>
+    <button class="${b.period === 'challenge' ? 'on' : ''}" data-act="board" data-period="challenge">${t('challenge_board')}</button>
     <button class="${b.period === 'all' ? 'on' : ''}" data-act="board" data-period="all">${t('all_time')}</button>
   </div>
   ${list}
+  ${b.period === 'challenge' ? `<p class="note">${t('challenge_note')}</p>` : ''}
   <p class="note">${t('self_reported')}</p>
   <p class="note">${t('reminder_note')}</p>`;
 }
@@ -444,6 +541,7 @@ function playerModal() {
 // ---- drawing + data loading -----------------------------------------------------
 function draw() {
   applyLang();
+  if (S.me) checkCelebrate();
   app.innerHTML = S.me ? shell() : authView();
 }
 
@@ -531,6 +629,8 @@ app.addEventListener('click', async (ev) => {
   if (act === 'resend') { try { await api('/email/resend', 'POST'); toast(t('email_sent')); } catch (e) { toast(errText(e)); } return; }
   if (act === 'tab') return enterTab(el.dataset.tab);
   if (act === 'logout') return logout();
+  if (act === 'celebrateX') { S.celebrate = null; return draw(); }
+  if (act === 'shareCard') { el.disabled = true; await shareCard(); el.disabled = false; return; }
 
   if (act === 'tap' || act === 'padd') {
     S.pending += act === 'tap' ? 1 : Number(el.dataset.n);

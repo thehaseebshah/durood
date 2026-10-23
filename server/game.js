@@ -1,4 +1,4 @@
-import { db, tx } from './db.js';
+import { db, tx, getSetting, setSetting } from './db.js';
 import { HttpError } from './auth.js';
 import { inviteStatus } from './access.js';
 
@@ -179,6 +179,7 @@ export function logDurood(userId, count, rid) {
     for (const a of all('SELECT ancestor_id id FROM ancestors WHERE user_id = ? AND depth > 0', userId)) evalBadges(a.id, fresh);
   });
 
+  if (!duplicate) recordChallenge();
   const after = one('SELECT xp FROM users WHERE id = ?', userId).xp;
   return {
     duplicate,
@@ -282,6 +283,7 @@ export function editEntry(userId, entryId, newCount, ridIn) {
     run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth <= ?)', delta, userId, CFG.teamMaxDepth);
     evaluateFlags(userId, e.day);
   });
+  if (!duplicate) recordChallenge();
   return { duplicate };
 }
 
@@ -349,13 +351,116 @@ export function claimCircle(userId) {
   return { xpGained: ok ? CFG.circleXp : 0, already: !ok, newBadges: fresh.map((b) => b.code) };
 }
 
+// ---- the 40-day challenge ---------------------------------------------------------------------------------
+// 10 crore (100,000,000) durood in 40 days. The clock starts when the first member joins; an admin can correct the date.
+// The meter counts everything reported since the start day and keeps counting after day 40. Challenge boards cover the
+// 40 days only and freeze at the end.
+export const CRORE = 10_000_000;
+
+export function challengeConfig() {
+  return {
+    start: getSetting('challenge_start'),
+    days: Number(getSetting('challenge_days', 40)),
+    target: Number(getSetting('challenge_target', CFG.nationalTarget)),
+  };
+}
+
+/** Day 1 is the Pakistan-time day of the first sign-up. */
+export function startChallengeIfNeeded() {
+  if (!getSetting('challenge_start')) setSetting('challenge_start', dayOf());
+}
+
+export function setChallenge({ start, days, target, clearMilestones }) {
+  if (start !== undefined) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(start)) || Number.isNaN(Date.parse(start + 'T00:00:00Z'))) throw new HttpError(400, 'bad_date');
+    setSetting('challenge_start', start);
+  }
+  if (days !== undefined) {
+    const d = Number(days);
+    if (!Number.isInteger(d) || d < 1 || d > 365) throw new HttpError(400, 'bad_days');
+    setSetting('challenge_days', d);
+  }
+  if (target !== undefined) {
+    const t = Number(target);
+    if (!Number.isInteger(t) || t < 1_000_000 || t > 10_000_000_000) throw new HttpError(400, 'bad_target');
+    setSetting('challenge_target', t);
+  }
+  if (clearMilestones) db.prepare("DELETE FROM settings WHERE key LIKE 'ch_m_%' OR key = 'ch_done_at'").run();
+  return challengeSummary();
+}
+
+const milestoneList = (upTo) => {
+  const out = [];
+  for (let k = 1; k <= upTo; k++) {
+    const at = getSetting(`ch_m_${k}`);
+    if (at) out.push({ k, at: Number(at) });
+  }
+  return out;
+};
+
+/** Where the community stands: totals, today's required pace, ahead/behind, and a projection from the recent average. */
+export function challengeSummary(now = Date.now()) {
+  const { start, days, target } = challengeConfig();
+  if (!start) return { state: 'waiting', days, target, total: 0, remaining: target, crores: 0, reached: 0, milestones: [] };
+  const today = dayOf(now);
+  const idx = dayNum(today) - dayNum(start) + 1;                 // 1 on the first day
+  const end = dayStr(dayNum(start) + days - 1);
+  const total = one('SELECT COALESCE(SUM(count), 0) n FROM daily WHERE day >= ?', start).n;
+  const todayCount = idx >= 1 ? one('SELECT COALESCE(SUM(count), 0) n FROM daily WHERE day = ?', today).n : 0;
+  const before = total - todayCount;                             // reported before today
+  const crores = Math.floor(total / CRORE);
+  const milestones = milestoneList(Math.max(crores, Math.floor(target / CRORE)));
+  const out = {
+    days, target, start, end, total, today: todayCount, crores, milestones,
+    reached: milestones.length ? milestones.at(-1).k : 0,
+    remaining: Math.max(0, target - total),
+    plannedPerDay: Math.round(target / days),
+    doneAt: getSetting('ch_done_at') ? Number(getSetting('ch_done_at')) : null,
+    dayIndex: Math.max(idx, 0),
+  };
+  if (total >= target) return { ...out, state: 'done' };
+  if (idx < 1) return { ...out, state: 'upcoming', startsIn: 1 - idx };
+  if (idx > days) return { ...out, state: 'over', daysOver: idx - days, short: target - total };
+  const daysLeft = days - idx + 1;                               // includes today
+  const completeDays = Math.min(7, idx - 1);
+  let projectedTotal = null;
+  if (completeDays > 0) {
+    const from = dayStr(dayNum(today) - completeDays);
+    const recent = one('SELECT COALESCE(SUM(count), 0) n FROM daily WHERE day >= ? AND day < ?', from, today).n;
+    projectedTotal = Math.round(before + (recent / completeDays) * daysLeft);
+  }
+  return {
+    ...out, state: 'running', daysLeft,
+    neededToday: Math.max(0, Math.ceil((target - before) / daysLeft)),   // to finish exactly on the last day from where we really are
+    gap: before - Math.round((target * (idx - 1)) / days),               // positive = ahead of a straight line at the start of today
+    projectedTotal,
+  };
+}
+
+/** Records each crore (and the finish) the moment the total passes it. Called after every write; milestones never un-happen. */
+export function recordChallenge() {
+  const { start, target } = challengeConfig();
+  if (!start) return;
+  const total = one('SELECT COALESCE(SUM(count), 0) n FROM daily WHERE day >= ?', start).n;
+  const now = Date.now();
+  for (let k = 1; k <= Math.floor(total / CRORE); k++) if (!getSetting(`ch_m_${k}`)) setSetting(`ch_m_${k}`, now);
+  if (total >= target && !getSetting('ch_done_at')) setSetting('ch_done_at', now);
+}
+
+/** Daily totals since the start, for the chart. */
+export const challengeSeries = () => {
+  const { start } = challengeConfig();
+  if (!start) return [];
+  return all('SELECT day, SUM(count) total FROM daily WHERE day >= ? GROUP BY day ORDER BY day LIMIT 400', start);
+};
+
 // ---- reads ----------------------------------------------------------------
 // exact (summed from users.total, which `audit` proves equals the ledger); cached briefly and stamped with asOf
 let natCache = { at: 0, v: null };
 export function publicStats() {
   if (Date.now() - natCache.at > Number(process.env.PUBLIC_CACHE_MS ?? 15_000)) {
     const r = one('SELECT COALESCE(SUM(total),0) total, SUM(deleted_at IS NULL) members FROM users');
-    natCache = { at: Date.now(), v: { total: r.total, members: r.members, asOf: Date.now() } };
+    natCache = { at: Date.now(), v: { total: r.total, members: r.members, asOf: Date.now(), challenge: challengeSummary() } };
   }
   return { ...natCache.v, target: CFG.nationalTarget, circleUrl: CFG.circleUrl };
 }
@@ -388,22 +493,28 @@ export function getMe(userId) {
 
 export function leaderboard(userId, type, period) {
   const wk = weekStart();
+  const ch = challengeConfig();
+  const chFrom = ch.start || '9999-12-31', chTo = ch.start ? dayStr(dayNum(ch.start) + ch.days - 1) : '0000-01-01';
   const me = one('SELECT username FROM users WHERE id = ?', userId).username;
   let rows;
   if (type === 'teams') {
     const base = period === 'week'
       ? `SELECT a.ancestor_id id, SUM(d.count) score FROM daily d JOIN ancestors a ON a.user_id = d.user_id
          WHERE d.day >= ? AND a.depth <= ? GROUP BY a.ancestor_id`
-      : 'SELECT id, team_total score FROM users';
-    const args = period === 'week' ? [wk, CFG.teamMaxDepth] : [];
+      : period === 'challenge'
+        ? `SELECT a.ancestor_id id, SUM(d.count) score FROM daily d JOIN ancestors a ON a.user_id = d.user_id
+           WHERE d.day >= ? AND d.day <= ? AND a.depth <= ? GROUP BY a.ancestor_id`
+        : 'SELECT id, team_total score FROM users';
+    const args = period === 'week' ? [wk, CFG.teamMaxDepth] : period === 'challenge' ? [chFrom, chTo, CFG.teamMaxDepth] : [];
     rows = all(`SELECT u.username, u.city, t.score,
                   (SELECT COUNT(*) FROM ancestors x WHERE x.ancestor_id = u.id AND x.depth > 0 AND x.depth <= ${CFG.teamMaxDepth}) members
                 FROM (${base}) t JOIN users u ON u.id = t.id
                 WHERE u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL AND t.score > 0 AND EXISTS (SELECT 1 FROM users c WHERE c.referrer_id = u.id)
                 ORDER BY t.score DESC LIMIT 50`, ...args);
-  } else if (period === 'week') {
+  } else if (period === 'week' || period === 'challenge') {
+    const [from, to] = period === 'week' ? [wk, '9999-12-31'] : [chFrom, chTo];
     rows = all(`SELECT u.username, u.city, SUM(d.count) score FROM daily d JOIN users u ON u.id = d.user_id
-                WHERE d.day >= ? AND u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL GROUP BY u.id ORDER BY score DESC LIMIT 50`, wk);
+                WHERE d.day >= ? AND d.day <= ? AND u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL GROUP BY u.id ORDER BY score DESC LIMIT 50`, from, to);
   } else {
     rows = all('SELECT username, city, total score FROM users u WHERE u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL AND total > 0 ORDER BY total DESC LIMIT 50');
   }

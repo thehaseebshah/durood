@@ -2,11 +2,13 @@
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (n) => Number(n ?? 0).toLocaleString('en-US');
+const human = (n) => { const a = Math.abs(n); return a >= 1e7 ? `${Math.round(a / 1e5) / 100} crore` : a >= 1e5 ? `${Math.round(a / 1e3) / 100} lakh` : fmt(a); };
+const pktToday = () => new Date(Date.now() + 5 * 3600e3).toISOString().slice(0, 10);
 const date = (t) => new Date(t).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Karachi' });
 let KEY = sessionStorage.getItem('adminKey') || '';
-let tab = 'invites';
+let tab = 'challenge';
 let notice = '';
-const TABS = [['invites', 'Invite codes'], ['waitlist', 'Waitlist'], ['flags', 'Flagged totals'], ['members', 'Members']];
+const TABS = [['challenge', 'Challenge'], ['invites', 'Invite codes'], ['waitlist', 'Waitlist'], ['flags', 'Flagged totals'], ['members', 'Members']];
 
 async function api(method, path, body) {
   const res = await fetch('/api/admin' + path, { method, headers: { 'content-type': 'application/json', 'x-admin-key': KEY }, body: body ? JSON.stringify(body) : undefined });
@@ -18,6 +20,23 @@ const say = (m) => { notice = m; };
 async function run(fn) { try { await fn(); } catch (e) { say(`Error: ${e.message}`); } render(); }
 
 const views = {
+  async challenge() {
+    const { summary: c, series } = await api('GET', '/challenge');
+    const planned = c.plannedPerDay;
+    const state = { waiting: 'Waiting for the first member', upcoming: `Starts in ${c.startsIn} day(s)`, running: `Day ${c.dayIndex} of ${c.days}`, over: `Day ${c.dayIndex} of ${c.days}: past the deadline, still counting`, done: 'Target reached' }[c.state];
+    return `<h3>40-day challenge</h3>
+      <div class="msg" style="word-break:normal"><b>${esc(state)}</b><br>${fmt(c.total)} of ${fmt(c.target)} (${human(c.total)} of ${human(c.target)}) · plan ${fmt(planned)} a day
+        ${c.state === 'running' ? `<br>Needed today: <b>${fmt(c.neededToday)}</b> · reported today: ${fmt(c.today)} · ${c.gap >= 0 ? 'ahead' : 'behind'} by ${human(c.gap)}${c.projectedTotal != null ? ` · projection ${human(c.projectedTotal)}` : ''}` : ''}</div>
+      <p class="muted">The clock starts on the day the first member joins. If a test account started it too early, correct the start date here. The meter counts everything reported since the start day and keeps counting after the last day; the challenge boards cover the ${c.days} days only.</p>
+      <div class="inline"><div><label>Start date (Pakistan time)</label><input id="chstart" type="date" value="${esc(c.start || '')}"></div>
+        <div><label>Days</label><input id="chdays" type="number" min="1" max="365" value="${c.days}"></div>
+        <div><label>Target (durood)</label><input id="chtarget" type="number" min="1000000" value="${c.target}"></div></div>
+      <div class="inline"><label class="check" style="margin:0"><input type="checkbox" id="chclear"> Also forget the crores already recorded</label>
+        <button class="chip solid" data-a="chsave">Save</button><button class="chip" data-a="chtoday">Start today</button></div>
+      <h3>Recent days</h3>
+      ${series.length ? `<table><tr><th>Day</th><th>Reported</th><th>Plan</th><th>Of plan</th></tr>${series.slice(-14).reverse().map((d) => `<tr><td>${esc(d.day)}</td><td>${fmt(d.total)}</td><td>${fmt(planned)}</td><td>${Math.round((d.total / planned) * 100)}%</td></tr>`).join('')}</table>` : '<p class="empty">Nothing reported yet.</p>'}
+      ${c.milestones.length ? `<h3>Crores reached</h3><table><tr><th>Crore</th><th>When</th></tr>${c.milestones.map((m) => `<tr><td>${m.k}</td><td>${date(m.at)}</td></tr>`).join('')}</table>` : ''}`;
+  },
   async invites() {
     const { invites, publicCode } = await api('GET', '/invites');
     return `<h3>Public founders code</h3>
@@ -88,6 +107,8 @@ document.addEventListener('click', (ev) => {
   if (!el) return;
   const d = el.dataset;
   const act = {
+    chsave: async () => { const r = await api('POST', '/challenge', { start: $('#chstart').value, days: Number($('#chdays').value), target: Number($('#chtarget').value), clearMilestones: $('#chclear').checked }); say(`Saved. ${r.summary.start} to ${r.summary.end}, target ${fmt(r.summary.target)}.`); },
+    chtoday: async () => { if (!confirm('Make today day 1 of the challenge?')) return; await api('POST', '/challenge', { start: pktToday() }); say('Day 1 is now today.'); },
     pub: () => api('POST', '/public-code', { enabled: d.v === '1' }),
     pubnew: () => api('POST', '/public-code', { code: '', enabled: true }),
     pubset: () => api('POST', '/public-code', { code: $('#pubset').value.trim() }),
