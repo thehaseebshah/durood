@@ -1,0 +1,143 @@
+// Invite-only access: member codes (their username), founder codes, the public founders code, the waitlist.
+import crypto from 'node:crypto';
+import { db, getSetting, setSetting } from './db.js';
+import { HttpError } from './auth.js';
+
+const one = (sql, ...a) => db.prepare(sql).get(...a);
+const all = (sql, ...a) => db.prepare(sql).all(...a);
+const run = (sql, ...a) => db.prepare(sql).run(...a);
+
+export const CAP = { start: 10, perStreak: 10, streakDays: 7 };
+export const INVITE_ONLY = () => process.env.INVITE_ONLY !== '0';
+
+// unambiguous alphabet (no 0/O, 1/I/L), shown as XXXX-XXXX
+const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+export function genCode() {
+  const bytes = crypto.randomBytes(8);
+  return [...bytes].map((b) => ALPHABET[b % ALPHABET.length]).join('');
+}
+export const normCode = (c) => String(c || '').toUpperCase().replace(/[\s-]/g, '');
+export const showCode = (c) => (c.length === 8 ? `${c.slice(0, 4)}-${c.slice(4)}` : c);
+
+/** Invites a member may issue: 10 to start, +10 for every completed 7-day streak they have ever reached. */
+export function inviteCap(userId) {
+  const u = one('SELECT best_streak FROM users WHERE id = ?', userId);
+  return CAP.start + CAP.perStreak * Math.floor((u?.best_streak ?? 0) / CAP.streakDays);
+}
+export const invitesUsed = (userId) => one('SELECT COUNT(*) n FROM users WHERE referrer_id = ?', userId).n;
+export function inviteStatus(userId) {
+  const cap = inviteCap(userId), used = invitesUsed(userId);
+  return { cap, used, left: Math.max(0, cap - used), nextAt: CAP.streakDays * (Math.floor((one('SELECT best_streak FROM users WHERE id = ?', userId)?.best_streak ?? 0) / CAP.streakDays) + 1) };
+}
+
+export function publicCode() {
+  const code = getSetting('public_code');
+  return { code: code ? showCode(code) : null, enabled: getSetting('public_enabled', '0') === '1' };
+}
+export function setPublicCode({ code, enabled }) {
+  if (code !== undefined) {
+    const c = code === '' ? genCode() : normCode(code);
+    if (!/^[A-Z0-9]{4,20}$/.test(c)) throw new HttpError(400, 'bad_code');
+    setSetting('public_code', c);
+  } else if (!getSetting('public_code')) setSetting('public_code', genCode());
+  if (enabled !== undefined) setSetting('public_enabled', enabled ? '1' : '0');
+  return publicCode();
+}
+
+/**
+ * Works out what an invite code is without using it up.
+ * Returns { kind, referrerId?, invite?, label } or throws bad_invite / invite_revoked / invite_full / invite_used.
+ */
+export function resolveInvite(raw) {
+  const text = String(raw || '').trim();
+  const code = normCode(text);
+  if (!code) throw new HttpError(400, 'bad_invite');
+
+  const inv = one('SELECT * FROM invites WHERE code = ?', code);
+  if (inv) {
+    if (inv.revoked) throw new HttpError(400, 'invite_revoked');
+    if (inv.max_uses != null && inv.uses >= inv.max_uses) throw new HttpError(400, 'invite_used');
+    return { kind: inv.kind, invite: inv, code, label: inv.label };
+  }
+
+  const pub = getSetting('public_code');
+  if (pub && code === pub) {
+    if (getSetting('public_enabled', '0') !== '1') throw new HttpError(400, 'bad_invite');
+    return { kind: 'public', code, label: '' };
+  }
+
+  const m = one('SELECT id, username, suspended, deleted_at FROM users WHERE username = ?', text);
+  if (!m || m.suspended || m.deleted_at) throw new HttpError(400, 'bad_invite');
+  if (inviteStatus(m.id).left <= 0) throw new HttpError(400, 'invite_full');
+  return { kind: 'member', referrerId: m.id, label: m.username };
+}
+
+/** Marks a resolved code as used. Call inside the registration transaction, after re-resolving. */
+export function consumeInvite(r) {
+  if (r.invite) {
+    const res = run('UPDATE invites SET uses = uses + 1 WHERE code = ? AND revoked = 0 AND (max_uses IS NULL OR uses < max_uses)', r.code);
+    if (!res.changes) throw new HttpError(400, 'invite_used');
+  }
+}
+
+// ---- admin: codes -----------------------------------------------------------------------------------------
+export function createFounderCode({ label = '', maxUses = null } = {}) {
+  const code = genCode();
+  const max = maxUses == null || maxUses === '' ? null : Math.max(1, Number(maxUses) | 0);
+  run('INSERT INTO invites (code, kind, label, max_uses, created_at) VALUES (?,?,?,?,?)', code, 'founder', String(label).slice(0, 60), max, Date.now());
+  return { code: showCode(code), label, maxUses: max };
+}
+export const revokeInvite = (rawCode) => {
+  const res = run('UPDATE invites SET revoked = 1 WHERE code = ?', normCode(rawCode));
+  if (!res.changes) throw new HttpError(404, 'not_found');
+  return { ok: true };
+};
+export const listInvites = () => all(`SELECT i.*, (SELECT COUNT(*) FROM users u WHERE u.invite_code = i.code) joined FROM invites i ORDER BY i.created_at DESC LIMIT 200`)
+  .map((i) => ({ code: showCode(i.code), kind: i.kind, label: i.label, maxUses: i.max_uses, uses: i.uses, joined: i.joined, revoked: !!i.revoked, createdAt: i.created_at }));
+
+// ---- waitlist ---------------------------------------------------------------------------------------------
+export function addToWaitlist({ name, phone, email, city }) {
+  const dup = one("SELECT id FROM waitlist WHERE phone = ? AND status IN ('pending','approved')", phone);
+  if (!dup) run('INSERT INTO waitlist (name, phone, email, city, created_at) VALUES (?,?,?,?,?)', String(name).trim().slice(0, 80), phone, String(email || '').trim().slice(0, 120), String(city || '').trim().slice(0, 40), Date.now());
+  return { ok: true }; // same answer whether or not it was a repeat, so the form can't be used to probe numbers
+}
+export const listWaitlist = (status = 'pending') => all('SELECT * FROM waitlist WHERE status = ? ORDER BY created_at ASC LIMIT 300', status)
+  .map((w) => ({ id: w.id, name: w.name, phone: w.phone, email: w.email, city: w.city, status: w.status, code: w.code ? showCode(w.code) : null, createdAt: w.created_at }));
+export function resolveWaitlist(id, action) {
+  const w = one('SELECT * FROM waitlist WHERE id = ?', id);
+  if (!w) throw new HttpError(404, 'not_found');
+  if (w.status !== 'pending') throw new HttpError(409, 'already_resolved');
+  if (action === 'reject') {
+    run("UPDATE waitlist SET status = 'rejected', resolved_at = ? WHERE id = ?", Date.now(), id);
+    return { ok: true };
+  }
+  if (action !== 'approve') throw new HttpError(400, 'bad_action');
+  const code = genCode();
+  run('INSERT INTO invites (code, kind, label, max_uses, created_at) VALUES (?,?,?,?,?)', code, 'waitlist', w.name, 1, Date.now());
+  run("UPDATE waitlist SET status = 'approved', code = ?, resolved_at = ? WHERE id = ?", code, Date.now(), id);
+  return { ok: true, code: showCode(code), name: w.name, email: w.email, phone: w.phone };
+}
+
+// ---- admin: members -----------------------------------------------------------------------------------------
+export function searchMembers(q = '') {
+  const like = `%${String(q).trim().replace(/[%_]/g, '')}%`;
+  return all(`SELECT u.id, u.username, u.city, u.total, u.team_total, u.created_day, u.hidden_from_ranks hidden, u.suspended, u.deleted_at,
+      u.invited_via, r.username inviter, u.email, u.phone, u.email_verified_at
+    FROM users u LEFT JOIN users r ON r.id = u.referrer_id
+    WHERE ? = '%%' OR u.username LIKE ? OR u.email LIKE ? OR u.phone LIKE ? OR u.city LIKE ?
+    ORDER BY u.id DESC LIMIT 60`, like, like, like, like, like).map((m) => ({
+    username: m.username, city: m.city, total: m.total, team: m.team_total, joined: m.created_day, hidden: !!m.hidden, suspended: !!m.suspended,
+    deleted: !!m.deleted_at, invitedVia: m.invited_via, inviter: m.inviter, email: m.email, phone: m.phone, emailVerified: !!m.email_verified_at,
+    invites: m.deleted_at ? null : inviteStatus(m.id),
+  }));
+}
+
+/** Suspends (or restores) a member, or their whole branch. Durood already reported stays in every total. */
+export function setSuspended(username, suspended, branch = false) {
+  const u = one('SELECT id FROM users WHERE username = ?', username);
+  if (!u) throw new HttpError(404, 'not_found');
+  const ids = branch ? all('SELECT user_id id FROM ancestors WHERE ancestor_id = ?', u.id).map((r) => r.id) : [u.id];
+  const st = db.prepare('UPDATE users SET suspended = ? WHERE id = ? AND deleted_at IS NULL');
+  for (const id of ids) st.run(suspended ? 1 : 0, id);
+  return { ok: true, affected: ids.length };
+}

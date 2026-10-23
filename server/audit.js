@@ -4,7 +4,7 @@ import { CFG } from './game.js';
 const all = (sql, ...a) => db.prepare(sql).all(...a);
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 
-const LEDGER_DAILY = 'SELECT user_id, day, SUM(count) s FROM entries GROUP BY user_id, day';
+const LEDGER_DAILY = 'SELECT user_id, day, SUM(count) s FROM entries GROUP BY user_id, day HAVING SUM(count) != 0';
 
 /**
  * Re-derives every statistic from the append-only `entries` ledger and compares it with the stored caches.
@@ -33,6 +33,16 @@ export function audit({ fix = false } = {}) {
     SELECT l.user_id, l.day, 0, l.s FROM (${LEDGER_DAILY}) l
       LEFT JOIN daily d ON d.user_id = l.user_id AND d.day = l.day WHERE d.user_id IS NULL`);
   for (const d of dailyBad) note('daily', d);
+
+  // edits: every reversing entry negates exactly one standing entry of the same member and day, and every replacement
+  // points at an entry that was reversed
+  for (const r of all(`SELECT e.id, e.kind, e.count, e.day, e.user_id, p.count pcount, p.day pday, p.user_id puser, p.kind pkind,
+        EXISTS(SELECT 1 FROM entries x WHERE x.kind = 'reverse' AND x.ref_id = e.ref_id) was_reversed
+      FROM entries e LEFT JOIN entries p ON p.id = e.ref_id WHERE e.kind IN ('reverse','replace')`)) {
+    if (!r.pkind || r.puser !== r.user_id || r.pday !== r.day || r.pkind === 'reverse') note('edit_chain', { entry: r.id, problem: 'points at a missing or foreign entry' });
+    else if (r.kind === 'reverse' && r.count !== -r.pcount) note('edit_chain', { entry: r.id, problem: 'does not negate the entry it reverses', count: r.count, reversed: r.pcount });
+    else if (r.kind === 'replace' && !r.was_reversed) note('edit_chain', { entry: r.id, problem: 'replaces an entry that was never reversed' });
+  }
 
   // sunnah verification: cached vote counts, statuses and payouts must all follow from the votes table
   const N = CFG.confirmsNeeded;

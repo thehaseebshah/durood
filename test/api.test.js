@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 process.env.DB_PATH = ':memory:';
 process.env.ADMIN_KEY = 'test-admin';
 process.env.PUBLIC_CACHE_MS = '0';
+process.env.PUBLIC_FOUNDERS_CODE = 'TESTFOUND';
 process.env.REG_LIMIT_PER_HOUR = '1000';
 process.env.CIRCLE_URL = 'https://example.org/circle';
 
@@ -33,7 +34,7 @@ let n = 0;
 const signup = (username, referral) => {
   n += 1;
   return api('POST', '/api/register', {
-    body: { username, email: `${username}@x.pk`, phone: `0300${String(1000000 + n)}`, password: 'secret1', lang: 'en', referral },
+    body: { username, email: `${username}@x.pk`, phone: `0300${String(1000000 + n)}`, password: 'secret1', lang: 'en', invite: referral || 'TESTFOUND' },
   });
 };
 
@@ -51,7 +52,7 @@ test('registration validates and enforces unique usernames', async () => {
   assert.equal((await signup('ALI_KHAN')).error, 'username_taken');
   assert.equal((await signup('x')).error, 'bad_username');
   assert.equal((await signup('admin')).error, 'bad_username');
-  assert.equal((await signup('bob_x', 'nobody')).error, 'bad_referral');
+  assert.equal((await signup('bob_x', 'nobody')).error, 'bad_invite');
   assert.equal((await api('GET', '/api/username-check?u=ali_khan')).ok, false);
   assert.equal((await api('GET', '/api/username-check?u=fresh_one')).ok, true);
 });
@@ -83,7 +84,7 @@ test('logging durood: xp, streak, badges, caps', async () => {
   assert.equal((await api('GET', '/api/me')).status, 401);
 });
 
-test('referral tree: full-depth team totals, delayed referral reward, opt-out', async () => {
+test('referral tree: full-depth team totals, delayed referral reward, no opt-out', async () => {
   const a = await signup('root_a');
   const b = await signup('child_b', 'root_a');
   const c = await signup('grand_c', 'child_b');
@@ -108,13 +109,12 @@ test('referral tree: full-depth team totals, delayed referral reward, opt-out', 
   assert.equal(teams.rows[0].username, 'root_a');
   assert.equal(teams.rows[0].score, 900);
 
-  await api('PATCH', '/api/me', { token: c.token, body: { isPublic: false } });
-  const users = await api('GET', '/api/leaderboard?type=users&period=week', { token: a.token });
-  assert.ok(!users.rows.some((r) => r.username === 'grand_c'));
-  // still counted for the caravan
-  assert.equal((await api('GET', '/api/me', { token: a.token })).team.total, 900);
+  // there is no opt-out: the inviter sees the invitee's counts
   const dir = await api('GET', '/api/team', { token: b.token });
-  assert.equal(dir.direct[0].total, null);
+  assert.equal(dir.direct[0].total, 700);
+  assert.equal(dir.direct[0].username, 'grand_c');
+  const users = await api('GET', '/api/leaderboard?type=users&period=week', { token: a.token });
+  assert.ok(users.rows.some((r) => r.username === 'grand_c'));
 });
 
 test('lectures: server-enforced watch time, once only; circle claim once', async () => {

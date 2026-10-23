@@ -1,5 +1,6 @@
 import { db, tx } from './db.js';
 import { HttpError } from './auth.js';
+import { inviteStatus } from './access.js';
 
 // ---- tunables -------------------------------------------------------------
 export const CFG = {
@@ -165,6 +166,7 @@ export function logDurood(userId, count, rid) {
          shields = ?, last_day = ? WHERE id = ?`, count, count, streak, streak, shields, day, userId);
 
     run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth <= ?)', count, userId, CFG.teamMaxDepth);
+    evaluateFlags(userId, day);
 
     // referrer is paid only once the invitee actually recites - blocks fake sign-ups
     if (u.total === 0 && u.referrer_id && grant(u.referrer_id, 'referral', userId, CFG.referralXp)) {
@@ -185,6 +187,135 @@ export function logDurood(userId, count, rid) {
     levelUp: levelFor(after).level > levelFor(before).level ? levelFor(after).level : null,
     newBadges: fresh.filter((b) => b.userId === userId).map((b) => b.code),
   };
+}
+
+// ---- flags: implausible totals ----------------------------------------------------------------------------
+export const FLAG = {
+  daily: 20_000,        // more than this in one day is flagged
+  spikeMult: 10,        // or more than 10x the member's average day over the previous 7 days
+  spikeMin: 2_000,      // ...but only once the day is at least this big, so 15 -> 200 never trips it
+  newMemberDays: 7,     // a member's first 7 days are flagged by the daily line only
+};
+
+/** Raises a flag (and hides the member from public ranks) when a day's total looks implausible. Call inside the transaction. */
+export function evaluateFlags(userId, day) {
+  const dayTotal = one('SELECT count FROM daily WHERE user_id = ? AND day = ?', userId, day)?.count ?? 0;
+  const u = one('SELECT created_day FROM users WHERE id = ?', userId);
+  let reason = null, detail = '';
+  if (dayTotal > FLAG.daily) {
+    reason = 'daily_20k'; detail = `${dayTotal} in one day`;
+  } else if (dayNum(day) - dayNum(u.created_day) >= FLAG.newMemberDays && dayTotal >= FLAG.spikeMin) {
+    const prior = one('SELECT COALESCE(SUM(count), 0) n FROM daily WHERE user_id = ? AND day < ? AND day >= ?', userId, day, dayStr(dayNum(day) - 7)).n;
+    const avg = prior / 7;
+    if (avg > 0 && dayTotal > FLAG.spikeMult * avg) { reason = 'spike_10x'; detail = `${dayTotal} against a recent average of ${Math.round(avg)} a day`; }
+  }
+  if (!reason || one('SELECT 1 FROM flags WHERE user_id = ? AND reason = ? AND day = ?', userId, reason, day)) return null;
+  run('INSERT INTO flags (user_id, reason, day, detail, created_at) VALUES (?,?,?,?,?)', userId, reason, day, detail, Date.now());
+  run('UPDATE users SET hidden_from_ranks = 1 WHERE id = ?', userId);
+  return reason;
+}
+
+function refreshHidden(userId) {
+  const hidden = !!one("SELECT 1 FROM flags WHERE user_id = ? AND status IN ('open','confirmed')", userId);
+  run('UPDATE users SET hidden_from_ranks = ? WHERE id = ?', hidden ? 1 : 0, userId);
+}
+
+export const listFlags = (status = 'open') => all(`SELECT f.*, u.username, u.city, u.total, u.created_day FROM flags f JOIN users u ON u.id = f.user_id
+    WHERE f.status = ? ORDER BY f.created_at DESC LIMIT 200`, status)
+  .map((f) => ({ id: f.id, username: f.username, city: f.city, total: f.total, joined: f.created_day, reason: f.reason, day: f.day, detail: f.detail, status: f.status, createdAt: f.created_at }));
+
+/** clear: the numbers are fine, show them again. confirm: keep them hidden until an admin unhides the member. */
+export function resolveFlag(id, action) {
+  const f = one('SELECT * FROM flags WHERE id = ?', id);
+  if (!f) throw new HttpError(404, 'not_found');
+  if (action !== 'clear' && action !== 'confirm') throw new HttpError(400, 'bad_action');
+  tx(() => {
+    run('UPDATE flags SET status = ?, resolved_at = ? WHERE id = ?', action === 'clear' ? 'cleared' : 'confirmed', Date.now(), id);
+    refreshHidden(f.user_id);
+  });
+  return { ok: true };
+}
+
+export function setHidden(username, hidden) {
+  const u = one('SELECT id FROM users WHERE username = ?', username);
+  if (!u) throw new HttpError(404, 'not_found');
+  tx(() => {
+    if (hidden) {
+      run("INSERT INTO flags (user_id, reason, day, detail, status, created_at) VALUES (?, 'manual', ?, 'hidden by an admin', 'confirmed', ?)", u.id, dayOf(), Date.now());
+    } else {
+      run("UPDATE flags SET status = 'cleared', resolved_at = ? WHERE user_id = ? AND status IN ('open','confirmed')", Date.now(), u.id);
+    }
+    refreshHidden(u.id);
+  });
+  return { ok: true };
+}
+
+// ---- edits and history -------------------------------------------------------------------------------------
+/**
+ * Changes one of the member's own entries from today or yesterday. Nothing is overwritten: the ledger gets a reversing
+ * entry for the old number and a replacement entry for the new one, so the whole history stays on record.
+ * Badges, quest XP and invite rewards already earned are not taken back. A day can't be edited down to nothing.
+ */
+export function editEntry(userId, entryId, newCount, ridIn) {
+  if (!Number.isInteger(newCount) || newCount < 1 || newCount > CFG.maxSingle) throw new HttpError(400, 'bad_count');
+  const base = ridIn ?? `edit-${entryId}-${Date.now()}`;
+  if (!/^[\w-]{6,50}$/.test(base)) throw new HttpError(400, 'bad_request_id');
+  let duplicate = false;
+
+  tx(() => {
+    if (one('SELECT 1 FROM entries WHERE user_id = ? AND rid = ?', userId, `${base}:r`)) { duplicate = true; return; }
+    const e = one('SELECT * FROM entries WHERE id = ? AND user_id = ?', entryId, userId);
+    if (!e || e.kind === 'reverse') throw new HttpError(404, 'not_found');
+    if (one("SELECT 1 FROM entries WHERE ref_id = ? AND kind = 'reverse'", e.id)) throw new HttpError(409, 'entry_superseded');
+    const today = dayOf(), yesterday = dayStr(dayNum(today) - 1);
+    if (e.day !== today && e.day !== yesterday) throw new HttpError(403, 'edit_window');
+    const delta = newCount - e.count;
+    if (delta === 0) throw new HttpError(400, 'no_change');
+    const dayTotal = one('SELECT count FROM daily WHERE user_id = ? AND day = ?', userId, e.day).count;
+    if (delta > 0 && dayTotal + delta > CFG.maxDaily) throw new HttpError(400, 'daily_cap');
+
+    const now = Date.now();
+    run("INSERT INTO entries (user_id, day, count, rid, created_at, kind, ref_id) VALUES (?,?,?,?,?, 'reverse', ?)", userId, e.day, -e.count, `${base}:r`, now, e.id);
+    run("INSERT INTO entries (user_id, day, count, rid, created_at, kind, ref_id) VALUES (?,?,?,?,?, 'replace', ?)", userId, e.day, newCount, `${base}:n`, now, e.id);
+    run('UPDATE daily SET count = count + ? WHERE user_id = ? AND day = ?', delta, userId, e.day);
+    run('UPDATE users SET total = total + ?, xp = xp + ? WHERE id = ?', delta, delta, userId);
+    run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth <= ?)', delta, userId, CFG.teamMaxDepth);
+    evaluateFlags(userId, e.day);
+  });
+  return { duplicate };
+}
+
+/** The last 7 days of the member's entries, newest first, with every edit shown. Today and yesterday are editable. */
+export function history(userId) {
+  const today = dayOf(), yesterday = dayStr(dayNum(today) - 1), from = dayStr(dayNum(today) - 6);
+  const rows = all('SELECT * FROM entries WHERE user_id = ? AND day >= ? ORDER BY id', userId, from);
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const reversed = new Set(rows.filter((r) => r.kind === 'reverse').map((r) => r.ref_id));
+  const days = new Map();
+  for (const r of rows) {
+    if (r.kind === 'reverse' || reversed.has(r.id)) continue; // only the entry that currently stands
+    const edits = [];
+    let e = r;
+    while (e.kind === 'replace' && byId.has(e.ref_id)) {
+      const prev = byId.get(e.ref_id);
+      edits.unshift({ at: e.created_at, from: prev.count, to: e.count });
+      e = prev;
+    }
+    const day = days.get(r.day) ?? { day: r.day, total: 0, editable: r.day === today || r.day === yesterday, entries: [] };
+    day.entries.push({ id: r.id, count: r.count, at: r.created_at, original: e.count, edits });
+    day.total += r.count;
+    days.set(r.day, day);
+  }
+  return { today, yesterday, days: [...days.values()].sort((a, b) => (a.day < b.day ? 1 : -1)) };
+}
+
+/** Anonymises an account. The durood stays in every total; the person's name, phone and email are erased. */
+export function anonymiseUser(userId, passHash) {
+  tx(() => {
+    run(`UPDATE users SET username = ?, email = ?, phone = ?, pass = ?, city = '', deleted_at = ?, hidden_from_ranks = 1, suspended = 0
+         WHERE id = ?`, `member_${userId}`, `deleted-${userId}@deleted.invalid`, `deleted-${userId}`, passHash, Date.now(), userId);
+    run('DELETE FROM tokens WHERE user_id = ?', userId);
+  });
 }
 
 export function startLecture(userId, lectureId) {
@@ -223,7 +354,7 @@ export function claimCircle(userId) {
 let natCache = { at: 0, v: null };
 export function publicStats() {
   if (Date.now() - natCache.at > Number(process.env.PUBLIC_CACHE_MS ?? 15_000)) {
-    const r = one('SELECT COALESCE(SUM(total),0) total, COUNT(*) members FROM users');
+    const r = one('SELECT COALESCE(SUM(total),0) total, SUM(deleted_at IS NULL) members FROM users');
     natCache = { at: Date.now(), v: { total: r.total, members: r.members, asOf: Date.now() } };
   }
   return { ...natCache.v, target: CFG.nationalTarget, circleUrl: CFG.circleUrl };
@@ -239,7 +370,8 @@ export function getMe(userId) {
   const streakAlive = u.last_day === day || (u.last_day && dayNum(day) - dayNum(u.last_day) === 1);
   return {
     id: u.id, username: u.username, email: u.email, phone: u.phone, lang: u.lang, city: u.city,
-    isPublic: !!u.is_public, dailyGoal: u.daily_goal,
+    dailyGoal: u.daily_goal, hiddenFromRanks: !!u.hidden_from_ranks, emailVerified: !!u.email_verified_at,
+    invites: inviteStatus(userId),
     total: u.total, today, week,
     streak: streakAlive ? u.streak : 0, bestStreak: u.best_streak, shields: u.shields,
     ...levelFor(u.xp),
@@ -267,20 +399,20 @@ export function leaderboard(userId, type, period) {
     rows = all(`SELECT u.username, u.city, t.score,
                   (SELECT COUNT(*) FROM ancestors x WHERE x.ancestor_id = u.id AND x.depth > 0 AND x.depth <= ${CFG.teamMaxDepth}) members
                 FROM (${base}) t JOIN users u ON u.id = t.id
-                WHERE u.is_public = 1 AND t.score > 0 AND EXISTS (SELECT 1 FROM users c WHERE c.referrer_id = u.id)
+                WHERE u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL AND t.score > 0 AND EXISTS (SELECT 1 FROM users c WHERE c.referrer_id = u.id)
                 ORDER BY t.score DESC LIMIT 50`, ...args);
   } else if (period === 'week') {
     rows = all(`SELECT u.username, u.city, SUM(d.count) score FROM daily d JOIN users u ON u.id = d.user_id
-                WHERE d.day >= ? AND u.is_public = 1 GROUP BY u.id ORDER BY score DESC LIMIT 50`, wk);
+                WHERE d.day >= ? AND u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL GROUP BY u.id ORDER BY score DESC LIMIT 50`, wk);
   } else {
-    rows = all('SELECT username, city, total score FROM users WHERE is_public = 1 AND total > 0 ORDER BY total DESC LIMIT 50');
+    rows = all('SELECT username, city, total score FROM users u WHERE u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL AND total > 0 ORDER BY total DESC LIMIT 50');
   }
   return { rows: rows.map((r, i) => ({ rank: i + 1, ...r, me: r.username === me })), weekStart: wk };
 }
 
 export function teamView(userId) {
   const wk = weekStart();
-  const direct = all(`SELECT u.username, u.is_public, u.total, u.team_total, u.created_day,
+  const direct = all(`SELECT u.username, u.city, u.total, u.team_total, u.created_day,
         COALESCE((SELECT SUM(count) FROM daily d WHERE d.user_id = u.id AND d.day >= ?), 0) week,
         (SELECT COUNT(*) FROM ancestors a WHERE a.ancestor_id = u.id AND a.depth > 0) members
       FROM users u WHERE u.referrer_id = ? ORDER BY u.team_total DESC LIMIT 200`, wk, userId);
@@ -290,10 +422,10 @@ export function teamView(userId) {
   const total = one('SELECT team_total FROM users WHERE id = ?', userId).team_total;
   return {
     total, week, byDepth,
-    // opted-out members still count toward the caravan but their own numbers stay hidden
+    // there is no opt-out: inviters see their invitees' name, city and counts
     direct: direct.map((d) => ({
-      username: d.username, joined: d.created_day, members: d.members,
-      total: d.is_public ? d.total : null, week: d.is_public ? d.week : null, team: d.team_total,
+      username: d.username, city: d.city, joined: d.created_day, members: d.members,
+      total: d.total, week: d.week, team: d.team_total,
     })),
   };
 }

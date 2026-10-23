@@ -2,11 +2,14 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { db, tx } from './db.js';
+import crypto from 'node:crypto';
+import { db, tx, getSetting } from './db.js';
 import { HttpError, hashPassword, checkPassword, signToken, verifyToken, rateLimit } from './auth.js';
 import { audit } from './audit.js';
+import * as access from './access.js';
+import { sendMail, resetEmail, confirmEmail, inviteEmail, baseUrl } from './mail.js';
 import * as sunnah from './sunnah.js';
-import { CFG, dayOf, logDurood, startLecture, completeLecture, claimCircle, getMe, leaderboard, teamView, publicStats } from './game.js';
+import { CFG, dayOf, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, claimCircle, getMe, leaderboard, teamView, publicStats } from './game.js';
 
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -14,6 +17,7 @@ const run = (sql, ...a) => db.prepare(sql).run(...a);
 
 // ---- validation -----------------------------------------------------------
 const RESERVED = new Set(['admin', 'root', 'support', 'durood', 'qafila', 'seerat', 'api', 'null', 'undefined']);
+const isReserved = (u) => RESERVED.has(u.toLowerCase()) || /^member_\d+$/i.test(u); // member_<id> is what deleted accounts become
 const USERNAME = /^[a-z0-9_]{3,20}$/i;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -35,17 +39,50 @@ const route = (method, pattern, opts, handler) => {
   routes.push({ method, re, keys, auth: opts.auth !== false, admin: !!opts.admin, maxBody: opts.maxBody, handler });
 };
 
+// single-use links: only a hash is stored, so a database leak can't be turned into working links
+const hashToken = (t) => crypto.createHash('sha256').update(t).digest('hex');
+function makeToken(userId, kind, ttlMs) {
+  const raw = crypto.randomBytes(32).toString('base64url');
+  db.prepare('INSERT INTO tokens (hash, user_id, kind, expires_at, created_at) VALUES (?,?,?,?,?)').run(hashToken(raw), userId, kind, Date.now() + ttlMs, Date.now());
+  return raw;
+}
+function useToken(raw, kind) {
+  const t = one('SELECT * FROM tokens WHERE hash = ? AND kind = ?', hashToken(String(raw || '')), kind);
+  if (!t || t.used_at || t.expires_at < Date.now()) throw new HttpError(400, 'bad_token');
+  run('UPDATE tokens SET used_at = ? WHERE hash = ?', Date.now(), t.hash);
+  return t.user_id;
+}
+
 const lang = (v) => (v === 'en' ? 'en' : 'ur');
 
 route('GET', '/api/username-check', { auth: false }, ({ query }) => {
   const u = String(query.get('u') || '');
-  if (!USERNAME.test(u) || RESERVED.has(u.toLowerCase())) return { ok: false, reason: 'bad_username' };
+  if (!USERNAME.test(u) || isReserved(u)) return { ok: false, reason: 'bad_username' };
   return { ok: !one('SELECT 1 FROM users WHERE username = ?', u) };
 });
 
-route('GET', '/api/referrer', { auth: false }, ({ query }) => {
-  const u = one('SELECT username FROM users WHERE username = ?', String(query.get('code') || ''));
-  return { valid: !!u, username: u?.username ?? null };
+route('GET', '/api/invite-check', { auth: false }, ({ query, ip }) => {
+  rateLimit(`inv:${ip}`, 60, 60e3);
+  try {
+    const r = access.resolveInvite(query.get('code'));
+    return { valid: true, kind: r.kind, from: r.kind === 'member' ? r.label : null };
+  } catch (e) {
+    if (e instanceof HttpError) return { valid: false, reason: e.code };
+    throw e;
+  }
+});
+
+route('GET', '/api/config', { auth: false }, () => ({ inviteOnly: access.INVITE_ONLY() }));
+
+route('POST', '/api/waitlist', { auth: false }, ({ body, ip }) => {
+  rateLimit(`wl:${ip}`, 5, 3600e3);
+  const name = String(body.name || '').trim();
+  const phone = normalizePhone(body.phone);
+  const email = String(body.email || '').trim().toLowerCase();
+  if (name.length < 2) throw new HttpError(400, 'bad_name');
+  if (!phone) throw new HttpError(400, 'bad_phone');
+  if (email && !EMAIL.test(email)) throw new HttpError(400, 'bad_email');
+  return access.addToWaitlist({ name, phone, email, city: body.city });
 });
 
 route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
@@ -54,32 +91,37 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
   const email = String(body.email || '').trim().toLowerCase();
   const phone = normalizePhone(body.phone);
   const password = String(body.password || '');
-  if (!USERNAME.test(username) || RESERVED.has(username.toLowerCase())) throw new HttpError(400, 'bad_username');
+  if (!USERNAME.test(username) || isReserved(username)) throw new HttpError(400, 'bad_username');
   if (!EMAIL.test(email)) throw new HttpError(400, 'bad_email');
   if (!phone) throw new HttpError(400, 'bad_phone');
   if (password.length < 6 || password.length > 128) throw new HttpError(400, 'bad_password');
 
-  let referrer = null;
-  if (body.referral) {
-    referrer = one('SELECT id FROM users WHERE username = ?', String(body.referral).trim());
-    if (!referrer) throw new HttpError(400, 'bad_referral');
-  }
+  const inviteRaw = body.invite ?? body.referral;
+  if (access.INVITE_ONLY() && !String(inviteRaw || '').trim()) throw new HttpError(400, 'invite_required');
   const pass = await hashPassword(password);
-  const id = tx(() => {
+  const { id, confirmToken } = tx(() => {
+    // resolve again inside the transaction so a code can't be used past its limit by two people at once
+    let r = null;
+    if (String(inviteRaw || '').trim()) r = access.resolveInvite(inviteRaw);
     if (one('SELECT 1 FROM users WHERE username = ?', username)) throw new HttpError(409, 'username_taken');
     if (one('SELECT 1 FROM users WHERE email = ?', email)) throw new HttpError(409, 'email_taken');
     if (one('SELECT 1 FROM users WHERE phone = ?', phone)) throw new HttpError(409, 'phone_taken');
-    const r = run(`INSERT INTO users (username, email, phone, pass, lang, city, referrer_id, created_day, created_at)
-                   VALUES (?,?,?,?,?,?,?,?,?)`,
-      username, email, phone, pass, lang(body.lang), String(body.city || '').trim().slice(0, 40), referrer?.id ?? null, dayOf(), Date.now());
-    const uid = Number(r.lastInsertRowid);
+    if (r) access.consumeInvite(r);
+    const referrerId = r?.kind === 'member' ? r.referrerId : null;
+    const res = run(`INSERT INTO users (username, email, phone, pass, lang, city, referrer_id, created_day, created_at, invited_via, invite_code)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      username, email, phone, pass, lang(body.lang), String(body.city || '').trim().slice(0, 40), referrerId, dayOf(), Date.now(),
+      r ? r.kind : 'open', r?.invite ? r.code : (r?.kind === 'public' ? r.code : null));
+    const uid = Number(res.lastInsertRowid);
     run('INSERT INTO ancestors (user_id, ancestor_id, depth) VALUES (?,?,0)', uid, uid);
-    if (referrer) {
+    if (referrerId) {
       run(`INSERT INTO ancestors (user_id, ancestor_id, depth)
-           SELECT ?, ancestor_id, depth + 1 FROM ancestors WHERE user_id = ?`, uid, referrer.id);
+           SELECT ?, ancestor_id, depth + 1 FROM ancestors WHERE user_id = ?`, uid, referrerId);
     }
-    return uid;
+    return { id: uid, confirmToken: makeToken(uid, 'confirm', 7 * 86400e3) };
   });
+  // a confirmation link goes out but never blocks sign-in: it tells us which addresses actually work
+  sendMail(confirmEmail(email, `${baseUrl()}/?confirm=${confirmToken}`));
   return { token: signToken(id), me: getMe(id) };
 });
 
@@ -87,8 +129,9 @@ route('POST', '/api/login', { auth: false }, async ({ body, ip }) => {
   rateLimit(`login:${ip}`, 30, 600e3);
   const ident = String(body.id || '').trim();
   const phone = normalizePhone(ident);
-  const u = one('SELECT id, pass FROM users WHERE username = ? OR email = ? OR phone = ?', ident, ident.toLowerCase(), phone ?? '\0');
-  if (!u || !(await checkPassword(String(body.password || ''), u.pass))) throw new HttpError(401, 'bad_login');
+  const u = one('SELECT id, pass, suspended, deleted_at FROM users WHERE username = ? OR email = ? OR phone = ?', ident, ident.toLowerCase(), phone ?? '\0');
+  if (!u || u.deleted_at || !(await checkPassword(String(body.password || ''), u.pass))) throw new HttpError(401, 'bad_login');
+  if (u.suspended) throw new HttpError(403, 'suspended');
   return { token: signToken(u.id), me: getMe(u.id) };
 });
 
@@ -97,7 +140,16 @@ route('GET', '/api/me', ({ user }) => getMe(user));
 
 route('PATCH', '/api/me', ({ user, body }) => {
   if (body.lang !== undefined) run('UPDATE users SET lang = ? WHERE id = ?', lang(body.lang), user);
-  if (body.isPublic !== undefined) run('UPDATE users SET is_public = ? WHERE id = ?', body.isPublic ? 1 : 0, user);
+  if (body.email !== undefined) {
+    const email = String(body.email).trim().toLowerCase();
+    if (!EMAIL.test(email)) throw new HttpError(400, 'bad_email');
+    const cur = one('SELECT email FROM users WHERE id = ?', user).email;
+    if (email !== cur) {
+      if (one('SELECT 1 FROM users WHERE email = ?', email)) throw new HttpError(409, 'email_taken');
+      run('UPDATE users SET email = ?, email_verified_at = NULL WHERE id = ?', email, user);
+      sendMail(confirmEmail(email, `${baseUrl()}/?confirm=${makeToken(user, 'confirm', 7 * 86400e3)}`));
+    }
+  }
   if (body.city !== undefined) run('UPDATE users SET city = ? WHERE id = ?', String(body.city).trim().slice(0, 40), user);
   if (body.dailyGoal !== undefined) {
     const g = Number(body.dailyGoal);
@@ -111,6 +163,56 @@ route('POST', '/api/log', ({ user, body }) => {
   rateLimit(`log:${user}`, 60, 60e3);
   const result = logDurood(user, Number(body.count), body.rid);
   return { ...result, me: getMe(user) };
+});
+
+route('POST', '/api/password/forgot', { auth: false }, async ({ body, ip }) => {
+  rateLimit(`pw:${ip}`, 8, 3600e3);
+  const email = String(body.email || '').trim().toLowerCase();
+  if (!EMAIL.test(email)) throw new HttpError(400, 'bad_email');
+  rateLimit(`pwe:${email}`, 3, 3600e3);
+  const u = one('SELECT id, suspended, deleted_at FROM users WHERE email = ?', email);
+  if (u && !u.deleted_at) await sendMail(resetEmail(email, `${baseUrl()}/?reset=${makeToken(u.id, 'reset', 3600e3)}`));
+  return { ok: true }; // identical answer whether or not the address is registered
+});
+
+route('POST', '/api/password/reset', { auth: false }, async ({ body, ip }) => {
+  rateLimit(`pwr:${ip}`, 20, 3600e3);
+  const password = String(body.password || '');
+  if (password.length < 6 || password.length > 128) throw new HttpError(400, 'bad_password');
+  const userId = useToken(body.token, 'reset');
+  const pass = await hashPassword(password);
+  tx(() => {
+    run('UPDATE users SET pass = ? WHERE id = ?', pass, userId);
+    run("UPDATE tokens SET used_at = ? WHERE user_id = ? AND kind = 'reset' AND used_at IS NULL", Date.now(), userId);
+  });
+  return { token: signToken(userId), me: getMe(userId) };
+});
+
+route('POST', '/api/email/confirm', { auth: false }, ({ body }) => {
+  const userId = useToken(body.token, 'confirm');
+  run('UPDATE users SET email_verified_at = ? WHERE id = ?', Date.now(), userId);
+  return { ok: true };
+});
+
+route('POST', '/api/email/resend', ({ user }) => {
+  rateLimit(`ers:${user}`, 3, 3600e3);
+  const u = one('SELECT email, email_verified_at FROM users WHERE id = ?', user);
+  if (!u.email_verified_at) sendMail(confirmEmail(u.email, `${baseUrl()}/?confirm=${makeToken(user, 'confirm', 7 * 86400e3)}`));
+  return { ok: true };
+});
+
+route('GET', '/api/history', ({ user }) => history(user));
+route('PATCH', '/api/entries/:id', ({ user, params, body }) => {
+  rateLimit(`edit:${user}`, 30, 60e3);
+  const r = editEntry(user, Number(params.id), Number(body.count), body.rid);
+  return { ...r, me: getMe(user), history: history(user) };
+});
+
+route('DELETE', '/api/me', { admin: false }, async ({ user, body }) => {
+  const u = one('SELECT pass FROM users WHERE id = ?', user);
+  if (!(await checkPassword(String(body.password || ''), u.pass))) throw new HttpError(401, 'bad_login');
+  anonymiseUser(user, await hashPassword(crypto.randomBytes(24).toString('hex')));
+  return { ok: true };
 });
 
 route('GET', '/api/leaderboard', ({ user, query }) => {
@@ -150,6 +252,32 @@ route('POST', '/api/posts/:id/report', ({ user, params }) => sunnah.report(user,
 route('POST', '/api/admin/sunnahs', { auth: false, admin: true }, ({ body }) => ({ days: sunnah.addSunnahs(body.sunnahs ?? body) }));
 route('GET', '/api/admin/reported', { auth: false, admin: true }, () => ({ posts: sunnah.reportedPosts() }));
 route('POST', '/api/admin/posts/:id', { auth: false, admin: true }, ({ params, body }) => sunnah.moderate(Number(params.id), body.action));
+// ---- admin ----
+const adm = { auth: false, admin: true };
+route('GET', '/api/admin/invites', adm, () => ({ invites: access.listInvites(), publicCode: access.publicCode() }));
+route('POST', '/api/admin/invites', adm, ({ body }) => access.createFounderCode({ label: body.label, maxUses: body.maxUses }));
+route('POST', '/api/admin/invites/:code/revoke', adm, ({ params }) => access.revokeInvite(params.code));
+route('POST', '/api/admin/public-code', adm, ({ body }) => access.setPublicCode({ code: body.code, enabled: body.enabled }));
+route('GET', '/api/admin/waitlist', adm, ({ query }) => ({ requests: access.listWaitlist(query.get('status') || 'pending') }));
+route('POST', '/api/admin/waitlist/:id', adm, async ({ params, body }) => {
+  const r = access.resolveWaitlist(Number(params.id), body.action);
+  if (r.code && r.email) r.emailed = await sendMail(inviteEmail(r.email, r.code));
+  return r;
+});
+route('GET', '/api/admin/members', adm, ({ query }) => ({ members: access.searchMembers(query.get('q') || '') }));
+route('POST', '/api/admin/members/:username', adm, ({ params, body }) => {
+  const a = body.action;
+  if (a === 'suspend' || a === 'unsuspend') return access.setSuspended(params.username, a === 'suspend', !!body.branch);
+  if (a === 'hide' || a === 'unhide') return setHidden(params.username, a === 'hide');
+  if (a === 'reset-link') {
+    const u = one('SELECT id FROM users WHERE username = ? AND deleted_at IS NULL', params.username);
+    if (!u) throw new HttpError(404, 'not_found');
+    return { url: `${baseUrl()}/?reset=${makeToken(u.id, 'reset', 3600e3)}` }; // for sending over WhatsApp when email fails
+  }
+  throw new HttpError(400, 'bad_action');
+});
+route('GET', '/api/admin/flags', adm, ({ query }) => ({ flags: listFlags(query.get('status') || 'open') }));
+route('POST', '/api/admin/flags/:id', adm, ({ params, body }) => resolveFlag(Number(params.id), body.action));
 route('GET', '/api/admin/audit', { auth: false, admin: true }, () => audit());
 route('POST', '/api/admin/lectures', { auth: false, admin: true }, ({ body }) => {
   const yt = String(body.youtube_id || '').trim();
@@ -193,10 +321,12 @@ async function handleApi(req, res, url) {
   }
   if (route_.auth) {
     const id = verifyToken((req.headers.authorization || '').replace(/^Bearer /, ''));
-    if (!id || !one('SELECT 1 FROM users WHERE id = ?', id)) throw new HttpError(401, 'unauthorized');
+    const who = id && one('SELECT suspended, deleted_at FROM users WHERE id = ?', id);
+    if (!who || who.deleted_at) throw new HttpError(401, 'unauthorized');
+    if (who.suspended) throw new HttpError(403, 'suspended');
     ctx.user = id;
   }
-  if (req.method !== 'GET' && req.method !== 'DELETE') ctx.body = await readBody(req, route_.maxBody);
+  if (req.method !== 'GET') ctx.body = await readBody(req, route_.maxBody);
   const out = await route_.handler(ctx);
   res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(out));
@@ -248,6 +378,8 @@ export function createServer() {
     }
   });
 }
+
+if (process.env.PUBLIC_FOUNDERS_CODE && !getSetting('public_code')) access.setPublicCode({ code: process.env.PUBLIC_FOUNDERS_CODE, enabled: true });
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const port = Number(process.env.PORT) || 3000;
