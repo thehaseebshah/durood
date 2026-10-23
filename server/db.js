@@ -130,6 +130,14 @@ CREATE TABLE IF NOT EXISTS lectures (
   created_at  INTEGER NOT NULL
 );
 
+-- a member passes a lecture's quiz once; the reward is only paid after a pass
+CREATE TABLE IF NOT EXISTS lecture_quiz (
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  lecture_id INTEGER NOT NULL REFERENCES lectures(id),
+  passed_at  INTEGER NOT NULL,
+  PRIMARY KEY (user_id, lecture_id)
+) WITHOUT ROWID;
+
 CREATE TABLE IF NOT EXISTS lecture_starts (
   user_id    INTEGER NOT NULL REFERENCES users(id),
   lecture_id INTEGER NOT NULL REFERENCES lectures(id),
@@ -258,6 +266,9 @@ addCol('users', 'email_verified_at', 'INTEGER');
 addCol('users', 'deleted_at', 'INTEGER');
 addCol('users', 'invited_via', "TEXT NOT NULL DEFAULT 'member'");
 addCol('users', 'invite_code', 'TEXT');
+
+addCol('lectures', 'questions', "TEXT NOT NULL DEFAULT ''");        // JSON: [{q_en,q_ur,options_en,options_ur,answer}]
+addCol('sunnahs', 'kind', "TEXT NOT NULL DEFAULT 'daily'");        // 'daily' sunnah or the weekly 'class' photo slot
 
 export const getSetting = (key, fallback = null) => db.prepare('SELECT value FROM settings WHERE key = ?').get(key)?.value ?? fallback;
 export const setSetting = (key, value) => db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, String(value));

@@ -49,7 +49,7 @@ export function audit({ fix = false } = {}) {
   for (const p of all(`SELECT p.id, p.status, p.confirms, p.rejects, p.user_id,
         (SELECT COUNT(*) FROM votes v WHERE v.post_id = p.id AND v.vote = 'confirm') c,
         (SELECT COUNT(*) FROM votes v WHERE v.post_id = p.id AND v.vote = 'reject') r,
-        (SELECT COUNT(*) FROM events e WHERE e.kind = 'sunnah' AND e.ref = CAST(p.id AS TEXT)) poster_paid,
+        (SELECT COUNT(*) FROM events e WHERE e.kind IN ('sunnah','class') AND e.ref = CAST(p.id AS TEXT)) poster_paid,
         (SELECT COUNT(*) FROM events e WHERE e.kind = 'verify' AND e.ref = CAST(p.id AS TEXT)) verifiers_paid
       FROM posts p`)) {
     if (p.confirms !== p.c || p.rejects !== p.r) note('post_votes', { post: p.id, stored: [p.confirms, p.rejects], ledger: [p.c, p.r] });

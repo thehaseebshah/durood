@@ -369,17 +369,34 @@ function sunnah() {
   else if (mine) action = `<div class="row between"><b>${t('your_post')}</b>${statusTag(mine.status)}</div>
       <img class="shot" src="${esc(mine.photoUrl)}" alt="">
       <div class="muted">${N(`${mine.confirms}/${r.confirmsNeeded}`)} ${t('confirms_so_far')}</div>`;
-  else if (S.draft) action = `<b>${t('photo_preview')}</b><img class="shot" src="${esc(S.draft)}" alt="">
+  else if (S.draft && S.draftKind !== 'class') action = `<b>${t('photo_preview')}</b><img class="shot" src="${esc(S.draft)}" alt="">
       <div class="row"><button class="blk" style="flex:1" data-act="postit" id="postit"><span>${t('post_it')}</span><b>→</b></button><button class="chip" data-act="draftx">${t('cancel')}</button></div>`;
-  else action = `<label class="blk upload"><span class="lab">${uiIcon('camera', 24, 1.8)} ${t('take_photo')}</span><b>+</b>
-      <input type="file" accept="image/*" capture="environment" data-photo hidden></label>`;
+  else action = `<label class="blk upload"><span class="lab">${uiIcon('camera', 24, 1.8)} ${t('take_photo')} ${N('+' + r.sunnahXp)}</span><b>+</b>
+      <input type="file" accept="image/*" capture="environment" data-photo="sunnah" hidden></label>`;
+  const tick = !sn ? '' : d.today.ticked
+    ? `<div class="q d"><span class="bx"></span><span class="t">${t('tick_done')}</span></div>`
+    : `<button class="blk fill1" data-act="tick"><span>${t('tick_btn')} ${N('+' + r.tickXp)}</span><b>✓</b></button><div class="spacer"></div>`;
+  const cp = d.today.classPost;
+  const classAction = cp
+    ? `<div class="row between"><b>${t('your_post')}</b>${statusTag(cp.status)}</div><img class="shot" src="${esc(cp.photoUrl)}" alt="">
+       <div class="muted">${N(`${cp.confirms}/${r.confirmsNeeded}`)} ${t('confirms_so_far')}</div>`
+    : S.draft && S.draftKind === 'class'
+      ? `<b>${t('photo_preview')}</b><img class="shot" src="${esc(S.draft)}" alt="">
+         <div class="row"><button class="blk" style="flex:1" data-act="postit" data-kind="class"><span>${t('post_it')}</span><b>→</b></button><button class="chip" data-act="draftx">${t('cancel')}</button></div>`
+      : `<label class="blk upload"><span class="lab">${uiIcon('camera', 24, 1.8)} ${t('class_photo')} ${N('+' + r.classXp)}</span><b>+</b>
+         <input type="file" accept="image/*" capture="environment" data-photo="class" hidden></label>`;
   return `
   <div class="sec">
     <h3>${t('sunnah_title')}</h3>
     ${sn ? `<div class="head">${esc(pick(sn.titleEn, sn.titleUr))}</div><p>${esc(pick(sn.descEn, sn.descUr))}</p>${sn.source ? `<div class="muted">${t('source')}: ${esc(sn.source)}</div>` : ''}` : ''}
-    <div class="spacer"></div>${action}
+    <div class="spacer"></div>${tick}${S.draftKind === 'class' && !mine ? '' : action}
     ${sn && !mine ? `<p class="note">${t('photo_rules')}</p>` : ''}
     ${sn ? `<p class="note">${t('post_how')(r.confirmsNeeded, r.sunnahXp, r.verifyXp)}</p>` : ''}
+  </div>
+  <div class="sec">
+    <h3>${t('class_title')}</h3>
+    <p class="muted">${t('class_text')}</p>
+    ${classAction}
   </div>
   <div class="sec">
     <h3>${uiIcon('lens', 14, 2)} ${t('review_title')}</h3>
@@ -524,6 +541,18 @@ function me() {
   ${footerLinks()}`;
 }
 
+function quizBlock(p, x) {
+  if (!x.quiz?.length) return '';
+  if (x.quizPassed || p.passed) return `<div class="note ok">${t('quiz_passed')}</div>`;
+  const pick = (en, ur) => (S.lang === 'ur' && ur) || en;
+  const wrong = p.wrong || [];
+  return `<div class="quiz"><h3>${t('quiz_title')}</h3>
+    ${x.quiz.map((q, i) => `<fieldset class="${wrong.includes(i) ? 'bad' : ''}"><legend>${esc(pick(q.q_en, q.q_ur))}</legend>
+      ${q.options_en.map((o, j) => `<label class="opt"><input type="radio" name="qz${i}" value="${j}" data-quiz="${i}" ${p.answers?.[i] === j ? 'checked' : ''}> <span>${esc(pick(o, q.options_ur?.[j]))}</span></label>`).join('')}
+      ${wrong.includes(i) ? `<small class="err">${t('quiz_wrong')}</small>` : ''}</fieldset>`).join('')}
+    <button class="chip solid" data-act="quizcheck">${t('quiz_check')}</button></div>`;
+}
+
 function playerModal() {
   const p = S.player, x = p.lecture;
   const left = Math.max(0, x.minSeconds - p.elapsed);
@@ -532,8 +561,9 @@ function playerModal() {
     <div class="spacer"></div>
     <div class="muted" id="ptimer">${left ? `${t('watching')} +${x.xp} · ${t('min_left')(left)}` : ''}</div>
     ${bar((p.elapsed / x.minSeconds) * 100).replace('class="bar"', 'class="bar" id="pbar"')}
+    ${quizBlock(p, x)}
     <div class="spacer"></div>
-    <div class="row"><button class="blk fill1" id="pclaim" data-act="pclaim" ${left ? 'disabled' : ''}><span>${t('can_claim')}</span></button>
+    <div class="row"><button class="blk fill1" id="pclaim" data-act="pclaim" ${left || (x.quiz?.length && !p.passed && !x.quizPassed) ? 'disabled' : ''}><span>${t('can_claim')}</span></button>
     <button class="chip" data-act="pclose">${t('close')}</button></div>
   </div></div>`;
 }
@@ -668,12 +698,16 @@ app.addEventListener('click', async (ev) => {
     return;
   }
 
-  if (act === 'draftx') { S.draft = null; return draw(); }
+  if (act === 'draftx') { S.draft = null; S.draftKind = null; return draw(); }
+  if (act === 'tick') {
+    try { const r = await api('/sunnah/tick', 'POST'); S.me = r.me; S.sunnah.today = { ...S.sunnah.today, ...r, me: undefined }; toast(r.xpGained ? `+${r.xpGained} XP` : ''); } catch (e) { toast(errText(e)); }
+    return draw();
+  }
   if (act === 'postit') {
     el.disabled = true; el.textContent = t('posting');
     try {
-      const r = await api('/sunnah/post', 'POST', { image: S.draft });
-      S.draft = null; S.me = r.me;
+      const r = await api(el.dataset.kind === 'class' ? '/class/post' : '/sunnah/post', 'POST', { image: S.draft });
+      S.draft = null; S.draftKind = null; S.me = r.me;
       return enterTab('bonus');
     } catch (e) { toast(errText(e)); if (e.message === 'bad_image' || e.message === 'duplicate_image') S.draft = null; return draw(); }
   }
@@ -711,6 +745,17 @@ app.addEventListener('click', async (ev) => {
       startPlayerTimer();
     } catch (e) { toast(errText(e)); }
     return;
+  }
+  if (act === 'quizcheck') {
+    const p = S.player, n = p.lecture.quiz.length;
+    const answers = Array.from({ length: n }, (_, i) => { const c = document.querySelector(`input[name="qz${i}"]:checked`); return c ? Number(c.value) : -1; });
+    p.answers = answers;
+    try {
+      const r = await api(`/lectures/${p.lecture.id}/quiz`, 'POST', { answers });
+      p.passed = r.passed; p.wrong = r.wrong;
+      toast(r.passed ? t('quiz_passed') : t('quiz_retry'));
+    } catch (e) { toast(errText(e)); }
+    return draw();
   }
   if (act === 'pclose') { stopPlayerTimer(); S.player = null; return draw(); }
   if (act === 'pclaim') {
@@ -800,7 +845,7 @@ async function toJpegDataUrl(file) {
 app.addEventListener('change', async (ev) => {
   const el = ev.target.closest('input[data-photo]');
   if (!el || !el.files[0]) return;
-  try { S.draft = await toJpegDataUrl(el.files[0]); draw(); } catch (e) { toast(I18N[S.lang].err.bad_image); }
+  try { S.draft = await toJpegDataUrl(el.files[0]); S.draftKind = el.dataset.photo; draw(); } catch (e) { toast(I18N[S.lang].err.bad_image); }
 });
 
 let checkTimer;

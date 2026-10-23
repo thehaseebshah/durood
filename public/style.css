@@ -267,3 +267,13 @@ html[dir=rtl] .cells b { text-align: end; }
 .ctitle { font-size: 1.6rem; font-weight: 800; letter-spacing: -.5px; color: var(--sig-text); margin: 6px 0 4px; }
 html[lang=ur] .ctitle { letter-spacing: 0; }
 .modal.celebrate p { color: var(--soft); margin: 4px 0 16px; }
+
+.quiz { margin-top: 12px; }
+.quiz fieldset { border: 1.5px solid var(--line); padding: 8px 10px; margin: 0 0 8px; min-width: 0; }
+.quiz fieldset.bad { border-color: var(--err); }
+.quiz legend { font-weight: 700; padding: 0 4px; }
+.quiz .opt { display: flex; gap: 8px; align-items: center; padding: 4px 0; }
+.quiz .err { color: var(--err); }
+.note.ok { color: var(--sig-text); font-weight: 700; }
+.quiz .opt, .quiz .opt span { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--ink); }
+.quiz fieldset.bad legend { color: var(--err); }

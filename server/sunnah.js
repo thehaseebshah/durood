@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { db, tx } from './db.js';
 import { HttpError, photoSig } from './auth.js';
-import { CFG, dayOf, grant, evalBadges, settleQuests } from './game.js';
+import { CFG, dayOf, weekStart, grant, evalBadges, settleQuests, tickSunnah } from './game.js';
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
@@ -69,7 +69,32 @@ export function today(userId) {
   const s = one('SELECT * FROM sunnahs WHERE day = ?', dayOf());
   const mine = s && one(`SELECT p.*, s.day, s.title_en, s.title_ur FROM posts p JOIN sunnahs s ON s.id = p.sunnah_id
                          WHERE p.user_id = ? AND p.sunnah_id = ?`, userId, s.id);
-  return { sunnah: sunnahOut(s), mine: mine ? postOut(mine) : null, rules: { confirmsNeeded: CFG.confirmsNeeded, sunnahXp: CFG.sunnahXp, verifyXp: CFG.verifyXp } };
+  const ticked = !!(s && one("SELECT 1 FROM events WHERE user_id = ? AND kind = 'sunnah_tick' AND ref = ?", userId, String(s.id)));
+  const cs = one('SELECT * FROM sunnahs WHERE day = ?', classDay());
+  const cmine = cs && one(`SELECT p.*, s.day, s.title_en, s.title_ur FROM posts p JOIN sunnahs s ON s.id = p.sunnah_id
+                           WHERE p.user_id = ? AND p.sunnah_id = ?`, userId, cs.id);
+  return {
+    sunnah: sunnahOut(s), mine: mine ? postOut(mine) : null, ticked,
+    classPost: cmine ? postOut(cmine) : null,
+    rules: { confirmsNeeded: CFG.confirmsNeeded, tickXp: CFG.sunnahTickXp, sunnahXp: CFG.sunnahXp, verifyXp: CFG.verifyXp, classXp: CFG.classXp },
+  };
+}
+
+// the weekly Seerah class photo has its own slot per week, keyed so it can never clash with a dated daily sunnah
+const classDay = () => `class-${weekStart(dayOf())}`;
+function classSlot() {
+  const day = classDay();
+  const hit = one('SELECT * FROM sunnahs WHERE day = ?', day);
+  if (hit) return hit;
+  run(`INSERT INTO sunnahs (day, kind, title_en, title_ur, desc_en, desc_ur, created_at) VALUES (?,?,?,?,?,?,?)`,
+    day, 'class', 'Seerah class this week', 'اس ہفتے کی سیرت کلاس', 'A photo from the Seerah class you attended this week.', 'اس ہفتے آپ نے جس سیرت کلاس میں شرکت کی اس کی تصویر۔', Date.now());
+  return one('SELECT * FROM sunnahs WHERE day = ?', day);
+}
+
+export function tick(userId) {
+  const s = one('SELECT * FROM sunnahs WHERE day = ?', dayOf());
+  if (!s) throw new HttpError(404, 'no_sunnah');
+  return tickSunnah(userId, s.id);
 }
 
 export function mine(userId) {
@@ -78,8 +103,8 @@ export function mine(userId) {
               WHERE p.user_id = ? ORDER BY p.id DESC LIMIT 30`, userId).map(postOut);
 }
 
-export function createPost(userId, imageB64) {
-  const s = one('SELECT * FROM sunnahs WHERE day = ?', dayOf());
+export function createPost(userId, imageB64, kind = 'sunnah') {
+  const s = kind === 'class' ? classSlot() : one('SELECT * FROM sunnahs WHERE day = ?', dayOf());
   if (!s) throw new HttpError(404, 'no_sunnah');
   if (one('SELECT 1 FROM posts WHERE user_id = ? AND sunnah_id = ?', userId, s.id)) throw new HttpError(409, 'already_posted');
   const raw = Buffer.from(String(imageB64 || '').replace(/^data:image\/jpeg;base64,/, ''), 'base64');
@@ -121,7 +146,8 @@ function resolve(post) {
   const fresh = [];
   run('UPDATE posts SET status = ?, resolved_at = ? WHERE id = ?', outcome, Date.now(), post.id);
   if (outcome === 'verified') {
-    grant(post.user_id, 'sunnah', post.id, CFG.sunnahXp);
+    const isClass = one('SELECT kind FROM sunnahs WHERE id = ?', post.sunnah_id).kind === 'class';
+    grant(post.user_id, isClass ? 'class' : 'sunnah', post.id, isClass ? CFG.classXp : CFG.sunnahXp);
     evalBadges(post.user_id, fresh);
   }
   // reviewers are paid only when they agreed with the final outcome, so careless clicking earns nothing

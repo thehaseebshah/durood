@@ -19,11 +19,11 @@ Status: decisions from the interview. **Step 1 (access and accuracy) is built**;
 | Individual ranks | Exact counts, weekly and all-time. **No opt-out:** everyone is ranked. The only way off a public board is an admin flag (section 4). |
 | Caravan boards | Three: **total, average per active member, growth this week**. **Active = recited on any day this week.** Revisit after the pilot. |
 | Levels and titles | Keep titles and progress bar. **Hide raw XP numbers.** |
-| Badges | Show **all 23**, locked ones greyed. The **7 that need cut features** (Sunnah x3, Reviewer x2, Student, Scholar) are labelled **"coming soon"**. |
+| Badges | Show **all 23**, locked ones greyed. The **7 that need Sunnah/Seerah activity** stay greyed until earned (earlier "coming soon" label dropped: those features stay). |
 | Streaks and shields | Keep. |
 | Quests | Keep the four durood quests. Sunnah, review and lecture quests go with their features. |
-| Sunnah photo verification | **Cut from v1** (code stays, switched off). |
-| Seerah lectures | **Cut from v1** (code stays, switched off). |
+| Sunnah (secondary) | **Stays, with XP.** Tick "I did today's sunnah" = 20 XP; a photo verified on the feed adds 40 more (a verified day = 3x the tick). |
+| Seerah (tertiary) | **Stays, with XP.** Circle sign-up 300 XP once; a lecture pays only after its quiz is passed (admin-written, all answers right, unlimited retries); the weekly class photo, verified on the feed, pays 150 XP. |
 | Seerat Circles | **A card on Home, no tab.** One sign-up link and a short explanation. No dedication or per-Circle tracking. |
 | National meter | Keep, with the "reported by members" label. |
 | Sign-up | **Invite-only, code required.** Founders get in through (a) one **public founders code** and (b) an **admin-approved waitlist**. |
@@ -119,3 +119,6 @@ Defaults I chose:
 5. Crores are recorded when the next write crosses them, so the timestamp is accurate to seconds. A later edit can lower the total but never removes a crore already reached.
 6. The old "whole Qafila" national meter on Home is replaced by the challenge card.
 7. Honest note: 10 crore in 40 days needs roughly 1,250 durood a day from each of 2,000 active members, so the target depends on the community growing well past the first launch.
+
+## 9. Correction: Sunnah and Seerah stay (after step 1)
+The earlier "cut from v1" was a misreading. Both stay as secondary and tertiary features and the Bonus tab remains (so five tabs: Home, Ranks, Caravan, Bonus, Me). Defaults I chose (the "no preference" answers): tick 20 XP, verified photo +40; quizzes of up to 10 questions written by an admin through `POST /api/admin/lectures` (`questions: [{q_en,q_ur,options_en,options_ur,answer}]`), wrong answers are marked but the key is never sent; class attendance is proven by one photo a week reviewed like a sunnah photo. Caravan model (hide ancestors, depth, pyramid concerns) is **still open** and not built.

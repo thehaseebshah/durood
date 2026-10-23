@@ -9,7 +9,7 @@ import { audit } from './audit.js';
 import * as access from './access.js';
 import { sendMail, resetEmail, confirmEmail, inviteEmail, baseUrl } from './mail.js';
 import * as sunnah from './sunnah.js';
-import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, claimCircle, getMe, leaderboard, teamView, publicStats } from './game.js';
+import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, quizPassed, publicQuiz, parseQuestions, claimCircle, getMe, leaderboard, teamView, publicStats } from './game.js';
 
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -229,7 +229,15 @@ route('GET', '/api/team', ({ user }) => teamView(user));
 route('GET', '/api/lectures', ({ user }) => {
   const rows = db.prepare(`SELECT l.*, EXISTS(SELECT 1 FROM events e WHERE e.user_id = ? AND e.kind = 'lecture' AND e.ref = CAST(l.id AS TEXT)) done
                            FROM lectures l ORDER BY l.id DESC LIMIT 100`).all(user);
-  return { lectures: rows.map((l) => ({ id: l.id, youtubeId: l.youtube_id, titleEn: l.title_en, titleUr: l.title_ur, speaker: l.speaker, minSeconds: l.min_seconds, xp: l.xp, done: !!l.done })), circleUrl: CFG.circleUrl, circleXp: CFG.circleXp };
+  return { lectures: rows.map((l) => {
+    const quiz = publicQuiz(l);
+    return { id: l.id, youtubeId: l.youtube_id, titleEn: l.title_en, titleUr: l.title_ur, speaker: l.speaker, minSeconds: l.min_seconds, xp: l.xp, done: !!l.done,
+      quiz, quizPassed: quiz.length ? quizPassed(user, l.id) : null };
+  }), circleUrl: CFG.circleUrl, circleXp: CFG.circleXp, classXp: CFG.classXp };
+});
+route('POST', '/api/lectures/:id/quiz', ({ user, params, body }) => {
+  rateLimit(`quiz:${user}`, 60, 60e3);
+  return answerQuiz(user, Number(params.id), body.answers);
 });
 route('POST', '/api/lectures/:id/start', ({ user, params }) => startLecture(user, Number(params.id)));
 route('POST', '/api/lectures/:id/complete', ({ user, params }) => {
@@ -243,6 +251,12 @@ route('GET', '/api/sunnah/mine', ({ user }) => ({ posts: sunnah.mine(user) }));
 route('POST', '/api/sunnah/post', { maxBody: 2_400_000 }, ({ user, body }) => {
   rateLimit(`post:${user}`, 10, 60e3);
   const r = sunnah.createPost(user, body.image);
+  return { ...r, ...sunnah.today(user), me: getMe(user) };
+});
+route('POST', '/api/sunnah/tick', ({ user }) => ({ ...sunnah.tick(user), ...sunnah.today(user), me: getMe(user) }));
+route('POST', '/api/class/post', { maxBody: 2_400_000 }, ({ user, body }) => {
+  rateLimit(`post:${user}`, 10, 60e3);
+  const r = sunnah.createPost(user, body.image, 'class');
   return { ...r, ...sunnah.today(user), me: getMe(user) };
 });
 route('GET', '/api/feed', ({ user }) => ({ posts: sunnah.feed(user) }));
@@ -287,13 +301,15 @@ route('GET', '/api/admin/audit', { auth: false, admin: true }, () => audit());
 route('POST', '/api/admin/lectures', { auth: false, admin: true }, ({ body }) => {
   const yt = String(body.youtube_id || '').trim();
   if (!/^[\w-]{11}$/.test(yt) || !body.title_en) throw new HttpError(400, 'bad_lecture');
-  const r = run('INSERT INTO lectures (youtube_id, title_en, title_ur, speaker, min_seconds, xp, created_at) VALUES (?,?,?,?,?,?,?)',
+  const questions = parseQuestions(body.questions);
+  const r = run('INSERT INTO lectures (youtube_id, title_en, title_ur, speaker, min_seconds, xp, questions, created_at) VALUES (?,?,?,?,?,?,?,?)',
     yt, String(body.title_en), String(body.title_ur || ''), String(body.speaker || ''),
-    Math.max(30, Number(body.min_seconds) || 600), Math.max(1, Number(body.xp) || 100), Date.now());
+    Math.max(30, Number(body.min_seconds) || 600), Math.max(1, Number(body.xp) || 100), questions.length ? JSON.stringify(questions) : '', Date.now());
   return { id: Number(r.lastInsertRowid) };
 });
 route('DELETE', '/api/admin/lectures/:id', { auth: false, admin: true }, ({ params }) => {
   run('DELETE FROM lecture_starts WHERE lecture_id = ?', Number(params.id));
+  run('DELETE FROM lecture_quiz WHERE lecture_id = ?', Number(params.id));
   run('DELETE FROM lectures WHERE id = ?', Number(params.id));
   return { ok: true };
 });

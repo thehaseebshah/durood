@@ -10,7 +10,9 @@ export const CFG = {
   // Durood is the primary activity (1 XP per durood plus the milestone/quest bonuses below). Sunnah and seerah
   // rewards are deliberately small so they can never outweigh reciting.
   circleXp: 300,             // one-time, for registering with a Seerat Circle
-  sunnahXp: 60,              // poster, once their photo is verified
+  sunnahTickXp: 20,          // "I did today's sunnah"
+  sunnahXp: 40,              // added when the photo is verified, so a verified day is worth 3x the tick (60)
+  classXp: 150,              // the weekly Seerah class photo, once verified
   verifyXp: 5,               // each reviewer whose vote matches the final outcome
   confirmsNeeded: 3,         // distinct confirmations that verify a post (same number of rejects rejects it)
   maxVotesPerDay: 30,
@@ -107,12 +109,13 @@ function questState(u) {
   const lecturesToday = one("SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = 'lecture' AND day = ?", u.id, day).n;
   const daysWeek = one('SELECT COUNT(*) n FROM daily WHERE user_id = ? AND day >= ?', u.id, wk).n;
   const invitedWeek = one('SELECT COUNT(*) n FROM users WHERE referrer_id = ? AND created_day >= ?', u.id, wk).n;
-  const postedToday = one("SELECT COUNT(*) n FROM posts WHERE user_id = ? AND created_day = ? AND status != 'removed'", u.id, day).n;
+  const tickedToday = one("SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = 'sunnah_tick' AND day = ?", u.id, day).n;
   const reviewsToday = one('SELECT COUNT(*) n FROM votes WHERE user_id = ? AND day = ?', u.id, day).n;
   const done = (id, key) => !!one("SELECT 1 FROM events WHERE user_id = ? AND kind = 'quest' AND ref = ?", u.id, `${id}:${key}`);
-  const q = (id, group, period, xp, cur, goal) => {
+  // an "info" quest is a view of something paid elsewhere (the tick), so it never pays a second time
+  const q = (id, group, period, xp, cur, goal, info = false) => {
     const key = period === 'day' ? day : wk;
-    return { id, group, period, xp, cur: Math.min(cur, goal), goal, done: done(id, key), key };
+    return { id, group, period, xp, cur: Math.min(cur, goal), goal, done: info ? cur >= goal : done(id, key), key, info };
   };
   return [
     // durood quests first and richest; sunnah / seerah quests are small bonuses
@@ -120,7 +123,7 @@ function questState(u) {
     q('weekgoal', 'durood', 'week', 300, weekSum, u.daily_goal * 7),
     q('days5', 'durood', 'week', 200, daysWeek, 5),
     q('invite', 'durood', 'week', 250, invitedWeek, 1),
-    q('sunnah', 'bonus', 'day', 30, postedToday, 1),
+    q('sunnah', 'bonus', 'day', CFG.sunnahTickXp, tickedToday, 1, true),
     q('review', 'bonus', 'day', 15, reviewsToday, 3),
     q('lecture', 'bonus', 'day', 30, lecturesToday, 1),
   ];
@@ -129,7 +132,7 @@ function questState(u) {
 export function settleQuests(userId) {
   const u = one('SELECT * FROM users WHERE id = ?', userId);
   for (const q of questState(u)) {
-    if (!q.done && q.cur >= q.goal) grant(userId, 'quest', `${q.id}:${q.key}`, q.xp);
+    if (!q.info && !q.done && q.cur >= q.goal) grant(userId, 'quest', `${q.id}:${q.key}`, q.xp);
   }
 }
 
@@ -320,6 +323,24 @@ export function anonymiseUser(userId, passHash) {
   });
 }
 
+// ---- seerah lectures: watch, pass the quiz, claim ---------------------------------------------------------------
+/** Validates quiz questions supplied by an admin. Each question: q_en, optional q_ur, 2-5 options per language, answer = index. */
+export function parseQuestions(raw) {
+  if (raw == null || raw === '') return [];
+  if (!Array.isArray(raw) || raw.length > 10) throw new HttpError(400, 'bad_quiz');
+  return raw.map((q) => {
+    const opts = (v) => (Array.isArray(v) ? v.map((x) => String(x).trim().slice(0, 200)).filter(Boolean) : []);
+    const en = opts(q.options_en), ur = opts(q.options_ur);
+    if (!String(q.q_en || '').trim() || en.length < 2 || en.length > 5 || (ur.length && ur.length !== en.length)) throw new HttpError(400, 'bad_quiz');
+    const answer = Number(q.answer);
+    if (!Number.isInteger(answer) || answer < 0 || answer >= en.length) throw new HttpError(400, 'bad_quiz');
+    return { q_en: String(q.q_en).trim().slice(0, 300), q_ur: String(q.q_ur || '').trim().slice(0, 300), options_en: en, options_ur: ur, answer };
+  });
+}
+const quizOf = (l) => { try { return l.questions ? JSON.parse(l.questions) : []; } catch { return []; } };
+/** What members may see: the questions and options, never the answers. */
+export const publicQuiz = (l) => quizOf(l).map(({ answer, ...q }) => q);
+
 export function startLecture(userId, lectureId) {
   const l = one('SELECT * FROM lectures WHERE id = ?', lectureId);
   if (!l) throw new HttpError(404, 'not_found');
@@ -327,11 +348,25 @@ export function startLecture(userId, lectureId) {
   return { minSeconds: l.min_seconds };
 }
 
+/** Marks which answers are wrong (by position) but never reveals the right ones, so a member can think again and retry. */
+export function answerQuiz(userId, lectureId, answers) {
+  const l = one('SELECT * FROM lectures WHERE id = ?', lectureId);
+  if (!l) throw new HttpError(404, 'not_found');
+  const quiz = quizOf(l);
+  if (!quiz.length) throw new HttpError(400, 'no_quiz');
+  if (!Array.isArray(answers) || answers.length !== quiz.length) throw new HttpError(400, 'bad_answers');
+  const wrong = quiz.map((q, i) => (Number(answers[i]) === q.answer ? -1 : i)).filter((i) => i >= 0);
+  if (!wrong.length) run('INSERT OR IGNORE INTO lecture_quiz (user_id, lecture_id, passed_at) VALUES (?,?,?)', userId, lectureId, Date.now());
+  return { passed: wrong.length === 0, wrong };
+}
+export const quizPassed = (userId, lectureId) => !!one('SELECT 1 FROM lecture_quiz WHERE user_id = ? AND lecture_id = ?', userId, lectureId);
+
 export function completeLecture(userId, lectureId) {
   const l = one('SELECT * FROM lectures WHERE id = ?', lectureId);
   const s = one('SELECT started_at FROM lecture_starts WHERE user_id = ? AND lecture_id = ?', userId, lectureId);
   if (!l || !s) throw new HttpError(404, 'not_found');
   if (Date.now() - s.started_at < l.min_seconds * 1000) throw new HttpError(400, 'too_soon');
+  if (quizOf(l).length && !quizPassed(userId, lectureId)) throw new HttpError(400, 'quiz_needed');
   const fresh = [];
   const ok = tx(() => {
     const g = grant(userId, 'lecture', lectureId, l.xp);
@@ -339,6 +374,16 @@ export function completeLecture(userId, lectureId) {
     return g;
   });
   return { xpGained: ok ? l.xp : 0, already: !ok, newBadges: fresh.map((b) => b.code) };
+}
+
+/** "I did today's sunnah": a small, private, self-declared reward. A verified photo later adds the rest. */
+export function tickSunnah(userId, sunnahId) {
+  const ok = tx(() => {
+    const g = grant(userId, 'sunnah_tick', sunnahId, CFG.sunnahTickXp);
+    if (g) settleQuests(userId);
+    return g;
+  });
+  return { xpGained: ok ? CFG.sunnahTickXp : 0, already: !ok };
 }
 
 export function claimCircle(userId) {
@@ -481,7 +526,7 @@ export function getMe(userId) {
     streak: streakAlive ? u.streak : 0, bestStreak: u.best_streak, shields: u.shields,
     ...levelFor(u.xp),
     badges: all('SELECT code FROM badges WHERE user_id = ? ORDER BY earned_at', userId).map((b) => b.code),
-    quests: questState(u).map(({ key, ...q }) => q),
+    quests: questState(u).map(({ key, info, ...q }) => q),
     team: { members: team.members, direct, total: u.team_total },
     sunnah: {
       verified: one("SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = 'sunnah'", userId).n,
