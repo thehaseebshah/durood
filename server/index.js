@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import crypto from 'node:crypto';
 import { db, tx, getSetting } from './db.js';
-import { HttpError, hashPassword, checkPassword, signToken, verifyToken, rateLimit } from './auth.js';
+import { HttpError, hashPassword, checkPassword, signToken, verifyToken, rateLimit, lockedOut, recordFailure, clientIp, sameSecret } from './auth.js';
 import { audit } from './audit.js';
 import * as access from './access.js';
 import { sendMail, resetEmail, confirmEmail, inviteEmail, baseUrl } from './mail.js';
@@ -54,6 +54,7 @@ function useToken(raw, kind) {
   return t.user_id;
 }
 
+const tokenFor = (id) => signToken(id, one('SELECT token_ver v FROM users WHERE id = ?', id).v);
 const lang = (v) => (v === 'en' ? 'en' : 'ur');
 
 route('GET', '/api/username-check', { auth: false }, ({ query }) => {
@@ -87,7 +88,7 @@ route('POST', '/api/waitlist', { auth: false }, ({ body, ip }) => {
 });
 
 route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
-  rateLimit(`reg:${ip}`, Number(process.env.REG_LIMIT_PER_HOUR) || 10, 3600e3);
+  rateLimit(`reg:${ip}`, Number(process.env.REG_LIMIT_PER_HOUR) || 30, 3600e3);
   const username = String(body.username || '').trim();
   const email = String(body.email || '').trim().toLowerCase();
   const phone = normalizePhone(body.phone);
@@ -125,17 +126,18 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
   });
   // a confirmation link goes out but never blocks sign-in: it tells us which addresses actually work
   sendMail(confirmEmail(email, `${baseUrl()}/?confirm=${confirmToken}`));
-  return { token: signToken(id), me: getMe(id) };
+  return { token: tokenFor(id), me: getMe(id) };
 });
 
 route('POST', '/api/login', { auth: false }, async ({ body, ip }) => {
-  rateLimit(`login:${ip}`, 30, 600e3);
+  rateLimit(`login:${ip}`, 120, 600e3);
   const ident = String(body.id || '').trim();
+  rateLimit(`loginid:${ident.toLowerCase().slice(0, 80)}`, 10, 600e3); // guessing one account's password is capped however many addresses it comes from
   const phone = normalizePhone(ident);
   const u = one('SELECT id, pass, suspended, deleted_at FROM users WHERE username = ? OR email = ? OR phone = ?', ident, ident.toLowerCase(), phone ?? '\0');
   if (!u || u.deleted_at || !(await checkPassword(String(body.password || ''), u.pass))) throw new HttpError(401, 'bad_login');
   if (u.suspended) throw new HttpError(403, 'suspended');
-  return { token: signToken(u.id), me: getMe(u.id) };
+  return { token: tokenFor(u.id), me: getMe(u.id) };
 });
 
 route('GET', '/api/public', { auth: false }, () => publicStats());
@@ -186,10 +188,15 @@ route('POST', '/api/password/reset', { auth: false }, async ({ body, ip }) => {
   const userId = useToken(body.token, 'reset');
   const pass = await hashPassword(password);
   tx(() => {
-    run('UPDATE users SET pass = ? WHERE id = ?', pass, userId);
+    run('UPDATE users SET pass = ?, token_ver = token_ver + 1 WHERE id = ?', pass, userId); // old sessions stop working
     run("UPDATE tokens SET used_at = ? WHERE user_id = ? AND kind = 'reset' AND used_at IS NULL", Date.now(), userId);
   });
-  return { token: signToken(userId), me: getMe(userId) };
+  return { token: tokenFor(userId), me: getMe(userId) };
+});
+
+route('POST', '/api/sessions/revoke', ({ user }) => {
+  run('UPDATE users SET token_ver = token_ver + 1 WHERE id = ?', user);
+  return { token: tokenFor(user) }; // every other device is signed out; this one gets a fresh token
 });
 
 route('POST', '/api/email/confirm', { auth: false }, ({ body }) => {
@@ -216,6 +223,7 @@ route('DELETE', '/api/me', { admin: false }, async ({ user, body }) => {
   const u = one('SELECT pass FROM users WHERE id = ?', user);
   if (!(await checkPassword(String(body.password || ''), u.pass))) throw new HttpError(401, 'bad_login');
   anonymiseUser(user, await hashPassword(crypto.randomBytes(24).toString('hex')));
+  sunnah.purgeUser(user); // their photos go with their name
   return { ok: true };
 });
 
@@ -285,7 +293,7 @@ const adm = { auth: false, admin: true };
 route('GET', '/api/admin/invites', adm, () => ({ invites: access.listInvites(), publicCode: access.publicCode() }));
 route('POST', '/api/admin/invites', adm, ({ body }) => access.createFounderCode({ label: body.label, maxUses: body.maxUses }));
 route('POST', '/api/admin/invites/:code/revoke', adm, ({ params }) => access.revokeInvite(params.code));
-route('POST', '/api/admin/public-code', adm, ({ body }) => access.setPublicCode({ code: body.code, enabled: body.enabled }));
+route('POST', '/api/admin/public-code', adm, ({ body }) => access.setPublicCode({ code: body.code, enabled: body.enabled, dailyCap: body.dailyCap }));
 route('GET', '/api/admin/waitlist', adm, ({ query }) => ({ requests: access.listWaitlist(query.get('status') || 'pending') }));
 route('POST', '/api/admin/waitlist/:id', adm, async ({ params, body }) => {
   const r = access.resolveWaitlist(Number(params.id), body.action);
@@ -349,18 +357,25 @@ async function handleApi(req, res, url) {
   if (!route_) throw new HttpError(404, 'not_found');
   const m = route_.re.exec(url.pathname);
   const params = Object.fromEntries(route_.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])]));
-  const ip = (process.env.TRUST_PROXY ? String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() : '') || req.socket.remoteAddress;
+  const ip = clientIp(req);
   const ctx = { query: url.searchParams, params, ip, body: {}, user: null };
 
   if (route_.admin) {
-    if (!process.env.ADMIN_KEY || req.headers['x-admin-key'] !== process.env.ADMIN_KEY) throw new HttpError(403, 'forbidden');
+    const allow = (process.env.ADMIN_IP_ALLOWLIST || '').split(',').map((x) => x.trim()).filter(Boolean);
+    if (allow.length && !allow.includes(ip)) throw new HttpError(403, 'forbidden');
+    if (lockedOut(`adminfail:${ip}`, 10)) throw new HttpError(429, 'rate_limited');
+    const given = req.headers['x-admin-key'];
+    if (!process.env.ADMIN_KEY || typeof given !== 'string' || !sameSecret(given, process.env.ADMIN_KEY)) {
+      recordFailure(`adminfail:${ip}`, 900e3); // 10 wrong keys lock this address out for 15 minutes
+      throw new HttpError(403, 'forbidden');
+    }
   }
   if (route_.auth) {
-    const id = verifyToken((req.headers.authorization || '').replace(/^Bearer /, ''));
-    const who = id && one('SELECT suspended, deleted_at FROM users WHERE id = ?', id);
-    if (!who || who.deleted_at) throw new HttpError(401, 'unauthorized');
+    const t = verifyToken((req.headers.authorization || '').replace(/^Bearer /, ''));
+    const who = t && one('SELECT suspended, deleted_at, token_ver FROM users WHERE id = ?', t.id);
+    if (!who || who.deleted_at || who.token_ver !== t.ver) throw new HttpError(401, 'unauthorized');
     if (who.suspended) throw new HttpError(403, 'suspended');
-    ctx.user = id;
+    ctx.user = t.id;
   }
   if (req.method !== 'GET') ctx.body = await readBody(req, route_.maxBody);
   const out = await route_.handler(ctx);
@@ -368,12 +383,25 @@ async function handleApi(req, res, url) {
   res.end(JSON.stringify(out));
 }
 
+// Scripts may only come from this site, plus the few small inline theme scripts in the HTML pages, allowed by their hash.
+function csp(html) {
+  const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => `'sha256-${crypto.createHash('sha256').update(m[1]).digest('base64')}'`);
+  return [
+    "default-src 'self'", `script-src 'self' ${hashes.join(' ')}`.trim(),
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", "font-src https://fonts.gstatic.com",
+    "img-src 'self' data: blob:", 'frame-src https://www.youtube-nocookie.com', "connect-src 'self'",
+    "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'",
+  ].join('; ');
+}
+
 async function handleStatic(req, res, url) {
-  let rel = decodeURIComponent(url.pathname);
+  let rel;
+  try { rel = decodeURIComponent(url.pathname); } catch { throw new HttpError(400, 'bad_path'); }
+  if (rel.includes('\0')) throw new HttpError(400, 'bad_path');
   if (rel === '/admin') rel = '/admin.html';
   if (rel.endsWith('/')) rel += 'index.html';
   let file = path.normalize(path.join(PUBLIC_DIR, rel));
-  if (!file.startsWith(PUBLIC_DIR)) throw new HttpError(403, 'forbidden');
+  if (!file.startsWith(PUBLIC_DIR + path.sep)) throw new HttpError(403, 'forbidden');
   let data;
   try { data = await readFile(file); } catch {
     // SPA fallback for extension-less paths (e.g. /?ref=...), 404 for missing assets
@@ -382,6 +410,7 @@ async function handleStatic(req, res, url) {
     data = await readFile(file);
   }
   const ext = path.extname(file);
+  if (ext === '.html') res.setHeader('Content-Security-Policy', csp(data.toString()));
   res.writeHead(200, {
     'Content-Type': MIME[ext] || 'application/octet-stream',
     'Cache-Control': ['.html', '.js', '.css', '.webmanifest'].includes(ext) ? 'no-cache' : 'public, max-age=86400',
@@ -400,10 +429,16 @@ async function handlePhoto(res, url) {
 }
 
 export function createServer() {
-  return http.createServer(async (req, res) => {
+  const server = http.createServer(async (req, res) => {
     try {
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('X-Frame-Options', 'DENY');
+      res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+      res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
+      if (process.env.FORCE_HSTS === '1' || (process.env.TRUST_PROXY && req.headers['x-forwarded-proto'] === 'https')) res.setHeader('Strict-Transport-Security', 'max-age=15552000');
       const url = new URL(req.url, 'http://x');
-      if (url.pathname.startsWith('/api/')) await handleApi(req, res, url);
+      if (url.pathname === '/healthz') { one('SELECT 1'); res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"ok":true}'); }
+      else if (url.pathname.startsWith('/api/')) await handleApi(req, res, url);
       else if (url.pathname.startsWith('/photos/') && req.method === 'GET') await handlePhoto(res, url);
       else if (req.method === 'GET' || req.method === 'HEAD') await handleStatic(req, res, url);
       else throw new HttpError(405, 'method_not_allowed');
@@ -414,11 +449,27 @@ export function createServer() {
       res.end(JSON.stringify({ error: e instanceof HttpError ? e.code : 'server_error' }));
     }
   });
+  // a busy event loop must not look like a dead connection to the proxy in front: keep idle sockets longer than its timeout
+  server.keepAliveTimeout = 65_000;
+  server.headersTimeout = 66_000;
+  server.requestTimeout = 30_000;
+  return server;
 }
 
 if (process.env.PUBLIC_FOUNDERS_CODE && !getSetting('public_code')) access.setPublicCode({ code: process.env.PUBLIC_FOUNDERS_CODE, enabled: true });
 
+// Refuse to start a production server that would silently fail members: no way to send reset emails, or a guessable admin key.
+function checkProduction() {
+  if (process.env.NODE_ENV !== 'production') return;
+  const problems = [];
+  if (!['resend', 'sendgrid'].includes((process.env.MAIL_PROVIDER || '').toLowerCase()) && process.env.ALLOW_CONSOLE_MAIL !== '1') problems.push('MAIL_PROVIDER must be resend or sendgrid (password-reset emails would never be sent; set ALLOW_CONSOLE_MAIL=1 to override)');
+  if (String(process.env.ADMIN_KEY || '').length < 24) problems.push('ADMIN_KEY must be at least 24 random characters');
+  if (!process.env.AUTH_SECRET) problems.push('AUTH_SECRET should be set so sessions survive a lost disk');
+  if (problems.length) { console.error('Refusing to start:\n- ' + problems.join('\n- ')); process.exit(1); }
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  checkProduction();
   const port = Number(process.env.PORT) || 3000;
   news.startScheduler();
   createServer().listen(port, () => console.log(`Seerah Quest running on http://localhost:${port}`));

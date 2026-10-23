@@ -138,3 +138,14 @@ Home: number box first (type a total, presets +100/+500/+1,000 fill the field, A
 - **Reminders (web push):** the app asks on Home after the member has a streak of 2 days, and the member can also turn them on in Me. Daily reminder at a chosen Pakistan-time hour, a streak warning at 20:00 for anyone whose streak of 2+ days would break tonight, plus pushes for "someone joined your caravan", each crore of the challenge and caravan badges. Each message goes out once. Dead devices are removed automatically. The server signs with its own VAPID key (created on first start, stored in settings); set `VAPID_SUBJECT` to a real `mailto:` address. A scheduler runs once a minute inside the server process.
 - **Exports:** CSV of totals by city, by caravan (owners with invitees), and by week, downloaded from the admin page. Cells that start with `=`, `+`, `-` or `@` are neutralised so spreadsheets don't run them.
 - **Verified:** the push encryption reproduces the RFC 8291 worked example byte for byte. **Not verified:** delivery through a real push service on a real phone. Test that on a deployed HTTPS address before launch (push needs HTTPS).
+
+## 13. Before-launch hardening (from docs/REVIEW.md)
+- **Durood on hold:** a day above 20,000 (or a 10x spike) flags the member and holds their whole total out of the national, challenge and caravan totals and boards. It stays in the ledger and in their own total, and `/api/public` reports it as `pending`. Clearing the flag releases it. The audit checks the rule.
+- **Limits:** 50,000 a day (10,000 for a member's first 7 days); the public founders code admits at most 200 sign-ups a day (admin can change it).
+- **Sessions:** tokens carry a version; password reset and "Log out of all devices" (Me) sign everything else out.
+- **Access control:** the client address is read from the proxy's own hop (not the spoofable left side); 10 wrong admin keys lock an address out for 15 minutes; optional admin IP allowlist; per-account login limit; admin key compared in constant time.
+- **Headers and server:** CSP (inline theme scripts allowed by hash only), `X-Frame-Options: DENY`, referrer policy, HSTS behind HTTPS, longer keep-alive and request timeouts, `/healthz`, bad paths return 400.
+- **Push:** subscriptions must point at a real browser push service.
+- **Data safety:** nightly `VACUUM INTO` backups (`BACKUP_DIR`), photo files deleted 14 days after review and at once on account deletion (the post record, votes and payouts stay), the scheduler never overlaps itself.
+- **Production guard:** with `NODE_ENV=production` the server refuses to start without a real mail provider, a 24+ character admin key and `AUTH_SECRET`.
+- **Not done (and why):** phone verification needs an SMS provider; the performance fixes (running challenge total, cached boards, off-peak audit) are the next batch, needed before about 5,000 members.

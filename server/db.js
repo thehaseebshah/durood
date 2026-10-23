@@ -297,6 +297,9 @@ addCol('users', 'invite_code', 'TEXT');
 addCol('lectures', 'questions', "TEXT NOT NULL DEFAULT ''");        // JSON: [{q_en,q_ur,options_en,options_ur,answer}]
 addCol('sunnahs', 'kind', "TEXT NOT NULL DEFAULT 'daily'");        // 'daily' sunnah or the weekly 'class' photo slot
 
+addCol('users', 'held', 'INTEGER NOT NULL DEFAULT 0');             // an open/confirmed automatic flag: durood stays in the ledger but is left out of public totals
+addCol('users', 'token_ver', 'INTEGER NOT NULL DEFAULT 0');       // bumped to sign a member out of every device
+addCol('posts', 'purged_at', 'INTEGER');                          // photo file deleted (retention or account deletion)
 addCol('users', 'reminder_time', "TEXT NOT NULL DEFAULT ''");       // 'HH:MM' Pakistan time, '' = no daily reminder
 addCol('users', 'news_seen_at', 'INTEGER NOT NULL DEFAULT 0');
 

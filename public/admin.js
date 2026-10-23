@@ -58,6 +58,7 @@ const views = {
     return `<h3>Public founders code</h3>
       <p class="muted">Anyone with this code can join and starts a new caravan. Switch it off once your launch period ends.</p>
       <div class="inline"><div><div class="code2">${esc(publicCode.code || 'not set')}</div>${publicCode.enabled ? '<span class="pillbox ok">ON</span>' : '<span class="pillbox bad">OFF</span>'}</div>
+        <div><label>Sign-ups a day (0 closes it)</label><input id="pubcap" type="number" min="0" value="${publicCode.dailyCap}" style="max-width:110px"><small class="muted">${publicCode.usedToday} used today</small></div><button class="chip" data-a="pubcap">Set limit</button>
         <button class="chip solid" data-a="pub" data-v="${publicCode.enabled ? '0' : '1'}">${publicCode.enabled ? 'Switch off' : 'Switch on'}</button>
         <button class="chip" data-a="pubnew">New random code</button></div>
       <div class="inline"><div><label>Set your own code</label><input id="pubset" placeholder="e.g. QAFILA2026" maxlength="20"></div><button class="chip" data-a="pubset">Set</button></div>
@@ -135,6 +136,7 @@ document.addEventListener('click', (ev) => {
     },
     chtoday: async () => { if (!confirm('Make today day 1 of the challenge?')) return; await api('POST', '/challenge', { start: pktToday() }); say('Day 1 is now today.'); },
     pub: () => api('POST', '/public-code', { enabled: d.v === '1' }),
+    pubcap: async () => { await api('POST', '/public-code', { dailyCap: Number($('#pubcap').value) }); say('Daily limit saved.'); },
     pubnew: () => api('POST', '/public-code', { code: '', enabled: true }),
     pubset: () => api('POST', '/public-code', { code: $('#pubset').value.trim() }),
     fnew: async () => { const r = await api('POST', '/invites', { label: $('#flabel').value, maxUses: $('#fmax').value }); say(`New founder code: ${r.code}`); },

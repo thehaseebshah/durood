@@ -423,7 +423,7 @@ function sunnah() {
   let action = '';
   if (!sn) action = `<p class="muted">${t('no_sunnah')}</p>`;
   else if (mine) action = `<div class="row between"><b>${t('your_post')}</b>${statusTag(mine.status)}</div>
-      <img class="shot" src="${esc(mine.photoUrl)}" alt="">
+      ${mine.photoUrl ? `<img class="shot" src="${esc(mine.photoUrl)}" alt="">` : `<p class="muted">${t('photo_gone')}</p>`}
       <div class="muted">${N(`${mine.confirms}/${r.confirmsNeeded}`)} ${t('confirms_so_far')}</div>`;
   else if (S.draft && S.draftKind !== 'class') action = `<b>${t('photo_preview')}</b><img class="shot" src="${esc(S.draft)}" alt="">
       <div class="row"><button class="blk" style="flex:1" data-act="postit" id="postit"><span>${t('post_it')}</span><b>→</b></button><button class="chip" data-act="draftx">${t('cancel')}</button></div>`;
@@ -434,7 +434,7 @@ function sunnah() {
     : `<button class="blk fill1" data-act="tick"><span>${t('tick_btn')}</span><b>✓</b></button><div class="spacer"></div>`;
   const cp = d.today.classPost;
   const classAction = cp
-    ? `<div class="row between"><b>${t('your_post')}</b>${statusTag(cp.status)}</div><img class="shot" src="${esc(cp.photoUrl)}" alt="">
+    ? `<div class="row between"><b>${t('your_post')}</b>${statusTag(cp.status)}</div>${cp.photoUrl ? `<img class="shot" src="${esc(cp.photoUrl)}" alt="">` : `<p class="muted">${t('photo_gone')}</p>`}
        <div class="muted">${N(`${cp.confirms}/${r.confirmsNeeded}`)} ${t('confirms_so_far')}</div>`
     : S.draft && S.draftKind === 'class'
       ? `<b>${t('photo_preview')}</b><img class="shot" src="${esc(S.draft)}" alt="">
@@ -608,6 +608,7 @@ function me() {
   ${pushSupported() ? `<div class="hint" style="margin-top:12px;padding-inline:20px">${Notification.permission === 'granted' ? t('push_on') : Notification.permission === 'denied' ? t('push_denied') : t('push_off')}</div>
   <div class="row" style="padding-inline:20px">${Notification.permission === 'granted' ? `<button class="chip" data-act="pushoff">${t('push_disable')}</button>` : Notification.permission === 'denied' ? '' : `<button class="chip solid" data-act="pushon">${t('push_enable')}</button>`}</div>` : `<div class="hint" style="margin-top:12px">${t('push_unsupported')}</div>`}
   <button class="blk out" data-act="logout" style="margin-top:12px"><span>${t('logout')}</span></button>
+  <button class="linkbtn" data-act="logoutall" style="margin-top:8px">${t('logout_all')}</button>
 
   <h3>${t('delete_title')}</h3>
   <form data-form="delete">
@@ -741,6 +742,11 @@ app.addEventListener('click', async (ev) => {
   if (act === 'resend') { try { await api('/email/resend', 'POST'); toast(t('email_sent')); } catch (e) { toast(errText(e)); } return; }
   if (act === 'tab') return enterTab(el.dataset.tab);
   if (act === 'logout') return logout();
+  if (act === 'logoutall') {
+    if (!confirm(t('logout_all_ask'))) return;
+    try { const r = await api('/sessions/revoke', 'POST'); S.token = r.token; ls.set('token', r.token); toast(t('logout_all_done')); } catch (e) { toast(errText(e)); }
+    return;
+  }
   if (act === 'celebrateX') { S.celebrate = null; return draw(); }
   if (act === 'shareCard') { el.disabled = true; await shareCard(); el.disabled = false; return; }
 

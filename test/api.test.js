@@ -7,6 +7,7 @@ process.env.ADMIN_KEY = 'test-admin';
 process.env.PUBLIC_CACHE_MS = '0';
 process.env.PUBLIC_FOUNDERS_CODE = 'TESTFOUND';
 process.env.REG_LIMIT_PER_HOUR = '1000';
+process.env.MAX_DAILY_NEW = '50000'; // first-week limit is tested on its own
 process.env.CIRCLE_URL = 'https://example.org/circle';
 
 const { createServer, normalizePhone } = await import('../server/index.js');
@@ -79,8 +80,9 @@ test('logging durood: xp, streak, badges, caps', async () => {
   assert.equal((await api('POST', '/api/log', { token, body: { count: 0 } })).error, 'bad_count');
   assert.equal((await api('POST', '/api/log', { token, body: { count: 1.5 } })).error, 'bad_count');
   assert.equal((await api('POST', '/api/log', { token, body: { count: 999999 } })).error, 'bad_count');
-  for (let i = 0; i < 4; i++) await api('POST', '/api/log', { token, body: { count: 100000 } });
-  assert.equal((await api('POST', '/api/log', { token, body: { count: 100000 } })).error, 'daily_cap');
+  assert.equal((await api('POST', '/api/log', { token, body: { count: 50_001 } })).error, 'bad_count', 'one submission can never exceed the daily limit');
+  assert.equal((await api('POST', '/api/log', { token, body: { count: 49_000 } })).added, 49_000); // 50,000 for the day
+  assert.equal((await api('POST', '/api/log', { token, body: { count: 1 } })).error, 'daily_cap');
   assert.equal((await api('GET', '/api/me')).status, 401);
 });
 
@@ -178,7 +180,8 @@ test('audit: every statistic reconciles with the ledger, detects tampering, and 
   assert.deepEqual(audit().problems, []);
   assert.equal(audit().ok, true);
   const pub = await api('GET', '/api/public');
-  assert.equal(pub.total, audit().ledgerTotal);
+  assert.equal(pub.total + pub.pending, audit().ledgerTotal, 'public total plus durood on hold equals the ledger');
+  assert.equal(pub.pending, 50_000, 'the 50,000 day above the 20,000 line is on hold, not lost');
 
   db.prepare("UPDATE users SET total = total + 1000, xp = xp + 7 WHERE username = 'retrier'").run();
   db.prepare("UPDATE users SET team_total = team_total - 5 WHERE username = 'root_a'").run();

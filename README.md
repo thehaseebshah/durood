@@ -44,7 +44,17 @@ Environment variables:
 | `PUBLIC_URL` | Base URL used in emailed links, e.g. `https://quest.example.org` |
 | `MAIL_PROVIDER` | `resend`, `sendgrid`, or unset for the log-only console sender |
 | `RESEND_API_KEY` / `SENDGRID_API_KEY`, `MAIL_FROM` | Credentials and sender for the chosen provider |
-| `TRUST_PROXY` | Set when behind a reverse proxy so rate limits use `X-Forwarded-For` |
+| `NODE_ENV` | `production` makes the server refuse to start without a real mail provider, a 24+ character `ADMIN_KEY` and `AUTH_SECRET` |
+| `TRUST_PROXY` | Number of reverse proxies in front of the app (`1` on Render/Fly). The client address is taken that many hops from the **right** of `X-Forwarded-For`; leave unset when not behind a proxy |
+| `CLIENT_IP_HEADER` | A header the platform sets itself (e.g. `fly-client-ip`); used instead of `X-Forwarded-For` |
+| `FORCE_HSTS` | `1` adds `Strict-Transport-Security` (also added automatically behind a trusted HTTPS proxy) |
+| `ADMIN_IP_ALLOWLIST` | Comma-separated addresses allowed to use the admin API (optional; ten wrong admin keys lock an address out for 15 minutes either way) |
+| `MAX_DAILY`, `MAX_DAILY_NEW` | Most durood one member can report in a day (default 50,000; 10,000 during their first 7 days) |
+| `PUBLIC_DAILY_CAP` | Sign-ups per day through the public founders code (default 200; change it on the admin page) |
+| `PHOTO_KEEP_DAYS` | Days a decided Sunnah/class photo is kept before the file is deleted (default 14). Deleting an account deletes its photos at once |
+| `BACKUP_DIR`, `BACKUP_KEEP`, `BACKUP_EVERY_HOURS` | Nightly database snapshot (default every 24 h, newest 14 kept). Also `node scripts/backup.mjs`. Copy the folder off the machine, and back up `UPLOAD_DIR` and `AUTH_SECRET` separately |
+| `UPLOAD_DIR` | Where photos are stored (default `data/uploads`); must be on a persistent volume |
+| `VAPID_SUBJECT`, `PUSH_HOSTS` | A real `mailto:` address for push; extra allowed push hosts (browsers' own services are built in) |
 
 ### Installing on Android
 Deploy behind HTTPS, open the site in Chrome → menu → **Install app** / *Add to Home screen*.
@@ -60,12 +70,12 @@ curl -X POST $URL/api/admin/lectures -H "x-admin-key: $ADMIN_KEY" -H 'content-ty
 ## What's in the MVP
 
 - **Accounts:** username (unique, case-insensitive; doubles as the referral code), email, WhatsApp number (Pakistani `03xx…` normalised to `+92…`), password. Login by username, email or phone.
-- **Daily durood:** tap-counter or type a number. Pakistan-time days (UTC+5). Anti-cheat caps: 100,000 per submission, 500,000 per day.
+- **Daily durood:** tap-counter or type a number. Pakistan-time days (UTC+5). Anti-cheat caps: 50,000 per day (10,000 in a member's first week). A day above 20,000 is flagged and that member's durood is held out of the public, challenge and caravan totals until an admin clears it.
 - **Priorities:** durood first (counter, quests, milestones, ranks, caravan); sunnah is a secondary quest and seerah a small bonus, both in the *Bonus* tab with deliberately small rewards. Full table in `docs/DESIGN.md`.
 - **RPG layer:** XP (1 per durood + milestone and quest bonuses), levels with a "Musafir → Muqarrab" title ladder, daily streaks with *streak shields* (one earned per 7-day streak, auto-saves a missed day), daily/weekly quests, 18 badges.
 - **Network layer:** unlimited-depth referral tree stored as a closure table. A person's *caravan* = themselves + everyone below them. Caravan totals, weekly caravan leaderboard, caravan milestone badges and XP (10K → 10M, counting only what invitees recited), invite via WhatsApp share.
 - **Referral reward is delayed:** the referrer gets XP only once the invitee recites their first durood (blocks fake sign-ups).
-- **Leaderboards:** weekly / all-time, individuals / caravans. Public by default; users can opt out (still counted in their caravan, hidden from boards and from their referrer's list).
+- **Leaderboards:** weekly / all-time, individuals / caravans. Public; there is no opt-out. Flagged members are hidden until reviewed.
 - **Seerat Circles & lectures:** circle link (claim bonus once), YouTube lectures embedded with server-verified minimum watch time, one reward per lecture.
 - **National meter:** total durood across everyone vs a target.
 

@@ -2,6 +2,8 @@ import { db } from './db.js';
 import { HttpError } from './auth.js';
 import { dayOf, dayNum, hooks } from './game.js';
 import { sendPush, vapidPublicKey } from './push.js';
+import { purgeOldPhotos } from './sunnah.js';
+import { backupIfDue } from './backup.js';
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
@@ -30,8 +32,18 @@ export const deleteNews = (id) => { run('DELETE FROM announcements WHERE id = ?'
 // ---- push -------------------------------------------------------------------------------------------------------
 export const pushKey = () => ({ key: vapidPublicKey() });
 
+// A subscription is a URL the server will POST to, so it must be a real browser push service, never an arbitrary address.
+const PUSH_HOSTS = ['fcm.googleapis.com', 'updates.push.services.mozilla.com', 'push.services.mozilla.com', 'web.push.apple.com', 'push.apple.com', 'notify.windows.com', 'wns.windows.com'];
+export function allowedPushEndpoint(endpoint) {
+  let u;
+  try { u = new URL(endpoint); } catch { return false; }
+  if (u.protocol !== 'https:' || u.username || u.password || (u.port && u.port !== '443')) return false;
+  const extra = (process.env.PUSH_HOSTS || '').split(',').map((x) => x.trim()).filter(Boolean);
+  return [...PUSH_HOSTS, ...extra].some((h) => u.hostname === h || u.hostname.endsWith(`.${h}`));
+}
+
 export function subscribe(userId, sub) {
-  const ok = sub && typeof sub.endpoint === 'string' && /^https:\/\//.test(sub.endpoint) && sub.endpoint.length < 1000
+  const ok = sub && typeof sub.endpoint === 'string' && sub.endpoint.length < 1000 && allowedPushEndpoint(sub.endpoint)
     && typeof sub.keys?.p256dh === 'string' && typeof sub.keys?.auth === 'string';
   if (!ok) throw new HttpError(400, 'bad_subscription');
   run(`INSERT INTO push_subs (endpoint, user_id, p256dh, auth, created_at) VALUES (?,?,?,?,?)
@@ -99,8 +111,23 @@ export async function runReminders(now = Date.now()) {
 }
 
 export function startScheduler() {
-  const t = setInterval(() => { runReminders().catch((e) => console.error('reminders', e)); }, 60_000);
+  // one run at a time: a slow push service must not stack runs on top of each other
+  let busy = false;
+  const tick = async () => {
+    if (busy) return;
+    busy = true;
+    try { await runReminders(); } catch (e) { console.error('reminders', e); } finally { busy = false; }
+  };
+  const t = setInterval(tick, 60_000);
   t.unref();
+  // hourly housekeeping: delete old photos, take the nightly backup when due
+  const housekeeping = () => {
+    try { purgeOldPhotos(); } catch (e) { console.error('photo purge', e); }
+    try { backupIfDue(); } catch (e) { console.error('backup', e); }
+  };
+  const h = setInterval(housekeeping, 3600e3);
+  h.unref();
+  setTimeout(housekeeping, 30_000).unref();
   return t;
 }
 

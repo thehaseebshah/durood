@@ -166,3 +166,37 @@ test('audit detects tampered sunnah payouts and votes', async () => {
   db.prepare("DELETE FROM events WHERE kind = 'sunnah'").run();
   assert.ok(audit().problems.some((p) => p.kind === 'post_payout'));
 });
+
+test('photos are deleted after review plus the retention period, and on account deletion; the record stays', async () => {
+  const { purgeOldPhotos } = await import('../server/sunnah.js');
+  const { existsSync } = await import('node:fs');
+  const path = await import('node:path');
+  const { UPLOAD_DIR } = await import('../server/sunnah.js');
+  const { db } = await import('../server/db.js');
+  const a = await signup('keep_a');
+  await api('POST', '/api/admin/sunnahs', { headers: admin, body: { sunnahs: [{ day: dayOf(), title_en: 'Smile again' }] } }).catch(() => {});
+  const p = await post(a);
+  assert.ok(p.id, 'posted');
+  const row = () => db.prepare('SELECT * FROM posts WHERE id = ?').get(p.id);
+  const file = path.join(UPLOAD_DIR, row().file);
+  assert.equal(purgeOldPhotos(), 0, 'a post still waiting for review is never purged');
+  db.prepare("UPDATE posts SET status = 'verified', resolved_at = ? WHERE id = ?").run(Date.now() - 3 * 86400e3, p.id);
+  assert.equal(purgeOldPhotos(), 0, 'decided 3 days ago: still inside the 14-day window');
+  assert.ok(existsSync(file));
+  db.prepare('UPDATE posts SET resolved_at = ? WHERE id = ?').run(Date.now() - 15 * 86400e3, p.id);
+  assert.equal(purgeOldPhotos(), 1);
+  assert.ok(!existsSync(file), 'file is gone');
+  assert.ok(row().purged_at, 'the row, votes and payouts stay');
+  const url = (await api('GET', '/api/sunnah/mine', { token: a.token })).posts[0];
+  assert.equal(url.photoUrl, null);
+  assert.equal(purgeOldPhotos(), 0, 'idempotent');
+
+  const b = await signup('keep_b');
+  const pb = await post(b);
+  const fb = path.join(UPLOAD_DIR, db.prepare('SELECT file FROM posts WHERE id = ?').get(pb.id).file);
+  assert.ok(existsSync(fb));
+  assert.equal((await api('DELETE', '/api/me', { token: b.token, body: { password: 'secret1' } })).ok, true);
+  assert.ok(!existsSync(fb), 'deleting an account deletes its pictures at once');
+  assert.equal(db.prepare('SELECT status FROM posts WHERE id = ?').get(pb.id).status, 'removed');
+  assert.ok(!(await feedIds(a)).includes(pb.id));
+});

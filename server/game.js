@@ -4,8 +4,9 @@ import { inviteStatus } from './access.js';
 
 // ---- tunables -------------------------------------------------------------
 export const CFG = {
-  maxSingle: 100_000,        // largest number accepted in one submission
-  maxDaily: 500_000,         // anti-cheat ceiling per person per day
+  maxDaily: Number(process.env.MAX_DAILY) || 50_000,          // ceiling per person per day (about 8 hours at 100 a minute)
+  maxDailyNew: Number(process.env.MAX_DAILY_NEW) || 10_000,   // ceiling during a member's first 7 days
+  newMemberDays: 7,
   referralXp: 500,           // paid to the referrer when the invitee logs their first durood
   // Durood is the primary activity (1 XP per durood plus the milestone/quest bonuses below). Sunnah and seerah
   // rewards are deliberately small so they can never outweigh reciting.
@@ -21,6 +22,8 @@ export const CFG = {
   nationalTarget: Number(process.env.NATIONAL_TARGET || 100_000_000),
   circleUrl: process.env.CIRCLE_URL || '',
 };
+
+CFG.maxSingle = CFG.maxDaily; // one submission can never exceed the daily ceiling
 
 // ---- time: everything is bucketed by Pakistan time (UTC+5) -----------------
 const PK = 5 * 3600e3;
@@ -141,6 +144,9 @@ export function settleQuests(userId) {
 }
 
 // ---- actions --------------------------------------------------------------
+/** The most a member may have reported on one day: lower while they are new, because new accounts are the easiest to fake. */
+const dailyLimit = (u, day) => (dayNum(day) - dayNum(u.created_day) < CFG.newMemberDays ? CFG.maxDailyNew : CFG.maxDaily);
+
 export function logDurood(userId, count, rid) {
   if (!Number.isInteger(count) || count < 1 || count > CFG.maxSingle) throw new HttpError(400, 'bad_count');
   if (typeof rid !== 'string' || !/^[\w-]{8,64}$/.test(rid)) throw new HttpError(400, 'bad_request_id');
@@ -154,7 +160,7 @@ export function logDurood(userId, count, rid) {
     if (one('SELECT 1 FROM entries WHERE user_id = ? AND rid = ?', userId, rid)) { duplicate = true; return; }
     const u = one('SELECT * FROM users WHERE id = ?', userId);
     const prev = one('SELECT count FROM daily WHERE user_id = ? AND day = ?', userId, day)?.count ?? 0;
-    if (prev + count > CFG.maxDaily) throw new HttpError(400, 'daily_cap');
+    if (prev + count > dailyLimit(u, day)) throw new HttpError(400, 'daily_cap');
 
     run('INSERT INTO entries (user_id, day, count, rid, created_at) VALUES (?,?,?,?,?)', userId, day, count, rid, Date.now());
     run(`INSERT INTO daily (user_id, day, count) VALUES (?,?,?)
@@ -172,7 +178,7 @@ export function logDurood(userId, count, rid) {
     run(`UPDATE users SET total = total + ?, xp = xp + ?, streak = ?, best_streak = MAX(best_streak, ?),
          shields = ?, last_day = ? WHERE id = ?`, count, count, streak, streak, shields, day, userId);
 
-    run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth <= ?)', count, userId, CFG.teamMaxDepth);
+    if (!u.held) run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth <= ?)', count, userId, CFG.teamMaxDepth);
     evaluateFlags(userId, day);
 
     // referrer is paid only once the invitee actually recites - blocks fake sign-ups
@@ -220,12 +226,26 @@ export function evaluateFlags(userId, day) {
   if (!reason || one('SELECT 1 FROM flags WHERE user_id = ? AND reason = ? AND day = ?', userId, reason, day)) return null;
   run('INSERT INTO flags (user_id, reason, day, detail, created_at) VALUES (?,?,?,?,?)', userId, reason, day, detail, Date.now());
   run('UPDATE users SET hidden_from_ranks = 1 WHERE id = ?', userId);
+  setHeld(userId, true);
   return reason;
+}
+
+/**
+ * Puts a member's durood on hold (or releases it). Held durood stays in their own total and in the ledger, but is left out of
+ * the national and challenge totals, the caravan totals above them and the caravan boards until an admin clears the flag.
+ * Their ancestors' team_total is corrected by the member's whole total, so the caches stay exact.
+ */
+export function setHeld(userId, held) {
+  const u = one('SELECT total, held FROM users WHERE id = ?', userId);
+  if (!u || !!u.held === held) return;
+  run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth <= ?)', held ? -u.total : u.total, userId, CFG.teamMaxDepth);
+  run('UPDATE users SET held = ? WHERE id = ?', held ? 1 : 0, userId);
 }
 
 function refreshHidden(userId) {
   const hidden = !!one("SELECT 1 FROM flags WHERE user_id = ? AND status IN ('open','confirmed')", userId);
   run('UPDATE users SET hidden_from_ranks = ? WHERE id = ?', hidden ? 1 : 0, userId);
+  setHeld(userId, !!one("SELECT 1 FROM flags WHERE user_id = ? AND status IN ('open','confirmed') AND reason != 'manual'", userId));
 }
 
 export const listFlags = (status = 'open') => all(`SELECT f.*, u.username, u.city, u.total, u.created_day FROM flags f JOIN users u ON u.id = f.user_id
@@ -280,14 +300,15 @@ export function editEntry(userId, entryId, newCount, ridIn) {
     const delta = newCount - e.count;
     if (delta === 0) throw new HttpError(400, 'no_change');
     const dayTotal = one('SELECT count FROM daily WHERE user_id = ? AND day = ?', userId, e.day).count;
-    if (delta > 0 && dayTotal + delta > CFG.maxDaily) throw new HttpError(400, 'daily_cap');
+    const eu = one('SELECT created_day, held FROM users WHERE id = ?', userId);
+    if (delta > 0 && dayTotal + delta > dailyLimit(eu, e.day)) throw new HttpError(400, 'daily_cap');
 
     const now = Date.now();
     run("INSERT INTO entries (user_id, day, count, rid, created_at, kind, ref_id) VALUES (?,?,?,?,?, 'reverse', ?)", userId, e.day, -e.count, `${base}:r`, now, e.id);
     run("INSERT INTO entries (user_id, day, count, rid, created_at, kind, ref_id) VALUES (?,?,?,?,?, 'replace', ?)", userId, e.day, newCount, `${base}:n`, now, e.id);
     run('UPDATE daily SET count = count + ? WHERE user_id = ? AND day = ?', delta, userId, e.day);
     run('UPDATE users SET total = total + ?, xp = xp + ? WHERE id = ?', delta, delta, userId);
-    run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth <= ?)', delta, userId, CFG.teamMaxDepth);
+    if (!eu.held) run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth <= ?)', delta, userId, CFG.teamMaxDepth);
     evaluateFlags(userId, e.day);
   });
   if (!duplicate) recordChallenge();
@@ -454,8 +475,8 @@ export function challengeSummary(now = Date.now()) {
   const today = dayOf(now);
   const idx = dayNum(today) - dayNum(start) + 1;                 // 1 on the first day
   const end = dayStr(dayNum(start) + days - 1);
-  const total = one('SELECT COALESCE(SUM(count), 0) n FROM daily WHERE day >= ?', start).n;
-  const todayCount = idx >= 1 ? one('SELECT COALESCE(SUM(count), 0) n FROM daily WHERE day = ?', today).n : 0;
+  const total = one('SELECT COALESCE(SUM(d.count), 0) n FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 WHERE d.day >= ?', start).n;
+  const todayCount = idx >= 1 ? one('SELECT COALESCE(SUM(d.count), 0) n FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 WHERE d.day = ?', today).n : 0;
   const before = total - todayCount;                             // reported before today
   const crores = Math.floor(total / CRORE);
   const milestones = milestoneList(Math.max(crores, Math.floor(target / CRORE)));
@@ -475,7 +496,7 @@ export function challengeSummary(now = Date.now()) {
   let projectedTotal = null;
   if (completeDays > 0) {
     const from = dayStr(dayNum(today) - completeDays);
-    const recent = one('SELECT COALESCE(SUM(count), 0) n FROM daily WHERE day >= ? AND day < ?', from, today).n;
+    const recent = one('SELECT COALESCE(SUM(d.count), 0) n FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 WHERE d.day >= ? AND d.day < ?', from, today).n;
     projectedTotal = Math.round(before + (recent / completeDays) * daysLeft);
   }
   return {
@@ -490,7 +511,7 @@ export function challengeSummary(now = Date.now()) {
 export function recordChallenge() {
   const { start, target } = challengeConfig();
   if (!start) return;
-  const total = one('SELECT COALESCE(SUM(count), 0) n FROM daily WHERE day >= ?', start).n;
+  const total = one('SELECT COALESCE(SUM(d.count), 0) n FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 WHERE d.day >= ?', start).n;
   const now = Date.now();
   for (let k = 1; k <= Math.floor(total / CRORE); k++) if (!getSetting(`ch_m_${k}`)) { setSetting(`ch_m_${k}`, now); hooks.milestone?.(k); }
   if (total >= target && !getSetting('ch_done_at')) setSetting('ch_done_at', now);
@@ -500,7 +521,7 @@ export function recordChallenge() {
 export const challengeSeries = () => {
   const { start } = challengeConfig();
   if (!start) return [];
-  return all('SELECT day, SUM(count) total FROM daily WHERE day >= ? GROUP BY day ORDER BY day LIMIT 400', start);
+  return all('SELECT d.day, SUM(d.count) total FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 WHERE d.day >= ? GROUP BY d.day ORDER BY d.day LIMIT 400', start);
 };
 
 // ---- reads ----------------------------------------------------------------
@@ -508,8 +529,8 @@ export const challengeSeries = () => {
 let natCache = { at: 0, v: null };
 export function publicStats() {
   if (Date.now() - natCache.at > Number(process.env.PUBLIC_CACHE_MS ?? 15_000)) {
-    const r = one('SELECT COALESCE(SUM(total),0) total, SUM(deleted_at IS NULL) members FROM users');
-    natCache = { at: Date.now(), v: { total: r.total, members: r.members, asOf: Date.now(), challenge: challengeSummary() } };
+    const r = one('SELECT COALESCE(SUM(CASE WHEN held = 0 THEN total END),0) total, COALESCE(SUM(CASE WHEN held = 1 THEN total END),0) pending, SUM(deleted_at IS NULL) members FROM users');
+    natCache = { at: Date.now(), v: { total: r.total, pending: r.pending, members: r.members, asOf: Date.now(), challenge: challengeSummary() } };
   }
   return { ...natCache.v, target: CFG.nationalTarget, circleUrl: CFG.circleUrl };
 }
@@ -550,10 +571,10 @@ export function leaderboard(userId, type, period) {
   let rows;
   if (type === 'teams') {
     const base = period === 'week'
-      ? `SELECT a.ancestor_id id, SUM(d.count) score FROM daily d JOIN ancestors a ON a.user_id = d.user_id
+      ? `SELECT a.ancestor_id id, SUM(d.count) score FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 JOIN ancestors a ON a.user_id = d.user_id
          WHERE d.day >= ? AND a.depth <= ? GROUP BY a.ancestor_id`
       : period === 'challenge'
-        ? `SELECT a.ancestor_id id, SUM(d.count) score FROM daily d JOIN ancestors a ON a.user_id = d.user_id
+        ? `SELECT a.ancestor_id id, SUM(d.count) score FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 JOIN ancestors a ON a.user_id = d.user_id
            WHERE d.day >= ? AND d.day <= ? AND a.depth <= ? GROUP BY a.ancestor_id`
         : 'SELECT id, team_total score FROM users';
     const args = period === 'week' ? [wk, CFG.teamMaxDepth] : period === 'challenge' ? [chFrom, chTo, CFG.teamMaxDepth] : [];
@@ -586,7 +607,7 @@ export function caravanBoard(userId, metric) {
       COUNT(DISTINCT CASE WHEN d.day >= ? AND d.count > 0 THEN d.user_id END) active,
       (SELECT COUNT(*) FROM ancestors x WHERE x.ancestor_id = u.id AND x.depth > 0 AND x.depth <= ${CFG.teamMaxDepth}) members
     FROM users u JOIN ancestors a ON a.ancestor_id = u.id AND a.depth <= ${CFG.teamMaxDepth}
-    LEFT JOIN daily d ON d.user_id = a.user_id AND d.day >= ?
+    LEFT JOIN (SELECT dd.user_id, dd.day, dd.count FROM daily dd JOIN users hu ON hu.id = dd.user_id AND hu.held = 0 WHERE dd.day >= ?) d ON d.user_id = a.user_id
     WHERE u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL
       AND EXISTS (SELECT 1 FROM users c WHERE c.referrer_id = u.id)
     GROUP BY u.id`, wk, prev, wk, wk, prev);
@@ -604,7 +625,7 @@ export function teamView(userId) {
         COALESCE((SELECT SUM(count) FROM daily d WHERE d.user_id = u.id AND d.day >= ?), 0) week,
         (SELECT COUNT(*) FROM ancestors a WHERE a.ancestor_id = u.id AND a.depth > 0) members
       FROM users u WHERE u.referrer_id = ? ORDER BY u.team_total DESC LIMIT 200`, wk, userId);
-  const week = one(`SELECT COALESCE(SUM(d.count),0) n FROM daily d JOIN ancestors a ON a.user_id = d.user_id
+  const week = one(`SELECT COALESCE(SUM(d.count),0) n FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 JOIN ancestors a ON a.user_id = d.user_id
                     WHERE a.ancestor_id = ? AND d.day >= ? AND a.depth <= ?`, userId, wk, CFG.teamMaxDepth).n;
   const byDepth = all(`SELECT depth, COUNT(*) n FROM ancestors WHERE ancestor_id = ? AND depth > 0 GROUP BY depth ORDER BY depth LIMIT 20`, userId);
   const total = one('SELECT team_total FROM users WHERE id = ?', userId).team_total;
@@ -614,7 +635,7 @@ export function teamView(userId) {
       FROM ancestors a JOIN users u ON u.id = a.ancestor_id
       WHERE a.user_id = ? AND a.depth > 0 AND u.deleted_at IS NULL ORDER BY a.depth LIMIT 20`, userId)
     .map((u) => ({ username: u.username, city: u.city, team: u.team_total, members: u.members, depth: u.depth }));
-  const active = one(`SELECT COUNT(DISTINCT d.user_id) n FROM daily d JOIN ancestors a ON a.user_id = d.user_id
+  const active = one(`SELECT COUNT(DISTINCT d.user_id) n FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 JOIN ancestors a ON a.user_id = d.user_id
                       WHERE a.ancestor_id = ? AND a.depth > 0 AND a.depth <= ? AND d.day >= ? AND d.count > 0`, userId, CFG.teamMaxDepth, wk).n;
   return {
     total, week, byDepth, upline, active,

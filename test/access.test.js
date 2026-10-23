@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 process.env.DB_PATH = ':memory:';
 process.env.ADMIN_KEY = 'test-admin';
 process.env.REG_LIMIT_PER_HOUR = '1000';
+process.env.MAX_DAILY_NEW = '50000'; // first-week limit is tested on its own
 process.env.PUBLIC_CACHE_MS = '0';
 process.env.PUBLIC_FOUNDERS_CODE = 'TESTFOUND';
 
@@ -193,9 +194,9 @@ test('edit window: yesterday is editable, anything older is locked; the daily ca
   assert.equal(ok.history.days.find((d) => d.day === yDay.day).total, 250);
   assert.equal((await api('PATCH', `/api/entries/${day2}`, { token: u.token, body: { count: 250 } })).error, 'edit_window');
   assert.equal((await api('PATCH', `/api/entries/${oldEntry}`, { token: u.token, body: { count: 250 } })).error, 'edit_window');
-  seedDay('win_user', 1, 490_000);                       // yesterday is now close to the 500,000 daily cap
+  seedDay('win_user', 1, 49_000);                        // yesterday is now close to the 50,000 daily cap
   const small = seedDay('win_user', 1, 100);
-  assert.equal((await api('PATCH', `/api/entries/${small}`, { token: u.token, body: { count: 100_000 } })).error, 'daily_cap');
+  assert.equal((await api('PATCH', `/api/entries/${small}`, { token: u.token, body: { count: 20_000 } })).error, 'daily_cap');
   assert.equal((await api('PATCH', `/api/entries/${small}`, { token: u.token, body: { count: 50 } })).history.days.find((d) => d.day === yDay.day).entries.length, 3, 'editing down is always allowed');
   assert.deepEqual(audit().problems, [], 'edits to yesterday keep the ledger consistent');
 });
@@ -242,7 +243,7 @@ test('flags: a 10x spike over the recent average is flagged for established memb
   assert.equal(r.me.hiddenFromRanks, true);
   assert.equal((await admin('GET', '/flags')).flags.find((f) => f.username === 'spike_u').reason, 'spike_10x');
 
-  const fresh = await signup('spike_new');
+  const fresh = await signup('fresh_spike');
   const rf = await api('POST', '/api/log', { token: fresh.token, body: { count: 5000 } });
   assert.equal(rf.me.hiddenFromRanks, false, 'new members are only flagged above 20,000');
   const back = await signup('spike_back');                          // returning after a quiet week: no baseline, no spike flag

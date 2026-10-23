@@ -50,7 +50,7 @@ const photoUrl = (id) => `/photos/${id}/${photoSig(id)}`;
 
 export function photoFile(id, sig) {
   if (sig !== photoSig(id)) return null;
-  const p = one("SELECT file FROM posts WHERE id = ? AND status != 'removed'", id);
+  const p = one("SELECT file FROM posts WHERE id = ? AND status != 'removed' AND purged_at IS NULL", id);
   return p ? path.join(UPLOAD_DIR, p.file) : null;
 }
 
@@ -60,7 +60,7 @@ function expireOld() {
 
 const sunnahOut = (s) => s && ({ id: s.id, day: s.day, titleEn: s.title_en, titleUr: s.title_ur, descEn: s.desc_en, descUr: s.desc_ur, source: s.source });
 const postOut = (p) => ({
-  id: p.id, day: p.day, status: p.status, confirms: p.confirms, rejects: p.rejects, photoUrl: photoUrl(p.id),
+  id: p.id, day: p.day, status: p.status, confirms: p.confirms, rejects: p.rejects, photoUrl: p.purged_at ? null : photoUrl(p.id),
   titleEn: p.title_en, titleUr: p.title_ur, createdAt: p.created_at,
 });
 
@@ -190,6 +190,27 @@ export function report(userId, postId) {
     }
     return { ok: true };
   });
+}
+
+// ---- retention: photos are kept only as long as they are needed -----------------------------------------------------------
+const PHOTO_KEEP_MS = (Number(process.env.PHOTO_KEEP_DAYS) || 14) * 86400e3;
+function purge(rows) {
+  let n = 0;
+  for (const p of rows) {
+    try { unlinkSync(path.join(UPLOAD_DIR, p.file)); } catch (e) { if (e.code !== 'ENOENT') continue; } // keep the row to retry if the delete failed
+    run('UPDATE posts SET purged_at = ? WHERE id = ?', Date.now(), p.id);
+    n += 1;
+  }
+  return n;
+}
+/** Deletes the picture file of every post that was decided (or expired) more than PHOTO_KEEP_DAYS ago. The row, votes and payouts stay. */
+export function purgeOldPhotos(now = Date.now()) {
+  return purge(all("SELECT id, file FROM posts WHERE purged_at IS NULL AND status != 'pending' AND COALESCE(resolved_at, created_at) < ? LIMIT 500", now - PHOTO_KEEP_MS));
+}
+/** Account deletion: every picture goes now and anything still waiting for review is pulled from the feed. */
+export function purgeUser(userId) {
+  run("UPDATE posts SET status = 'removed' WHERE user_id = ? AND status = 'pending'", userId);
+  return purge(all('SELECT id, file FROM posts WHERE user_id = ? AND purged_at IS NULL', userId));
 }
 
 // ---- admin ----------------------------------------------------------------

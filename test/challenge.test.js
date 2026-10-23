@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 process.env.DB_PATH = ':memory:';
 process.env.ADMIN_KEY = 'test-admin';
 process.env.REG_LIMIT_PER_HOUR = '1000';
+process.env.MAX_DAILY_NEW = '50000'; // first-week limit is tested on its own
 process.env.PUBLIC_CACHE_MS = '0';
 process.env.PUBLIC_FOUNDERS_CODE = 'TESTFOUND';
 
@@ -137,17 +138,17 @@ test('each crore is recorded when the total passes it and never un-happens, even
 });
 
 test('the finish is recorded once when the target is reached', async () => {
-  await admin('POST', '/challenge', { start: dayOf(), target: 1_000_000, clearMilestones: true });
+  await admin('POST', '/challenge', { start: shift(dayOf(), -1), target: 1_000_000, clearMilestones: true });
   clearDaily();
   const u = (await api('POST', '/api/login', { body: { id: 'second_member', password: 'secret1' } })).token;
-  const v = (await api('POST', '/api/login', { body: { id: 'first_member', password: 'secret1' } })).token;
-  // one member can report at most 500,000 a day, so two members share the million
-  for (let i = 0; i < 5; i++) { await api('POST', '/api/log', { token: u, body: { count: 100_000 } }); await api('POST', '/api/log', { token: v, body: { count: 100_000 } }); }
+  seedDay('second_member', 1, 500_000);                               // yesterday: a million between two members
+  seedDay('first_member', 1, 480_000);
+  await api('POST', '/api/log', { token: u, body: { count: 20_000 } }); // today's report (under the 20,000 flag line) takes the total to exactly 1,000,000
   const c = (await api('GET', '/api/challenge', { token: u })).summary;
   assert.equal(c.state, 'done');
   assert.ok(c.doneAt > 0);
   const at = c.doneAt;
-  await api('POST', '/api/log', { token: u, body: { count: 5 } });
+  await api('POST', '/api/log', { token: u, body: { count: 5 } }).catch(() => {});
   assert.equal((await api('GET', '/api/challenge', { token: u })).summary.doneAt, at, 'recorded once');
 });
 

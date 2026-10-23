@@ -30,11 +30,19 @@ export function inviteStatus(userId) {
   return { cap, used, left: Math.max(0, cap - used), nextAt: CAP.streakDays * (Math.floor((one('SELECT best_streak FROM users WHERE id = ?', userId)?.best_streak ?? 0) / CAP.streakDays) + 1) };
 }
 
+const pkDay = () => new Date(Date.now() + 5 * 3600e3).toISOString().slice(0, 10); // same Pakistan-time day game.js uses (avoids a circular import)
+const publicCap = () => Math.max(0, Math.floor(Number(getSetting('public_daily_cap', process.env.PUBLIC_DAILY_CAP || '200'))) || 0);
+const publicToday = () => one("SELECT COUNT(*) n FROM users WHERE invited_via = 'public' AND created_day = ?", pkDay()).n;
 export function publicCode() {
   const code = getSetting('public_code');
-  return { code: code ? showCode(code) : null, enabled: getSetting('public_enabled', '0') === '1' };
+  return { code: code ? showCode(code) : null, enabled: getSetting('public_enabled', '0') === '1', dailyCap: publicCap(), usedToday: publicToday() };
 }
-export function setPublicCode({ code, enabled }) {
+export function setPublicCode({ code, enabled, dailyCap }) {
+  if (dailyCap !== undefined) {
+    const n = Number(dailyCap);
+    if (!Number.isInteger(n) || n < 0 || n > 100_000) throw new HttpError(400, 'bad_cap');
+    setSetting('public_daily_cap', String(n));
+  }
   if (code !== undefined) {
     const c = code === '' ? genCode() : normCode(code);
     if (!/^[A-Z0-9]{4,20}$/.test(c)) throw new HttpError(400, 'bad_code');
@@ -63,6 +71,8 @@ export function resolveInvite(raw) {
   const pub = getSetting('public_code');
   if (pub && code === pub) {
     if (getSetting('public_enabled', '0') !== '1') throw new HttpError(400, 'bad_invite');
+    // the public code is the easiest way to mass-create fake accounts, so only so many can join through it each day
+    if (publicToday() >= publicCap()) throw new HttpError(400, 'public_full');
     return { kind: 'public', code, label: '' };
   }
 

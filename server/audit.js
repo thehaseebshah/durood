@@ -16,12 +16,15 @@ export function audit({ fix = false } = {}) {
 
   const users = all(`SELECT u.id, u.username, u.total, u.team_total, u.xp,
       COALESCE((SELECT SUM(count) FROM entries e WHERE e.user_id = u.id), 0) l_total,
-      COALESCE((SELECT SUM(e.count) FROM entries e JOIN ancestors a ON a.user_id = e.user_id
+      COALESCE((SELECT SUM(e.count) FROM entries e JOIN users hu ON hu.id = e.user_id AND hu.held = 0 JOIN ancestors a ON a.user_id = e.user_id
                 WHERE a.ancestor_id = u.id AND a.depth <= ?), 0) l_team,
+      u.held,
+      EXISTS(SELECT 1 FROM flags f WHERE f.user_id = u.id AND f.status IN ('open','confirmed') AND f.reason != 'manual') should_hold,
       COALESCE((SELECT SUM(xp) FROM events ev WHERE ev.user_id = u.id), 0) ev_xp
     FROM users u`, CFG.teamMaxDepth);
   for (const u of users) {
     if (u.total !== u.l_total) note('user_total', { user: u.username, stored: u.total, ledger: u.l_total });
+    if (!!u.held !== !!u.should_hold) note('held', { user: u.username, held: u.held, shouldHold: u.should_hold });
     if (u.team_total !== u.l_team) note('team_total', { user: u.username, stored: u.team_total, ledger: u.l_team });
     if (u.xp !== u.l_total + u.ev_xp) note('xp', { user: u.username, stored: u.xp, ledger: u.l_total + u.ev_xp });
   }
@@ -74,7 +77,8 @@ export function audit({ fix = false } = {}) {
       db.exec('DELETE FROM daily');
       db.exec('INSERT INTO daily (user_id, day, count) SELECT user_id, day, SUM(count) FROM entries GROUP BY user_id, day');
       db.exec(`UPDATE users SET total = COALESCE((SELECT SUM(count) FROM entries e WHERE e.user_id = users.id), 0)`);
-      db.prepare(`UPDATE users SET team_total = COALESCE((SELECT SUM(e.count) FROM entries e JOIN ancestors a ON a.user_id = e.user_id
+      db.exec(`UPDATE users SET held = EXISTS(SELECT 1 FROM flags f WHERE f.user_id = users.id AND f.status IN ('open','confirmed') AND f.reason != 'manual')`);
+      db.prepare(`UPDATE users SET team_total = COALESCE((SELECT SUM(e.count) FROM entries e JOIN users hu ON hu.id = e.user_id AND hu.held = 0 JOIN ancestors a ON a.user_id = e.user_id
                   WHERE a.ancestor_id = users.id AND a.depth <= ?), 0)`).run(CFG.teamMaxDepth);
       db.exec(`UPDATE users SET xp = total + COALESCE((SELECT SUM(xp) FROM events ev WHERE ev.user_id = users.id), 0)`);
     });

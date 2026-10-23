@@ -68,7 +68,7 @@ test('reminders: daily at the chosen time, streak warning at 20:00, once per day
   assert.equal((await api('PATCH', '/api/me', { token: u.token, body: { reminderTime: '25:00' } })).error, 'bad_time');
   assert.equal((await api('PATCH', '/api/me', { token: u.token, body: { reminderTime: '07:30' } })).reminderTime, '07:30');
   assert.equal((await api('POST', '/api/push/subscribe', { token: u.token, body: { endpoint: 'http://insecure', keys: {} } })).error, 'bad_subscription');
-  assert.equal((await api('POST', '/api/push/subscribe', { token: u.token, body: fakeSub('https://push.example/a') })).ok, true);
+  assert.equal((await api('POST', '/api/push/subscribe', { token: u.token, body: fakeSub('https://fcm.googleapis.com/fcm/send/a') })).ok, true);
 
   const at = (hhmm) => Date.parse(`2030-03-10T${hhmm}:00+05:00`);
   assert.equal(await news.runReminders(at('07:00')), 0);                   // before the chosen time
@@ -86,12 +86,12 @@ test('dead subscriptions are removed; joining a caravan and announcements push',
   const sent = [];
   news.setSender(async (sub, msg) => { sent.push({ ep: sub.endpoint, msg }); return sub.endpoint.endsWith('/dead') ? 'gone' : 'ok'; });
   const root = await signup('push_root');
-  await api('POST', '/api/push/subscribe', { token: root.token, body: fakeSub('https://push.example/dead') });
+  await api('POST', '/api/push/subscribe', { token: root.token, body: fakeSub('https://fcm.googleapis.com/fcm/send/dead') });
   await signup('push_kid', 'push_root');
   await new Promise((r) => setTimeout(r, 50));
   assert.ok(sent.some((x) => x.msg.tag === 'joined' && x.msg.body.includes('push_kid')));
   assert.equal(db.prepare("SELECT COUNT(*) n FROM push_subs WHERE endpoint LIKE '%/dead'").get().n, 0);
-  await api('POST', '/api/push/subscribe', { token: root.token, body: fakeSub('https://push.example/live') });
+  await api('POST', '/api/push/subscribe', { token: root.token, body: fakeSub('https://fcm.googleapis.com/fcm/send/live') });
   await api('POST', '/api/admin/news', { headers: admin, body: { title_en: 'Jumu‘ah mubarak', push: true } });
   await new Promise((r) => setTimeout(r, 50));
   assert.ok(sent.some((x) => x.ep.endsWith('/live') && x.msg.title === 'Jumu‘ah mubarak'));
