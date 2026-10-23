@@ -6,9 +6,11 @@ export const CFG = {
   maxSingle: 100_000,        // largest number accepted in one submission
   maxDaily: 500_000,         // anti-cheat ceiling per person per day
   referralXp: 500,           // paid to the referrer when the invitee logs their first durood
-  circleXp: 1000,
-  sunnahXp: 150,             // poster, once their photo is verified
-  verifyXp: 20,              // each reviewer whose vote matches the final outcome
+  // Durood is the primary activity (1 XP per durood plus the milestone/quest bonuses below). Sunnah and seerah
+  // rewards are deliberately small so they can never outweigh reciting.
+  circleXp: 300,             // one-time, for registering with a Seerat Circle
+  sunnahXp: 60,              // poster, once their photo is verified
+  verifyXp: 5,               // each reviewer whose vote matches the final outcome
   confirmsNeeded: 3,         // distinct confirmations that verify a post (same number of rejects rejects it)
   maxVotesPerDay: 30,
   postWindowMs: 72 * 3600e3, // how long a post can collect reviews before it expires
@@ -56,10 +58,16 @@ const BADGES = {
   sunnah30: (s) => s.sunnahs >= 30,
   verifier10: (s) => s.verifies >= 10,
   verifier100: (s) => s.verifies >= 100,
-  caravan10k: (s) => s.team_total >= 10_000,
-  caravan100k: (s) => s.team_total >= 100_000,
-  caravan1m: (s) => s.team_total >= 1_000_000,
-  caravan10m: (s) => s.team_total >= 10_000_000,
+  caravan10k: (s) => s.downline >= 10_000,
+  caravan100k: (s) => s.downline >= 100_000,
+  caravan1m: (s) => s.downline >= 1_000_000,
+  caravan10m: (s) => s.downline >= 10_000_000,
+};
+// one-time XP paid when a durood-driven badge is first earned
+const MILESTONE_XP = {
+  d1k: 100, d10k: 500, d100k: 2_500, d1m: 10_000,
+  streak7: 100, streak30: 500, streak100: 2_000,
+  caravan10k: 500, caravan100k: 2_500, caravan1m: 10_000, caravan10m: 50_000,
 };
 export const BADGE_CODES = Object.keys(BADGES);
 
@@ -70,7 +78,8 @@ const run = (sql, ...a) => db.prepare(sql).run(...a);
 function stats(userId) {
   const u = one('SELECT total, best_streak, team_total FROM users WHERE id = ?', userId);
   const count = (kind) => one('SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = ?', userId, kind).n;
-  return { ...u, referrals: count('referral'), lectures: count('lecture'), sunnahs: count('sunnah'), verifies: count('verify'), circle: count('circle') > 0 };
+  // collective rewards count only what the people you invited recited, never your own durood a second time
+  return { ...u, downline: u.team_total - u.total, referrals: count('referral'), lectures: count('lecture'), sunnahs: count('sunnah'), verifies: count('verify'), circle: count('circle') > 0 };
 }
 
 export function evalBadges(userId, fresh) {
@@ -78,6 +87,7 @@ export function evalBadges(userId, fresh) {
   for (const [code, test] of Object.entries(BADGES)) {
     if (test(s) && run('INSERT OR IGNORE INTO badges (user_id, code, earned_at) VALUES (?,?,?)', userId, code, Date.now()).changes) {
       fresh.push({ userId, code });
+      if (MILESTONE_XP[code]) grant(userId, 'milestone', code, MILESTONE_XP[code]);
     }
   }
 }
@@ -92,23 +102,26 @@ export function grant(userId, kind, ref, xp) {
 function questState(u) {
   const day = dayOf(), wk = weekStart();
   const today = one('SELECT count FROM daily WHERE user_id = ? AND day = ?', u.id, day)?.count ?? 0;
+  const weekSum = one('SELECT COALESCE(SUM(count), 0) n FROM daily WHERE user_id = ? AND day >= ?', u.id, wk).n;
   const lecturesToday = one("SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = 'lecture' AND day = ?", u.id, day).n;
   const daysWeek = one('SELECT COUNT(*) n FROM daily WHERE user_id = ? AND day >= ?', u.id, wk).n;
   const invitedWeek = one('SELECT COUNT(*) n FROM users WHERE referrer_id = ? AND created_day >= ?', u.id, wk).n;
   const postedToday = one("SELECT COUNT(*) n FROM posts WHERE user_id = ? AND created_day = ? AND status != 'removed'", u.id, day).n;
   const reviewsToday = one('SELECT COUNT(*) n FROM votes WHERE user_id = ? AND day = ?', u.id, day).n;
   const done = (id, key) => !!one("SELECT 1 FROM events WHERE user_id = ? AND kind = 'quest' AND ref = ?", u.id, `${id}:${key}`);
-  const q = (id, period, xp, cur, goal) => {
+  const q = (id, group, period, xp, cur, goal) => {
     const key = period === 'day' ? day : wk;
-    return { id, period, xp, cur: Math.min(cur, goal), goal, done: done(id, key), key };
+    return { id, group, period, xp, cur: Math.min(cur, goal), goal, done: done(id, key), key };
   };
   return [
-    q('goal', 'day', 50, today, u.daily_goal),
-    q('lecture', 'day', 100, lecturesToday, 1),
-    q('sunnah', 'day', 50, postedToday, 1),
-    q('review', 'day', 50, reviewsToday, 3),
-    q('days5', 'week', 200, daysWeek, 5),
-    q('invite', 'week', 250, invitedWeek, 1),
+    // durood quests first and richest; sunnah / seerah quests are small bonuses
+    q('goal', 'durood', 'day', 100, today, u.daily_goal),
+    q('weekgoal', 'durood', 'week', 300, weekSum, u.daily_goal * 7),
+    q('days5', 'durood', 'week', 200, daysWeek, 5),
+    q('invite', 'durood', 'week', 250, invitedWeek, 1),
+    q('sunnah', 'bonus', 'day', 30, postedToday, 1),
+    q('review', 'bonus', 'day', 15, reviewsToday, 3),
+    q('lecture', 'bonus', 'day', 30, lecturesToday, 1),
   ];
 }
 

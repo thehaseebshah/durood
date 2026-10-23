@@ -73,6 +73,8 @@ test('logging durood: xp, streak, badges, caps', async () => {
   assert.equal(r.me.streak, 1);
   assert.ok(r.newBadges.includes('first_step') && r.newBadges.includes('d1k'));
   assert.ok(r.me.quests.find((q) => q.id === 'goal').done);
+  assert.equal(r.xpGained, 1000 + 100 + 100 + 300); // durood + 1,000 milestone + daily goal + weekly goal (700) quests
+  assert.equal(r.me.quests.filter((q) => q.group === 'durood').length, 4);
   assert.equal((await api('POST', '/api/log', { token, body: { count: 0 } })).error, 'bad_count');
   assert.equal((await api('POST', '/api/log', { token, body: { count: 1.5 } })).error, 'bad_count');
   assert.equal((await api('POST', '/api/log', { token, body: { count: 999999 } })).error, 'bad_count');
@@ -95,7 +97,7 @@ test('referral tree: full-depth team totals, delayed referral reward, opt-out', 
   assert.equal(meA.team.members, 2);
   assert.equal(meA.team.direct, 1);
   assert.equal(meA.xp, 500 + 250); // b's first log pays 500; 'invite' weekly quest pays 250; grandchild pays root nothing
-  assert.equal((await api('GET', '/api/me', { token: b.token })).xp, 200 + 500 + 250 + 50); // own 200, c's first log, invite quest, goal quest
+  assert.equal((await api('GET', '/api/me', { token: b.token })).xp, 200 + 500 + 250 + 100); // own 200, c's first log, invite quest, goal quest
 
   const team = await api('GET', '/api/team', { token: a.token });
   assert.equal(team.total, 900);
@@ -124,12 +126,12 @@ test('lectures: server-enforced watch time, once only; circle claim once', async
   assert.equal((await api('POST', `/api/lectures/${lec.id}/complete`, { token })).error, 'too_soon');
   db.prepare('UPDATE lecture_starts SET started_at = started_at - 120000').run();
   const done = await api('POST', `/api/lectures/${lec.id}/complete`, { token });
-  assert.equal(done.xpGained, 300);
+  assert.equal(done.xpGained, 100);
   assert.ok(done.newBadges.includes('scholar1'));
   assert.equal((await api('POST', `/api/lectures/${lec.id}/complete`, { token })).already, true);
 
   const c1 = await api('POST', '/api/circle/claim', { token });
-  assert.equal(c1.xpGained, 1000);
+  assert.equal(c1.xpGained, 300);
   assert.equal((await api('POST', '/api/circle/claim', { token })).already, true);
   assert.equal((await api('GET', '/api/lectures', { token })).circleUrl, 'https://example.org/circle');
 });
@@ -187,5 +189,34 @@ test('audit: every statistic reconciles with the ledger, detects tampering, and 
 
   const fixed = audit({ fix: true });
   assert.equal(fixed.fixed, true);
+  assert.deepEqual(audit().problems, []);
+});
+
+test('durood milestones and the weekly goal quest pay once; sunnah/seerah rewards stay small', async () => {
+  const { token, me } = await signup('milestoner');
+  await api('PATCH', '/api/me', { token, body: { dailyGoal: 100 } });
+  const r = await api('POST', '/api/log', { token, body: { count: 10_000 } });
+  assert.ok(r.newBadges.includes('d10k'));
+  // 10,000 durood + d1k 100 + d10k 500 + daily goal 100 + weekly goal (700) 300
+  assert.equal(r.xpGained, 10_000 + 100 + 500 + 100 + 300);
+  const again = await api('POST', '/api/log', { token, body: { count: 50 } });
+  assert.equal(again.xpGained, 50); // nothing is paid twice
+  const { CFG } = await import('../server/game.js');
+  assert.ok(CFG.sunnahXp + CFG.verifyXp + CFG.circleXp < 1000);
+  assert.deepEqual(audit().problems, []);
+});
+
+test('collective milestones reward only what invitees recited, not your own durood twice', async () => {
+  const lead = await signup('lead_m');
+  const mem = await signup('member_m');
+  await api('PATCH', '/api/me', { token: mem.token, body: {} });
+  const own = await api('POST', '/api/log', { token: lead.token, body: { count: 10_000 } });
+  assert.ok(!own.newBadges.includes('caravan10k'));
+  // member joined without a referral here, so link them properly via a fresh invitee
+  const kid = await signup('kid_m', 'lead_m');
+  const k = await api('POST', '/api/log', { token: kid.token, body: { count: 10_000 } });
+  assert.ok(!k.newBadges.includes('caravan10k')); // the invitee's own badge is personal
+  const meLead = await api('GET', '/api/me', { token: lead.token });
+  assert.ok(meLead.badges.includes('caravan10k')); // the leader earned it from the invitee's durood
   assert.deepEqual(audit().problems, []);
 });

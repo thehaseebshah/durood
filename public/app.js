@@ -147,7 +147,7 @@ function authView() {
 }
 
 function shell() {
-  const tabs = [['home', '🏠'], ['sunnah', '🌿'], ['rank', '🏆'], ['caravan', '🐫'], ['learn', '📖'], ['me', '👤']];
+  const tabs = [['home', '🏠'], ['rank', '🏆'], ['caravan', '🐫'], ['bonus', '🌿'], ['me', '👤']];
   return `
   <div class="topbar"><div class="in">
     <span class="brand">☪ ${t('app')}</span>
@@ -159,7 +159,7 @@ function shell() {
 }
 
 function view() {
-  return { home, sunnah, rank, caravan, learn, me }[S.tab]();
+  return { home, bonus, rank, caravan, me }[S.tab]();
 }
 
 const bar = (pct) => `<div class="bar"><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div>`;
@@ -205,8 +205,13 @@ function home() {
   </div>
 
   <div class="card">
-    <h2>${t('quests')}</h2>
-    ${m.quests.map(quest).join('')}
+    <h2>${t('durood_quests')}</h2>
+    ${m.quests.filter((q) => q.group === 'durood').map(quest).join('')}
+  </div>
+
+  <div class="card compact">
+    <div class="row between"><h3>🌿 ${t('bonus_quests')}</h3><button class="alt" data-act="tab" data-tab="bonus" style="padding:2px 12px">${t('see_bonus')}</button></div>
+    ${m.quests.filter((q) => q.group === 'bonus').map(quest).join('')}
   </div>
 
   <div class="card">
@@ -227,6 +232,13 @@ function quest(q) {
       ${bar((q.cur / q.goal) * 100)}<div class="muted">${N(`${fmt(q.cur)} / ${fmt(q.goal)}`)}</div></div>
     <b class="ok">${N('+' + q.xp)}</b>
   </div>`;
+}
+
+// secondary (sunnah) and tertiary (seerah) activities share one tab, in that order
+function bonus() {
+  return `<p class="muted center">${t('bonus_hint')}</p>
+    <h2 class="sec">🌿 ${t('sunnah_heading')}</h2>${sunnah()}
+    <h2 class="sec">📖 ${t('seerah_heading')}</h2>${learn()}`;
 }
 
 function sunnah() {
@@ -412,10 +424,10 @@ async function enterTab(tab) {
   try {
     if (tab === 'rank') { S.board.data = null; draw(); S.board.data = await api(`/leaderboard?type=${S.board.type}&period=${S.board.period}`); }
     if (tab === 'caravan') { S.team = await api('/team'); }
-    if (tab === 'learn') { S.learn = await api('/lectures'); }
-    if (tab === 'sunnah') {
-      const [today, feed, mineList] = await Promise.all([api('/sunnah/today'), api('/feed'), api('/sunnah/mine'), refreshMe()]); // refreshMe: payouts happen when *others* review
+    if (tab === 'bonus') {
+      const [today, feed, mineList, lectures] = await Promise.all([api('/sunnah/today'), api('/feed'), api('/sunnah/mine'), api('/lectures'), refreshMe()]); // refreshMe: payouts happen when *others* review
       S.sunnah = { today, feed: feed.posts, mine: mineList.posts };
+      S.learn = lectures;
     }
     if (tab !== 'home') draw();
   } catch (e) { toast(errText(e)); }
@@ -509,7 +521,7 @@ app.addEventListener('click', async (ev) => {
     try {
       const r = await api('/sunnah/post', 'POST', { image: S.draft });
       S.draft = null; S.me = r.me;
-      return enterTab('sunnah');
+      return enterTab('bonus');
     } catch (e) { toast(errText(e)); if (e.message === 'bad_image' || e.message === 'duplicate_image') S.draft = null; return draw(); }
   }
   if (act === 'vote') {
@@ -521,7 +533,7 @@ app.addEventListener('click', async (ev) => {
       S.sunnah.feed = S.sunnah.feed.filter((p) => p.id !== Number(el.dataset.id));
       toast(r.me.xp > before ? t('reviewed_paid')(r.me.xp - before) : t('reviewed_pending'));
       draw();
-    } catch (e) { toast(errText(e)); await enterTab('sunnah'); }
+    } catch (e) { toast(errText(e)); await enterTab('bonus'); }
     return;
   }
   if (act === 'report') {

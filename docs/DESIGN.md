@@ -7,16 +7,28 @@
 - `events` – idempotent one-off XP grants (`lecture`, `referral`, `circle`, `quest`); the primary key stops double-claiming.
 - `badges`, `lectures`, `lecture_starts`.
 
-## Game economy
-| Source | XP |
-|---|---|
-| each durood | 1 |
-| invitee's first durood (paid to referrer) | 500 |
-| finish a lecture | 300 (configurable per lecture) |
-| claim Seerat Circle sign-up | 1,000 (once) |
-| daily quests | goal 50, lecture 100 |
-| weekly quests | 5 active days 200, invite 250 |
+## Game economy (priority: durood > sunnah > seerah)
+Durood is the primary activity; sunnah is a secondary quest and seerah a small bonus. All values live in `CFG` / `MILESTONE_XP` / `questState` in `server/game.js`.
 
+| Source | XP | Tier |
+|---|---|---|
+| each durood | 1 | durood |
+| daily goal quest | 100 | durood |
+| weekly total quest (7 × daily goal) | 300 | durood |
+| 5 active days in a week | 200 | durood |
+| invite quest (one new person this week) | 250 | durood |
+| invitee's first durood (paid to referrer) | 500 | durood / network |
+| personal durood milestone (1K / 10K / 100K / 1M) | 100 / 500 / 2,500 / 10,000 | durood |
+| streak badge (7 / 30 / 100 days) | 100 / 500 / 2,000 | durood |
+| collective milestone: what your invitees recited together (10K / 100K / 1M / 10M) | 500 / 2,500 / 10,000 / 50,000 | durood / network |
+| verified sunnah photo (poster) | 60 | sunnah |
+| reviewer whose vote matches the outcome | 5 | sunnah |
+| sunnah quests (post / review 3) | 30 / 15 | sunnah |
+| finish a lecture | 100 (set per lecture) + 30 quest | seerah |
+| claim Seerat Circle sign-up (once) | 300 | seerah |
+
+Collective milestones count only the downline's durood (`team_total - total`), never the member's own durood a second time.
+Leaderboards rank durood only; sunnah and seerah never affect ranks except through XP/level.
 Level n starts at `100·(n-1)²` XP. Titles repeat the top title after level 10.
 
 ## Sincerity (riya) safeguards

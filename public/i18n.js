@@ -47,6 +47,8 @@ export const I18N = {
     no_feed: 'Nothing to review right now. Thank you!', voted: 'Thank you for reviewing', reviewed_paid: (n) => `Review matched — +${n} XP`, reviewed_pending: 'Recorded. You earn XP if the final result matches your review.',
     reported: 'Reported. Thank you.', history: 'My sunnah posts', reviews_done: 'Reviews', sunnahs_verified: 'Sunnahs verified', confirms_so_far: 'confirmations',
     q_sunnah: 'Post today’s sunnah', q_review: 'Review 3 sunnah photos',
+    nav_bonus: 'Bonus', durood_quests: 'Durood quests', bonus_quests: 'Bonus quests', bonus_hint: 'Small extras: today’s sunnah and seerah. Durood always comes first.', see_bonus: 'Open bonus',
+    seerah_heading: 'Seerah', sunnah_heading: 'Sunnah quest', q_weekgoal: 'Reach your goal on all 7 days (weekly total)',
     reminder_note: 'Intention reminder: recite for the sake of Allah and His Messenger ﷺ, not for ranking.',
     titles: ['Musafir', 'Talib', 'Zakir', 'Mushtaq', 'Muhib', 'Aashiq', 'Khadim', 'Saalik', 'Arif', 'Muqarrab'],
     badge: {
@@ -57,8 +59,8 @@ export const I18N = {
       scholar1: ['Student', 'Finish a seerah lecture'], scholar10: ['Scholar', 'Finish 10 lectures'], circle: ['Circle Member', 'Join a Seerat Circle'],
       sunnah1: ['Sunnah Keeper', 'First verified sunnah'], sunnah7: ['Sunnah Seven', '7 verified sunnahs'], sunnah30: ['Sunnah Thirty', '30 verified sunnahs'],
       verifier10: ['Trusted Reviewer', '10 reviews matched the result'], verifier100: ['Pillar of Trust', '100 reviews matched the result'],
-      caravan10k: ['Caravan 10K', 'Your caravan reached 10,000'], caravan100k: ['Caravan 100K', 'Your caravan reached 100,000'],
-      caravan1m: ['Caravan 1M', 'Your caravan reached 1,000,000'], caravan10m: ['Caravan 10M', 'Your caravan reached 10,000,000'],
+      caravan10k: ['Caravan 10K', 'Those you invited recited 10,000 together'], caravan100k: ['Caravan 100K', 'Those you invited recited 100,000 together'],
+      caravan1m: ['Caravan 1M', 'Those you invited recited 1,000,000 together'], caravan10m: ['Caravan 10M', 'Those you invited recited 10,000,000 together'],
     },
     err: {
       no_sunnah: 'No sunnah is published for today', already_posted: 'You already posted today’s sunnah', duplicate_image: 'This photo has already been used', bad_image: 'That image could not be used. Take a new photo.', own_post: 'You cannot review your own post', already_voted: 'You already reviewed this', already_resolved: 'This post has already been decided', vote_cap: 'Daily review limit reached', bad_vote: 'Invalid choice', 
@@ -118,6 +120,8 @@ export const I18N = {
     no_feed: 'ابھی جائزے کے لیے کچھ نہیں۔ شکریہ!', voted: 'جائزے کا شکریہ', reviewed_paid: (n) => `جائزہ نتیجے کے مطابق رہا — ${n}+ ایکس پی`, reviewed_pending: 'درج ہو گیا۔ اگر حتمی نتیجہ آپ کے جائزے کے مطابق ہوا تو ایکس پی ملیں گے۔',
     reported: 'رپورٹ ہو گئی۔ شکریہ۔', history: 'میری سنت پوسٹس', reviews_done: 'جائزے', sunnahs_verified: 'تصدیق شدہ سنتیں', confirms_so_far: 'تصدیقات',
     q_sunnah: 'آج کی سنت پوسٹ کریں', q_review: '۳ سنت تصاویر کی تصدیق کریں',
+    nav_bonus: 'اضافی', durood_quests: 'درود کے مشن', bonus_quests: 'اضافی مشن', bonus_hint: 'چھوٹے اضافی کام: آج کی سنت اور سیرت۔ پہلی ترجیح ہمیشہ درود ہے۔', see_bonus: 'اضافی کھولیں',
+    seerah_heading: 'سیرت', sunnah_heading: 'سنت کا مشن', q_weekgoal: 'ہفتے کا ہدف پورا کریں (۷ دن کا مجموعہ)',
     reminder_note: 'نیت کی یاد دہانی: درود اللہ اور اس کے رسول ﷺ کی رضا کے لیے پڑھیں، رینکنگ کے لیے نہیں۔',
     titles: ['مسافر', 'طالب', 'ذاکر', 'مشتاق', 'محب', 'عاشق', 'خادم', 'سالک', 'عارف', 'مقرّب'],
     badge: {
@@ -128,8 +132,8 @@ export const I18N = {
       scholar1: ['طالب علم', 'ایک سیرت لیکچر مکمل کریں'], scholar10: ['عالم', '۱۰ لیکچرز مکمل کریں'], circle: ['رکنِ سرکل', 'سیرت سرکل میں شامل ہوں'],
       sunnah1: ['پاسدارِ سنت', 'پہلی تصدیق شدہ سنت'], sunnah7: ['سات سنتیں', '۷ تصدیق شدہ سنتیں'], sunnah30: ['تیس سنتیں', '۳۰ تصدیق شدہ سنتیں'],
       verifier10: ['معتبر جائزہ کار', '۱۰ جائزے نتیجے کے مطابق'], verifier100: ['اعتماد کا ستون', '۱۰۰ جائزے نتیجے کے مطابق'],
-      caravan10k: ['قافلہ ۱۰ ہزار', 'قافلہ ۱۰٬۰۰۰ تک پہنچا'], caravan100k: ['قافلہ ایک لاکھ', 'قافلہ ایک لاکھ تک پہنچا'],
-      caravan1m: ['قافلہ دس لاکھ', 'قافلہ دس لاکھ تک پہنچا'], caravan10m: ['قافلہ ایک کروڑ', 'قافلہ ایک کروڑ تک پہنچا'],
+      caravan10k: ['قافلہ ۱۰ ہزار', 'آپ کے بلائے ہوؤں نے مل کر ۱۰٬۰۰۰ پڑھے'], caravan100k: ['قافلہ ایک لاکھ', 'آپ کے بلائے ہوؤں نے مل کر ایک لاکھ پڑھے'],
+      caravan1m: ['قافلہ دس لاکھ', 'آپ کے بلائے ہوؤں نے مل کر دس لاکھ پڑھے'], caravan10m: ['قافلہ ایک کروڑ', 'آپ کے بلائے ہوؤں نے مل کر ایک کروڑ پڑھے'],
     },
     err: {
       no_sunnah: 'آج کے لیے کوئی سنت شائع نہیں', already_posted: 'آپ آج کی سنت پوسٹ کر چکے ہیں', duplicate_image: 'یہ تصویر پہلے استعمال ہو چکی ہے', bad_image: 'یہ تصویر استعمال نہیں ہو سکی۔ نئی تصویر لیں۔', own_post: 'آپ اپنی پوسٹ کا جائزہ نہیں لے سکتے', already_voted: 'آپ اس کا جائزہ لے چکے ہیں', already_resolved: 'اس پوسٹ کا فیصلہ ہو چکا ہے', vote_cap: 'روزانہ جائزوں کی حد پوری ہو گئی', bad_vote: 'غلط انتخاب', 

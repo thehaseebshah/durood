@@ -10,7 +10,7 @@ process.env.PUBLIC_CACHE_MS = '0';
 const { createServer } = await import('../server/index.js');
 const { cleanJpeg } = await import('../server/sunnah.js');
 const { audit } = await import('../server/audit.js');
-const { dayOf } = await import('../server/game.js');
+const { dayOf, CFG } = await import('../server/game.js');
 
 let server, base, n = 0;
 before(async () => {
@@ -107,8 +107,8 @@ test('three independent confirmations verify a post and pay poster and agreeing 
   assert.equal(last.outcome, 'verified');
 
   assert.equal((await api('GET', '/api/sunnah/today', { token: a.token })).mine.status, 'verified');
-  assert.equal(await xp(a), before.a + 150);
-  assert.equal(await xp(b), before.b + 20);
+  assert.equal(await xp(a), before.a + CFG.sunnahXp);
+  assert.equal(await xp(b), before.b + CFG.verifyXp);
   const meA = await api('GET', '/api/me', { token: a.token });
   assert.ok(meA.badges.includes('sunnah1'));
   assert.equal(meA.sunnah.verified, 1);
@@ -129,7 +129,7 @@ test('rejection pays only reviewers who matched the outcome, and nothing to the 
   assert.equal((await api('GET', '/api/sunnah/today', { token: f.token })).mine.status, 'rejected');
   assert.equal(await xp(f), xpBefore.f);
   assert.equal(await xp(g), xpBefore.g); // voted against the consensus
-  assert.equal(await xp(h), xpBefore.h + 20);
+  assert.equal(await xp(h), xpBefore.h + CFG.verifyXp);
   assert.deepEqual(audit().problems, []);
 });
 

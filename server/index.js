@@ -156,7 +156,7 @@ route('POST', '/api/admin/lectures', { auth: false, admin: true }, ({ body }) =>
   if (!/^[\w-]{11}$/.test(yt) || !body.title_en) throw new HttpError(400, 'bad_lecture');
   const r = run('INSERT INTO lectures (youtube_id, title_en, title_ur, speaker, min_seconds, xp, created_at) VALUES (?,?,?,?,?,?,?)',
     yt, String(body.title_en), String(body.title_ur || ''), String(body.speaker || ''),
-    Math.max(30, Number(body.min_seconds) || 600), Math.max(1, Number(body.xp) || 300), Date.now());
+    Math.max(30, Number(body.min_seconds) || 600), Math.max(1, Number(body.xp) || 100), Date.now());
   return { id: Number(r.lastInsertRowid) };
 });
 route('DELETE', '/api/admin/lectures/:id', { auth: false, admin: true }, ({ params }) => {
