@@ -100,6 +100,52 @@ CREATE TABLE IF NOT EXISTS lecture_starts (
   started_at INTEGER NOT NULL,
   PRIMARY KEY (user_id, lecture_id)
 ) WITHOUT ROWID;
+
+-- daily sunnah (content supplied by admins) and the photo posts that prove it was done
+CREATE TABLE IF NOT EXISTS sunnahs (
+  id         INTEGER PRIMARY KEY,
+  day        TEXT NOT NULL UNIQUE,
+  title_en   TEXT NOT NULL,
+  title_ur   TEXT NOT NULL DEFAULT '',
+  desc_en    TEXT NOT NULL DEFAULT '',
+  desc_ur    TEXT NOT NULL DEFAULT '',
+  source     TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS posts (
+  id          INTEGER PRIMARY KEY,
+  user_id     INTEGER NOT NULL REFERENCES users(id),
+  sunnah_id   INTEGER NOT NULL REFERENCES sunnahs(id),
+  file        TEXT NOT NULL,
+  sha256      TEXT NOT NULL UNIQUE,
+  status      TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','verified','rejected','expired','removed')),
+  confirms    INTEGER NOT NULL DEFAULT 0,
+  rejects     INTEGER NOT NULL DEFAULT 0,
+  reports     INTEGER NOT NULL DEFAULT 0,
+  created_day TEXT NOT NULL,
+  created_at  INTEGER NOT NULL,
+  resolved_at INTEGER,
+  UNIQUE (user_id, sunnah_id)
+);
+CREATE INDEX IF NOT EXISTS posts_feed ON posts(status, created_at);
+
+CREATE TABLE IF NOT EXISTS votes (
+  post_id    INTEGER NOT NULL REFERENCES posts(id),
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  vote       TEXT NOT NULL CHECK (vote IN ('confirm','reject')),
+  day        TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (post_id, user_id)
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS votes_user_day ON votes(user_id, day);
+
+CREATE TABLE IF NOT EXISTS reports (
+  post_id    INTEGER NOT NULL REFERENCES posts(id),
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (post_id, user_id)
+) WITHOUT ROWID;
 `);
 
 export const tx = (fn) => {

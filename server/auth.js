@@ -70,3 +70,6 @@ setInterval(() => {
   const now = Date.now();
   for (const [k, b] of buckets) if (b.reset < now) buckets.delete(k);
 }, 60_000).unref();
+
+// unguessable per-photo capability: only logged-in users ever receive these URLs (from the feed / their own history)
+export const photoSig = (postId) => crypto.createHmac('sha256', SECRET).update(`photo:${postId}`).digest('base64url').slice(0, 24);

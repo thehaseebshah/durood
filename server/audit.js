@@ -34,6 +34,24 @@ export function audit({ fix = false } = {}) {
       LEFT JOIN daily d ON d.user_id = l.user_id AND d.day = l.day WHERE d.user_id IS NULL`);
   for (const d of dailyBad) note('daily', d);
 
+  // sunnah verification: cached vote counts, statuses and payouts must all follow from the votes table
+  const N = CFG.confirmsNeeded;
+  for (const p of all(`SELECT p.id, p.status, p.confirms, p.rejects, p.user_id,
+        (SELECT COUNT(*) FROM votes v WHERE v.post_id = p.id AND v.vote = 'confirm') c,
+        (SELECT COUNT(*) FROM votes v WHERE v.post_id = p.id AND v.vote = 'reject') r,
+        (SELECT COUNT(*) FROM events e WHERE e.kind = 'sunnah' AND e.ref = CAST(p.id AS TEXT)) poster_paid,
+        (SELECT COUNT(*) FROM events e WHERE e.kind = 'verify' AND e.ref = CAST(p.id AS TEXT)) verifiers_paid
+      FROM posts p`)) {
+    if (p.confirms !== p.c || p.rejects !== p.r) note('post_votes', { post: p.id, stored: [p.confirms, p.rejects], ledger: [p.c, p.r] });
+    const verified = p.status === 'verified';
+    if (verified !== (p.poster_paid === 1)) note('post_payout', { post: p.id, status: p.status, posterPaid: p.poster_paid });
+    if (verified && p.c < N) note('post_status', { post: p.id, status: p.status, confirms: p.c });
+    if (p.status === 'rejected' && p.r < N) note('post_status', { post: p.id, status: p.status, rejects: p.r });
+    if (p.status === 'verified' && p.verifiers_paid !== p.c) note('verifier_payout', { post: p.id, expected: p.c, paid: p.verifiers_paid });
+    if (p.status === 'rejected' && p.verifiers_paid !== p.r) note('verifier_payout', { post: p.id, expected: p.r, paid: p.verifiers_paid });
+    if (['pending', 'expired', 'removed'].includes(p.status) && p.verifiers_paid) note('verifier_payout', { post: p.id, status: p.status, paid: p.verifiers_paid });
+  }
+
   const national = {
     stored: one('SELECT COALESCE(SUM(total), 0) n FROM users').n,
     ledger: one('SELECT COALESCE(SUM(count), 0) n FROM entries').n,

@@ -22,11 +22,14 @@ const S = {
   team: null,
   learn: null,
   player: null,
+  sunnah: null,
+  draft: null,
   error: '',
 };
 
 const BADGE_ICON = {
   first_step: '🌱', d1k: '📿', d10k: '🌙', d100k: '🌟', d1m: '👑', streak7: '🔥', streak30: '🔥', streak100: '🏔️',
+  sunnah1: '🌿', sunnah7: '🌳', sunnah30: '🏞️', verifier10: '🔎', verifier100: '🏛️',
   recruit1: '📣', recruit5: '🧭', recruit25: '🐪', scholar1: '📖', scholar10: '🎓', circle: '🕌',
   caravan10k: '🐫', caravan100k: '🐫', caravan1m: '🏜️', caravan10m: '🌍',
 };
@@ -144,7 +147,7 @@ function authView() {
 }
 
 function shell() {
-  const tabs = [['home', '🏠'], ['rank', '🏆'], ['caravan', '🐫'], ['learn', '📖'], ['me', '👤']];
+  const tabs = [['home', '🏠'], ['sunnah', '🌿'], ['rank', '🏆'], ['caravan', '🐫'], ['learn', '📖'], ['me', '👤']];
   return `
   <div class="topbar"><div class="in">
     <span class="brand">☪ ${t('app')}</span>
@@ -156,7 +159,7 @@ function shell() {
 }
 
 function view() {
-  return { home, rank, caravan, learn, me }[S.tab]();
+  return { home, sunnah, rank, caravan, learn, me }[S.tab]();
 }
 
 const bar = (pct) => `<div class="bar"><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div>`;
@@ -223,6 +226,51 @@ function quest(q) {
     <div class="grow"><div>${t('q_' + q.id)} <span class="tag">${t(q.period === 'day' ? 'daily' : 'weekly')}</span></div>
       ${bar((q.cur / q.goal) * 100)}<div class="muted">${N(`${fmt(q.cur)} / ${fmt(q.goal)}`)}</div></div>
     <b class="ok">${N('+' + q.xp)}</b>
+  </div>`;
+}
+
+function sunnah() {
+  const d = S.sunnah;
+  if (!d) return '<p class="muted center">…</p>';
+  const pick = (en, ur) => (S.lang === 'ur' && ur) || en;
+  const sn = d.today.sunnah, mine = d.today.mine, r = d.today.rules;
+  const statusTag = (st) => `<span class="tag">${t('st_' + st)}</span>`;
+  let action = '';
+  if (!sn) action = `<p class="muted">${t('no_sunnah')}</p>`;
+  else if (mine) action = `<div class="row between"><b>${t('your_post')}</b>${statusTag(mine.status)}</div>
+      <img class="shot" src="${esc(mine.photoUrl)}" alt="">
+      <div class="muted">${N(`${mine.confirms}/${r.confirmsNeeded}`)} ${t('confirms_so_far')}</div>`;
+  else if (S.draft) action = `<b>${t('photo_preview')}</b><img class="shot" src="${esc(S.draft)}" alt="">
+      <div class="row"><button class="gold" style="flex:1" data-act="postit" id="postit">${t('post_it')}</button><button class="alt" data-act="draftx">${t('cancel')}</button></div>`;
+  else action = `<label class="btn gold block" style="margin:0">${t('take_photo')}
+      <input type="file" accept="image/*" capture="environment" data-photo hidden></label>`;
+  return `
+  <div class="card">
+    <h2>🌿 ${t('sunnah_title')}</h2>
+    ${sn ? `<h3>${esc(pick(sn.titleEn, sn.titleUr))}</h3><p>${esc(pick(sn.descEn, sn.descUr))}</p>${sn.source ? `<div class="muted">${t('source')}: ${esc(sn.source)}</div>` : ''}` : ''}
+    <div class="spacer"></div>${action}
+    ${sn && !mine ? `<p class="hint">${t('photo_rules')}</p>` : ''}
+    ${sn ? `<p class="hint">${t('post_how')(r.confirmsNeeded, r.sunnahXp, r.verifyXp)}</p>` : ''}
+  </div>
+  <div class="card">
+    <h2>🔎 ${t('review_title')}</h2>
+    <p class="muted">${t('review_hint')}</p>
+    ${d.feed.length ? d.feed.map((p) => `
+      <div class="review" data-post="${p.id}">
+        <div class="muted">${esc(pick(p.titleEn, p.titleUr))}</div>
+        <img class="shot" loading="lazy" src="${esc(p.photoUrl)}" alt="">
+        <div class="row wrapx"><button style="flex:1" data-act="vote" data-id="${p.id}" data-v="confirm">${t('confirm')}</button>
+          <button class="alt" style="flex:1" data-act="vote" data-id="${p.id}" data-v="reject">${t('reject')}</button></div>
+        <button class="alt" style="margin-top:6px;padding:2px 10px;font-size:.8rem" data-act="report" data-id="${p.id}">${t('report_btn')}</button>
+      </div>`).join('') : `<p class="muted center">${t('no_feed')}</p>`}
+  </div>
+  <div class="card">
+    <h2>${t('history')}</h2>
+    <div class="grid3" style="margin-bottom:8px">
+      <div class="stat"><b>${fmt(S.me.sunnah.verified)}</b><span>${t('sunnahs_verified')}</span></div>
+      <div class="stat"><b>${fmt(S.me.sunnah.reviews)}</b><span>${t('reviews_done')}</span></div>
+    </div>
+    ${d.mine.length ? d.mine.map((p) => `<div class="quest"><div class="grow">${esc(pick(p.titleEn, p.titleUr))}<div class="muted">${esc(p.day)}</div></div>${statusTag(p.status)}</div>`).join('') : ''}
   </div>`;
 }
 
@@ -365,6 +413,10 @@ async function enterTab(tab) {
     if (tab === 'rank') { S.board.data = null; draw(); S.board.data = await api(`/leaderboard?type=${S.board.type}&period=${S.board.period}`); }
     if (tab === 'caravan') { S.team = await api('/team'); }
     if (tab === 'learn') { S.learn = await api('/lectures'); }
+    if (tab === 'sunnah') {
+      const [today, feed, mineList] = await Promise.all([api('/sunnah/today'), api('/feed'), api('/sunnah/mine'), refreshMe()]); // refreshMe: payouts happen when *others* review
+      S.sunnah = { today, feed: feed.posts, mine: mineList.posts };
+    }
     if (tab !== 'home') draw();
   } catch (e) { toast(errText(e)); }
 }
@@ -451,6 +503,36 @@ app.addEventListener('click', async (ev) => {
     return;
   }
 
+  if (act === 'draftx') { S.draft = null; return draw(); }
+  if (act === 'postit') {
+    el.disabled = true; el.textContent = t('posting');
+    try {
+      const r = await api('/sunnah/post', 'POST', { image: S.draft });
+      S.draft = null; S.me = r.me;
+      return enterTab('sunnah');
+    } catch (e) { toast(errText(e)); if (e.message === 'bad_image' || e.message === 'duplicate_image') S.draft = null; return draw(); }
+  }
+  if (act === 'vote') {
+    el.closest('.review').querySelectorAll('button').forEach((b) => { b.disabled = true; });
+    try {
+      const r = await api(`/posts/${el.dataset.id}/vote`, 'POST', { vote: el.dataset.v });
+      const before = S.me.xp;
+      S.me = r.me;
+      S.sunnah.feed = S.sunnah.feed.filter((p) => p.id !== Number(el.dataset.id));
+      toast(r.me.xp > before ? t('reviewed_paid')(r.me.xp - before) : t('reviewed_pending'));
+      draw();
+    } catch (e) { toast(errText(e)); await enterTab('sunnah'); }
+    return;
+  }
+  if (act === 'report') {
+    if (!confirm(t('report_ask'))) return;
+    try {
+      await api(`/posts/${el.dataset.id}/report`, 'POST');
+      S.sunnah.feed = S.sunnah.feed.filter((p) => p.id !== Number(el.dataset.id));
+      toast(t('reported')); draw();
+    } catch (e) { toast(errText(e)); }
+    return;
+  }
   if (act === 'circle') {
     try { const r = await api('/circle/claim', 'POST'); S.me = r.me; celebrate(r); draw(); } catch (e) { toast(errText(e)); }
     return;
@@ -519,6 +601,25 @@ app.addEventListener('submit', async (ev) => {
     if (kind === 'settings') toast(errText(e));
     else { S.error = errText(e); draw(); }
   }
+});
+
+// shrink and re-encode as JPEG in the browser (also drops camera metadata) before upload
+async function toJpegDataUrl(file) {
+  const bmp = await createImageBitmap(file);
+  const scale = Math.min(1, 1280 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  for (const q of [0.8, 0.6, 0.4]) {
+    const url = c.toDataURL('image/jpeg', q);
+    if (url.length * 0.75 < 1_300_000) return url;
+  }
+  throw new Error('bad_image');
+}
+app.addEventListener('change', async (ev) => {
+  const el = ev.target.closest('input[data-photo]');
+  if (!el || !el.files[0]) return;
+  try { S.draft = await toJpegDataUrl(el.files[0]); draw(); } catch (e) { toast(I18N[S.lang].err.bad_image); }
 });
 
 let checkTimer;

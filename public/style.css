@@ -100,3 +100,8 @@ nav.tabs button.on { color: var(--green); font-weight: 700; }
 .spacer { height: 6px; }
 
 .n { direction: ltr; unicode-bidi: isolate; display: inline-block; }
+
+.shot { width: 100%; max-height: 360px; object-fit: cover; border-radius: 12px; background: #e9eeea; margin: 8px 0; display: block; }
+.review { border-top: 1px solid var(--line); padding: 10px 0; }
+.review:first-of-type { border-top: 0; }
+nav.tabs button { font-size: .68rem; padding-inline: 0; }

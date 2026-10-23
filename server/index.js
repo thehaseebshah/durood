@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { db, tx } from './db.js';
 import { HttpError, hashPassword, checkPassword, signToken, verifyToken, rateLimit } from './auth.js';
 import { audit } from './audit.js';
+import * as sunnah from './sunnah.js';
 import { CFG, dayOf, logDurood, startLecture, completeLecture, claimCircle, getMe, leaderboard, teamView, publicStats } from './game.js';
 
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
@@ -28,9 +29,10 @@ export function normalizePhone(raw) {
 const routes = [];
 const route = (method, pattern, opts, handler) => {
   if (typeof opts === 'function') [handler, opts] = [opts, {}];
+  opts = { maxBody: 32_768, ...opts };
   const keys = [];
   const re = new RegExp('^' + pattern.replace(/:(\w+)/g, (_, k) => (keys.push(k), '([^/]+)')) + '$');
-  routes.push({ method, re, keys, auth: opts.auth !== false, admin: !!opts.admin, handler });
+  routes.push({ method, re, keys, auth: opts.auth !== false, admin: !!opts.admin, maxBody: opts.maxBody, handler });
 };
 
 const lang = (v) => (v === 'en' ? 'en' : 'ur');
@@ -131,6 +133,23 @@ route('POST', '/api/lectures/:id/complete', ({ user, params }) => {
 });
 route('POST', '/api/circle/claim', ({ user }) => ({ ...claimCircle(user), me: getMe(user) }));
 
+route('GET', '/api/sunnah/today', ({ user }) => sunnah.today(user));
+route('GET', '/api/sunnah/mine', ({ user }) => ({ posts: sunnah.mine(user) }));
+route('POST', '/api/sunnah/post', { maxBody: 2_400_000 }, ({ user, body }) => {
+  rateLimit(`post:${user}`, 10, 60e3);
+  const r = sunnah.createPost(user, body.image);
+  return { ...r, ...sunnah.today(user), me: getMe(user) };
+});
+route('GET', '/api/feed', ({ user }) => ({ posts: sunnah.feed(user) }));
+route('POST', '/api/posts/:id/vote', ({ user, params, body }) => {
+  const r = sunnah.vote(user, Number(params.id), body.vote);
+  return { ...r, me: getMe(user) };
+});
+route('POST', '/api/posts/:id/report', ({ user, params }) => sunnah.report(user, Number(params.id)));
+
+route('POST', '/api/admin/sunnahs', { auth: false, admin: true }, ({ body }) => ({ days: sunnah.addSunnahs(body.sunnahs ?? body) }));
+route('GET', '/api/admin/reported', { auth: false, admin: true }, () => ({ posts: sunnah.reportedPosts() }));
+route('POST', '/api/admin/posts/:id', { auth: false, admin: true }, ({ params, body }) => sunnah.moderate(Number(params.id), body.action));
 route('GET', '/api/admin/audit', { auth: false, admin: true }, () => audit());
 route('POST', '/api/admin/lectures', { auth: false, admin: true }, ({ body }) => {
   const yt = String(body.youtube_id || '').trim();
@@ -149,12 +168,12 @@ route('DELETE', '/api/admin/lectures/:id', { auth: false, admin: true }, ({ para
 // ---- server ---------------------------------------------------------------
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 
-async function readBody(req) {
+async function readBody(req, limit) {
   const chunks = [];
   let size = 0;
   for await (const c of req) {
     size += c.length;
-    if (size > 32_768) throw new HttpError(413, 'too_large');
+    if (size > limit) throw new HttpError(413, 'too_large');
     chunks.push(c);
   }
   if (!chunks.length) return {};
@@ -177,7 +196,7 @@ async function handleApi(req, res, url) {
     if (!id || !one('SELECT 1 FROM users WHERE id = ?', id)) throw new HttpError(401, 'unauthorized');
     ctx.user = id;
   }
-  if (req.method !== 'GET' && req.method !== 'DELETE') ctx.body = await readBody(req);
+  if (req.method !== 'GET' && req.method !== 'DELETE') ctx.body = await readBody(req, route_.maxBody);
   const out = await route_.handler(ctx);
   res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
   res.end(JSON.stringify(out));
@@ -204,11 +223,21 @@ async function handleStatic(req, res, url) {
   res.end(data);
 }
 
+async function handlePhoto(res, url) {
+  const m = /^\/photos\/(\d+)\/([\w-]+)$/.exec(url.pathname);
+  const file = m && sunnah.photoFile(Number(m[1]), m[2]);
+  if (!file) throw new HttpError(404, 'not_found');
+  const data = await readFile(file);
+  res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff' });
+  res.end(data);
+}
+
 export function createServer() {
   return http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, 'http://x');
       if (url.pathname.startsWith('/api/')) await handleApi(req, res, url);
+      else if (url.pathname.startsWith('/photos/') && req.method === 'GET') await handlePhoto(res, url);
       else if (req.method === 'GET' || req.method === 'HEAD') await handleStatic(req, res, url);
       else throw new HttpError(405, 'method_not_allowed');
     } catch (e) {

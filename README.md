@@ -47,6 +47,17 @@ curl -X POST $URL/api/admin/lectures -H "x-admin-key: $ADMIN_KEY" -H 'content-ty
 - **Seerat Circles & lectures:** circle link (claim bonus once), YouTube lectures embedded with server-verified minimum watch time, one reward per lecture.
 - **National meter:** total durood across everyone vs a target.
 
+## Daily sunnah with photo verification
+
+- An admin schedules one sunnah per day (`POST /api/admin/sunnahs`, single object or `{"sunnahs":[…]}` for bulk; fields `day` (YYYY-MM-DD, Pakistan time), `title_en`, `title_ur`, `desc_en`, `desc_ur`, `source`). **Content is deliberately not bundled** — supply texts and references that your scholars have checked.
+- Members photograph the sunnah (camera or gallery), preview it, and post — one post per sunnah. The browser re-encodes to JPEG; the server also strips all metadata (EXIF/GPS, comments), validates the file, and rejects a photo whose bytes were already used.
+- Other members review it in the **Verify others** feed: *confirm* or *doesn't look right*, or *report* for inappropriate content. Reviewers do not see current votes or the poster's name; least-reviewed posts are shown first so everything gets looked at.
+- **Rules (see `CFG` in `server/game.js`):** 3 distinct confirmations verify a post; 3 rejections reject it. On verification the poster gets +150 XP, and each reviewer *who voted with the final outcome* gets +20 XP (careless clicking earns nothing). You can't review your own post, vote twice, or exceed 30 reviews a day. Posts that don't reach a decision within 72 h expire with no payout. 3 reports hide a post pending admin review (`POST /api/admin/posts/:id` with `{"action":"restore"|"remove"}`; `GET /api/admin/reported`).
+- Extras: daily quests (post the sunnah, review 3), badges (Sunnah Keeper/Seven/Thirty, Trusted Reviewer, Pillar of Trust).
+- The audit (`npm run audit`) also checks that vote counts, post statuses and every sunnah/reviewer payout follow from the votes table.
+- Photos are stored in `UPLOAD_DIR` (default `data/uploads`) and served only through unguessable per-photo URLs that logged-in members receive; back this folder up with the database.
+- **Honest limit:** peer review confirms a photo *looks* like the sunnah, not that it was done sincerely or by that person. Treat verified counts as "peer-verified".
+
 ## Accuracy guarantees
 
 - **Append-only ledger.** Every reported durood is a row in `entries` (database triggers forbid updating or deleting it). `daily`, `users.total`, `users.team_total` and `users.xp` are caches derived from it.

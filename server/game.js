@@ -7,6 +7,11 @@ export const CFG = {
   maxDaily: 500_000,         // anti-cheat ceiling per person per day
   referralXp: 500,           // paid to the referrer when the invitee logs their first durood
   circleXp: 1000,
+  sunnahXp: 150,             // poster, once their photo is verified
+  verifyXp: 20,              // each reviewer whose vote matches the final outcome
+  confirmsNeeded: 3,         // distinct confirmations that verify a post (same number of rejects rejects it)
+  maxVotesPerDay: 30,
+  postWindowMs: 72 * 3600e3, // how long a post can collect reviews before it expires
   teamMaxDepth: Math.floor(Number(process.env.TEAM_MAX_DEPTH)) || 1000, // 1000 = effectively unlimited
   nationalTarget: Number(process.env.NATIONAL_TARGET || 100_000_000),
   circleUrl: process.env.CIRCLE_URL || '',
@@ -46,6 +51,11 @@ const BADGES = {
   scholar1: (s) => s.lectures >= 1,
   scholar10: (s) => s.lectures >= 10,
   circle: (s) => s.circle,
+  sunnah1: (s) => s.sunnahs >= 1,
+  sunnah7: (s) => s.sunnahs >= 7,
+  sunnah30: (s) => s.sunnahs >= 30,
+  verifier10: (s) => s.verifies >= 10,
+  verifier100: (s) => s.verifies >= 100,
   caravan10k: (s) => s.team_total >= 10_000,
   caravan100k: (s) => s.team_total >= 100_000,
   caravan1m: (s) => s.team_total >= 1_000_000,
@@ -60,10 +70,10 @@ const run = (sql, ...a) => db.prepare(sql).run(...a);
 function stats(userId) {
   const u = one('SELECT total, best_streak, team_total FROM users WHERE id = ?', userId);
   const count = (kind) => one('SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = ?', userId, kind).n;
-  return { ...u, referrals: count('referral'), lectures: count('lecture'), circle: count('circle') > 0 };
+  return { ...u, referrals: count('referral'), lectures: count('lecture'), sunnahs: count('sunnah'), verifies: count('verify'), circle: count('circle') > 0 };
 }
 
-function evalBadges(userId, fresh) {
+export function evalBadges(userId, fresh) {
   const s = stats(userId);
   for (const [code, test] of Object.entries(BADGES)) {
     if (test(s) && run('INSERT OR IGNORE INTO badges (user_id, code, earned_at) VALUES (?,?,?)', userId, code, Date.now()).changes) {
@@ -72,7 +82,7 @@ function evalBadges(userId, fresh) {
   }
 }
 
-function grant(userId, kind, ref, xp) {
+export function grant(userId, kind, ref, xp) {
   const r = run('INSERT OR IGNORE INTO events (user_id, kind, ref, day, xp, created_at) VALUES (?,?,?,?,?,?)', userId, kind, String(ref), dayOf(), xp, Date.now());
   if (r.changes) run('UPDATE users SET xp = xp + ? WHERE id = ?', xp, userId);
   return r.changes > 0;
@@ -85,6 +95,8 @@ function questState(u) {
   const lecturesToday = one("SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = 'lecture' AND day = ?", u.id, day).n;
   const daysWeek = one('SELECT COUNT(*) n FROM daily WHERE user_id = ? AND day >= ?', u.id, wk).n;
   const invitedWeek = one('SELECT COUNT(*) n FROM users WHERE referrer_id = ? AND created_day >= ?', u.id, wk).n;
+  const postedToday = one("SELECT COUNT(*) n FROM posts WHERE user_id = ? AND created_day = ? AND status != 'removed'", u.id, day).n;
+  const reviewsToday = one('SELECT COUNT(*) n FROM votes WHERE user_id = ? AND day = ?', u.id, day).n;
   const done = (id, key) => !!one("SELECT 1 FROM events WHERE user_id = ? AND kind = 'quest' AND ref = ?", u.id, `${id}:${key}`);
   const q = (id, period, xp, cur, goal) => {
     const key = period === 'day' ? day : wk;
@@ -93,12 +105,14 @@ function questState(u) {
   return [
     q('goal', 'day', 50, today, u.daily_goal),
     q('lecture', 'day', 100, lecturesToday, 1),
+    q('sunnah', 'day', 50, postedToday, 1),
+    q('review', 'day', 50, reviewsToday, 3),
     q('days5', 'week', 200, daysWeek, 5),
     q('invite', 'week', 250, invitedWeek, 1),
   ];
 }
 
-function settleQuests(userId) {
+export function settleQuests(userId) {
   const u = one('SELECT * FROM users WHERE id = ?', userId);
   for (const q of questState(u)) {
     if (!q.done && q.cur >= q.goal) grant(userId, 'quest', `${q.id}:${q.key}`, q.xp);
@@ -219,6 +233,10 @@ export function getMe(userId) {
     badges: all('SELECT code FROM badges WHERE user_id = ? ORDER BY earned_at', userId).map((b) => b.code),
     quests: questState(u).map(({ key, ...q }) => q),
     team: { members: team.members, direct, total: u.team_total },
+    sunnah: {
+      verified: one("SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = 'sunnah'", userId).n,
+      reviews: one('SELECT COUNT(*) n FROM votes WHERE user_id = ?', userId).n,
+    },
     pub: publicStats(),
   };
 }
