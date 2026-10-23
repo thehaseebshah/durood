@@ -1,6 +1,6 @@
 # Durood Qafila: product spec after the feature interview
 
-Status: decisions from the interview, plus items flagged **[CONFIRM]** where answers conflict or need a number. Nothing here is built yet except what already exists in the MVP.
+Status: decisions from the interview. **Step 1 (access and accuracy) is built**; steps 2 and 3 are not. See section 7 for what step 1 does exactly and the defaults I chose where the interview left a gap.
 
 ## 1. Principles
 1. **Durood first.** Everything else is secondary. The number box is the hero of Home.
@@ -92,3 +92,18 @@ Tabs (four): **Home, Ranks, Caravan, Me.** A bell in the header opens **News**.
 6. **Unverified email and reset links:** a mistyped email strands the account. *Default: send a confirmation link at sign-up that does not block login, so we know which emails work.*
 7. **Tap counter and the News bell** are my proposals. *Default: ship both.*
 8. **Removing opt-out is a one-way door for trust.** Members who joined expecting privacy will see exact counts. The in-app text should say so plainly before launch.
+
+## 7. Step 1 as built, with the defaults I chose
+Built and tested: invite-only sign-up (member, founder, public and waitlist codes), invite cap, branch suspension, edits with History, flags, password reset, email confirmation, account deletion, admin page, privacy notice (draft), ledger migration for older databases.
+
+Defaults I picked where the interview didn't say. Tell me if any is wrong:
+1. **Edits can't delete an entry** or set it to 0 (minimum 1), and members **can't add a missing entry for yesterday**, only change existing ones. Both keep streaks simple and accurate. Say so if "I forgot to log last night" must be possible.
+2. **Spike rule:** 10x the average day over the previous 7 days, only for members at least 7 days old, only when the day is at least 2,000, and not when the previous week was empty.
+3. **Flagged members' durood still counts** in caravan and national totals; only the public individual ranks hide them.
+4. **Invite cap** counts every 7-day streak ever reached (best streak), so it never shrinks.
+5. **Branch suspension** locks the member and everyone they invited out; their durood stays in every total.
+6. **Founder and waitlist codes** make a member the root of their own caravan.
+7. **Reset links** work once for one hour. The admin page can produce one to send over WhatsApp.
+8. **Deleted accounts** become `member_<id>`, can't be invited from, and drop off every board.
+9. The admin page is a normal web page at `/admin`; what protects it is the admin key on every API call. Use a long random `ADMIN_KEY`.
+10. The privacy notice wording is my draft and has bracketed gaps for the organiser's name and contact.

@@ -213,3 +213,28 @@ h3 .ico { vertical-align: -2px; }
 .big.l5 { font-size: 8.6rem; letter-spacing: -8px; }
 .big.l6 { font-size: 7.2rem; letter-spacing: -6px; }
 .big.l7 { font-size: 6rem; letter-spacing: -5px; }
+
+/* access, history, notices */
+.linkbtn { background: none; border: 0; padding: 0; color: var(--sig-text); font-weight: 700; text-decoration: underline; cursor: pointer; font-size: inherit; }
+.linkrow { margin: 14px 0 0; font-size: .86rem; color: var(--soft); }
+.note.foot { text-align: center; padding-bottom: 8px; } .note.foot a { color: var(--soft); }
+h3.in { margin-inline: -20px; margin-bottom: 12px; }
+form.plain { padding: 0 0 12px; }
+.flagnote, .notice { margin: 12px 20px 0; padding: 10px 12px; border-inline-start: 4px solid var(--sig); background: var(--sig-bg); font-size: .86rem; font-weight: 600; }
+.notice { border-color: var(--err); background: var(--err-bg); }
+.invleft { margin: 12px 20px 0; padding: 10px 12px; border: 1px solid var(--line); background: var(--cell); }
+.invleft b { font-size: 1.6rem; font-weight: 800; letter-spacing: -1px; margin-inline-end: 6px; font-variant-numeric: tabular-nums; }
+.invleft small { display: block; color: var(--soft); font-size: .76rem; margin-top: 2px; }
+.hday { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 20px; background: var(--cell); border-bottom: 1px solid var(--line); font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+html[lang=ur] .hday { text-transform: none; letter-spacing: 0; font-size: .9rem; }
+.hday b { font-size: 1.1rem; letter-spacing: -.5px; font-variant-numeric: tabular-nums; }
+.hrow { display: flex; align-items: center; gap: 12px; padding: 10px 20px; border-bottom: 1px solid var(--line); }
+.hrow .hc { font-size: 1.3rem; font-weight: 800; letter-spacing: -.5px; min-width: 72px; font-variant-numeric: tabular-nums; direction: ltr; }
+.hrow .ht { flex: 1; min-width: 0; font-size: .82rem; color: var(--soft); }
+.hrow .ht small { display: block; }
+.hrow .ht .tag { font-size: .62rem; padding: 0 5px; }
+.hrow.ed { background: var(--sig-bg); flex-wrap: wrap; }
+.edit { display: flex; gap: 6px; align-items: center; flex-basis: 100%; }
+.edit input { flex: 1; padding: 8px; }
+.blk.danger { border-color: var(--err); color: var(--err); } .blk.danger b { color: var(--err); }
+.wrap > form .muted { margin: 0 0 4px; }

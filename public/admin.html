@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Admin · Durood Qafila</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap">
+  <link rel="stylesheet" href="/style.css">
+  <script>
+    (function () {
+      var m = null; try { m = localStorage.getItem('mode'); } catch (e) {}
+      if (m !== 'dark' && m !== 'light') m = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-mode', m);
+    })();
+  </script>
+  <style>
+    body { padding-bottom: 40px; } .wrap { max-width: 880px; }
+    .bar2 { display: flex; gap: 8px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+    .bar2 input { flex: 1; min-width: 180px; }
+    .tabs2 { display: flex; border-bottom: 1px solid var(--line); overflow-x: auto; }
+    .tabs2 button { flex: 1; background: none; border: 0; padding: 14px 10px; font-weight: 700; color: var(--soft); border-bottom: 4px solid transparent; white-space: nowrap; }
+    .tabs2 button.on { color: var(--ink); border-bottom-color: var(--sig); }
+    .panel { padding: 0 20px 20px; }
+    .panel h3 { margin-inline: -20px; }
+    table { width: 100%; border-collapse: collapse; font-size: .84rem; margin-top: 8px; }
+    th { text-align: start; font-size: .68rem; text-transform: uppercase; letter-spacing: 1px; color: var(--soft); padding: 6px 8px; border-bottom: 2px solid var(--ink); }
+    td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    td .row { flex-wrap: wrap; }
+    .code2 { font: 800 1.15rem Inter, monospace; letter-spacing: 1px; }
+    .pillbox { display: inline-block; font-size: .68rem; font-weight: 700; border: 1.5px solid var(--ink); padding: 0 6px; margin-inline-end: 4px; }
+    .pillbox.bad { border-color: var(--err); color: var(--err); } .pillbox.ok { border-color: var(--sig); color: var(--sig-text); }
+    .inline { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; align-items: end; } .inline label { margin: 0 0 3px; } .inline > div { flex: 1; min-width: 140px; }
+    .msg { margin: 10px 0; padding: 10px 12px; background: var(--sig-bg); border-inline-start: 4px solid var(--sig); font-weight: 600; word-break: break-all; }
+    .empty { color: var(--soft); padding: 14px 0; }
+    .chip { margin: 2px 4px 2px 0; }
+  </style>
+</head>
+<body>
+<div class="hd"><span>Admin · Durood Qafila</span><span class="row"><button class="pill" id="mode">☾ / ☀</button><a class="pill" href="/" style="text-decoration:none">← App</a></span></div>
+<div class="wrap">
+  <div class="bar2"><input type="password" id="key" placeholder="Admin key" autocomplete="off"><button class="chip solid" id="save">Use key</button><button class="chip" id="auditBtn">Run audit</button></div>
+  <div id="audit"></div>
+  <div class="tabs2" id="tabs"></div>
+  <div class="panel" id="panel"></div>
+</div>
+<script type="module" src="/admin.js"></script>
+</body>
+</html>

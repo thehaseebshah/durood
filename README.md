@@ -12,6 +12,17 @@ npm start            # http://localhost:3000
 npm test             # API tests (in-memory DB)
 ```
 
+### Access, accuracy and accounts (step 1 of the spec)
+
+- **Invite-only sign-up.** A code is required. Codes are: a member's own username; an admin-issued **founder code** (optional label and max uses, revocable); the **public founders code** (one code, switch it on or off); and a single-use code created when the admin approves a **waitlist** request. Members start with **10 invites, +10 for every 7-day streak** they reach; founder and waitlist sign-ups never use up anyone's invites.
+- **No opt-out from ranks.** Everyone is ranked with exact counts and inviters see their invitees' name, city and counts. The only way off a public board is an admin **flag**.
+- **Flags.** A day over **20,000**, or over **10x the member's average day** for the previous 7 days (established members only, and only once the day is at least 2,000), hides the member from public ranks until an admin clears or confirms it. The durood still counts in every total.
+- **Edits.** A member can change their own entries from **today and yesterday**, to any number from 1 up. Nothing is overwritten: the ledger gets a reversing entry and a replacement, and the History section shows every change. Badges, quest XP and invite rewards already earned are not taken back.
+- **Password reset** by emailed single-use link (1 hour); **email confirmation** link at sign-up and when the address changes (never blocks login). The sender is configurable (below); with no provider the links are logged and the admin page can hand over a reset link to send on WhatsApp.
+- **Account deletion** (Me, then Delete account): name, phone and email are erased and the username becomes `member_<id>`; the durood stays in every total.
+- **Admin page** at `/admin` (needs the admin key; the API refuses everything without it): invite codes, public code, waitlist, flagged totals, members (suspend a member or a whole branch, hide, reset link), and a one-click ledger audit.
+- **Privacy notice** at `/privacy.html` (bilingual **draft** for the organisers to approve), linked from the footer.
+
 Environment variables:
 
 | Variable | Purpose |
@@ -23,6 +34,11 @@ Environment variables:
 | `CIRCLE_URL` | Seerat Circle sign-up link shown in the Learn tab |
 | `NATIONAL_TARGET` | Goal for the national meter (default 100,000,000) |
 | `TEAM_MAX_DEPTH` | Cap how deep a caravan counts (default unlimited) |
+| `INVITE_ONLY` | `0` allows open sign-up (development only; default is invite-only) |
+| `PUBLIC_FOUNDERS_CODE` | Seeds the public founders code on first start (change or switch off later on the admin page) |
+| `PUBLIC_URL` | Base URL used in emailed links, e.g. `https://qafila.example.org` |
+| `MAIL_PROVIDER` | `resend`, `sendgrid`, or unset for the log-only console sender |
+| `RESEND_API_KEY` / `SENDGRID_API_KEY`, `MAIL_FROM` | Credentials and sender for the chosen provider |
 | `TRUST_PROXY` | Set when behind a reverse proxy so rate limits use `X-Forwarded-For` |
 
 ### Installing on Android

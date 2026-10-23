@@ -334,6 +334,7 @@ async function handleApi(req, res, url) {
 
 async function handleStatic(req, res, url) {
   let rel = decodeURIComponent(url.pathname);
+  if (rel === '/admin') rel = '/admin.html';
   if (rel.endsWith('/')) rel += 'index.html';
   let file = path.normalize(path.join(PUBLIC_DIR, rel));
   if (!file.startsWith(PUBLIC_DIR)) throw new HttpError(403, 'forbidden');

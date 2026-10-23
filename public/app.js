@@ -8,14 +8,20 @@ const ls = {
 };
 
 const params = new URLSearchParams(location.search);
-if (params.get('ref')) ls.set('ref', params.get('ref').trim());
+const urlInvite = params.get('invite') || params.get('ref');
+if (urlInvite) ls.set('ref', urlInvite.trim());
 
 const S = {
   token: ls.get('token'),
   me: null,
   lang: ls.get('lang') || 'ur',
   tab: 'home',
-  authMode: params.get('ref') ? 'register' : 'login',
+  authMode: params.get('reset') ? 'reset' : urlInvite ? 'register' : 'login',
+  resetToken: params.get('reset') || '',
+  wait: false,
+  forgot: false,
+  history: null,
+  editing: null,
   ref: ls.get('ref') || '',
   refName: null,
   pending: Number(ls.get('pending')) || 0,
@@ -58,6 +64,7 @@ async function api(path, method = 'GET', body) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     if (res.status === 401 && S.token && data.error === 'unauthorized') logout(false);
+    if (res.status === 403 && data.error === 'suspended' && S.token) { logout(false); S.error = I18N[S.lang].err.suspended; draw(); }
     throw new Error(data.error || 'server_error');
   }
   return data;
@@ -105,43 +112,68 @@ function langToggle() {
   return `<span class="row"><button class="pill icon" data-act="scheme" aria-label="${t(isDark() ? 'mode_white' : 'mode_dark')}" title="${t(isDark() ? 'mode_white' : 'mode_dark')}">${isDark() ? ICON_SUN : ICON_MOON}</button><button class="pill" data-act="lang">${S.lang === 'ur' ? 'English' : 'اردو'}</button></span>`;
 }
 
+const footerLinks = () => `<p class="note foot"><a href="/privacy.html">${t('privacy')}</a></p>`;
+
 function authView() {
-  const reg = S.authMode === 'register';
+  const mode = S.authMode;
+  const tabs = mode === 'login' || mode === 'register';
+  const err = S.error ? `<div class="err">${esc(S.error)}</div>` : '';
+  const field = (label, name, type = 'text', extra = '') => `<label>${label}</label><input type="${type}" name="${name}" ${extra}>`;
+  let body = '';
+  if (mode === 'login') {
+    body = `<form class="sec" data-form="login" autocomplete="on">${err}
+      ${field(t('id_label'), 'id', 'text', 'autocapitalize="none" autocomplete="username" required dir="ltr"')}
+      ${field(t('password'), 'password', 'password', 'autocomplete="current-password" required dir="ltr"')}
+      <button class="blk" type="submit"><span>${t('login')}</span><b>→</b></button>
+      <p class="linkrow"><button type="button" class="linkbtn" data-act="mode" data-mode="forgot">${t('forgot')}</button></p></form>`;
+  } else if (mode === 'register') {
+    body = `<form class="sec" data-form="register" autocomplete="on">${err}
+      <label>${t('invite_code')}</label>
+      <input type="text" name="invite" value="${esc(S.ref)}" autocapitalize="characters" autocomplete="off" required data-check="invite" dir="ltr">
+      <div class="hint" id="rcheck">${S.refName ? `${t('invited_by')} <b>${esc(S.refName)}</b> ✓` : t('invite_hint')}</div>
+      <p class="linkrow">${t('no_code')} <button type="button" class="linkbtn" data-act="mode" data-mode="waitlist">${t('request_access')}</button></p>
+      <label>${t('username')}</label>
+      <input type="text" name="username" data-check="username" autocapitalize="none" autocomplete="username" maxlength="20" required dir="ltr">
+      <div class="hint" id="ucheck">${t('username_hint')}</div>
+      ${field(t('email'), 'email', 'email', 'autocomplete="email" required dir="ltr"')}
+      ${field(t('phone'), 'phone', 'tel', 'autocomplete="tel" required dir="ltr"')}
+      <div class="hint">${t('phone_hint')}</div>
+      ${field(t('city'), 'city', 'text', 'maxlength="40"')}
+      ${field(t('password'), 'password', 'password', 'autocomplete="new-password" minlength="6" required dir="ltr"')}
+      <button class="blk" type="submit"><span>${t('register')}</span><b>→</b></button></form>`;
+  } else if (mode === 'waitlist') {
+    body = `<div class="sec"><h3 class="in">${t('request_access')}</h3>${S.wait
+      ? `<p>${t('wait_done')}</p>`
+      : `<p class="muted">${t('waitlist_text')}</p><form data-form="waitlist" class="plain">${err}
+        ${field(t('name'), 'name', 'text', 'required maxlength="80"')}
+        ${field(t('phone'), 'phone', 'tel', 'required dir="ltr"')}
+        ${field(t('email'), 'email', 'email', 'dir="ltr"')}
+        ${field(t('city'), 'city', 'text', 'maxlength="40"')}
+        <button class="blk" type="submit"><span>${t('send_request')}</span><b>→</b></button></form>`}
+      <p class="linkrow"><button type="button" class="linkbtn" data-act="mode" data-mode="login">${t('back_login')}</button></p></div>`;
+  } else if (mode === 'forgot') {
+    body = `<div class="sec"><h3 class="in">${t('forgot')}</h3>${S.forgot
+      ? `<p>${t('forgot_done')}</p>`
+      : `<p class="muted">${t('forgot_text')}</p><form data-form="forgot" class="plain">${err}
+        ${field(t('email'), 'email', 'email', 'required autocomplete="email" dir="ltr"')}
+        <button class="blk" type="submit"><span>${t('send_link')}</span><b>→</b></button></form>`}
+      <p class="linkrow"><button type="button" class="linkbtn" data-act="mode" data-mode="login">${t('back_login')}</button></p></div>`;
+  } else if (mode === 'reset') {
+    body = `<div class="sec"><h3 class="in">${t('reset_title')}</h3><form data-form="reset" class="plain">${err}
+      ${field(t('new_password'), 'password', 'password', 'required minlength="6" autocomplete="new-password" dir="ltr"')}
+      <button class="blk" type="submit"><span>${t('save')}</span><b>→</b></button></form></div>`;
+  }
   return `
   <div class="hd"><span>${t('app')}</span>${langToggle()}</div>
   <div class="wrap">
     <div class="intro"><div class="arabic">${t('durood')}</div><p>${t('tagline')}</p></div>
-    <div class="seg">
-      <button class="${!reg ? 'on' : ''}" data-act="mode" data-mode="login">${t('login')}</button>
-      <button class="${reg ? 'on' : ''}" data-act="mode" data-mode="register">${t('register')}</button>
-    </div>
-    <form class="sec" data-form="${reg ? 'register' : 'login'}" autocomplete="on">
-      ${S.error ? `<div class="err">${esc(S.error)}</div>` : ''}
-      ${reg ? `
-        <label>${t('username')}</label>
-        <input type="text" name="username" data-check="username" autocapitalize="none" autocomplete="username" maxlength="20" required dir="ltr">
-        <div class="hint" id="ucheck">${t('username_hint')}</div>
-        <label>${t('email')}</label>
-        <input type="email" name="email" autocomplete="email" required dir="ltr">
-        <label>${t('phone')}</label>
-        <input type="tel" name="phone" autocomplete="tel" required dir="ltr">
-        <div class="hint">${t('phone_hint')}</div>
-        <label>${t('city')}</label>
-        <input type="text" name="city" maxlength="40">
-        <label>${t('password')}</label>
-        <input type="password" name="password" autocomplete="new-password" minlength="6" required dir="ltr">
-        <label>${t('referral')}</label>
-        <input type="text" name="referral" value="${esc(S.ref)}" autocapitalize="none" data-check="referral" dir="ltr">
-        <div class="hint" id="rcheck">${S.refName ? `${t('invited_by')} <b>${esc(S.refName)}</b> ✓` : t('no_referral')}</div>
-      ` : `
-        <label>${t('id_label')}</label>
-        <input type="text" name="id" autocapitalize="none" autocomplete="username" required dir="ltr">
-        <label>${t('password')}</label>
-        <input type="password" name="password" autocomplete="current-password" required dir="ltr">
-      `}
-      <button class="blk" type="submit"><span>${reg ? t('register') : t('login')}</span><b>→</b></button>
-    </form>
+    ${tabs ? `<div class="seg">
+      <button class="${mode === 'login' ? 'on' : ''}" data-act="mode" data-mode="login">${t('login')}</button>
+      <button class="${mode === 'register' ? 'on' : ''}" data-act="mode" data-mode="register">${t('register')}</button>
+    </div>` : ''}
+    ${body}
     <p class="note">${t('dedication')}</p>
+    ${footerLinks()}
   </div>`;
 }
 
@@ -166,6 +198,7 @@ function home() {
   const natPct = (m.pub.total / m.pub.target) * 100;
   const live = m.today + S.pending;
   return `
+  ${m.hiddenFromRanks ? `<div class="flagnote">${t('flagged')}</div>` : ''}
   <div class="band arabic">${t('durood')}</div>
   <div class="sub"><span>${t('today')}</span><span>${t('goal_word')} ${N(fmt(m.dailyGoal))}</span></div>
   <div class="big ${bigClass(live)}" id="big">${fmt(live)}</div>
@@ -295,7 +328,7 @@ function rank() {
 
 function caravan() {
   const m = S.me, tm = S.team;
-  const link = `${location.origin}/?ref=${m.username}`;
+  const link = `${location.origin}/?invite=${m.username}`;
   const down = m.team.total - m.total;
   const next = MILESTONES.find((x) => x > down) || MILESTONES.at(-1);
   const prev = MILESTONES.filter((x) => x <= down).at(-1) || 0;
@@ -304,6 +337,7 @@ function caravan() {
   <div class="code">${esc(m.username)}</div>
   <div class="muted" style="margin-top:12px">${t('your_link')}</div>
   <div class="link">${esc(link)}</div>
+  <div class="invleft"><b>${m.invites.left}</b> <span>${t('invites_left')} · ${N(`${m.invites.used} / ${m.invites.cap}`)}</span><small>${t('invites_next')(m.invites.nextAt)}</small></div>
   <div class="row" style="margin-top:12px"><button class="blk wa fill1" data-act="wa"><span class="lab">${uiIcon('share', 22, 1.8)} ${t('share_wa')}</span><b>→</b></button><button class="chip" data-act="copy" data-text="${esc(link)}">${t('copy')}</button></div>
 
   <h3>${t('caravan_title')}</h3>
@@ -337,13 +371,36 @@ function learn() {
   </div>`;
 }
 
+function historyBlock() {
+  const h = S.history;
+  if (!h) return '<p class="muted center">…</p>';
+  const time = (at) => new Date(at).toLocaleTimeString(S.lang === 'ur' ? 'en-GB' : 'en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Karachi' });
+  if (!h.days.length) return `<p class="note first">${t('hist_empty')}</p>`;
+  return h.days.map((d) => `
+    <div class="hday"><span>${d.day === h.today ? t('today') : d.day === h.yesterday ? t('yesterday') : esc(d.day)}</span><b>${fmt(d.total)}</b></div>
+    ${d.entries.map((e) => `
+      <div class="hrow ${S.editing === e.id ? 'ed' : ''}">
+        <span class="hc">${fmt(e.count)}</span>
+        <span class="ht">${time(e.at)}${e.edits.length ? ` <em class="tag">${t('edited')}</em><small>${t('was')} ${e.edits.map((x) => N(`${fmt(x.from)} → ${fmt(x.to)}`)).join(' · ')}</small>` : ''}</span>
+        ${d.editable ? (S.editing === e.id
+          ? `<span class="edit"><input type="number" id="editval" inputmode="numeric" min="1" value="${e.count}" dir="ltr"><button class="chip solid" data-act="editsave" data-id="${e.id}">${t('save')}</button><button class="chip" data-act="editx">${t('cancel')}</button></span>`
+          : `<button class="chip" data-act="edit" data-id="${e.id}">${t('edit')}</button>`) : ''}
+      </div>`).join('')}`).join('');
+}
+
 function me() {
   const m = S.me;
   const codes = Object.keys(I18N.en.badge).sort((x, y) => m.badges.includes(y) - m.badges.includes(x)); // earned first, then the usual order
   return `
   <div class="uname">${esc(m.username)}</div>
   <div class="muted" dir="ltr">${esc(m.email)} · ${esc(m.phone)}</div>
+  ${m.hiddenFromRanks ? `<div class="flagnote">${t('flagged')}</div>` : ''}
+  ${m.emailVerified ? '' : `<div class="notice">${t('email_unconfirmed')} <button class="linkbtn" data-act="resend">${t('resend')}</button></div>`}
   <div class="stats"><div><b>${m.level}</b><span>${t('level')}</span></div><div><b>${fmt(m.total)}</b><span>${t('total')}</span></div><div><b>${m.bestStreak}</b><span>${t('best_streak')}</span></div></div>
+
+  <h3>${t('hist_title')}</h3>
+  <p class="note first">${t('hist_hint')}</p>
+  ${historyBlock()}
 
   <h3>${t('badges')}</h3>
   <div class="badges">${codes.map((c) => { const got = m.badges.includes(c); return `<div class="badge ${got ? 'got' : ''}" title="${esc(t('badge')[c][1])}">${badgeSvg(c, got)}<b>${esc(t('badge')[c][0])}</b><span>${esc(t('badge')[c][1])}</span></div>`; }).join('')}</div>
@@ -354,11 +411,20 @@ function me() {
     <input type="number" name="dailyGoal" min="1" max="100000" value="${m.dailyGoal}" dir="ltr">
     <label>${t('city')}</label>
     <input type="text" name="city" maxlength="40" value="${esc(m.city)}">
-    <label class="check"><input type="checkbox" name="isPublic" ${m.isPublic ? 'checked' : ''}> ${t('public_toggle')}</label>
-    <div class="hint">${t('public_hint')}</div>
+    <label>${t('email')} <span class="tag ${m.emailVerified ? 'verified' : ''}">${m.emailVerified ? t('email_ok') : '!'}</span></label>
+    <input type="email" name="email" value="${esc(m.email)}" dir="ltr" required>
     <button class="blk" type="submit"><span>${t('save')}</span><b>→</b></button>
   </form>
-  <button class="blk out" data-act="logout" style="margin-top:12px"><span>${t('logout')}</span></button>`;
+  <button class="blk out" data-act="logout" style="margin-top:12px"><span>${t('logout')}</span></button>
+
+  <h3>${t('delete_title')}</h3>
+  <form data-form="delete">
+    <p class="muted">${t('delete_text')}</p>
+    <label>${t('password')}</label>
+    <input type="password" name="password" autocomplete="current-password" required dir="ltr">
+    <button class="blk out danger" type="submit"><span>${t('delete_btn')}</span></button>
+  </form>
+  ${footerLinks()}`;
 }
 
 function playerModal() {
@@ -387,6 +453,7 @@ async function enterTab(tab) {
   try {
     if (tab === 'rank') { S.board.data = null; draw(); S.board.data = await api(`/leaderboard?type=${S.board.type}&period=${S.board.period}`); }
     if (tab === 'caravan') { S.team = await api('/team'); }
+    if (tab === 'me') { S.history = await api('/history'); }
     if (tab === 'bonus') {
       const [today, feed, mineList, lectures] = await Promise.all([api('/sunnah/today'), api('/feed'), api('/sunnah/mine'), api('/lectures'), refreshMe()]); // refreshMe: payouts happen when *others* review
       S.sunnah = { today, feed: feed.posts, mine: mineList.posts };
@@ -443,7 +510,25 @@ app.addEventListener('click', async (ev) => {
     ls.set('mode', next);
     return draw();
   }
-  if (act === 'mode') { S.authMode = el.dataset.mode; S.error = ''; return draw(); }
+  if (act === 'mode') { S.authMode = el.dataset.mode; S.error = ''; S.wait = false; S.forgot = false; return draw(); }
+  if (act === 'edit') { S.editing = Number(el.dataset.id); draw(); $('#editval')?.focus(); return; }
+  if (act === 'editx') { S.editing = null; return draw(); }
+  if (act === 'editsave') {
+    const count = Number($('#editval').value);
+    const rid = `e-${crypto.randomUUID()}`; // one id per attempt: a retry after a dropped connection is applied once
+    el.disabled = true;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const r = await api(`/entries/${el.dataset.id}`, 'PATCH', { count, rid });
+        S.me = r.me; S.history = r.history; S.editing = null;
+        toast(t('saved')); return draw();
+      } catch (e) {
+        if (e.message === 'network' && attempt < 2) { await new Promise((ok) => setTimeout(ok, 800 * (attempt + 1))); continue; }
+        toast(errText(e)); el.disabled = false; return;
+      }
+    }
+  }
+  if (act === 'resend') { try { await api('/email/resend', 'POST'); toast(t('email_sent')); } catch (e) { toast(errText(e)); } return; }
   if (act === 'tab') return enterTab(el.dataset.tab);
   if (act === 'logout') return logout();
 
@@ -477,7 +562,7 @@ app.addEventListener('click', async (ev) => {
     if (el.dataset.period) S.board.period = el.dataset.period;
     return enterTab('rank');
   }
-  if (act === 'wa') return window.open(`https://wa.me/?text=${encodeURIComponent(t('share_text')(S.me.username, `${location.origin}/?ref=${S.me.username}`))}`, '_blank', 'noopener');
+  if (act === 'wa') return window.open(`https://wa.me/?text=${encodeURIComponent(t('share_text')(S.me.username, `${location.origin}/?invite=${S.me.username}`))}`, '_blank', 'noopener');
   if (act === 'copy') {
     try { await navigator.clipboard.writeText(el.dataset.text); toast(t('copied')); } catch { prompt('', el.dataset.text); }
     return;
@@ -569,16 +654,32 @@ app.addEventListener('submit', async (ev) => {
       setSession(r.token, r.me);
       draw();
     } else if (kind === 'register') {
-      const r = await api('/register', 'POST', { ...f, referral: (f.referral || '').trim(), lang: S.lang });
+      const r = await api('/register', 'POST', { ...f, invite: (f.invite || '').trim(), lang: S.lang });
       setSession(r.token, r.me);
       draw();
+    } else if (kind === 'waitlist') {
+      await api('/waitlist', 'POST', f);
+      S.wait = true; S.error = ''; draw();
+    } else if (kind === 'forgot') {
+      await api('/password/forgot', 'POST', { email: f.email });
+      S.forgot = true; S.error = ''; draw();
+    } else if (kind === 'reset') {
+      const r = await api('/password/reset', 'POST', { token: S.resetToken, password: f.password });
+      S.resetToken = ''; S.authMode = 'login';
+      history.replaceState(null, '', '/');
+      setSession(r.token, r.me); toast(t('reset_done'));
+      draw();
     } else if (kind === 'settings') {
-      S.me = await api('/me', 'PATCH', { dailyGoal: Number(f.dailyGoal), city: f.city, isPublic: !!f.isPublic });
+      S.me = await api('/me', 'PATCH', { dailyGoal: Number(f.dailyGoal), city: f.city, email: f.email });
       toast(t('saved'));
       draw();
+    } else if (kind === 'delete') {
+      if (!confirm(t('delete_confirm'))) { btn.disabled = false; return; }
+      await api('/me', 'DELETE', { password: f.password });
+      logout(false); S.authMode = 'login'; draw(); toast(t('deleted'));
     }
   } catch (e) {
-    if (kind === 'settings') toast(errText(e));
+    if (kind === 'settings' || kind === 'delete') { toast(errText(e)); btn.disabled = false; }
     else { S.error = errText(e); draw(); }
   }
 });
@@ -619,11 +720,11 @@ app.addEventListener('input', (ev) => {
       } catch { /* offline: server will validate */ }
     } else {
       const out = $('#rcheck');
-      if (!v) { out.className = 'hint'; out.textContent = t('no_referral'); return; }
+      if (!v) { out.className = 'hint'; out.textContent = t('invite_hint'); return; }
       try {
-        const r = await api(`/referrer?code=${encodeURIComponent(v)}`);
+        const r = await api(`/invite-check?code=${encodeURIComponent(v)}`);
         out.className = 'hint ' + (r.valid ? 'ok' : 'bad');
-        out.innerHTML = r.valid ? `${t('invited_by')} <b>${esc(r.username)}</b> ✓` : t('err').bad_referral;
+        out.innerHTML = r.valid ? (r.from ? `${t('invited_by')} <b>${esc(r.from)}</b> ✓` : `✓ ${t('invite_ok')}`) : esc(t('err')[r.reason] || t('err').bad_invite);
       } catch { /* ignore */ }
     }
   }, 350);
@@ -632,12 +733,17 @@ app.addEventListener('input', (ev) => {
 // ---- boot -----------------------------------------------------------------------
 async function boot() {
   applyLang();
-  if (S.ref) api(`/referrer?code=${encodeURIComponent(S.ref)}`).then((r) => { if (r.valid) { S.refName = r.username; if (!S.me) draw(); } }).catch(() => {});
+  if (S.ref) api(`/invite-check?code=${encodeURIComponent(S.ref)}`).then((r) => { if (r.valid && r.from) { S.refName = r.from; if (!S.me) draw(); } }).catch(() => {});
+  if (S.resetToken) logout(false); // a reset link always starts from signed-out
   if (S.token) {
     try { await refreshMe(); } catch { /* offline keeps login screen unless token is bad */ }
   }
   draw();
-  if (params.get('ref')) history.replaceState(null, '', '/');
+  const confirmToken = params.get('confirm');
+  if (confirmToken) {
+    try { await api('/email/confirm', 'POST', { token: confirmToken }); toast(t('email_confirmed')); if (S.token) await refreshMe().then(draw); } catch (e) { toast(errText(e)); }
+  }
+  if (urlInvite || params.get('reset') || confirmToken) history.replaceState(null, '', '/');
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
 boot();
