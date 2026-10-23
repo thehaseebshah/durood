@@ -1,0 +1,31 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Proto 7 · Ink and Calligraphy</title>
+<script src="common.js"></script>
+<style>
+:root{--paper:#faf8f3;--ink:#1a1a1a;--soft:#9a9a92;--gold:#b8860b}
+*{box-sizing:border-box;margin:0}body{background:var(--paper);color:var(--ink);font:16px system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;padding:22px 26px;user-select:none}
+html[lang=ur] body{font-family:'Noto Nastaliq Urdu','Noto Naskh Arabic',serif;line-height:1.9}
+.top{display:flex;justify-content:space-between;font-size:.8rem;color:var(--soft);letter-spacing:.5px}
+.ink{margin:auto 0;text-align:center;cursor:pointer}
+.ar{font:700 3.1rem/2 'Noto Naskh Arabic',serif;background:linear-gradient(to left,var(--gold) var(--p),#dcdad2 var(--p));-webkit-background-clip:text;background-clip:text;color:transparent;direction:rtl}
+.n{font-size:4.6rem;font-weight:200;margin-top:22px;font-variant-numeric:tabular-nums;letter-spacing:-2px}
+.cap{color:var(--soft);font-size:.85rem;margin-top:2px}
+.list{border-top:1px solid #e4e1d8;padding-top:14px;font-size:.88rem;color:var(--soft);display:grid;gap:7px}
+.list div{display:flex;justify-content:space-between}.list b{color:var(--ink);font-weight:500;font-variant-numeric:tabular-nums}
+.list .dim{opacity:.7}
+.hint{text-align:center;color:var(--soft);font-size:.75rem;margin:16px 0 4px}
+</style></head><body>
+<div class="top"><span>☪ <span id="app"></span></span><span id="st"></span></div>
+<div class="ink" id="ink"><div class="ar" id="ar"></div><div class="n" id="n"></div><div class="cap" id="cap"></div></div>
+<div class="hint" id="hint"></div>
+<div class="list">
+ <div><span id="l1"></span><b id="v1"></b></div><div><span id="l2"></span><b id="v2"></b></div><div><span id="l3"></span><b id="v3"></b></div>
+ <div class="dim"><span id="l4"></span><b>⁦0 / 1⁩</b></div><div class="dim"><span id="l5"></span><b>⁦0 / 1⁩</b></div>
+</div>
+<script>
+const $=(i)=>document.getElementById(i);let c=Number(new URLSearchParams(location.search).get('c'))||DATA.today;
+$('app').textContent=t('app');$('st').textContent=DATA.streak+' '+t('streak');$('ar').textContent=DATA.arabic;$('cap').textContent=t('today')+' · '+t('of')+' \u2066'+fmt(DATA.goal)+'\u2069';
+$('hint').textContent=t('tap');$('l1').textContent=t('week');$('v1').textContent=fmt(DATA.week);$('l2').textContent=t('rank');$('v2').textContent=DATA.rank;$('l3').textContent=t('caravan');$('v3').textContent=fmt(DATA.caravanTotal);
+$('l4').textContent=t('sunnah')+' · '+t('post');$('l5').textContent=t('seerah')+' · '+t('watch');
+function draw(){ $('n').textContent=fmt(c); $('ar').style.setProperty('--p',Math.min(100,c/DATA.goal*100)+'%') }
+$('ink').onclick=()=>{c++;draw()};draw();
+</script></body></html>

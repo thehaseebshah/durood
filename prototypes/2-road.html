@@ -1,0 +1,38 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Proto 2 · Road to Madinah</title>
+<script src="common.js"></script>
+<style>
+:root{--bg:#10231c;--ink:#e9f1ea;--soft:#8fb0a0;--gold:#e7c35c;--line:#2b4a3d}
+*{box-sizing:border-box;margin:0}body{background:var(--bg);color:var(--ink);font:16px system-ui,sans-serif;min-height:100vh;padding:18px 22px 110px}
+html[lang=ur] body{font-family:'Noto Nastaliq Urdu','Noto Naskh Arabic',serif;line-height:1.9}
+.top{display:flex;justify-content:space-between;color:var(--soft);font-size:.85rem}
+h1{font-size:2.6rem;font-weight:300;margin-top:14px;font-variant-numeric:tabular-nums}h1 small{font-size:.9rem;color:var(--soft);font-weight:400;margin-inline-start:8px}
+.road{position:relative;margin:22px 0 0;padding-inline-start:46px}
+.road:before{content:"";position:absolute;inset-inline-start:15px;top:8px;bottom:8px;width:0;border-inline-start:2px dashed var(--line)}
+.road .done:before{content:""}
+.stop{position:relative;padding:10px 0 18px}
+.stop:before{content:"";position:absolute;inset-inline-start:-37px;top:14px;width:16px;height:16px;border-radius:50%;background:var(--bg);border:2px solid var(--line)}
+.stop.passed:before{background:var(--soft);border-color:var(--soft)}
+.stop.here:before{background:var(--gold);border-color:var(--gold);box-shadow:0 0 0 7px rgba(231,195,92,.18)}
+.stop b{font-weight:500}.stop span{display:block;font-size:.8rem;color:var(--soft)}
+.stop.here b{color:var(--gold);font-size:1.15rem}.stop.far{opacity:.45}
+.mates{display:flex;gap:4px;margin-top:6px}.mates i{width:8px;height:8px;border-radius:50%;background:var(--soft)}
+.bonus{margin-top:6px;padding-top:14px;border-top:1px solid var(--line);color:var(--soft);font-size:.85rem;display:flex;gap:16px}
+.cta{position:fixed;inset-inline:22px;bottom:18px;background:var(--gold);color:#241a00;border:0;border-radius:999px;padding:16px;font:600 1.05rem system-ui;text-align:center}
+html[lang=ur] .cta{font-family:'Noto Nastaliq Urdu',serif}
+</style></head><body>
+<div class="top"><span>☪ <span id="app"></span></span><span>🔥 <span id="st"></span></span></div>
+<h1><span id="c"></span><small id="u"></small></h1>
+<div class="road" id="road"></div>
+<div class="bonus"><span>🌿 <span id="su"></span></span><span>📖 <span id="se"></span></span></div>
+<div class="cta" id="cta"></div>
+<script>
+const $=(i)=>document.getElementById(i);let c=DATA.today;
+$('app').textContent=t('app');$('st').textContent=DATA.streak+' '+t('streak');$('su').textContent=t('post');$('se').textContent=t('watch');
+$('u').textContent=t('today');$('cta').textContent='\u2066+1\u2069 · '+t('tap');
+const names=STR[L].titles, thresholds=[0,100,400,900,1600,2500];
+function draw(){ $('c').textContent=fmt(c);
+ $('road').innerHTML=names.map((n,i)=>{const lvl=i+1,cur=DATA.level;const cls=lvl<cur?'passed':lvl===cur?'here':lvl>cur+2?'far':'';
+  const xp=lvl===cur?`<span>\u2066${fmt(DATA.xp)} / ${fmt(DATA.next)} XP\u2069</span><div class="mates">${[...Array(5)].map(()=>'<i></i>').join('')}<span style="margin-inline-start:6px">\u2066+${DATA.members-5}\u2069 ${t('caravan')}</span></div>`:`<span>${t('stop')} ${lvl}</span>`;
+  return `<div class="stop ${cls}"><b>${n}</b>${xp}</div>`}).join('')}
+document.getElementById('cta').onclick=()=>{c++;draw()};draw();
+</script></body></html>

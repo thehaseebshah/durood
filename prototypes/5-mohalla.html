@@ -1,0 +1,43 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Proto 5 · Mohalla Street</title>
+<script src="common.js"></script>
+<style>
+:root{--sky:#1b2a49;--wall:#e8d8bd;--wall2:#d9c4a1;--lit:#ffd36b;--dark:#4b5469;--ink:#f4ecdc;--accent:#e07a3f}
+*{box-sizing:border-box;margin:0}body{background:var(--sky);color:var(--ink);font:16px system-ui,sans-serif;min-height:100vh;padding:18px 20px;display:flex;flex-direction:column}
+html[lang=ur] body{font-family:'Noto Nastaliq Urdu','Noto Naskh Arabic',serif;line-height:1.9}
+.top{display:flex;justify-content:space-between;font-size:.85rem;opacity:.75}
+.big{margin-top:12px;font-size:3rem;font-weight:300;font-variant-numeric:tabular-nums}.big small{font-size:.9rem;opacity:.7;margin-inline-start:8px}
+.street{margin-top:14px;display:grid;grid-template-columns:repeat(5,1fr);gap:10px 8px;align-items:end}
+.h{position:relative;background:var(--wall);border-radius:3px 3px 0 0;height:74px}
+.h:before{content:"";position:absolute;left:-3px;right:-3px;top:-8px;height:8px;background:var(--wall2);border-radius:2px 2px 0 0}
+.h .w{position:absolute;left:50%;top:14px;width:20px;height:26px;margin-left:-10px;border-radius:10px 10px 0 0;background:var(--dark)}
+.h.on .w{background:var(--lit);box-shadow:0 0 14px rgba(255,211,107,.6)}
+.h .d{position:absolute;left:50%;bottom:0;width:14px;height:16px;margin-left:-7px;background:var(--wall2)}
+.h.me{height:92px;outline:2px solid var(--accent);outline-offset:2px}.h.me .w{top:18px}
+.h.me:after{content:attr(data-l);position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:.7rem;color:var(--accent)}
+.legend{margin-top:26px;font-size:.82rem;opacity:.75}
+.recite{margin-top:16px;background:var(--accent);color:#2b1204;border:0;border-radius:12px;padding:15px;font:600 1.05rem system-ui;width:100%}
+html[lang=ur] .recite{font-family:'Noto Nastaliq Urdu',serif}
+.row{display:flex;gap:16px;margin-top:14px;font-size:.85rem;opacity:.8}
+.shops{margin-top:auto;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding-top:18px}
+.shop{border-radius:0 0 10px 10px;background:var(--wall);color:#3a2a14;text-align:center;padding:16px 4px 8px;font-size:.75rem;position:relative;margin-top:8px}
+.shop:before{content:"";position:absolute;left:0;right:0;top:-8px;height:12px;border-radius:6px 6px 0 0;background:repeating-linear-gradient(90deg,var(--accent) 0 12px,#f4ecdc 12px 24px)}
+.shop.big2{background:#f6e6c4;font-weight:700}
+.shop span{display:block;font-size:1.2rem}
+</style></head><body>
+<div class="top"><span>☪ <span id="app"></span></span><span>🔥 <span id="st"></span></span></div>
+<div class="big"><span id="n"></span><small id="cap"></small></div>
+<div class="street" id="street"></div>
+<div class="legend" id="lg"></div>
+<button class="recite" id="btn"></button>
+<div class="row"><span id="rk"></span><span id="su"></span><span id="se"></span></div>
+<div class="shops"><div class="shop big2"><span>🏠</span><b id="s1"></b></div><div class="shop"><span>🏆</span><b id="s2"></b></div><div class="shop"><span>🐫</span><b id="s3"></b></div><div class="shop"><span>🌿</span><b id="s4"></b></div></div>
+<script>
+const $=(i)=>document.getElementById(i);let c=DATA.today,me=false;
+$('app').textContent=t('app');$('st').textContent=DATA.streak+' '+t('streak');$('cap').textContent=t('today');
+$('btn').textContent='\u2066+1\u2069 · '+t('tap');$('rk').textContent=t('rank')+' '+DATA.rank;$('su').textContent='🌿 '+t('post');$('se').textContent='📖 '+t('watch');
+$('lg').textContent=DATA.lit+' / '+DATA.members+' '+t('lit');
+$('s1').textContent=t('home');$('s2').textContent=t('ranks');$('s3').textContent=t('caravan');$('s4').textContent=t('bonus');
+$('street').innerHTML=[...Array(15)].map((_,i)=>{const mine=i===7;return `<div class="h ${mine||i<DATA.lit-1&&i!==7?'on':''} ${mine?'me':''}" data-l="${t('you')}"><div class="w"></div><div class="d"></div></div>`}).join('').replace(/<div class="h  /,'<div class="h ');
+function draw(){ $('n').textContent=fmt(c) }
+$('btn').onclick=()=>{c++;draw()};draw();
+</script></body></html>

@@ -1,0 +1,47 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Proto 9 · Charbagh Garden</title>
+<script src="common.js"></script>
+<style>
+:root{--bg:#eef2e8;--ink:#1f3a2b;--bed:#cfe0c3;--bed2:#e3ead8;--water:#7fb6c9;--wdeep:#4f93ad;--soft:#6c7f6f;--gold:#c58f1d}
+*{box-sizing:border-box;margin:0}body{background:var(--bg);color:var(--ink);font:16px system-ui,sans-serif;min-height:100vh;padding:18px 18px 12px;display:flex;flex-direction:column}
+html[lang=ur] body{font-family:'Noto Nastaliq Urdu','Noto Naskh Arabic',serif;line-height:1.8}
+.top{display:flex;justify-content:space-between;color:var(--soft);font-size:.85rem;padding:0 4px}
+.plan{position:relative;margin-top:14px;aspect-ratio:1;width:100%;border:2px solid var(--ink);border-radius:6px;background:var(--bed2);overflow:hidden}
+.chan-h,.chan-v{position:absolute;background:var(--water)}.chan-h{left:0;right:0;top:calc(50% - 7px);height:14px}.chan-v{top:0;bottom:0;left:calc(50% - 7px);width:14px}
+.bed{position:absolute;width:calc(50% - 7px);height:calc(50% - 7px);background:var(--bed);display:grid;place-items:center;text-align:center;font-size:.78rem;color:var(--ink);padding:6px;cursor:default}
+.bed span{display:block;font-size:1.3rem}.bed small{color:var(--soft);display:block;font-size:.72rem}
+.tl{left:0;top:0}.tr{right:0;top:0}.bl{left:0;bottom:0}.br{right:0;bottom:0}
+.tl,.tr{background:#d8e6cc;opacity:.9}.tr{opacity:.75}
+.pool{position:absolute;left:50%;top:50%;width:50%;height:50%;transform:translate(-50%,-50%);background:var(--ink);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);cursor:pointer}
+.wbox{position:absolute;inset:3px;background:#fff;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);overflow:hidden}
+.water{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(var(--water),var(--wdeep));transition:height .25s}
+.pc{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;z-index:2;pointer-events:none}
+.pc b{display:block;font-size:2rem;font-weight:500;font-variant-numeric:tabular-nums;color:#0d2a38;line-height:1}.pc small{font-size:.7rem;color:#0d2a38}
+.legend{display:flex;justify-content:space-between;margin-top:12px;font-size:.82rem;color:var(--soft);padding:0 2px}
+.info{margin-top:12px;display:grid;gap:6px;font-size:.9rem}.info div{display:flex;justify-content:space-between;border-bottom:1px solid #dbe3d1;padding-bottom:6px}.info b{font-weight:600;font-variant-numeric:tabular-nums}
+.nav{margin-top:auto;padding-top:12px;display:flex;justify-content:space-around;font-size:.72rem;color:var(--soft)}
+.nav span{text-align:center}.nav b{display:block;font-size:1.2rem;font-weight:400}.nav .on{color:var(--ink);font-weight:700}
+</style></head><body>
+<div class="top"><span>☪ <span id="app"></span></span><span>🔥 <span id="st"></span></span></div>
+<div class="plan">
+ <div class="bed tl"><div><span>🌿</span><b id="b1"></b><small id="b1s"></small></div></div>
+ <div class="bed tr"><div><span>📖</span><b id="b2"></b><small id="b2s"></small></div></div>
+ <div class="bed bl"><div><span>🐫</span><b id="b3"></b><small id="b3s"></small></div></div>
+ <div class="bed br"><div><span>🏆</span><b id="b4"></b><small id="b4s"></small></div></div>
+ <div class="chan-h"></div><div class="chan-v"></div>
+ <div class="pool" id="pool"><div class="wbox"><div class="water" id="water"></div></div></div>
+ <div class="pc"><b id="n"></b><small id="cap"></small></div>
+</div>
+<div class="legend"><span id="lg"></span><span id="tp"></span></div>
+<div class="info"><div><span id="i1"></span><b id="v1"></b></div><div><span id="i2"></span><b id="v2"></b></div></div>
+<div class="nav"><span class="on"><b>🏠</b><i id="n1"></i></span><span><b>🏆</b><i id="n2"></i></span><span><b>🐫</b><i id="n3"></i></span><span><b>🌿</b><i id="n4"></i></span><span><b>👤</b><i id="n5"></i></span></div>
+<script>
+const $=(i)=>document.getElementById(i);let c=DATA.today;
+$('app').textContent=t('app');$('st').textContent=DATA.streak+' '+t('streak');
+$('b1').textContent=t('sunnah');$('b1s').textContent='0 / 1';$('b2').textContent=t('seerah');$('b2s').textContent='0 / 1';
+$('b3').textContent=t('caravan');$('b3s').textContent=DATA.members+' '+t('members');$('b4').textContent=t('ranks');$('b4s').textContent='#'+DATA.rank;
+$('cap').textContent=t('today');$('lg').textContent=t('durood')+' · '+t('goal')+' \u2066'+fmt(DATA.goal)+'\u2069';$('tp').textContent=t('tap');
+$('i1').textContent=t('week');$('v1').textContent=fmt(DATA.week);$('i2').textContent=t('total');$('v2').textContent=fmt(DATA.total);
+['home','ranks','caravan','bonus','me'].forEach((k,i)=>$('n'+(i+1)).textContent=t(k));
+function draw(){ $('n').textContent=fmt(c); $('water').style.height=Math.min(100,c/DATA.goal*100)+'%' }
+$('pool').onclick=()=>{c++;draw()};draw();
+</script></body></html>

@@ -1,0 +1,49 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Proto 1 · Tasbih Thread</title>
+<script src="common.js"></script>
+<style>
+:root{--bg:#f4efe4;--ink:#1d3a2f;--gold:#c9962b;--line:#d8cfba;--soft:#8a8f84}
+*{box-sizing:border-box;margin:0}body{background:var(--bg);color:var(--ink);font:16px system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;padding:20px 22px 0;user-select:none}
+html[lang=ur] body{font-family:'Noto Nastaliq Urdu','Noto Naskh Arabic',serif;line-height:1.9}
+.top{display:flex;justify-content:space-between;font-size:.85rem;color:var(--soft)}
+.count{font-size:5.2rem;font-weight:200;text-align:center;line-height:1;margin-top:26px;letter-spacing:-2px;font-variant-numeric:tabular-nums}
+.sub{text-align:center;color:var(--soft);font-size:.9rem;margin-top:6px}
+svg.thread{width:100%;height:330px;margin-top:6px;touch-action:manipulation}
+.necklace{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin:4px 0 14px}
+.necklace i{width:9px;height:9px;border-radius:50%;background:var(--gold)}
+.necklace i.half{background:transparent;border:1.5px solid var(--gold)}
+.pillars{margin-top:auto;border-top:1px solid var(--line);padding:14px 0 18px}
+.p1{display:flex;justify-content:space-between;align-items:baseline;font-size:1.05rem;font-weight:600}
+.p1 small{font-weight:400;color:var(--soft)}
+.p2{display:flex;gap:18px;margin-top:8px;color:var(--soft);font-size:.82rem}
+.cthread{display:flex;gap:6px;align-items:center;margin:10px 0 0}.cthread b{font-weight:600;color:var(--ink);font-size:.82rem;margin-inline-end:4px}
+.cthread i{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--line)}.cthread i.on{background:var(--ink);border-color:var(--ink)}.cthread i.me{background:var(--gold);border-color:var(--gold)}
+</style></head><body>
+<div class="top"><span>☪ <span id="app"></span></span><span id="streak"></span></div>
+<div class="count" id="count"></div><div class="sub" id="sub"></div>
+<svg class="thread" id="thread" viewBox="0 0 340 300"></svg>
+<div class="necklace" id="neck"></div>
+<div class="pillars">
+ <div class="p1"><span id="d"></span><small id="gl"></small></div>
+ <div class="p2"><span>🌿 <span id="su"></span></span><span>📖 <span id="se"></span></span></div>
+ <div class="cthread" id="ct"></div>
+</div>
+<script>
+let c = DATA.today; const N = 33;
+const $=(i)=>document.getElementById(i);
+$('app').textContent=t('app'); $('streak').textContent='🔥 '+DATA.streak+' '+t('streak');
+$('d').textContent=t('durood'); $('gl').textContent='\u2066'+fmt(c)+' / '+fmt(DATA.goal)+'\u2069 · '+t('goal'); $('su').textContent=t('post'); $('se').textContent=t('watch');
+// beads sit on a sagging string
+const P=[[18,50],[170,330],[322,50]];
+const pts=[...Array(N)].map((_,i)=>{const u=i/(N-1),a=(1-u)*(1-u),b=2*(1-u)*u,c=u*u;return [a*P[0][0]+b*P[1][0]+c*P[2][0],a*P[0][1]+b*P[1][1]+c*P[2][1]]});
+function draw(){
+  const done=c%N, loops=Math.floor(c/N);
+  $('count').textContent=fmt(c);
+  $('sub').textContent=t('loop')+' \u2066'+(loops+1)+' · '+done+' / '+N+'\u2069';
+  $('thread').innerHTML='<path d="M18 50 Q170 330 322 50" fill="none" stroke="#b9ae92" stroke-width="1.5"/>'+pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="${i<done?8:6.5}" fill="${i<done?'#c9962b':'#f4efe4'}" stroke="${i<done?'#9a6f12':'#b9ae92'}" stroke-width="1.5"/>`).join('');
+  $('neck').innerHTML=[...Array(loops)].map(()=>'<i></i>').join('')+(done?'<i class="half"></i>':'');
+  $('gl').textContent='\u2066'+fmt(c)+' / '+fmt(DATA.goal)+'\u2069 · '+t('goal');
+}
+$('thread').addEventListener('click',()=>{c++;draw()});
+$('ct').innerHTML='<b>'+t('caravan')+'</b>'+[...Array(DATA.members)].map((_,i)=>`<i class="${i===3?'me':i<DATA.lit?'on':''}"></i>`).join('');
+draw();
+</script></body></html>

@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Proto 3 · Manuscript</title>
+<script src="common.js"></script>
+<style>
+:root{--paper:#f7f1e1;--ink:#2a2217;--gold:#b88a1e;--soft:#8c7e63;--green:#1f5a45}
+*{box-sizing:border-box;margin:0}body{background:#e5dcc4;min-height:100vh;display:grid;place-items:center;padding:14px;font:16px Georgia,'Times New Roman',serif;color:var(--ink)}
+html[lang=ur] body{font-family:'Noto Nastaliq Urdu','Noto Naskh Arabic',serif;line-height:1.9}
+.page{position:relative;width:100%;max-width:362px;aspect-ratio:362/760;background:var(--paper);box-shadow:0 2px 0 #d4c8a6,0 14px 30px rgba(60,40,10,.18);padding:34px 30px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.frame{position:absolute;inset:10px;pointer-events:none}.frame rect{fill:none;stroke-linecap:round}
+.folio{font-size:.78rem;letter-spacing:2px;text-transform:uppercase;color:var(--soft)}
+.ar{font:400 1.7rem/2.1 'Noto Naskh Arabic',serif;color:var(--green);margin-top:16px}
+.num{font-size:4.4rem;font-weight:400;line-height:1;margin-top:12px;font-variant-numeric:oldstyle-nums}
+.cap{font-style:italic;color:var(--soft);margin-top:4px;font-size:.95rem}
+.seal{margin:20px 0 6px;width:84px;height:84px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#d7a73a,#9c6f12);color:#fff7dc;display:grid;place-items:center;font-size:.8rem;box-shadow:0 4px 0 #7b560b;cursor:pointer;border:0}
+.rule{width:60%;border-top:1px solid var(--gold);margin:16px 0 12px;position:relative}.rule:after{content:"❖";position:absolute;left:50%;top:-.7em;transform:translateX(-50%);background:var(--paper);color:var(--gold);padding:0 8px;font-size:.8rem}
+.margin{font-size:.88rem;font-style:italic;color:var(--soft);line-height:1.7}
+.margin b{font-style:normal;color:var(--ink)}
+.days{display:flex;gap:6px;margin-top:auto}.days i{width:26px;height:34px;border:1px solid var(--gold);border-radius:2px;position:relative}.days i.f{background:linear-gradient(var(--gold),#d9b24f)}.days i.t{outline:2px solid var(--green);outline-offset:2px}
+.foot{font-size:.75rem;color:var(--soft);margin-top:10px}
+</style></head><body>
+<div class="page">
+ <svg class="frame" id="frame" viewBox="0 0 342 740" preserveAspectRatio="none"><rect x="2" y="2" width="338" height="736" stroke="#e1d6b5" stroke-width="1.5"/><rect id="prog" x="2" y="2" width="338" height="736" stroke="#b88a1e" stroke-width="3"/></svg>
+ <div class="folio" id="fo"></div>
+ <div class="ar">اللّٰهُمَّ صَلِّ عَلٰى مُحَمَّدٍ<br>وَعَلٰى اٰلِ مُحَمَّدٍ</div>
+ <div class="num" id="n"></div><div class="cap" id="cap"></div>
+ <button class="seal" id="seal"></button>
+ <div class="rule"></div>
+ <div class="margin"><div>🔥 <b id="st"></b></div><div id="q1"></div><div id="q2"></div><div id="rk"></div></div>
+ <div class="days" id="days"></div><div class="foot" id="ft"></div>
+</div>
+<script>
+const $=(i)=>document.getElementById(i);let c=DATA.today;
+const prog=$('prog'),len=2*(338+736);prog.setAttribute('stroke-dasharray',len);
+$('fo').textContent='☪ '+t('app');$('cap').textContent=t('today')+' · '+t('of')+' \u2066'+fmt(DATA.goal)+'\u2069';$('seal').textContent='\u2066+1\u2069';
+$('st').textContent=DATA.streak+' '+t('streak');$('q1').textContent='🌿 '+t('post');$('q2').textContent='📖 '+t('watch');$('rk').textContent=t('rank')+': '+DATA.rank;
+$('ft').textContent=t('folio')+' · '+fmt(DATA.week);
+$('days').innerHTML=[1,1,1,1,1,1,0].map((f,i)=>`<i class="${f?'f':''} ${i===6?'t':''}"></i>`).join('');
+function draw(){ $('n').textContent=fmt(c); prog.setAttribute('stroke-dashoffset',len*(1-Math.min(1,c/DATA.goal))); }
+$('seal').onclick=()=>{c++;draw()};draw();
+</script></body></html>

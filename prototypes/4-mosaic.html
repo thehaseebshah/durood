@@ -1,0 +1,41 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Proto 4 · Geometric Mosaic</title>
+<script src="common.js"></script>
+<style>
+:root{--bg:#fbfaf7;--ink:#14213d;--a:#0e6b5c;--b:#d9a441;--c:#14213d;--empty:#ebe8df;--soft:#7b8191}
+*{box-sizing:border-box;margin:0}body{background:var(--bg);color:var(--ink);font:16px system-ui,sans-serif;min-height:100vh;padding:20px 22px}
+html[lang=ur] body{font-family:'Noto Nastaliq Urdu','Noto Naskh Arabic',serif;line-height:1.9}
+.top{display:flex;justify-content:space-between;color:var(--soft);font-size:.85rem}
+h2{font-size:.78rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--soft);font-weight:600;margin:20px 0 8px}
+html[lang=ur] h2{letter-spacing:0;text-transform:none;font-size:.9rem}
+.big{display:flex;align-items:baseline;gap:8px}.big b{font-size:3.2rem;font-weight:300;font-variant-numeric:tabular-nums}.big span{color:var(--soft);font-size:.9rem}
+.grid{display:grid;grid-template-columns:repeat(16,1fr);gap:3px}
+.grid i{aspect-ratio:1;background:var(--empty);border-radius:2px}
+.grid i.a{background:var(--a)}.grid i.b{background:var(--b)}.grid i.c{background:var(--c)}
+.grid i.d{background:var(--a);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}.grid i.e{background:var(--b);clip-path:polygon(0 0,100% 0,0 100%)}
+.grid.mini{grid-template-columns:repeat(28,1fr);gap:2px}
+.btn{margin-top:16px;width:100%;background:var(--ink);color:#fff;border:0;border-radius:10px;padding:14px;font:600 1rem system-ui}
+.row{display:flex;gap:18px;color:var(--soft);font-size:.85rem;margin-top:14px}.row b{color:var(--ink)}
+.bonus{margin-top:14px;padding-top:12px;border-top:1px solid var(--empty);color:var(--soft);font-size:.85rem;display:flex;gap:16px}
+</style></head><body>
+<div class="top"><span>☪ <span id="app"></span></span><span>🔥 <span id="st"></span></span></div>
+<h2 id="h1"></h2>
+<div class="big"><b id="n"></b><span id="cap"></span></div>
+<div class="grid" id="mine"></div>
+<button class="btn" id="btn"></button>
+<h2 id="h2"></h2>
+<div class="grid mini" id="car"></div>
+<div class="row"><span><b id="m"></b> <span id="mm"></span></span><span><b id="ct"></b></span><span id="rk"></span></div>
+<div class="bonus"><span>🌿 <span id="su"></span></span><span>📖 <span id="se"></span></span></div>
+<script>
+const $=(i)=>document.getElementById(i);let c=DATA.today;const per=100,slots=192,pal=['a','b','c','d','e'];
+$('app').textContent=t('app');$('st').textContent=DATA.streak+' '+t('streak');$('h1').textContent=t('your')+' '+t('durood');$('h2').textContent=t('caravan');
+$('cap').textContent=t('today');$('btn').textContent='\u2066+1\u2069 · '+t('tap');$('m').textContent=DATA.members;$('mm').textContent=t('members');$('ct').textContent=fmt(DATA.caravanTotal);$('rk').textContent=t('rank')+' '+DATA.rank;
+$('su').textContent=t('post');$('se').textContent=t('watch');
+function tile(i){return pal[(i*7+Math.floor(i/16)*3)%5]}
+function draw(){ $('n').textContent=fmt(c);
+ const filled=Math.floor((DATA.total-DATA.today+c)/per);
+ $('mine').innerHTML=[...Array(slots)].map((_,i)=>`<i class="${i<filled?tile(i):''}"></i>`).join('');
+ $('car').innerHTML=[...Array(28*8)].map((_,i)=>`<i class="${i<Math.floor(DATA.caravanTotal/430)?tile(i):''}"></i>`).join('');
+}
+$('btn').onclick=()=>{c++;draw()};draw();
+</script></body></html>
