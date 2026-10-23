@@ -1,0 +1,33 @@
+<!doctype html><html><head><meta charset="utf-8"><title>I · Field Clear</title><script src="common.js"></script><script src="ui.js"></script>
+<style>
+:root{--deep:#0d3b2e;--cream:#f1e9d4;--ink:#12261e;--soft:#6b7a70;--gold:#d9a93b}
+*{box-sizing:border-box;margin:0}body{background:var(--cream);color:var(--ink);font:14px 'Inter',system-ui,sans-serif;padding-bottom:84px;user-select:none}
+html[lang=ur] body{font-family:'Noto Nastaliq Urdu','Noto Naskh Arabic',serif;line-height:1.7}
+.hero{background:var(--deep);color:var(--cream);padding:20px 22px 26px;border-radius:0 0 28px 28px;position:relative;overflow:hidden}
+.top{display:flex;justify-content:space-between;font-size:.8rem;opacity:.8}
+.n{font-size:6rem;font-weight:200;letter-spacing:-5px;line-height:1;margin-top:18px;font-variant-numeric:tabular-nums}
+.cap{opacity:.75;font-size:.85rem;margin-top:4px}html[lang=ur] .cap{margin-top:24px}
+.track{height:12px;background:rgba(241,233,212,.18);border-radius:999px;margin-top:18px;overflow:hidden}.track i{display:block;height:100%;background:var(--cream);border-radius:999px;width:0;transition:width .2s}html[dir=rtl] .track i{margin-inline-start:auto}
+.go{margin-top:18px;background:var(--gold);color:#2a1d00;border:0;width:100%;border-radius:16px;padding:17px;font:700 1.05rem 'Inter',system-ui;cursor:pointer}html[lang=ur] .go{font-family:'Noto Nastaliq Urdu',serif}
+.mini{display:flex;gap:10px;padding:18px 22px 0}.mini div{flex:1}.mini b{display:block;font-size:1.2rem;font-weight:600;font-variant-numeric:tabular-nums}.mini span{font-size:.72rem;color:var(--soft)}
+.sec{padding:0 22px}h3{margin:22px 0 4px;font-size:.78rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--soft)}html[lang=ur] h3{text-transform:none;letter-spacing:0;font-size:.95rem}
+.q{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid rgba(18,38,30,.14)}.q .dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--deep);flex:none}.q.d .dot{background:var(--deep)}
+.q .t{flex:1}.q .t small{display:block;color:var(--soft);font-variant-numeric:tabular-nums}.q .p{font-weight:600;color:var(--deep)}.q.bonus{opacity:.55}
+.car{display:flex;gap:5px;margin-top:6px}.car i{width:100%;height:10px;border-radius:3px;background:rgba(18,38,30,.15)}.car i.on{background:var(--deep)}.carm{display:flex;justify-content:space-between;margin-top:8px;font-size:.85rem}
+.nav{position:fixed;inset:auto 0 0;background:var(--cream);border-top:1px solid rgba(18,38,30,.14);display:flex}.nav span{flex:1;text-align:center;padding:10px 0 12px;color:var(--soft);font-size:.7rem}.nav span svg{display:block;margin:0 auto 2px}.nav em{font-style:normal}.nav .on{color:var(--deep);font-weight:700}
+</style></head><body>
+<div class="hero"><div class="top"><span id="app"></span><span id="st"></span></div><div class="n" id="n"></div><div class="cap" id="cap"></div><div class="track"><i id="bar"></i></div><button class="go" id="go"></button></div>
+<div class="mini"><div><b id="s1"></b><span id="s1l"></span></div><div><b id="s2"></b><span id="s2l"></span></div><div><b id="s3"></b><span id="s3l"></span></div></div>
+<div class="sec"><h3 id="h1"></h3><div id="dq"></div><h3 id="h2"></h3><div id="bq"></div><h3 id="h3"></h3><div class="car" id="car"></div><div class="carm"><span id="cm"></span><b id="ct"></b></div></div>
+<div id="nav"></div>
+<script>
+const $=(i)=>document.getElementById(i);let c=qs(DATA.today);
+$('app').textContent=t('app');$('st').textContent=DATA.streak+' '+t('streak');$('cap').textContent=t('today')+' · '+t('goalword')+' '+ltr(fmt(DATA.goal));$('go').textContent=t('tap')+'  '+ltr('+1');
+$('s1').textContent=fmt(DATA.week);$('s1l').textContent=t('week');$('s2').textContent='#'+DATA.rank;$('s2l').textContent=t('rankw');$('s3').textContent=fmt(DATA.total);$('s3l').textContent=t('total');
+const row=(q,b)=>`<div class="q ${q[1]>=q[2]?'d':''} ${b?'bonus':''}"><span class="dot"></span><span class="t">${t(q[0])}<small>${ltr(fmt(q[1])+' / '+fmt(q[2]))}</small></span><span class="p">${ltr('+'+q[3])}</span></div>`;
+$('h1').textContent=t('dq');$('dq').innerHTML=Q.durood.map((q)=>row(q)).join('');$('h2').textContent=t('bq');$('bq').innerHTML=Q.bonus.map((q)=>row(q,1)).join('');
+$('h3').textContent=t('caravan');$('car').innerHTML=[...Array(DATA.members)].map((_,i)=>`<i class="${i<DATA.lit?'on':''}"></i>`).join('');$('cm').textContent=ltr(DATA.lit+' / '+DATA.members)+' '+t('lit');$('ct').textContent=fmt(DATA.caravanTotal);
+$('nav').innerHTML=navHTML();
+function draw(){$('n').textContent=fmt(c);$('bar').style.width=Math.min(100,c/DATA.goal*100)+'%'}
+$('go').onclick=()=>{c++;draw()};draw();
+</script></body></html>

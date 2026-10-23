@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8"><title>G · Swiss Clear</title><script src="common.js"></script><script src="ui.js"></script>
+<style>
+:root{--ink:#0b0b0b;--g:#00a86b;--soft:#6f6f6a;--rule:#0b0b0b}
+*{box-sizing:border-box;margin:0}body{background:#fff;color:var(--ink);font:14px 'Inter',Helvetica,Arial,sans-serif;padding-bottom:84px;user-select:none}
+html[lang=ur] body{font-family:'Noto Nastaliq Urdu','Noto Naskh Arabic',serif;line-height:1.7}
+.hd{display:flex;justify-content:space-between;padding:16px 20px;border-bottom:2px solid var(--rule);font-weight:700;font-size:.75rem;text-transform:uppercase;letter-spacing:1.2px}html[lang=ur] .hd{text-transform:none;letter-spacing:0}
+.sub{display:flex;justify-content:space-between;padding:14px 20px 0;font-weight:600;font-size:.8rem}.sub span:last-child{color:var(--soft);font-weight:400}
+.big{padding:0 20px;font-size:8.6rem;font-weight:800;letter-spacing:-7px;line-height:1;font-variant-numeric:tabular-nums;margin-top:6px}html[lang=ur] .big{font-family:system-ui;letter-spacing:-2px;font-size:7.6rem}
+.bar{height:10px;background:#e6e6e6;margin:12px 20px 0;position:relative}.bar i{position:absolute;inset:0 auto 0 0;background:var(--g)}html[dir=rtl] .bar i{inset:0 0 0 auto}
+.btn{margin:16px 20px 0;background:var(--ink);color:#fff;padding:20px;font-weight:700;font-size:1.05rem;display:flex;justify-content:space-between;cursor:pointer}.btn b{color:#3ddc97}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);margin-top:18px;border-top:2px solid var(--rule);border-bottom:1px solid var(--rule)}.stats div{padding:12px 20px;border-inline-end:1px solid var(--rule)}.stats div:last-child{border:0}.stats b{display:block;font-size:1.3rem;font-weight:800;font-variant-numeric:tabular-nums}.stats span{font-size:.72rem;color:var(--soft)}
+h3{padding:20px 20px 8px;font-size:.75rem;text-transform:uppercase;letter-spacing:1.2px}html[lang=ur] h3{text-transform:none;letter-spacing:0;font-size:.95rem}
+.q{display:flex;align-items:center;gap:12px;padding:12px 20px;border-top:1px solid #d9d9d9}.q .bx{width:18px;height:18px;border:2px solid var(--ink);flex:none}.q.d .bx{background:var(--g);border-color:var(--g)}
+.q .t{flex:1}.q .t small{display:block;color:var(--soft);font-variant-numeric:tabular-nums}.q .p{font-weight:700;color:var(--g)}
+.q.bonus{opacity:.55}.q.bonus .p{color:var(--soft)}
+.car{display:flex;gap:5px;padding:4px 20px 0}.car i{flex:1;height:12px;background:#e6e6e6}.car i.on{background:var(--ink)}.carm{padding:8px 20px 0;display:flex;justify-content:space-between;font-size:.85rem}
+.nav{position:fixed;inset:auto 0 0;background:#fff;border-top:2px solid var(--rule);display:flex}.nav span{flex:1;text-align:center;padding:10px 0 12px;color:var(--soft);font-size:.7rem}.nav span svg{display:block;margin:0 auto 2px}.nav em{font-style:normal}.nav .on{color:var(--ink);font-weight:700;box-shadow:inset 0 3px 0 var(--g)}
+</style></head><body>
+<div class="hd"><span id="app"></span><span id="st"></span></div>
+<div class="sub"><span id="today"></span><span id="goal"></span></div>
+<div class="big" id="n"></div><div class="bar"><i id="bar"></i></div>
+<div class="btn" id="btn"><span id="bt"></span><b></b></div>
+<div class="stats"><div><b id="s1"></b><span id="s1l"></span></div><div><b id="s2"></b><span id="s2l"></span></div><div><b id="s3"></b><span id="s3l"></span></div></div>
+<h3 id="h1"></h3><div id="dq"></div>
+<h3 id="h2"></h3><div id="bq"></div>
+<h3 id="h3"></h3><div class="car" id="car"></div><div class="carm"><span id="cm"></span><span id="ct"></span></div>
+<div id="nav"></div>
+<script>
+const $=(i)=>document.getElementById(i);let c=qs(DATA.today);
+$('app').textContent=t('app');$('st').textContent=DATA.streak+' '+t('streak');$('today').textContent=t('today');$('goal').textContent=t('goalword')+' '+ltr(fmt(DATA.goal));
+$('bt').textContent=t('tap');$('btn').querySelector('b').textContent=ltr('+1');
+$('s1').textContent=fmt(DATA.week);$('s1l').textContent=t('week');$('s2').textContent='#'+DATA.rank;$('s2l').textContent=t('rankw');$('s3').textContent=fmt(DATA.total);$('s3l').textContent=t('total');
+const row=(q,b)=>`<div class="q ${q[1]>=q[2]?'d':''} ${b?'bonus':''}"><span class="bx"></span><span class="t">${t(q[0])}<small>${ltr(fmt(q[1])+' / '+fmt(q[2]))}</small></span><span class="p">${ltr('+'+q[3])}</span></div>`;
+$('h1').textContent=t('dq');$('dq').innerHTML=Q.durood.map((q)=>row(q)).join('');$('h2').textContent=t('bq');$('bq').innerHTML=Q.bonus.map((q)=>row(q,1)).join('');
+$('h3').textContent=t('caravan');$('car').innerHTML=[...Array(DATA.members)].map((_,i)=>`<i class="${i<DATA.lit?'on':''}"></i>`).join('');$('cm').textContent=ltr(DATA.lit+' / '+DATA.members)+' '+t('lit');$('ct').textContent=fmt(DATA.caravanTotal);
+$('nav').innerHTML=navHTML();
+function draw(){$('n').textContent=c;$('bar').style.width=Math.min(100,c/DATA.goal*100)+'%'}
+$('btn').onclick=()=>{c++;draw()};draw();
+</script></body></html>
