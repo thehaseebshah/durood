@@ -57,7 +57,8 @@ function useToken(raw, kind) {
 const tokenFor = (id) => signToken(id, one('SELECT token_ver v FROM users WHERE id = ?', id).v);
 const lang = (v) => (v === 'en' ? 'en' : 'ur');
 
-route('GET', '/api/username-check', { auth: false }, ({ query }) => {
+route('GET', '/api/username-check', { auth: false }, ({ query, ip }) => {
+  rateLimit(`uc:${ip}`, 120, 60e3);
   const u = String(query.get('u') || '');
   if (!USERNAME.test(u) || isReserved(u)) return { ok: false, reason: 'bad_username' };
   return { ok: !one('SELECT 1 FROM users WHERE username = ?', u) };

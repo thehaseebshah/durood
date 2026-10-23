@@ -49,7 +49,7 @@ Fine for the planned launch (200 to 2,000 members) **once the integrity and secu
 21. Sockpuppets can farm XP (500 per invitee's first log, 3-confirmation photo checks). XP has no cash value and ranks use durood only, so this is low risk.
 
 ## Status after the before-launch fixes
-Fixed and tested: 1 (hold + lower caps + public-code cap; phone verification still open), 6, 7, 8, 9, 10, 11, 12 (partly: register errors still say which field is taken), 14, 15 (retention and deletion; storage is still local disk, so use a persistent volume), 16, and the server timeouts in 5. The scheduler overlap guard from 17 is in; the reminder window and retry parts of 17 are not. Open: 2 and 3 (performance), 4, 13, 17 (rest), 18, 19, 20, 21.
+Fixed and tested: 1 (hold + lower caps + public-code cap; phone verification still open), 6, 7, 8, 9, 10, 11, 12 (only the username check is now rate-limited; registration still says which email or phone is taken), 14, 15 (retention and deletion; storage is still local disk, so use a persistent volume), 16, and the server timeouts in 5. The scheduler overlap guard from 17 is in; the reminder window and retry parts of 17 are not. Open: 2 and 3 (performance), 4, 13, 17 (rest), 18, 19, 20, 21.
 
 ## Suggested order
 - **Before launch:** 1, 6, 7, 9, 10, 11, 14, 15 (retention at least), 16.
