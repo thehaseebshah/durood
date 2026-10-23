@@ -1,0 +1,18 @@
+/* G Dark: the same system at night */
+:root { --ink: #f4f1ea; --paper: #0b0b0b; --soft: #8f8f88; --rule: #f4f1ea; --hair: #2a2a28; --track: #2a2a28; --green: #19c58a; --green-ink: #0b0b0b; }
+html, body { background: var(--paper); color: var(--ink); }
+.hd, nav.tabs { background: var(--paper); }
+.blk { background: var(--ink); color: #0b0b0b; border-color: var(--ink); }
+.blk b { color: #0b6b4a; }
+.blk.out { background: transparent; color: var(--ink); } .blk.out b { color: var(--ink); }
+.wrap > .go, .blk.wa { background: var(--green); border-color: var(--green); color: #04261a; } .wrap > .go b, .blk.wa b { color: #04261a; }
+.wrap > .go:disabled { background: var(--ink); border-color: var(--ink); opacity: .25; }
+.chip { background: transparent; color: var(--ink); border-color: var(--ink); }
+.chip.solid { background: var(--ink); color: #0b0b0b; }
+input[type=text], input[type=email], input[type=tel], input[type=password], input[type=number] { background: #151513; color: var(--ink); border-color: var(--ink); }
+.q.d .bx { background: var(--green); border-color: var(--green); }
+.lb li.me { background: #0f2a20; } .badge.got { background: #0f2a20; } .badge { color: #55554f; }
+.link { background: #1a1a18; } .tag.verified { color: #04261a; }
+.err { background: #2a1210; } #toast { background: var(--ink); color: #0b0b0b; }
+.modal .box { background: var(--paper); }
+.band { border-bottom-color: var(--hair); }

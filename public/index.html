@@ -13,6 +13,13 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+  <script>
+    /* design review only: ?theme=signal|board|calm|geometry|dark loads an alternative stylesheet */
+    (function () {
+      var t = new URLSearchParams(location.search).get('theme');
+      if (t && /^[a-z]+$/.test(t)) document.head.insertAdjacentHTML('beforeend', '<link rel="stylesheet" href="/themes/' + t + '.css">');
+    })();
+  </script>
   <div id="app"></div>
   <div id="toast" role="status" aria-live="polite"></div>
   <script type="module" src="/app.js"></script>

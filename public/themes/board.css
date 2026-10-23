@@ -1,0 +1,34 @@
+/* G Board: a visible grid; every value sits in a ruled cell, like a departure board */
+.wrap { border-inline: 2px solid var(--ink); min-height: 100vh; }
+.hd { border-bottom: 2px solid var(--ink); }
+.band { border-bottom: 2px solid var(--ink); background: var(--track); }
+.sub { padding: 0; border-bottom: 2px solid var(--ink); }
+.sub > span { flex: 1; padding: 8px 20px; text-transform: uppercase; letter-spacing: 1.2px; font-size: .7rem; font-weight: 700; color: var(--ink); }
+.sub > span:last-child { border-inline-start: 1px solid var(--ink); text-align: end; color: var(--soft); }
+html[lang=ur] .sub > span { text-transform: none; letter-spacing: 0; font-size: .85rem; }
+.big { padding: 10px 20px 0; margin-top: 0; font-size: 9.4rem; letter-spacing: -8px; }
+#livebar { margin: 0; } #livebar .bar { height: 14px; border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); background: #fff; }
+.wrap > .tap { width: 100%; margin: 0; border-inline: 0; }
+.pendrow { padding: 0; border-bottom: 1px solid var(--ink); } .pendrow > span { padding: 10px 20px; }
+.wrap > .go { width: 100%; margin: 0; border-inline: 0; }
+.manual { padding: 10px 20px; border-bottom: 1px solid var(--ink); }
+.stats { margin-top: 0; border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); }
+.stats > div { border-inline-end: 1px solid var(--ink); }
+.lvl { margin: 0; padding: 10px 20px 12px; border-bottom: 2px solid var(--ink); }
+h3 { padding: 8px 20px; border-bottom: 1px solid var(--ink); background: var(--track); font-size: .7rem; }
+h3.row { display: flex; padding: 4px 20px; }
+.q { padding: 0; border-top: 0; border-bottom: 1px solid var(--ink); gap: 0; align-items: stretch; }
+.q .bx { align-self: center; margin: 0 14px 0 20px; } html[dir=rtl] .q .bx { margin: 0 20px 0 14px; }
+.q .t { padding: 12px 0; }
+.q .p { display: grid; place-items: center; min-width: 74px; border-inline-start: 1px solid var(--ink); background: #fff; }
+.q.d .p { background: var(--green); color: #fff; }
+.q.dim .p { background: transparent; }
+.rowlink { width: 100%; margin: 0; padding: 14px 20px; border-inline: 0; border-top: 0; border-bottom: 1px solid var(--ink); }
+.wrap > .row.between, .wrap > .bar, .wrap > .note { margin-inline: 20px; }
+.lb li { padding: 0; gap: 0; border-bottom: 1px solid var(--ink); }
+.rank { display: grid; place-items: center; width: 56px; align-self: stretch; border-inline-end: 1px solid var(--ink); }
+.name { padding: 12px 14px; } .score { padding: 0 20px; align-self: center; }
+.seg { border-bottom: 2px solid var(--ink); margin-top: 0; } .seg button { border-inline-end: 1px solid var(--ink); }
+.seg button:last-child { border-inline-end: 0; }
+.code { margin-inline: 0; padding-inline: 20px; }
+nav.tabs { border-top: 2px solid var(--ink); } nav.tabs button { border-inline-end: 1px solid var(--ink); } nav.tabs button:last-child { border-inline-end: 0; }

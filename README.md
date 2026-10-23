@@ -50,7 +50,7 @@ curl -X POST $URL/api/admin/lectures -H "x-admin-key: $ADMIN_KEY" -H 'content-ty
 
 ## UI style
 
-Swiss/International typographic style: heavy tabular numerals, hairline rules, flat black and green blocks, square corners, one type family (Inter; Nastaliq for Urdu with RTL layout). Durood leads each screen; sunnah and seerah sit in the *Bonus* tab. Screenshots of every screen in English and Urdu are in `docs/ui/`; earlier exploratory prototypes are in `prototypes/`.
+Swiss/International typographic style: heavy tabular numerals, hairline rules, flat black and green blocks, square corners, one type family (Inter; Nastaliq for Urdu with RTL layout). Durood leads each screen; sunnah and seerah sit in the *Bonus* tab. Design variations on the Swiss style (Signal, Board, Calm, Geometry, Dark) are theme layers in `public/themes/`, previewed by opening the app with `?theme=signal|board|calm|geometry|dark`; their screenshots are in `docs/ui/variants/`. Screenshots of every screen in English and Urdu are in `docs/ui/`; earlier exploratory prototypes are in `prototypes/`.
 
 ## Daily sunnah with photo verification
 
