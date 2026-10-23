@@ -9,6 +9,7 @@ import { audit } from './audit.js';
 import * as access from './access.js';
 import { sendMail, resetEmail, confirmEmail, inviteEmail, baseUrl } from './mail.js';
 import * as sunnah from './sunnah.js';
+import * as news from './news.js';
 import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, quizPassed, publicQuiz, parseQuestions, claimCircle, getMe, leaderboard, caravanBoard, teamView, publicStats } from './game.js';
 
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
@@ -119,6 +120,7 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
       run(`INSERT INTO ancestors (user_id, ancestor_id, depth)
            SELECT ?, ancestor_id, depth + 1 FROM ancestors WHERE user_id = ?`, uid, referrerId);
     }
+    if (referrerId) setImmediate(() => news.notifyJoined(referrerId, username));
     return { id: uid, confirmToken: makeToken(uid, 'confirm', 7 * 86400e3) };
   });
   // a confirmation link goes out but never blocks sign-in: it tells us which addresses actually work
@@ -151,6 +153,7 @@ route('PATCH', '/api/me', ({ user, body }) => {
       sendMail(confirmEmail(email, `${baseUrl()}/?confirm=${makeToken(user, 'confirm', 7 * 86400e3)}`));
     }
   }
+  if (body.reminderTime !== undefined) news.setReminder(user, body.reminderTime);
   if (body.city !== undefined) run('UPDATE users SET city = ? WHERE id = ?', String(body.city).trim().slice(0, 40), user);
   if (body.dailyGoal !== undefined) {
     const g = Number(body.dailyGoal);
@@ -271,6 +274,12 @@ route('POST', '/api/posts/:id/report', ({ user, params }) => sunnah.report(user,
 route('POST', '/api/admin/sunnahs', { auth: false, admin: true }, ({ body }) => ({ days: sunnah.addSunnahs(body.sunnahs ?? body) }));
 route('GET', '/api/admin/reported', { auth: false, admin: true }, () => ({ posts: sunnah.reportedPosts() }));
 route('POST', '/api/admin/posts/:id', { auth: false, admin: true }, ({ params, body }) => sunnah.moderate(Number(params.id), body.action));
+route('GET', '/api/news', ({ user }) => news.listNews(user));
+route('POST', '/api/news/seen', ({ user }) => news.markNewsSeen(user));
+route('GET', '/api/push/key', () => news.pushKey());
+route('POST', '/api/push/subscribe', ({ user, body }) => news.subscribe(user, body));
+route('DELETE', '/api/push', ({ user }) => news.unsubscribe(user));
+
 // ---- admin ----
 const adm = { auth: false, admin: true };
 route('GET', '/api/admin/invites', adm, () => ({ invites: access.listInvites(), publicCode: access.publicCode() }));
@@ -299,6 +308,10 @@ route('GET', '/api/admin/flags', adm, ({ query }) => ({ flags: listFlags(query.g
 route('POST', '/api/admin/flags/:id', adm, ({ params, body }) => resolveFlag(Number(params.id), body.action));
 route('GET', '/api/admin/challenge', adm, () => ({ summary: challengeSummary(), series: challengeSeries() }));
 route('POST', '/api/admin/challenge', adm, ({ body }) => ({ summary: setChallenge({ start: body.start, days: body.days, target: body.target, clearMilestones: !!body.clearMilestones }) }));
+route('GET', '/api/admin/news', adm, () => ({ items: db.prepare('SELECT * FROM announcements ORDER BY id DESC LIMIT 50').all() }));
+route('POST', '/api/admin/news', adm, ({ body }) => news.postNews(body));
+route('DELETE', '/api/admin/news/:id', adm, ({ params }) => news.deleteNews(Number(params.id)));
+route('GET', '/api/admin/export', adm, ({ query }) => ({ csv: news.exportCsv(query.get('kind')) }));
 route('GET', '/api/admin/audit', { auth: false, admin: true }, () => audit());
 route('POST', '/api/admin/lectures', { auth: false, admin: true }, ({ body }) => {
   const yt = String(body.youtube_id || '').trim();
@@ -407,5 +420,6 @@ if (process.env.PUBLIC_FOUNDERS_CODE && !getSetting('public_code')) access.setPu
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const port = Number(process.env.PORT) || 3000;
+  news.startScheduler();
   createServer().listen(port, () => console.log(`Seerah Quest running on http://localhost:${port}`));
 }

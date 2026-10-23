@@ -115,6 +115,7 @@ const navIcon = (k) => uiIcon(NAV_GLYPH[k], 22, 1.7);
 
 const ICON_SUN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
 const ICON_MOON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
+const ICON_BELL = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>';
 const isDark = () => document.documentElement.getAttribute('data-mode') === 'dark';
 
 // white / dark choice: the button shows the mode you would switch to
@@ -205,7 +206,7 @@ function authView() {
 function shell() {
   const tabs = ['home', 'rank', 'caravan', 'bonus', 'me'];
   return `
-  <div class="hd"><span>${t('app')}</span><span class="row"><span class="stk">${uiIcon('flame', 16, 1.8)} ${S.me.streak} ${t('streak')}</span>${langToggle()}</span></div>
+  <div class="hd"><span>${t('app')}</span><span class="row"><span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button>${langToggle()}</span></div>
   <div class="wrap">${view()}</div>
   <nav class="tabs">${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}</nav>
   ${S.player ? playerModal() : ''}
@@ -213,7 +214,7 @@ function shell() {
 }
 
 function view() {
-  return { home, bonus, rank, caravan, me }[S.tab]();
+  return { home, bonus, rank, caravan, me, news: newsView }[S.tab]();
 }
 
 const bar = (pct) => `<div class="bar"><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div>`;
@@ -253,6 +254,8 @@ function home() {
   </div>
   <div class="lvl"><div class="row between"><span>${uiIcon('bolt', 14, 1.9)} ${t('level')} ${m.level} · ${esc(title)}</span><span title="${esc(t('shield_hint'))}">${uiIcon('shield', 14, 1.9)} ${m.shields}</span></div>${bar(m.pct)}</div>
 
+  ${pushPromptDue() ? `<div class="circlecard push"><b>${t('push_card_title')}</b><p>${t('push_card_text')}</p>
+    <div class="row"><button class="blk fill1" data-act="pushon"><span>${t('push_enable')}</span><b>→</b></button><button class="chip" data-act="pushno">${t('push_later')}</button></div></div>` : ''}
   <div class="circlecard">
     <b>${t('circle_title')}</b>
     <p>${t('circle_text')}</p>
@@ -378,6 +381,33 @@ function quest(q, dim) {
 }
 
 // secondary (sunnah) and tertiary (seerah) activities share one tab, in that order
+function newsView() {
+  const n = S.news;
+  const pick = (en, ur) => (S.lang === 'ur' && ur) || en;
+  if (!n) return '<p class="muted center">…</p>';
+  return `<h3 class="first">${t('news_title')}</h3>${n.items.length ? n.items.map((a) => `
+    <div class="newsitem ${a.unread ? 'unread' : ''}"><b>${esc(pick(a.titleEn, a.titleUr))}</b>
+      ${a.bodyEn || a.bodyUr ? `<p>${esc(pick(a.bodyEn, a.bodyUr))}</p>` : ''}
+      <small>${new Date(a.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Karachi' })}</small></div>`).join('') : `<p class="muted center">${t('news_empty')}</p>`}`;
+}
+
+// ---- reminders (web push) ------------------------------------------------------------------------------------
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const keyBytes = (b64) => Uint8Array.from(atob(b64.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+async function enablePush() {
+  if (!pushSupported()) throw new Error('push_unsupported');
+  if ((await Notification.requestPermission()) !== 'granted') throw new Error('push_denied');
+  const reg = await navigator.serviceWorker.ready;
+  const { key } = await api('/push/key');
+  const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
+  await api('/push/subscribe', 'POST', sub.toJSON());
+}
+async function disablePush() {
+  try { const reg = await navigator.serviceWorker.ready; await (await reg.pushManager.getSubscription())?.unsubscribe(); } catch { /* none */ }
+  await api('/push', 'DELETE');
+}
+const pushPromptDue = () => S.me.streak >= 2 && pushSupported() && Notification.permission === 'default' && !ls.get('pushNo');
+
 function bonus() {
   return `<p class="note first">${t('bonus_hint')}</p>
     <h2 class="part"><i>01</i>${uiIcon('leaf', 24, 1.8)}${t('sunnah_heading')}</h2>${sunnah()}
@@ -568,10 +598,15 @@ function me() {
     <input type="number" name="dailyGoal" min="1" max="100000" value="${m.dailyGoal}" dir="ltr">
     <label>${t('city')}</label>
     <input type="text" name="city" maxlength="40" value="${esc(m.city)}">
+    <label>${t('reminder_time')}</label>
+    <input type="time" name="reminderTime" value="${esc(m.reminderTime || '')}" dir="ltr">
+    <div class="hint">${t('reminder_hint')}</div>
     <label>${t('email')} <span class="tag ${m.emailVerified ? 'verified' : ''}">${m.emailVerified ? t('email_ok') : '!'}</span></label>
     <input type="email" name="email" value="${esc(m.email)}" dir="ltr" required>
     <button class="blk" type="submit"><span>${t('save')}</span><b>→</b></button>
   </form>
+  ${pushSupported() ? `<div class="hint" style="margin-top:12px;padding-inline:20px">${Notification.permission === 'granted' ? t('push_on') : Notification.permission === 'denied' ? t('push_denied') : t('push_off')}</div>
+  <div class="row" style="padding-inline:20px">${Notification.permission === 'granted' ? `<button class="chip" data-act="pushoff">${t('push_disable')}</button>` : Notification.permission === 'denied' ? '' : `<button class="chip solid" data-act="pushon">${t('push_enable')}</button>`}</div>` : `<div class="hint" style="margin-top:12px">${t('push_unsupported')}</div>`}
   <button class="blk out" data-act="logout" style="margin-top:12px"><span>${t('logout')}</span></button>
 
   <h3>${t('delete_title')}</h3>
@@ -628,6 +663,7 @@ async function enterTab(tab) {
       [S.team, S.cvBoard] = await Promise.all([api('/team'), api(`/leaderboard?type=teams&${q}`)]);
     }
     if (tab === 'me') { S.history = await api('/history'); }
+    if (tab === 'news') { S.news = await api('/news'); draw(); await api('/news/seen', 'POST'); S.me.unreadNews = 0; return; }
     if (tab === 'bonus') {
       const [today, feed, mineList, lectures] = await Promise.all([api('/sunnah/today'), api('/feed'), api('/sunnah/mine'), api('/lectures'), refreshMe()]); // refreshMe: payouts happen when *others* review
       S.sunnah = { today, feed: feed.posts, mine: mineList.posts };
@@ -730,6 +766,10 @@ app.addEventListener('click', async (ev) => {
   if (act === 'setlang') { S.lang = el.dataset.l; ls.set('lang', S.lang); return draw(); }
   if (act === 'intronext') { if (S.intro >= 2) { S.intro = null; ls.set('intro', '1'); } else S.intro += 1; return draw(); }
   if (act === 'introskip') { S.intro = null; ls.set('intro', '1'); return draw(); }
+  if (act === 'news') return enterTab('news');
+  if (act === 'pushno') { ls.set('pushNo', '1'); return draw(); }
+  if (act === 'pushon') { try { await enablePush(); toast(t('push_on')); } catch (e) { toast(errText(e)); } return draw(); }
+  if (act === 'pushoff') { try { await disablePush(); toast(t('push_off')); } catch (e) { toast(errText(e)); } return draw(); }
   if (act === 'taptoggle') { S.tapOpen = !S.tapOpen; return draw(); }
   if (act === 'fill') { const f = $('#manual'); f.value = (Number(f.value) || 0) + Number(el.dataset.n); f.focus(); return; }
   if (act === 'manual') {
@@ -867,7 +907,7 @@ app.addEventListener('submit', async (ev) => {
       setSession(r.token, r.me); toast(t('reset_done'));
       draw();
     } else if (kind === 'settings') {
-      S.me = await api('/me', 'PATCH', { dailyGoal: Number(f.dailyGoal), city: f.city, email: f.email });
+      S.me = await api('/me', 'PATCH', { dailyGoal: Number(f.dailyGoal), city: f.city, email: f.email, reminderTime: f.reminderTime || '' });
       toast(t('saved'));
       draw();
     } else if (kind === 'delete') {

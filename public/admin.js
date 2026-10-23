@@ -8,7 +8,7 @@ const date = (t) => new Date(t).toLocaleString('en-GB', { dateStyle: 'medium', t
 let KEY = sessionStorage.getItem('adminKey') || '';
 let tab = 'challenge';
 let notice = '';
-const TABS = [['challenge', 'Challenge'], ['invites', 'Invite codes'], ['waitlist', 'Waitlist'], ['flags', 'Flagged totals'], ['members', 'Members']];
+const TABS = [['challenge', 'Challenge'], ['invites', 'Invite codes'], ['waitlist', 'Waitlist'], ['flags', 'Flagged totals'], ['members', 'Members'], ['news', 'News'], ['exports', 'Exports']];
 
 async function api(method, path, body) {
   const res = await fetch('/api/admin' + path, { method, headers: { 'content-type': 'application/json', 'x-admin-key': KEY }, body: body ? JSON.stringify(body) : undefined });
@@ -36,6 +36,22 @@ const views = {
       <h3>Recent days</h3>
       ${series.length ? `<table><tr><th>Day</th><th>Reported</th><th>Plan</th><th>Of plan</th></tr>${series.slice(-14).reverse().map((d) => `<tr><td>${esc(d.day)}</td><td>${fmt(d.total)}</td><td>${fmt(planned)}</td><td>${Math.round((d.total / planned) * 100)}%</td></tr>`).join('')}</table>` : '<p class="empty">Nothing reported yet.</p>'}
       ${c.milestones.length ? `<h3>Crores reached</h3><table><tr><th>Crore</th><th>When</th></tr>${c.milestones.map((m) => `<tr><td>${m.k}</td><td>${date(m.at)}</td></tr>`).join('')}</table>` : ''}`;
+  },
+  async news() {
+    const { items } = await api('GET', '/news');
+    return `<h3>Post an announcement</h3>
+      <p class="muted">Short and newest first. Members see it under the bell. Tick the box to also send a notification to everyone who turned reminders on.</p>
+      <label>Title (English)</label><input id="ntE" maxlength="120">
+      <label>Title (Urdu, optional)</label><input id="ntU" maxlength="120" dir="rtl">
+      <label>Text (English, optional)</label><textarea id="nbE" maxlength="600" rows="2"></textarea>
+      <label>Text (Urdu, optional)</label><textarea id="nbU" maxlength="600" rows="2" dir="rtl"></textarea>
+      <div class="inline"><label class="check" style="margin:0"><input type="checkbox" id="npush"> Also send a notification</label><button class="chip solid" data-a="newspost">Post</button></div>
+      <h3>Posted</h3>
+      ${items.length ? `<table><tr><th>When</th><th>Title</th><th></th></tr>${items.map((a) => `<tr><td>${date(a.created_at)}</td><td>${esc(a.title_en)}</td><td><button class="chip" data-a="newsdel" data-id="${a.id}">Delete</button></td></tr>`).join('')}</table>` : '<p class="empty">Nothing posted yet.</p>'}`;
+  },
+  async exports() {
+    return `<h3>Exports</h3><p class="muted">CSV files of totals as reported by members. Deleted members stay in totals. Open in Excel or Google Sheets.</p>
+      <div class="inline"><button class="chip solid" data-a="exp" data-k="cities">Totals by city</button><button class="chip solid" data-a="exp" data-k="caravans">Totals by caravan</button><button class="chip solid" data-a="exp" data-k="weeks">Totals by week</button></div>`;
   },
   async invites() {
     const { invites, publicCode } = await api('GET', '/invites');
@@ -108,6 +124,15 @@ document.addEventListener('click', (ev) => {
   const d = el.dataset;
   const act = {
     chsave: async () => { const r = await api('POST', '/challenge', { start: $('#chstart').value, days: Number($('#chdays').value), target: Number($('#chtarget').value), clearMilestones: $('#chclear').checked }); say(`Saved. ${r.summary.start} to ${r.summary.end}, target ${fmt(r.summary.target)}.`); },
+    newspost: async () => { await api('POST', '/news', { title_en: $('#ntE').value, title_ur: $('#ntU').value, body_en: $('#nbE').value, body_ur: $('#nbU').value, push: $('#npush').checked }); say('Posted.'); },
+    newsdel: async () => { if (!confirm('Delete this announcement?')) return; await api('DELETE', `/news/${d.id}`); say('Deleted.'); },
+    exp: async () => {
+      const { csv } = await api('GET', `/export?kind=${d.k}`);
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+      a.download = `seerah-quest-${d.k}-${pktToday()}.csv`; a.click();
+      say('Downloaded.');
+    },
     chtoday: async () => { if (!confirm('Make today day 1 of the challenge?')) return; await api('POST', '/challenge', { start: pktToday() }); say('Day 1 is now today.'); },
     pub: () => api('POST', '/public-code', { enabled: d.v === '1' }),
     pubnew: () => api('POST', '/public-code', { code: '', enabled: true }),

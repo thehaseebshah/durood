@@ -138,6 +138,33 @@ CREATE TABLE IF NOT EXISTS lecture_quiz (
   PRIMARY KEY (user_id, lecture_id)
 ) WITHOUT ROWID;
 
+-- short announcements, newest first; members see them in the News screen
+CREATE TABLE IF NOT EXISTS announcements (
+  id         INTEGER PRIMARY KEY,
+  title_en   TEXT NOT NULL,
+  title_ur   TEXT NOT NULL DEFAULT '',
+  body_en    TEXT NOT NULL DEFAULT '',
+  body_ur    TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
+);
+
+-- browser push subscriptions (one per device) and a log so a reminder is never sent twice for the same thing
+CREATE TABLE IF NOT EXISTS push_subs (
+  endpoint   TEXT PRIMARY KEY,
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  p256dh     TEXT NOT NULL,
+  auth       TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS push_subs_user ON push_subs(user_id);
+CREATE TABLE IF NOT EXISTS push_log (
+  user_id INTEGER NOT NULL,
+  kind    TEXT NOT NULL,
+  ref     TEXT NOT NULL,
+  at      INTEGER NOT NULL,
+  PRIMARY KEY (user_id, kind, ref)
+) WITHOUT ROWID;
+
 CREATE TABLE IF NOT EXISTS lecture_starts (
   user_id    INTEGER NOT NULL REFERENCES users(id),
   lecture_id INTEGER NOT NULL REFERENCES lectures(id),
@@ -269,6 +296,9 @@ addCol('users', 'invite_code', 'TEXT');
 
 addCol('lectures', 'questions', "TEXT NOT NULL DEFAULT ''");        // JSON: [{q_en,q_ur,options_en,options_ur,answer}]
 addCol('sunnahs', 'kind', "TEXT NOT NULL DEFAULT 'daily'");        // 'daily' sunnah or the weekly 'class' photo slot
+
+addCol('users', 'reminder_time', "TEXT NOT NULL DEFAULT ''");       // 'HH:MM' Pakistan time, '' = no daily reminder
+addCol('users', 'news_seen_at', 'INTEGER NOT NULL DEFAULT 0');
 
 export const getSetting = (key, fallback = null) => db.prepare('SELECT value FROM settings WHERE key = ?').get(key)?.value ?? fallback;
 export const setSetting = (key, value) => db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, String(value));

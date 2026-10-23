@@ -25,7 +25,7 @@ export const CFG = {
 // ---- time: everything is bucketed by Pakistan time (UTC+5) -----------------
 const PK = 5 * 3600e3;
 export const dayOf = (ts = Date.now()) => new Date(ts + PK).toISOString().slice(0, 10);
-const dayNum = (d) => Math.floor(Date.parse(d + 'T00:00:00Z') / 86400e3);
+export const dayNum = (d) => Math.floor(Date.parse(d + 'T00:00:00Z') / 86400e3);
 const dayStr = (n) => new Date(n * 86400e3).toISOString().slice(0, 10);
 export const weekStart = (d = dayOf()) => {
   const dow = (new Date(d + 'T00:00:00Z').getUTCDay() + 6) % 7; // Monday = 0
@@ -85,12 +85,16 @@ function stats(userId) {
   return { ...u, downline: u.team_total - u.total, referrals: count('referral'), lectures: count('lecture'), sunnahs: count('sunnah'), verifies: count('verify'), circle: count('circle') > 0 };
 }
 
+/** Side effects that must not run inside a write transaction (push messages) hook in here. */
+export const hooks = { milestone: null, badge: null };
+
 export function evalBadges(userId, fresh) {
   const s = stats(userId);
   for (const [code, test] of Object.entries(BADGES)) {
     if (test(s) && run('INSERT OR IGNORE INTO badges (user_id, code, earned_at) VALUES (?,?,?)', userId, code, Date.now()).changes) {
       fresh.push({ userId, code });
       if (MILESTONE_XP[code]) grant(userId, 'milestone', code, MILESTONE_XP[code]);
+      if (code.startsWith('caravan')) hooks.badge?.(userId, code);
     }
   }
 }
@@ -488,7 +492,7 @@ export function recordChallenge() {
   if (!start) return;
   const total = one('SELECT COALESCE(SUM(count), 0) n FROM daily WHERE day >= ?', start).n;
   const now = Date.now();
-  for (let k = 1; k <= Math.floor(total / CRORE); k++) if (!getSetting(`ch_m_${k}`)) setSetting(`ch_m_${k}`, now);
+  for (let k = 1; k <= Math.floor(total / CRORE); k++) if (!getSetting(`ch_m_${k}`)) { setSetting(`ch_m_${k}`, now); hooks.milestone?.(k); }
   if (total >= target && !getSetting('ch_done_at')) setSetting('ch_done_at', now);
 }
 
@@ -533,7 +537,8 @@ export function getMe(userId) {
       reviews: one('SELECT COUNT(*) n FROM votes WHERE user_id = ?', userId).n,
     },
     pub: publicStats(),
-    circleUrl: CFG.circleUrl,
+    circleUrl: CFG.circleUrl, reminderTime: u.reminder_time,
+    unreadNews: one('SELECT COUNT(*) n FROM announcements WHERE created_at > ?', u.news_seen_at).n,
   };
 }
 
