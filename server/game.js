@@ -533,6 +533,7 @@ export function getMe(userId) {
       reviews: one('SELECT COUNT(*) n FROM votes WHERE user_id = ?', userId).n,
     },
     pub: publicStats(),
+    circleUrl: CFG.circleUrl,
   };
 }
 
@@ -566,6 +567,32 @@ export function leaderboard(userId, type, period) {
   return { rows: rows.map((r, i) => ({ rank: i + 1, ...r, me: r.username === me })), weekStart: wk };
 }
 
+/**
+ * Caravan boards. metric 'average' = this week's durood per active member (active = recited on any day this week, the
+ * caravan owner included); 'growth' = this week's total minus last week's. Both use the same visibility rules as the
+ * total board, and only caravans that have at least one invitee appear.
+ */
+export function caravanBoard(userId, metric) {
+  const wk = weekStart(), prev = dayStr(dayNum(wk) - 7);
+  const me = one('SELECT username FROM users WHERE id = ?', userId).username;
+  const rows = all(`SELECT u.username, u.city,
+      COALESCE(SUM(CASE WHEN d.day >= ? THEN d.count END), 0) week,
+      COALESCE(SUM(CASE WHEN d.day >= ? AND d.day < ? THEN d.count END), 0) last,
+      COUNT(DISTINCT CASE WHEN d.day >= ? AND d.count > 0 THEN d.user_id END) active,
+      (SELECT COUNT(*) FROM ancestors x WHERE x.ancestor_id = u.id AND x.depth > 0 AND x.depth <= ${CFG.teamMaxDepth}) members
+    FROM users u JOIN ancestors a ON a.ancestor_id = u.id AND a.depth <= ${CFG.teamMaxDepth}
+    LEFT JOIN daily d ON d.user_id = a.user_id AND d.day >= ?
+    WHERE u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL
+      AND EXISTS (SELECT 1 FROM users c WHERE c.referrer_id = u.id)
+    GROUP BY u.id`, wk, prev, wk, wk, prev);
+  const scored = rows.map((r) => ({
+    username: r.username, city: r.city, members: r.members, active: r.active,
+    score: metric === 'growth' ? r.week - r.last : r.active ? Math.round(r.week / r.active) : 0,
+  })).filter((r) => (metric === 'growth' ? r.score !== 0 : r.score > 0))
+    .sort((x, y) => y.score - x.score || x.username.localeCompare(y.username)).slice(0, 50);
+  return { rows: scored.map((r, i) => ({ rank: i + 1, ...r, me: r.username === me })), weekStart: wk, metric };
+}
+
 export function teamView(userId) {
   const wk = weekStart();
   const direct = all(`SELECT u.username, u.city, u.total, u.team_total, u.created_day,
@@ -576,8 +603,16 @@ export function teamView(userId) {
                     WHERE a.ancestor_id = ? AND d.day >= ? AND a.depth <= ?`, userId, wk, CFG.teamMaxDepth).n;
   const byDepth = all(`SELECT depth, COUNT(*) n FROM ancestors WHERE ancestor_id = ? AND depth > 0 GROUP BY depth ORDER BY depth LIMIT 20`, userId);
   const total = one('SELECT team_total FROM users WHERE id = ?', userId).team_total;
+  // the people above this member, nearest first; they already see this member's name, city and counts
+  const upline = all(`SELECT u.username, u.city, u.team_total, a.depth,
+        (SELECT COUNT(*) FROM ancestors x WHERE x.ancestor_id = u.id AND x.depth > 0) members
+      FROM ancestors a JOIN users u ON u.id = a.ancestor_id
+      WHERE a.user_id = ? AND a.depth > 0 AND u.deleted_at IS NULL ORDER BY a.depth LIMIT 20`, userId)
+    .map((u) => ({ username: u.username, city: u.city, team: u.team_total, members: u.members, depth: u.depth }));
+  const active = one(`SELECT COUNT(DISTINCT d.user_id) n FROM daily d JOIN ancestors a ON a.user_id = d.user_id
+                      WHERE a.ancestor_id = ? AND a.depth > 0 AND a.depth <= ? AND d.day >= ? AND d.count > 0`, userId, CFG.teamMaxDepth, wk).n;
   return {
-    total, week, byDepth,
+    total, week, byDepth, upline, active,
     // there is no opt-out: inviters see their invitees' name, city and counts
     direct: direct.map((d) => ({
       username: d.username, city: d.city, joined: d.created_day, members: d.members,

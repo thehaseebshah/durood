@@ -9,7 +9,7 @@ import { audit } from './audit.js';
 import * as access from './access.js';
 import { sendMail, resetEmail, confirmEmail, inviteEmail, baseUrl } from './mail.js';
 import * as sunnah from './sunnah.js';
-import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, quizPassed, publicQuiz, parseQuestions, claimCircle, getMe, leaderboard, teamView, publicStats } from './game.js';
+import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, quizPassed, publicQuiz, parseQuestions, claimCircle, getMe, leaderboard, caravanBoard, teamView, publicStats } from './game.js';
 
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -220,6 +220,8 @@ route('GET', '/api/leaderboard', ({ user, query }) => {
   const type = query.get('type') === 'teams' ? 'teams' : 'users';
   const p = query.get('period');
   const period = p === 'all' ? 'all' : p === 'challenge' ? 'challenge' : 'week';
+  const metric = query.get('metric');
+  if (type === 'teams' && (metric === 'average' || metric === 'growth')) return caravanBoard(user, metric);
   return leaderboard(user, type, period);
 });
 

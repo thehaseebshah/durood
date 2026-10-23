@@ -129,3 +129,6 @@ The earlier "cut from v1" was a misreading. Both stay as secondary and tertiary 
 - Everyone starts their own tree. **No money anywhere:** no payments requested, no monetary rewards. Rewards are XP, badges and milestones only, and the app should say so plainly.
 - **Upline is visible:** a member sees the chain of people above them (who invited them, and who invited those) with each caravan's name and totals. This reverses the earlier idea to hide the inviter's caravan.
 - **Depth is unlimited:** you earn rewards for everyone in your tree, at any depth (as built).
+
+## 11. Step 2 as built
+Home: number box first (type a total, presets +100/+500/+1,000 fill the field, Add), tap counter folded under "Count by tapping", challenge card, level title (no XP numbers), Circle card, quests. Raw XP numbers are hidden everywhere. Intro: three screens on first visit, language choice on the first. Ranks: individuals only (week, challenge, all-time). Caravan tab: three boards first (Total, Average per active member, Growth vs last week), then invite, the caravans above you, your caravan, people you invited. Five tabs stay (Home, Ranks, Caravan, Bonus, Me). Not yet built: News bell, push reminders, exports (Step 3).

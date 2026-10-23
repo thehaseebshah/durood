@@ -26,6 +26,8 @@ const S = {
   refName: null,
   pending: Number(ls.get('pending')) || 0,
   board: { type: 'users', period: 'week', data: null },
+  cvMetric: 'total', cvBoard: null, tapOpen: false,
+  intro: ls.get('intro') ? null : 0,
   team: null,
   learn: null,
   player: null,
@@ -100,7 +102,7 @@ function logout(render = true) {
 // ---- reward feedback --------------------------------------------------------
 function celebrate(res) {
   const bits = [];
-  if (res.xpGained) bits.push(t('gained')(res.xpGained));
+  if (res.xpGained) bits.push(t('gained'));
   if (res.levelUp) bits.push(t('level_up')(res.levelUp));
   for (const b of res.newBadges || []) bits.push(`${t('new_badge')} ${t('badge')[b][0]}`);
   if (bits.length) toast(bits.join(' · '), (res.newBadges || [])[0]);
@@ -121,6 +123,21 @@ function langToggle() {
 }
 
 const footerLinks = () => `<p class="note foot"><a href="/privacy.html">${t('privacy')}</a></p>`;
+
+function introView() {
+  const i = S.intro, last = i === 2;
+  const titles = [t('intro1_title'), t('intro2_title'), t('intro3_title')], texts = [t('intro1_text'), t('intro2_text'), t('intro3_text')];
+  return `
+  <div class="hd"><span>${t('app')}</span><button class="linkbtn" data-act="introskip">${t('skip')}</button></div>
+  <div class="wrap intro3">
+    <div class="steps">${[0, 1, 2].map((n) => `<i class="${n <= i ? 'on' : ''}"></i>`).join('')}</div>
+    <div class="arabic">${i === 0 ? t('durood') : ''}</div>
+    <h2>${titles[i]}</h2>
+    <p>${texts[i]}</p>
+    ${i === 0 ? `<div class="langpick"><button class="blk ${S.lang === 'en' ? '' : 'out'}" data-act="setlang" data-l="en"><span>English</span></button><button class="blk ${S.lang === 'ur' ? '' : 'out'}" data-act="setlang" data-l="ur"><span>اردو</span></button></div>` : ''}
+    <button class="blk" data-act="intronext"><span>${last ? t('start') : t('next')}</span><b>→</b></button>
+  </div>`;
+}
 
 function authView() {
   const mode = S.authMode;
@@ -204,23 +221,28 @@ const bar = (pct) => `<div class="bar"><i style="width:${Math.max(0, Math.min(10
 function home() {
   const m = S.me;
   const title = t('titles')[Math.min(m.level - 1, 9)];
-  const natPct = (m.pub.total / m.pub.target) * 100;
   const live = m.today + S.pending;
   return `
   ${m.hiddenFromRanks ? `<div class="flagnote">${t('flagged')}</div>` : ''}
-  <div class="band arabic">${t('durood')}</div>
   <div class="sub"><span>${t('today')}</span><span>${t('goal_word')} ${N(fmt(m.dailyGoal))}</span></div>
   <div class="big ${bigClass(live)}" id="big">${fmt(live)}</div>
   <div id="livebar">${bar((live / m.dailyGoal) * 100)}</div>
 
-  <button class="tap blk" data-act="tap"><span class="lab">${uiIcon('tap', 26, 1.9)} ${t('tap_hint')}</span><b>${N('+1')}</b></button>
-  <div class="pendrow">
-    <span><b id="pend">${fmt(S.pending)}</b> ${t('pending')}</span>
-    <span class="quick">${[10, 33, 100].map((n) => `<button class="chip" data-act="padd" data-n="${n}">${N('+' + n)}</button>`).join('')}<button class="chip" data-act="preset">${t('reset')}</button></span>
+  <div class="numbox">
+    <label for="manual">${t('enter_total')}</label>
+    <div class="row"><input type="number" id="manual" inputmode="numeric" min="1" placeholder="${t('count_ph')}" dir="ltr"><button class="blk addbtn" data-act="manual"><span>${t('add')}</span><b>→</b></button></div>
+    <div class="quick presets">${[100, 500, 1000].map((n) => `<button class="chip" data-act="fill" data-n="${n}">${N('+' + fmt(n))}</button>`).join('')}</div>
   </div>
-  <button class="blk go" data-act="submitp" id="submitp" ${S.pending ? '' : 'disabled'}><span>${t('submit_pending')}</span><b>→</b></button>
-  <div class="manual"><label for="manual">${t('or_enter')}</label>
-    <div class="row"><input type="number" id="manual" inputmode="numeric" min="1" placeholder="${t('count_ph')}" dir="ltr"><button class="chip solid" data-act="manual">${t('add')}</button></div></div>
+
+  <button class="linkbtn tapopen" data-act="taptoggle">${uiIcon('tap', 16, 1.9)} ${t('tap_open')} ${S.tapOpen || S.pending ? '−' : '+'}</button>
+  ${S.tapOpen || S.pending ? `<div class="tapbox">
+    <button class="tap blk" data-act="tap"><span class="lab">${uiIcon('tap', 26, 1.9)} ${t('tap_hint')}</span><b>${N('+1')}</b></button>
+    <div class="pendrow">
+      <span><b id="pend">${fmt(S.pending)}</b> ${t('pending')}</span>
+      <span class="quick"><button class="chip" data-act="preset">${t('reset')}</button></span>
+    </div>
+    <button class="blk go" data-act="submitp" id="submitp" ${S.pending ? '' : 'disabled'}><span>${t('submit_pending')}</span><b>→</b></button>
+  </div>` : ''}
 
   ${challengeCard(m)}
 
@@ -229,7 +251,13 @@ function home() {
     <div><b>${fmt(m.total)}</b><span>${t('total')}</span></div>
     <div><b>${m.level}</b><span>${esc(title)}</span></div>
   </div>
-  <div class="lvl"><div class="row between"><span>${uiIcon('bolt', 14, 1.9)} ${t('level')} ${m.level} · ${N(`${fmt(m.xp)} / ${fmt(m.next)}`)} ${t('xp')}</span><span title="${esc(t('shield_hint'))}">${uiIcon('shield', 14, 1.9)} ${m.shields}</span></div>${bar(m.pct)}</div>
+  <div class="lvl"><div class="row between"><span>${uiIcon('bolt', 14, 1.9)} ${t('level')} ${m.level} · ${esc(title)}</span><span title="${esc(t('shield_hint'))}">${uiIcon('shield', 14, 1.9)} ${m.shields}</span></div>${bar(m.pct)}</div>
+
+  <div class="circlecard">
+    <b>${t('circle_title')}</b>
+    <p>${t('circle_text')}</p>
+    ${m.circleUrl ? `<a class="blk fill1" href="${esc(m.circleUrl)}" target="_blank" rel="noopener"><span>${t('circle_open')}</span><b>↗</b></a>` : `<p class="muted">${t('circle_none')}</p>`}
+  </div>
 
   <h3>${t('durood_quests')}</h3>
   ${m.quests.filter((q) => q.group === 'durood').map((q) => quest(q)).join('')}
@@ -251,8 +279,7 @@ function liveHome() {
   $('#big').textContent = fmt(live);
   $('#big').className = `big ${bigClass(live)}`;
   $('#livebar').innerHTML = bar((live / m.dailyGoal) * 100);
-  $('#pend').textContent = fmt(S.pending);
-  $('#submitp').disabled = !S.pending;
+  if ($('#pend')) { $('#pend').textContent = fmt(S.pending); $('#submitp').disabled = !S.pending; }
 }
 
 function challengeCard(m) {
@@ -347,7 +374,6 @@ function quest(q, dim) {
   return `<div class="q ${q.done ? 'd' : ''} ${dim ? 'dim' : ''}">
     <span class="bx"></span>
     <span class="t">${t('q_' + q.id)} <em>${t(q.period === 'day' ? 'daily' : 'weekly')}</em><small>${N(`${fmt(q.cur)} / ${fmt(q.goal)}`)}</small></span>
-    <b class="p">${N('+' + q.xp)}</b>
   </div>`;
 }
 
@@ -371,11 +397,11 @@ function sunnah() {
       <div class="muted">${N(`${mine.confirms}/${r.confirmsNeeded}`)} ${t('confirms_so_far')}</div>`;
   else if (S.draft && S.draftKind !== 'class') action = `<b>${t('photo_preview')}</b><img class="shot" src="${esc(S.draft)}" alt="">
       <div class="row"><button class="blk" style="flex:1" data-act="postit" id="postit"><span>${t('post_it')}</span><b>→</b></button><button class="chip" data-act="draftx">${t('cancel')}</button></div>`;
-  else action = `<label class="blk upload"><span class="lab">${uiIcon('camera', 24, 1.8)} ${t('take_photo')} ${N('+' + r.sunnahXp)}</span><b>+</b>
+  else action = `<label class="blk upload"><span class="lab">${uiIcon('camera', 24, 1.8)} ${t('take_photo')}</span><b>+</b>
       <input type="file" accept="image/*" capture="environment" data-photo="sunnah" hidden></label>`;
   const tick = !sn ? '' : d.today.ticked
     ? `<div class="q d"><span class="bx"></span><span class="t">${t('tick_done')}</span></div>`
-    : `<button class="blk fill1" data-act="tick"><span>${t('tick_btn')} ${N('+' + r.tickXp)}</span><b>✓</b></button><div class="spacer"></div>`;
+    : `<button class="blk fill1" data-act="tick"><span>${t('tick_btn')}</span><b>✓</b></button><div class="spacer"></div>`;
   const cp = d.today.classPost;
   const classAction = cp
     ? `<div class="row between"><b>${t('your_post')}</b>${statusTag(cp.status)}</div><img class="shot" src="${esc(cp.photoUrl)}" alt="">
@@ -383,7 +409,7 @@ function sunnah() {
     : S.draft && S.draftKind === 'class'
       ? `<b>${t('photo_preview')}</b><img class="shot" src="${esc(S.draft)}" alt="">
          <div class="row"><button class="blk" style="flex:1" data-act="postit" data-kind="class"><span>${t('post_it')}</span><b>→</b></button><button class="chip" data-act="draftx">${t('cancel')}</button></div>`
-      : `<label class="blk upload"><span class="lab">${uiIcon('camera', 24, 1.8)} ${t('class_photo')} ${N('+' + r.classXp)}</span><b>+</b>
+      : `<label class="blk upload"><span class="lab">${uiIcon('camera', 24, 1.8)} ${t('class_photo')}</span><b>+</b>
          <input type="file" accept="image/*" capture="environment" data-photo="class" hidden></label>`;
   return `
   <div class="sec">
@@ -425,10 +451,6 @@ function rank() {
       <span class="name">${esc(r.username)}${r.me ? ` <em class="tag">${t('you')}</em>` : ''}${r.city ? `<small>${esc(r.city)}${r.members ? ` · ${fmt(r.members)} ${t('members')}` : ''}</small>` : r.members ? `<small>${fmt(r.members)} ${t('members')}</small>` : ''}</span>
       <span class="score">${fmt(r.score)}</span></li>`).join('')}</ul>` : `<p class="muted center">${t('empty_board')}</p>`;
   return `
-  <div class="seg">
-    <button class="${b.type === 'users' ? 'on' : ''}" data-act="board" data-type="users">${t('users')}</button>
-    <button class="${b.type === 'teams' ? 'on' : ''}" data-act="board" data-type="teams">${t('teams')}</button>
-  </div>
   <div class="seg thin">
     <button class="${b.period === 'week' ? 'on' : ''}" data-act="board" data-period="week">${t('this_week')}</button>
     <button class="${b.period === 'challenge' ? 'on' : ''}" data-act="board" data-period="challenge">${t('challenge_board')}</button>
@@ -440,6 +462,25 @@ function rank() {
   <p class="note">${t('reminder_note')}</p>`;
 }
 
+function boardsBlock() {
+  const k = S.cvMetric, b = S.cvBoard;
+  const rows = b?.rows;
+  const list = !rows ? '<p class="muted center">…</p>' : rows.length ? `<ul class="lb">${rows.map((r) => `
+    <li class="${r.me ? 'me' : ''}"><span class="rank">${r.rank}</span>
+      <span class="name">${esc(r.username)}${r.me ? ` <em class="tag">${t('you')}</em>` : ''}<small>${r.city ? `${esc(r.city)} · ` : ''}${fmt(r.members)} ${t('members')}${k === 'average' ? ` · ${fmt(r.active)} ${t('active')}` : ''}</small></span>
+      <span class="score">${k === 'growth' && r.score > 0 ? '+' : ''}${fmt(r.score)}</span></li>`).join('')}</ul>` : `<p class="muted center">${t('empty_board')}</p>`;
+  return `<h3 class="first">${t('cv_boards')}</h3>
+  <div class="seg">${['total', 'average', 'growth'].map((x) => `<button class="${k === x ? 'on' : ''}" data-act="cvmetric" data-m="${x}">${t('cv_' + x)}</button>`).join('')}</div>
+  ${list}
+  <p class="note">${t('cv_note_' + k)}</p>`;
+}
+
+function uplineBlock(tm) {
+  if (!tm?.upline?.length) return '';
+  return `<h3>${t('upline_title')}</h3>
+  <ul class="lb upline">${tm.upline.map((u) => `<li><span class="name">${esc(u.username)}<small>${u.city ? `${esc(u.city)} · ` : ''}${fmt(u.members)} ${t('members')}</small></span><span class="score">${fmt(u.team)}</span></li>`).join('')}</ul>`;
+}
+
 function caravan() {
   const m = S.me, tm = S.team;
   const link = `${location.origin}/?invite=${m.username}`;
@@ -447,13 +488,15 @@ function caravan() {
   const next = MILESTONES.find((x) => x > down) || MILESTONES.at(-1);
   const prev = MILESTONES.filter((x) => x <= down).at(-1) || 0;
   return `
-  <h3 class="first">${t('your_code')}</h3>
+  ${boardsBlock()}
+  <h3>${t('your_code')}</h3>
   <div class="code">${esc(m.username)}</div>
   <div class="muted" style="margin-top:12px">${t('your_link')}</div>
   <div class="link">${esc(link)}</div>
   <div class="invleft"><b>${m.invites.left}</b> <span>${t('invites_left')} · ${N(`${m.invites.used} / ${m.invites.cap}`)}</span><small>${t('invites_next')(m.invites.nextAt)}</small></div>
   <div class="row" style="margin-top:12px"><button class="blk wa fill1" data-act="wa"><span class="lab">${uiIcon('share', 22, 1.8)} ${t('share_wa')}</span><b>→</b></button><button class="chip" data-act="copy" data-text="${esc(link)}">${t('copy')}</button></div>
 
+  ${uplineBlock(tm)}
   <h3>${t('caravan_title')}</h3>
   <p class="muted">${t('caravan_sub')}</p>
   <div class="stats"><div><b>${fmt(m.team.members)}</b><span>${t('c_members')}</span></div><div><b>${fmt(m.team.total)}</b><span>${t('c_total')}</span></div><div><b>${tm ? fmt(tm.week) : '…'}</b><span>${t('c_week')}</span></div></div>
@@ -473,14 +516,14 @@ function learn() {
     <h3>${t('circle_title')}</h3>
     <p class="muted">${t('circle_text')}</p>
     ${l?.circleUrl ? `<div class="row wrapx"><a class="blk fill1" href="${esc(l.circleUrl)}" target="_blank" rel="noopener"><span>${t('circle_open')}</span><b>↗</b></a>
-      ${S.me.badges.includes('circle') ? '<b class="ok">✓</b>' : `<button class="chip" data-act="circle">${t('circle_claim')} ${N('+' + fmt(l.circleXp))}</button>`}</div>` : `<p class="muted">${t('circle_none')}</p>`}
+      ${S.me.badges.includes('circle') ? '<b class="ok">✓</b>' : `<button class="chip" data-act="circle">${t('circle_claim')}</button>`}</div>` : `<p class="muted">${t('circle_none')}</p>`}
   </div>
   <div class="sec">
     <h3>${t('lectures')}</h3>
     ${!l ? '…' : l.lectures.length ? l.lectures.map((x) => `
       <div class="q ${x.done ? 'd' : ''}"><span class="bx"></span>
         <span class="t">${esc(title(x))}<small>${esc(x.speaker)}</small></span>
-        <button class="chip ${x.done ? '' : 'solid'}" data-act="watch" data-id="${x.id}">${x.done ? t('watched') : `${uiIcon('play', 13, 2)} ${t('watch')} ${N('+' + x.xp)}`}</button>
+        <button class="chip ${x.done ? '' : 'solid'}" data-act="watch" data-id="${x.id}">${x.done ? t('watched') : `${uiIcon('play', 13, 2)} ${t('watch')}`}</button>
       </div>`).join('') : `<p class="muted">${t('no_lectures')}</p>`}
   </div>`;
 }
@@ -559,7 +602,7 @@ function playerModal() {
   return `<div class="modal"><div class="box">
     <iframe src="https://www.youtube-nocookie.com/embed/${esc(x.youtubeId)}?rel=0&playsinline=1" allow="accelerometer; encrypted-media; picture-in-picture" allowfullscreen title="lecture"></iframe>
     <div class="spacer"></div>
-    <div class="muted" id="ptimer">${left ? `${t('watching')} +${x.xp} · ${t('min_left')(left)}` : ''}</div>
+    <div class="muted" id="ptimer">${left ? `${t('watching')} · ${t('min_left')(left)}` : ''}</div>
     ${bar((p.elapsed / x.minSeconds) * 100).replace('class="bar"', 'class="bar" id="pbar"')}
     ${quizBlock(p, x)}
     <div class="spacer"></div>
@@ -572,7 +615,7 @@ function playerModal() {
 function draw() {
   applyLang();
   if (S.me) checkCelebrate();
-  app.innerHTML = S.me ? shell() : authView();
+  app.innerHTML = S.me ? shell() : S.intro !== null ? introView() : authView();
 }
 
 async function enterTab(tab) {
@@ -580,7 +623,10 @@ async function enterTab(tab) {
   draw();
   try {
     if (tab === 'rank') { S.board.data = null; draw(); S.board.data = await api(`/leaderboard?type=${S.board.type}&period=${S.board.period}`); }
-    if (tab === 'caravan') { S.team = await api('/team'); }
+    if (tab === 'caravan') {
+      const q = S.cvMetric === 'total' ? 'metric=total&period=week' : `metric=${S.cvMetric}`;
+      [S.team, S.cvBoard] = await Promise.all([api('/team'), api(`/leaderboard?type=teams&${q}`)]);
+    }
     if (tab === 'me') { S.history = await api('/history'); }
     if (tab === 'bonus') {
       const [today, feed, mineList, lectures] = await Promise.all([api('/sunnah/today'), api('/feed'), api('/sunnah/mine'), api('/lectures'), refreshMe()]); // refreshMe: payouts happen when *others* review
@@ -681,12 +727,18 @@ app.addEventListener('click', async (ev) => {
     }
     return draw();
   }
+  if (act === 'setlang') { S.lang = el.dataset.l; ls.set('lang', S.lang); return draw(); }
+  if (act === 'intronext') { if (S.intro >= 2) { S.intro = null; ls.set('intro', '1'); } else S.intro += 1; return draw(); }
+  if (act === 'introskip') { S.intro = null; ls.set('intro', '1'); return draw(); }
+  if (act === 'taptoggle') { S.tapOpen = !S.tapOpen; return draw(); }
+  if (act === 'fill') { const f = $('#manual'); f.value = (Number(f.value) || 0) + Number(el.dataset.n); f.focus(); return; }
   if (act === 'manual') {
     const n = Number($('#manual').value);
     if (await submitLog(n)) draw();
     return;
   }
 
+  if (act === 'cvmetric') { S.cvMetric = el.dataset.m; S.cvBoard = null; return enterTab('caravan'); }
   if (act === 'board') {
     if (el.dataset.type) S.board.type = el.dataset.type;
     if (el.dataset.period) S.board.period = el.dataset.period;
@@ -700,7 +752,7 @@ app.addEventListener('click', async (ev) => {
 
   if (act === 'draftx') { S.draft = null; S.draftKind = null; return draw(); }
   if (act === 'tick') {
-    try { const r = await api('/sunnah/tick', 'POST'); S.me = r.me; S.sunnah.today = { ...S.sunnah.today, ...r, me: undefined }; toast(r.xpGained ? `+${r.xpGained} XP` : ''); } catch (e) { toast(errText(e)); }
+    try { const r = await api('/sunnah/tick', 'POST'); S.me = r.me; S.sunnah.today = { ...S.sunnah.today, ...r, me: undefined }; toast(r.xpGained ? t('tick_thanks') : ''); } catch (e) { toast(errText(e)); }
     return draw();
   }
   if (act === 'postit') {
@@ -718,7 +770,7 @@ app.addEventListener('click', async (ev) => {
       const before = S.me.xp;
       S.me = r.me;
       S.sunnah.feed = S.sunnah.feed.filter((p) => p.id !== Number(el.dataset.id));
-      toast(r.me.xp > before ? t('reviewed_paid')(r.me.xp - before) : t('reviewed_pending'));
+      toast(r.me.xp > before ? t('reviewed_paid') : t('reviewed_pending'));
       draw();
     } catch (e) { toast(errText(e)); await enterTab('bonus'); }
     return;
@@ -779,7 +831,7 @@ function startPlayerTimer() {
     p.elapsed += 1;
     const left = Math.max(0, p.lecture.minSeconds - p.elapsed);
     const tm = $('#ptimer'), pb = $('#pbar > i'), pc = $('#pclaim');
-    if (tm) tm.textContent = left ? `${t('watching')} +${p.lecture.xp} · ${t('min_left')(left)}` : '';
+    if (tm) tm.textContent = left ? `${t('watching')} · ${t('min_left')(left)}` : '';
     if (pb) pb.style.width = `${Math.min(100, (p.elapsed / p.lecture.minSeconds) * 100)}%`;
     if (pc) pc.disabled = left > 0;
   }, 1000);

@@ -277,3 +277,23 @@ html[lang=ur] .ctitle { letter-spacing: 0; }
 .note.ok { color: var(--sig-text); font-weight: 700; }
 .quiz .opt, .quiz .opt span { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--ink); }
 .quiz fieldset.bad legend { color: var(--err); }
+
+.numbox { margin-top: 14px; }
+.numbox label { display: block; font-weight: 700; margin-bottom: 6px; }
+.numbox input { flex: 1; min-width: 0; font-size: 1.6rem; font-weight: 800; }
+.numbox .addbtn { flex: 0 0 auto; }
+.presets { display: flex; gap: 8px; margin-top: 8px; }
+.presets .chip { flex: 1; }
+.tapopen { margin: 14px 0 4px; display: inline-flex; gap: 6px; align-items: center; }
+.tapbox { margin-top: 6px; }
+.circlecard { border: 1.5px solid var(--ink); padding: 14px; margin-top: 18px; }
+.circlecard p { margin: 6px 0 10px; color: var(--soft); }
+.intro3 { padding-top: 24px; display: flex; flex-direction: column; gap: 12px; }
+.intro3 .steps { display: flex; gap: 6px; } .intro3 .steps i { flex: 1; height: 4px; background: var(--line); } .intro3 .steps i.on { background: var(--sig); }
+.intro3 h2 { margin: 8px 0 0; font-size: 1.8rem; } .intro3 p { margin: 0; font-size: 1.05rem; line-height: 1.6; }
+.intro3 .arabic { font-size: 2.2rem; text-align: center; }
+.langpick { display: flex; gap: 8px; } .langpick .blk { flex: 1; justify-content: center; }
+.upline li { opacity: .9; }
+.numbox .row { display: flex; gap: 8px; align-items: stretch; min-width: 0; }
+.numbox input { width: 0; }
+.numbox .addbtn { width: auto; min-width: 0; padding-inline: 16px; }
