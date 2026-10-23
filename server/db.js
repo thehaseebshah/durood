@@ -32,6 +32,21 @@ CREATE TABLE IF NOT EXISTS users (
 );
 CREATE INDEX IF NOT EXISTS users_referrer ON users(referrer_id);
 
+-- append-only ledger: the single source of truth for every durood ever reported.
+-- daily / users.total / users.team_total / users.xp are derived caches that the audit re-checks against it.
+CREATE TABLE IF NOT EXISTS entries (
+  id         INTEGER PRIMARY KEY,
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  day        TEXT NOT NULL,
+  count      INTEGER NOT NULL CHECK (count > 0),
+  rid        TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  UNIQUE (user_id, rid)
+);
+CREATE INDEX IF NOT EXISTS entries_user_day ON entries(user_id, day);
+CREATE TRIGGER IF NOT EXISTS entries_no_update BEFORE UPDATE ON entries BEGIN SELECT RAISE(ABORT, 'entries is append-only'); END;
+CREATE TRIGGER IF NOT EXISTS entries_no_delete BEFORE DELETE ON entries BEGIN SELECT RAISE(ABORT, 'entries is append-only'); END;
+
 -- one row per user per (Pakistan) day
 CREATE TABLE IF NOT EXISTS daily (
   user_id INTEGER NOT NULL REFERENCES users(id),

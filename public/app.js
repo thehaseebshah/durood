@@ -212,6 +212,7 @@ function home() {
     <div class="row between"><b>${fmt(m.pub.total)}</b><span class="muted">${t('of')} ${N(fmt(m.pub.target))}</span></div>
     ${bar(natPct)}
     <div class="muted" style="margin-top:6px">${fmt(m.pub.members)} ${t('members')}</div>
+    <div class="muted">${t('self_reported')} · ${new Date(m.pub.asOf).toLocaleTimeString(S.lang === 'ur' ? 'ur-PK' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
   </div>
   <p class="muted center">${t('reminder_note')}</p>`;
 }
@@ -242,6 +243,7 @@ function rank() {
     <button class="${b.period === 'all' ? 'on' : ''}" data-act="board" data-period="all">${t('all_time')}</button>
   </div>
   <div class="card">${list}</div>
+  <p class="muted center">${t('self_reported')}</p>
   <p class="muted center">${t('reminder_note')}</p>`;
 }
 
@@ -373,13 +375,27 @@ async function refreshMe() {
   ls.set('lang', S.lang);
 }
 
+// Each submission carries a unique request id. If the connection drops mid-request we retry with the SAME id,
+// so the server counts it exactly once even if the first attempt actually succeeded.
+let busy = false;
 async function submitLog(count) {
+  if (busy) return false;
+  busy = true;
+  const rid = crypto.randomUUID();
   try {
-    const res = await api('/log', 'POST', { count });
-    S.me = res.me;
-    celebrate(res);
-    return true;
-  } catch (e) { toast(errText(e)); return false; }
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const res = await api('/log', 'POST', { count, rid });
+        S.me = res.me;
+        celebrate(res);
+        return true;
+      } catch (e) {
+        if (e.message === 'network' && attempt < 2) { await new Promise((r) => setTimeout(r, 800 * (attempt + 1))); continue; }
+        toast(errText(e));
+        return false;
+      }
+    }
+  } finally { busy = false; }
 }
 
 // ---- events ---------------------------------------------------------------------

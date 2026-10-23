@@ -35,6 +35,7 @@ export const I18N = {
     public_toggle: 'Show me on public leaderboards', public_hint: 'If off, you stay hidden from rankings, but your durood still counts for your caravan.',
     daily_goal: 'Daily goal', save: 'Save', saved: 'Saved', best_streak: 'Best streak',
     level_up: (n) => `Level up! You are now level ${n}`, gained: (n) => `+${n} XP`, new_badge: 'New badge:',
+    self_reported: 'Counts are self-reported by members on the honour system. Days follow Pakistan time.',
     reminder_note: 'Intention reminder: recite for the sake of Allah and His Messenger ﷺ, not for ranking.',
     titles: ['Musafir', 'Talib', 'Zakir', 'Mushtaq', 'Muhib', 'Aashiq', 'Khadim', 'Saalik', 'Arif', 'Muqarrab'],
     badge: {
@@ -51,7 +52,7 @@ export const I18N = {
       bad_password: 'Password must be at least 6 characters', bad_referral: 'That referral code does not exist',
       username_taken: 'That username is taken', email_taken: 'That email is already registered', phone_taken: 'That phone number is already registered',
       bad_login: 'Wrong username or password', rate_limited: 'Too many attempts — please wait a little',
-      bad_count: 'Enter a whole number between 1 and 100,000', daily_cap: 'Daily limit reached. Come back tomorrow, in shaa Allah',
+      bad_request_id: 'Something went wrong, please retry', bad_count: 'Enter a whole number between 1 and 100,000', daily_cap: 'Daily limit reached. Come back tomorrow, in shaa Allah',
       too_soon: 'Keep watching a little longer', unauthorized: 'Please log in again', network: 'No connection. Please try again.', server_error: 'Something went wrong',
     },
   },
@@ -91,6 +92,7 @@ export const I18N = {
     public_toggle: 'مجھے عوامی لیڈر بورڈ میں دکھائیں', public_hint: 'بند کرنے پر آپ رینکنگ میں نظر نہیں آئیں گے، مگر آپ کا درود پھر بھی آپ کے قافلے میں شمار ہوگا۔',
     daily_goal: 'روزانہ کا ہدف', save: 'محفوظ کریں', saved: 'محفوظ ہو گیا', best_streak: 'بہترین سلسلہ',
     level_up: (n) => `مبارک! اب آپ درجہ ${n} پر ہیں`, gained: (n) => `+${n} ایکس پی`, new_badge: 'نیا بیج:',
+    self_reported: 'گنتی ارکان خود بتاتے ہیں، امانت داری کی بنیاد پر۔ دن پاکستانی وقت کے مطابق ہیں۔',
     reminder_note: 'نیت کی یاد دہانی: درود اللہ اور اس کے رسول ﷺ کی رضا کے لیے پڑھیں، رینکنگ کے لیے نہیں۔',
     titles: ['مسافر', 'طالب', 'ذاکر', 'مشتاق', 'محب', 'عاشق', 'خادم', 'سالک', 'عارف', 'مقرّب'],
     badge: {
@@ -107,7 +109,7 @@ export const I18N = {
       bad_password: 'پاس ورڈ کم از کم ۶ حروف کا ہو', bad_referral: 'یہ ریفرل کوڈ موجود نہیں',
       username_taken: 'یہ یوزرنیم پہلے سے لیا جا چکا ہے', email_taken: 'یہ ای میل پہلے سے رجسٹرڈ ہے', phone_taken: 'یہ فون نمبر پہلے سے رجسٹرڈ ہے',
       bad_login: 'یوزرنیم یا پاس ورڈ غلط ہے', rate_limited: 'بہت زیادہ کوششیں — تھوڑا انتظار کریں',
-      bad_count: '۱ سے ۱٬۰۰٬۰۰۰ کے درمیان پورا عدد لکھیں', daily_cap: 'آج کی حد پوری ہو گئی۔ ان شاء اللہ کل آئیں',
+      bad_request_id: 'کچھ خرابی ہو گئی، دوبارہ کوشش کریں', bad_count: '۱ سے ۱٬۰۰٬۰۰۰ کے درمیان پورا عدد لکھیں', daily_cap: 'آج کی حد پوری ہو گئی۔ ان شاء اللہ کل آئیں',
       too_soon: 'تھوڑا اور دیکھتے رہیں', unauthorized: 'براہِ کرم دوبارہ لاگ اِن کریں', network: 'انٹرنیٹ نہیں ہے۔ دوبارہ کوشش کریں۔', server_error: 'کچھ خرابی ہو گئی',
     },
   },

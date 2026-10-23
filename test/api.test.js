@@ -1,13 +1,16 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 
 process.env.DB_PATH = ':memory:';
 process.env.ADMIN_KEY = 'test-admin';
+process.env.PUBLIC_CACHE_MS = '0';
 process.env.REG_LIMIT_PER_HOUR = '1000';
 process.env.CIRCLE_URL = 'https://example.org/circle';
 
 const { createServer, normalizePhone } = await import('../server/index.js');
 const { db } = await import('../server/db.js');
+const { audit } = await import('../server/audit.js');
 
 let server, base;
 before(async () => {
@@ -18,6 +21,7 @@ before(async () => {
 after(() => server.close());
 
 async function api(method, path, { token, body, headers } = {}) {
+  if (path === '/api/log' && body && body.rid === undefined) body = { ...body, rid: randomUUID() };
   const res = await fetch(base + path, {
     method,
     headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }), ...headers },
@@ -138,12 +142,10 @@ test('streak continues across days and a shield bridges one missed day', async (
   assert.equal(r.me.streak, 7);
   assert.equal(r.me.shields, 1);
   db.prepare('UPDATE users SET last_day = ? WHERE id = ?').run(day(-2), me.id);
-  db.prepare('DELETE FROM daily WHERE user_id = ?').run(me.id);
   r = await api('POST', '/api/log', { token, body: { count: 5 } });
   assert.equal(r.me.streak, 8);
   assert.equal(r.me.shields, 0);
   db.prepare('UPDATE users SET last_day = ? WHERE id = ?').run(day(-3), me.id);
-  db.prepare('DELETE FROM daily WHERE user_id = ?').run(me.id);
   r = await api('POST', '/api/log', { token, body: { count: 5 } });
   assert.equal(r.me.streak, 1);
 });
@@ -151,4 +153,39 @@ test('streak continues across days and a shield bridges one missed day', async (
 test('static shell is served', async () => {
   const res = await fetch(base + '/');
   assert.equal(res.status, 200);
+});
+
+test('a retried submission with the same request id is counted exactly once', async () => {
+  const { token } = await signup('retrier');
+  const rid = randomUUID();
+  const a = await api('POST', '/api/log', { token, body: { count: 300, rid } });
+  const b = await api('POST', '/api/log', { token, body: { count: 300, rid } });
+  assert.equal(a.added, 300);
+  assert.equal(b.duplicate, true);
+  assert.equal(b.added, 0);
+  assert.equal(b.me.total, 300);
+  assert.equal((await api('POST', '/api/log', { token, body: { count: 5, rid: 'x' } })).error, 'bad_request_id');
+});
+
+test('the ledger is append-only', () => {
+  assert.throws(() => db.prepare('UPDATE entries SET count = count + 1').run(), /append-only/);
+  assert.throws(() => db.prepare('DELETE FROM entries').run(), /append-only/);
+});
+
+test('audit: every statistic reconciles with the ledger, detects tampering, and repairs it', async () => {
+  assert.deepEqual(audit().problems, []);
+  assert.equal(audit().ok, true);
+  const pub = await api('GET', '/api/public');
+  assert.equal(pub.total, audit().ledgerTotal);
+
+  db.prepare("UPDATE users SET total = total + 1000, xp = xp + 7 WHERE username = 'retrier'").run();
+  db.prepare("UPDATE users SET team_total = team_total - 5 WHERE username = 'root_a'").run();
+  db.prepare("UPDATE daily SET count = count + 1 WHERE user_id = (SELECT id FROM users WHERE username = 'reciter')").run();
+  const bad = audit();
+  assert.equal(bad.ok, false);
+  assert.deepEqual([...new Set(bad.problems.map((p) => p.kind))].sort(), ['daily', 'national', 'team_total', 'user_total', 'xp']);
+
+  const fixed = audit({ fix: true });
+  assert.equal(fixed.fixed, true);
+  assert.deepEqual(audit().problems, []);
 });

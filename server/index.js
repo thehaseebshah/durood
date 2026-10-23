@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { db, tx } from './db.js';
 import { HttpError, hashPassword, checkPassword, signToken, verifyToken, rateLimit } from './auth.js';
+import { audit } from './audit.js';
 import { CFG, dayOf, logDurood, startLecture, completeLecture, claimCircle, getMe, leaderboard, teamView, publicStats } from './game.js';
 
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
@@ -106,7 +107,7 @@ route('PATCH', '/api/me', ({ user, body }) => {
 
 route('POST', '/api/log', ({ user, body }) => {
   rateLimit(`log:${user}`, 60, 60e3);
-  const result = logDurood(user, Number(body.count));
+  const result = logDurood(user, Number(body.count), body.rid);
   return { ...result, me: getMe(user) };
 });
 
@@ -130,6 +131,7 @@ route('POST', '/api/lectures/:id/complete', ({ user, params }) => {
 });
 route('POST', '/api/circle/claim', ({ user }) => ({ ...claimCircle(user), me: getMe(user) }));
 
+route('GET', '/api/admin/audit', { auth: false, admin: true }, () => audit());
 route('POST', '/api/admin/lectures', { auth: false, admin: true }, ({ body }) => {
   const yt = String(body.youtube_id || '').trim();
   if (!/^[\w-]{11}$/.test(yt) || !body.title_en) throw new HttpError(400, 'bad_lecture');

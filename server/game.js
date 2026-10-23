@@ -106,17 +106,22 @@ function settleQuests(userId) {
 }
 
 // ---- actions --------------------------------------------------------------
-export function logDurood(userId, count) {
+export function logDurood(userId, count, rid) {
   if (!Number.isInteger(count) || count < 1 || count > CFG.maxSingle) throw new HttpError(400, 'bad_count');
+  if (typeof rid !== 'string' || !/^[\w-]{8,64}$/.test(rid)) throw new HttpError(400, 'bad_request_id');
   const day = dayOf();
   const fresh = [];
   const before = one('SELECT xp FROM users WHERE id = ?', userId).xp;
+  let duplicate = false;
 
   tx(() => {
+    // a retried or double-tapped submission carries the same rid and must never count twice
+    if (one('SELECT 1 FROM entries WHERE user_id = ? AND rid = ?', userId, rid)) { duplicate = true; return; }
     const u = one('SELECT * FROM users WHERE id = ?', userId);
     const prev = one('SELECT count FROM daily WHERE user_id = ? AND day = ?', userId, day)?.count ?? 0;
     if (prev + count > CFG.maxDaily) throw new HttpError(400, 'daily_cap');
 
+    run('INSERT INTO entries (user_id, day, count, rid, created_at) VALUES (?,?,?,?,?)', userId, day, count, rid, Date.now());
     run(`INSERT INTO daily (user_id, day, count) VALUES (?,?,?)
          ON CONFLICT(user_id, day) DO UPDATE SET count = count + excluded.count`, userId, day, count);
 
@@ -145,10 +150,10 @@ export function logDurood(userId, count) {
     for (const a of all('SELECT ancestor_id id FROM ancestors WHERE user_id = ? AND depth > 0', userId)) evalBadges(a.id, fresh);
   });
 
-  if (natCache.v) natCache.v.total += count; // keep the national meter live between refreshes
   const after = one('SELECT xp FROM users WHERE id = ?', userId).xp;
   return {
-    added: count,
+    duplicate,
+    added: duplicate ? 0 : count,
     xpGained: after - before,
     levelUp: levelFor(after).level > levelFor(before).level ? levelFor(after).level : null,
     newBadges: fresh.filter((b) => b.userId === userId).map((b) => b.code),
@@ -187,11 +192,12 @@ export function claimCircle(userId) {
 }
 
 // ---- reads ----------------------------------------------------------------
+// exact (summed from users.total, which `audit` proves equals the ledger); cached briefly and stamped with asOf
 let natCache = { at: 0, v: null };
 export function publicStats() {
-  if (Date.now() - natCache.at > 15_000) {
+  if (Date.now() - natCache.at > Number(process.env.PUBLIC_CACHE_MS ?? 15_000)) {
     const r = one('SELECT COALESCE(SUM(total),0) total, COUNT(*) members FROM users');
-    natCache = { at: Date.now(), v: { total: r.total, members: r.members } };
+    natCache = { at: Date.now(), v: { total: r.total, members: r.members, asOf: Date.now() } };
   }
   return { ...natCache.v, target: CFG.nationalTarget, circleUrl: CFG.circleUrl };
 }
