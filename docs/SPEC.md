@@ -127,4 +127,5 @@ The earlier "cut from v1" was a misreading. Both stay as secondary and tertiary 
 - The app is **Seerah Quest · سیرت کوئسٹ** (was Durood Qafila). Seerah is where it is headed; durood stays the daily habit and first on Home.
 - **"Caravan" (قافلہ) is the only member-facing word** for the tree of people you referred. "Qabila" is an internal name for the same tree and never appears in the UI.
 - Everyone starts their own tree. **No money anywhere:** no payments requested, no monetary rewards. Rewards are XP, badges and milestones only, and the app should say so plainly.
-- Still open: whether to hide the inviter's caravan from the member, and depth of caravan roll-up.
+- **Upline is visible:** a member sees the chain of people above them (who invited them, and who invited those) with each caravan's name and totals. This reverses the earlier idea to hide the inviter's caravan.
+- **Depth is unlimited:** you earn rewards for everyone in your tree, at any depth (as built).
