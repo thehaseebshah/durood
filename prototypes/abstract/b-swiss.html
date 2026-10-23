@@ -1,0 +1,31 @@
+<!doctype html><html><head><meta charset="utf-8"><title>B · Swiss</title><script src="common.js"></script>
+<style>
+:root{--ink:#0b0b0b;--paper:#fff;--rule:#0b0b0b;--g:#00a86b}
+*{box-sizing:border-box;margin:0}body{background:var(--paper);color:var(--ink);font:14px 'Inter',Helvetica,Arial,sans-serif;height:100vh;display:flex;flex-direction:column;user-select:none}
+html[lang=ur] body{font-family:'Noto Nastaliq Urdu','Noto Naskh Arabic',serif;line-height:1.7}
+.hd{display:flex;justify-content:space-between;padding:16px 20px;border-bottom:2px solid var(--rule);font-weight:700;font-size:.78rem;text-transform:uppercase;letter-spacing:1.2px}
+html[lang=ur] .hd{text-transform:none;letter-spacing:0}
+.big{padding:6px 20px 0;font-size:10.4rem;font-weight:800;letter-spacing:-9px;line-height:.95;font-variant-numeric:tabular-nums;margin-top:10px}
+html[lang=ur] .big{letter-spacing:-2px;font-family:system-ui;font-size:9rem}
+.bar{height:10px;background:#e8e8e8;margin:14px 20px 0;position:relative}.bar i{position:absolute;inset:0 auto 0 0;background:var(--g);transition:width .2s}html[dir=rtl] .bar i{inset:0 0 0 auto}
+.meta{display:flex;justify-content:space-between;padding:8px 20px 14px;font-size:.78rem;font-weight:600}
+.tbl{border-top:2px solid var(--rule)}.tbl div{display:flex;justify-content:space-between;padding:13px 20px;border-bottom:1px solid var(--rule);font-weight:600}.tbl div span:first-child{font-weight:400}
+.tbl .sec{opacity:.55}.tbl .ter{opacity:.35}
+.btn{margin-top:auto;background:var(--ink);color:#fff;padding:22px 20px;font-weight:700;font-size:1.1rem;display:flex;justify-content:space-between}
+.btn b{color:var(--g)}
+</style></head><body>
+<div class="hd"><span id="app"></span><span id="st"></span></div>
+<div class="big" id="n"></div>
+<div class="bar"><i id="bar"></i></div>
+<div class="meta"><span id="m1"></span><span id="m2"></span></div>
+<div class="tbl"><div><span id="l1"></span><span id="v1"></span></div><div><span id="l2"></span><span id="v2"></span></div><div><span id="l3"></span><span id="v3"></span></div>
+ <div class="sec"><span id="l4"></span><span>⁦0 / 1⁩</span></div><div class="ter"><span id="l5"></span><span>⁦0 / 1⁩</span></div></div>
+<div class="btn" id="btn"><span id="bt"></span><b>⁦+1⁩</b></div>
+<script>
+const $=(i)=>document.getElementById(i);let c=Number(new URLSearchParams(location.search).get('c'))||DATA.today;
+$('app').textContent=t('app');$('st').textContent=DATA.streak+' '+t('streak');$('m1').textContent=t('today');$('m2').textContent='⁦'+fmt(DATA.goal)+'⁩';
+$('l1').textContent=t('week');$('v1').textContent=fmt(DATA.week);$('l2').textContent=t('rank');$('v2').textContent='#'+DATA.rank;$('l3').textContent=t('caravan');$('v3').textContent='⁦'+DATA.lit+' / '+DATA.members+' · '+fmt(DATA.caravanTotal)+'⁩';
+$('l4').textContent=t('sunnah');$('l5').textContent=t('seerah');$('bt').textContent=t('tap');
+function draw(){$('n').textContent=c;$('bar').style.width=Math.min(100,c/DATA.goal*100)+'%'}
+$('btn').onclick=()=>{c++;draw()};draw();
+</script></body></html>

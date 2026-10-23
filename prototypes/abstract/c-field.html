@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8"><title>C · Colour Field</title><script src="common.js"></script>
+<style>
+:root{--deep:#0d3b2e;--cream:#efe6d0;--ink:#0d3b2e}
+*{box-sizing:border-box;margin:0}body{background:var(--deep);height:100vh;overflow:hidden;position:relative;font:15px 'Inter',system-ui,sans-serif;color:#cfe3d8;user-select:none}
+html[lang=ur] body{font-family:'Noto Nastaliq Urdu','Noto Naskh Arabic',serif;line-height:1.7}
+.field{position:absolute;inset:auto 0 0;background:var(--cream);transition:height .25s;height:0}
+.n{position:absolute;inset-inline-start:26px;font-size:5.6rem;font-weight:200;letter-spacing:-4px;line-height:1;font-variant-numeric:tabular-nums;color:var(--ink);transition:bottom .25s}
+.top{position:absolute;inset:22px 26px auto;display:flex;justify-content:space-between;font-size:.8rem;opacity:.85;z-index:2}
+.cap{position:absolute;inset-inline-start:28px;font-size:.85rem;color:var(--ink);opacity:.7;transition:bottom .25s}
+.strips{position:absolute;inset-inline-end:0;top:70px;bottom:0;display:flex;flex-direction:column;gap:0}
+.s{position:absolute;inset-inline-end:0;background:rgba(207,227,216,.35);top:110px;height:230px}.s.a{width:12px}.s.b{width:4px;inset-inline-end:18px}
+.members{position:absolute;inset:60px auto auto 26px;display:flex;gap:6px}.members i{width:7px;height:7px;background:#cfe3d8;opacity:.25}.members i.on{opacity:1}
+.foot{position:absolute;inset:auto 26px 24px;display:flex;justify-content:space-between;font-size:.82rem;color:var(--deep);z-index:2}
+</style></head><body>
+<div class="top"><span id="app"></span><span id="st"></span></div>
+<div class="members" id="mem"></div>
+<div class="s a"></div><div class="s b"></div>
+<div class="field" id="f"></div>
+<div class="cap" id="cap"></div><div class="n" id="n"></div>
+<div class="foot"><span id="w"></span><span id="r"></span></div>
+<script>
+const $=(i)=>document.getElementById(i);let c=Number(new URLSearchParams(location.search).get('c'))||DATA.today;
+$('app').textContent=t('app');$('st').textContent=DATA.streak+' '+t('streak');$('cap').textContent=t('today')+' · '+t('of')+' ⁦'+fmt(DATA.goal)+'⁩';
+$('mem').innerHTML=[...Array(DATA.members)].map((_,i)=>`<i class="${i<DATA.lit?'on':''}"></i>`).join('');
+$('w').textContent=t('week')+' ⁦'+fmt(DATA.week)+'⁩';$('r').textContent=t('sunnah')+' · '+t('seerah');
+const H=window.innerHeight;
+function draw(){const f=Math.min(1,c/DATA.goal);const h=f*(H-120);$('f').style.height=h+'px';$('n').textContent=fmt(c);
+ const inside=h>150; // number sits inside the light field once it is tall enough, otherwise just above it
+ $('n').style.bottom=(inside?h-104:h+34)+'px';const off=document.documentElement.lang==='ur'?26:0;$('cap').style.bottom=(inside?h-128-off:h+8)+'px';
+ $('n').style.color=$('cap').style.color=inside?'#0d3b2e':'#efe6d0'}
+document.body.onclick=()=>{c++;draw()};draw();
+</script></body></html>

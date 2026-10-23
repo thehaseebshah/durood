@@ -1,0 +1,28 @@
+<!doctype html><html><head><meta charset="utf-8"><title>A · One Line</title><script src="common.js"></script>
+<style>
+:root{--bg:#fafaf8;--ink:#111;--soft:#8d8d88;--hot:#ff4d2e}
+*{box-sizing:border-box;margin:0}body{background:var(--bg);color:var(--ink);font:15px 'Inter',system-ui,sans-serif;height:100vh;overflow:hidden;position:relative;user-select:none}
+html[lang=ur] body{font-family:'Noto Nastaliq Urdu','Noto Naskh Arabic',serif;line-height:1.7}
+.top{position:absolute;inset:22px 26px auto;display:flex;justify-content:space-between;color:var(--soft);font-size:.8rem}
+.n{position:absolute;inset-inline-start:26px;top:64px;font-size:6.4rem;font-weight:200;letter-spacing:-5px;line-height:1;font-variant-numeric:tabular-nums}
+.of{position:absolute;inset-inline-start:30px;top:176px;color:var(--soft);font-size:.85rem}
+html[lang=ur] .of{top:204px}
+svg{position:absolute;left:0;top:210px;width:100%;height:400px}
+.rows{position:absolute;inset:auto 26px 26px;display:grid;gap:0}
+.rows div{display:flex;justify-content:space-between;padding:11px 0;border-top:1px solid #dcdcd6;font-size:.88rem}.rows b{font-weight:500;font-variant-numeric:tabular-nums}.rows .dim{color:var(--soft)}
+.ticks{display:flex;gap:4px;padding:14px 0 4px}.ticks i{height:14px;width:2px;background:#cfcfc8}.ticks i.on{background:var(--ink)}
+</style></head><body>
+<div class="top"><span id="app"></span><span id="st"></span></div>
+<div class="n" id="n"></div><div class="of" id="of"></div>
+<svg viewBox="0 0 390 400" preserveAspectRatio="none"><path id="base" d="M-10 330 C 60 330, 90 60, 170 60 S 260 340, 330 250 S 380 120, 410 150" fill="none" stroke="#d9d9d2" stroke-width="1.5"/><path id="prog" d="M-10 330 C 60 330, 90 60, 170 60 S 260 340, 330 250 S 380 120, 410 150" fill="none" stroke="#111" stroke-width="4" stroke-linecap="round"/><circle id="dot" r="9" fill="#ff4d2e"/></svg>
+<div class="rows"><div class="ticks" id="tk" style="border:0;padding-bottom:10px"></div>
+ <div><span id="l1"></span><b id="v1"></b></div><div><span id="l2"></span><b id="v2"></b></div><div class="dim"><span id="l3"></span><b>⁦0 / 1⁩</b></div><div class="dim"><span id="l4"></span><b>⁦0 / 1⁩</b></div></div>
+<script>
+const $=(i)=>document.getElementById(i);let c=Number(new URLSearchParams(location.search).get('c'))||DATA.today;
+$('app').textContent=t('app');$('st').textContent=DATA.streak+' '+t('streak');$('of').textContent=t('today')+' · '+t('of')+' ⁦'+fmt(DATA.goal)+'⁩';
+$('l1').textContent=t('week');$('v1').textContent=fmt(DATA.week);$('l2').textContent=t('caravan');$('v2').textContent=fmt(DATA.caravanTotal);$('l3').textContent=t('sunnah');$('l4').textContent=t('seerah');
+$('tk').innerHTML=[...Array(DATA.members)].map((_,i)=>`<i class="${i<DATA.lit?'on':''}"></i>`).join('');
+const P=$('prog'),LEN=P.getTotalLength();P.style.strokeDasharray=LEN;
+function draw(){const f=Math.min(1,c/DATA.goal);$('n').textContent=fmt(c);P.style.strokeDashoffset=LEN*(1-f);const pt=P.getPointAtLength(LEN*f);$('dot').setAttribute('cx',pt.x);$('dot').setAttribute('cy',pt.y)}
+document.body.onclick=()=>{c++;draw()};draw();
+</script></body></html>

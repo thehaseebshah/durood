@@ -1,0 +1,30 @@
+<!doctype html><html><head><meta charset="utf-8"><title>F · Monolith</title><script src="common.js"></script>
+<style>
+:root{--bg:#ecebe6;--ink:#161616;--g:#0e6b4f;--a:#d99a2b;--b:#5b6b7a}
+*{box-sizing:border-box;margin:0}body{background:var(--bg);color:var(--ink);height:100vh;display:flex;flex-direction:column;padding:22px 26px;font:14px 'Inter',system-ui,sans-serif;user-select:none}
+html[lang=ur] body{font-family:'Noto Nastaliq Urdu','Noto Naskh Arabic',serif;line-height:1.7}
+.top{display:flex;justify-content:space-between;font-size:.8rem;color:#77766f}
+.seg{display:flex;gap:3px;margin-top:16px}.seg i{flex:1;height:4px;background:#cbcac3}.seg i.on{background:var(--ink)}
+.n{margin-top:18px;font-size:4.6rem;font-weight:200;letter-spacing:-3px;line-height:1;font-variant-numeric:tabular-nums}.cap{font-size:.82rem;color:#77766f;margin-top:2px}
+html[lang=ur] .cap{margin-top:22px}
+.bars{display:flex;gap:10px;align-items:flex-end;margin-top:auto;height:430px}
+.bar{position:relative;background:rgba(0,0,0,.07);height:100%;overflow:hidden}.bar i{position:absolute;inset:auto 0 0 0;transition:height .25s}
+.d{flex:6}.d i{background:var(--g)}.s{flex:2.4;height:62%}.s i{background:var(--a)}.t{flex:1.3;height:40%}.t i{background:var(--b)}
+.lab{display:flex;gap:10px;margin-top:10px;font-size:.75rem;color:#55544e}.lab span{text-align:start}
+.rows{display:flex;justify-content:space-between;margin-top:16px;padding-top:12px;border-top:1px solid #c9c8c1;font-size:.85rem}.rows b{font-weight:600}
+</style></head><body>
+<div class="top"><span id="app"></span><span id="st"></span></div>
+<div class="seg" id="seg"></div>
+<div class="n" id="n"></div><div class="cap" id="cap"></div>
+<div class="bars"><div class="bar d" id="bd"><i id="fd"></i></div><div class="bar s"><i style="height:0"></i></div><div class="bar t"><i style="height:0"></i></div></div>
+<div class="lab"><span style="flex:6" id="ld"></span><span style="flex:2.4" id="ls"></span><span style="flex:1.3" id="lt"></span></div>
+<div class="rows"><span><b id="v1"></b> <span id="l1"></span></span><span>#<b id="v2"></b></span><span><b id="v3"></b></span></div>
+<script>
+const $=(i)=>document.getElementById(i);let c=Number(new URLSearchParams(location.search).get('c'))||DATA.today;
+$('app').textContent=t('app');$('st').textContent=DATA.streak+' '+t('streak');$('cap').textContent=t('today')+' · '+t('of')+' ⁦'+fmt(DATA.goal)+'⁩';
+$('seg').innerHTML=[...Array(DATA.members)].map((_,i)=>`<i class="${i<DATA.lit?'on':''}"></i>`).join('');
+$('ld').textContent=t('durood');$('ls').textContent=t('sunnah');$('lt').textContent=t('seerah');
+$('v1').textContent=fmt(DATA.week);$('l1').textContent=t('week');$('v2').textContent=DATA.rank;$('v3').textContent=fmt(DATA.caravanTotal);
+function draw(){$('n').textContent=fmt(c);$('fd').style.height=Math.min(100,c/DATA.goal*100)+'%'}
+$('bd').onclick=()=>{c++;draw()};document.body.addEventListener('click',(e)=>{if(!e.target.closest('.bar'))return});draw();
+</script></body></html>

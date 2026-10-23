@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8"><title>D · Ripple</title><script src="common.js"></script>
+<style>
+:root{--bg:#0a0a0b;--ink:#f3f1ec;--dim:#55555a;--gold:#e8c46a}
+*{box-sizing:border-box;margin:0}body{background:var(--bg);color:var(--ink);height:100vh;overflow:hidden;font:14px 'Inter',system-ui,sans-serif;position:relative;user-select:none}
+html[lang=ur] body{font-family:'Noto Nastaliq Urdu','Noto Naskh Arabic',serif;line-height:1.7}
+.top{position:absolute;inset:22px 26px auto;display:flex;justify-content:space-between;color:var(--dim);font-size:.8rem}
+svg{position:absolute;left:0;top:130px;width:100%;height:520px}
+.n{position:absolute;left:0;right:0;top:56px;text-align:center;font-size:4.6rem;font-weight:100;letter-spacing:-3px;font-variant-numeric:tabular-nums}
+html[lang=ur] .cap{top:176px}
+.cap{position:absolute;left:0;right:0;top:140px;text-align:center;color:var(--dim);font-size:.8rem}
+.rip{position:absolute;left:50%;top:390px;width:60px;height:60px;margin:-30px;border:1px solid var(--gold);border-radius:50%;animation:r 1.2s ease-out forwards;pointer-events:none}
+@keyframes r{to{transform:scale(6);opacity:0}}
+.foot{position:absolute;inset:auto 26px 26px;display:grid;gap:8px;font-size:.85rem}.foot div{display:flex;justify-content:space-between;color:#9a9aa0}.foot b{color:var(--ink);font-weight:400}.foot .d{color:var(--dim)}
+</style></head><body>
+<div class="top"><span id="app"></span><span id="st"></span></div>
+<svg id="s" viewBox="0 0 390 520"></svg>
+<div class="n" id="n"></div><div class="cap" id="cap"></div>
+<div class="foot"><div><span id="l1"></span><b id="v1"></b></div><div><span id="l2"></span><b id="v2"></b></div><div class="d"><span id="l3"></span><span>⁦0 / 1⁩</span></div><div class="d"><span id="l4"></span><span>⁦0 / 1⁩</span></div></div>
+<script>
+const $=(i)=>document.getElementById(i);let c=Number(new URLSearchParams(location.search).get('c'))||DATA.today;
+$('app').textContent=t('app');$('st').textContent=DATA.streak+' '+t('streak');$('cap').textContent=t('today');
+$('l1').textContent=t('week');$('v1').textContent=fmt(DATA.week);$('l2').textContent=t('rank');$('v2').textContent='#'+DATA.rank;$('l3').textContent=t('sunnah');$('l4').textContent=t('seerah');
+function draw(){ $('n').textContent=fmt(c);
+ const cx=195,cy=260,full=Math.floor(c/100),part=(c%100)/100;let out='';
+ for(let i=0;i<Math.max(full,0);i++){const r=46+i*18;out+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#f3f1ec" stroke-opacity="${.85-i*.12}" stroke-width="1.2"/>`}
+ const r=46+full*18,C=2*Math.PI*r;out+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#e8c46a" stroke-width="2.2" stroke-dasharray="${C*part} ${C}" transform="rotate(-90 ${cx} ${cy})" stroke-linecap="round"/>`;
+ out+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#2a2a2e" stroke-width="1" stroke-dasharray="2 6" />`;
+ // caravan: dots on the outer rim
+ const R=185;for(let i=0;i<DATA.members;i++){const a=i/DATA.members*2*Math.PI-Math.PI/2;out+=`<circle cx="${cx+R*Math.cos(a)}" cy="${cy+R*Math.sin(a)}" r="3" fill="${i<DATA.lit?'#f3f1ec':'#3a3a3f'}"/>`}
+ $('s').innerHTML=out}
+document.body.onclick=(e)=>{c++;draw();const d=document.createElement('div');d.className='rip';document.body.appendChild(d);setTimeout(()=>d.remove(),1300)};draw();
+</script></body></html>

@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8"><title>E · Horizon</title><script src="common.js"></script>
+<style>
+*{box-sizing:border-box;margin:0}body{height:100vh;overflow:hidden;position:relative;font:14px 'Inter',system-ui,sans-serif;color:#fff;user-select:none;background:linear-gradient(#141a3a 0%,#2c2f6b 38%,#8a5a8f 56%,#f0a07a 62%,#f6d3a8 64%,#14182e 64%,#0f1226 100%)}
+html[lang=ur] body{font-family:'Noto Nastaliq Urdu','Noto Naskh Arabic',serif;line-height:1.7}
+.top{position:absolute;inset:22px 26px auto;display:flex;justify-content:space-between;font-size:.8rem;opacity:.75}
+.n{position:absolute;inset-inline-start:26px;top:62px;font-size:5.4rem;font-weight:100;letter-spacing:-4px;line-height:1;font-variant-numeric:tabular-nums}
+.cap{position:absolute;inset-inline-start:30px;top:162px;font-size:.82rem;opacity:.7}
+html[lang=ur] .cap{top:190px}
+.line{position:absolute;left:26px;right:26px;top:calc(64% - 1px);height:1px;background:rgba(255,255,255,.55)}
+.sun{position:absolute;width:26px;height:26px;border-radius:50%;background:#fff3d6;box-shadow:0 0 40px 12px rgba(255,220,160,.45);top:calc(64% - 13px);transition:left .25s}
+.stars{position:absolute;inset:230px 26px auto;display:flex;justify-content:space-between}.stars i{width:3px;height:3px;border-radius:50%;background:#fff;opacity:.2}.stars i.on{opacity:.95}
+.days{position:absolute;inset:calc(64% + 28px) 26px auto;display:flex;justify-content:space-between;align-items:flex-start;height:120px}
+.days i{width:14%;background:rgba(255,255,255,.5)}.days i.t{background:#fff3d6}
+.rows{position:absolute;inset:auto 26px 24px;display:grid;gap:8px;font-size:.85rem}.rows div{display:flex;justify-content:space-between;opacity:.85}.rows .d{opacity:.4}
+</style></head><body>
+<div class="top"><span id="app"></span><span id="st"></span></div>
+<div class="n" id="n"></div><div class="cap" id="cap"></div>
+<div class="stars" id="stars"></div>
+<div class="line"></div><div class="sun" id="sun"></div>
+<div class="days" id="days"></div>
+<div class="rows"><div><span id="l1"></span><span id="v1"></span></div><div><span id="l2"></span><span id="v2"></span></div><div class="d"><span id="l3"></span><span>⁦0 / 1⁩</span></div><div class="d"><span id="l4"></span><span>⁦0 / 1⁩</span></div></div>
+<script>
+const $=(i)=>document.getElementById(i);let c=Number(new URLSearchParams(location.search).get('c'))||DATA.today;
+$('app').textContent=t('app');$('st').textContent=DATA.streak+' '+t('streak');$('cap').textContent=t('today')+' · '+t('of')+' ⁦'+fmt(DATA.goal)+'⁩';
+$('l1').textContent=t('week');$('v1').textContent=fmt(DATA.week);$('l2').textContent=t('caravan');$('v2').textContent='⁦'+DATA.lit+' / '+DATA.members+'⁩';$('l3').textContent=t('sunnah');$('l4').textContent=t('seerah');
+$('stars').innerHTML=[...Array(DATA.members*2)].map((_,i)=>`<i class="${i<DATA.lit*2?'on':''}"></i>`).join('');
+$('days').innerHTML=[310,420,380,500,460,515,0].map((v,i)=>`<i class="${i===6?'t':''}" style="height:${i===6?0:v/515*110}px"></i>`).join('');
+const rtl=document.documentElement.dir==='rtl';
+function draw(){const f=Math.min(1,c/DATA.goal);$('n').textContent=fmt(c);const W=window.innerWidth-52-26;$('sun').style[rtl?'right':'left']=(26+f*W)+'px';
+ const tb=$('days').lastChild;tb.style.height=Math.min(110,c/515*110)+'px'}
+document.body.onclick=()=>{c++;draw()};draw();
+</script></body></html>
