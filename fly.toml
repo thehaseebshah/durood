@@ -1,0 +1,44 @@
+# Fly.io: one machine in Mumbai with a persistent volume. Change `app` to your own unique name.
+# The app keeps its scheduler (reminders, backups, photo clean-up) in the process and its database on one disk,
+# so it must stay a single, always-running machine.
+app = "seerah-quest-qa"
+primary_region = "bom"
+
+[build]
+
+[env]
+  PORT = "8080"
+  NODE_ENV = "production"
+  DB_PATH = "/data/durood.db"
+  UPLOAD_DIR = "/data/uploads"
+  BACKUP_DIR = "/data/backups"
+  TRUST_PROXY = "1"
+  CLIENT_IP_HEADER = "fly-client-ip"
+  FORCE_HSTS = "1"
+
+[mounts]
+  source = "quest_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 200
+    hard_limit = 400
+
+[[http_service.checks]]
+  method = "GET"
+  path = "/healthz"
+  interval = "30s"
+  timeout = "5s"
+  grace_period = "10s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
