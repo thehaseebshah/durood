@@ -439,7 +439,7 @@ function classCard(d) {
 function reflectionCard(r) {
   const prompt = r.prompt ? pick(r.prompt.textEn, r.prompt.textUr) : t('reflect_default');
   const body = r.mine
-    ? `<div class="reflbody">${esc(r.mine.body)}</div><div class="muted">${uiIcon('heart', 14, 2)} ${fmt(r.mine.likes)}</div>`
+    ? `<div class="reflbody" dir="auto">${esc(r.mine.body)}</div><div class="muted">${uiIcon('heart', 14, 2)} ${fmt(r.mine.likes)}</div>`
     : `<textarea id="refl" maxlength="${r.max}" rows="3" placeholder="${t('reflect_ph')}" dir="auto">${esc(S.reflDraft || '')}</textarea>
        <div class="row between"><small class="muted">${t('reflect_rules')}</small><button class="chip solid" data-act="reflect">${t('reflect_post')}</button></div>`;
   return `<div class="fcard"><h3>${uiIcon('pen', 14, 2)} ${t('reflect_title')}</h3><div class="head">${esc(prompt)}</div>${body}</div>`;
@@ -467,7 +467,7 @@ function feedItem(it) {
   }
   if (it.type === 'reflection') {
     return `<div class="fitem"><div class="flabel">${uiIcon('pen', 12, 2)} ${t('reflect_title')}</div>${who(it.username, it.city)}
-      ${it.promptEn ? `<div class="muted fprompt">${esc(pick(it.promptEn, it.promptUr))}</div>` : ''}<div class="reflbody">${esc(it.body)}</div>${acts}</div>`;
+      ${it.promptEn ? `<div class="muted fprompt">${esc(pick(it.promptEn, it.promptUr))}</div>` : ''}<div class="reflbody" dir="auto">${esc(it.body)}</div>${acts}</div>`;
   }
   if (it.type === 'milestone') {
     const b = t('badge')[it.code] || [it.code, ''];
