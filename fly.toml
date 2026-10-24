@@ -1,8 +1,8 @@
-# Fly.io: one machine in Mumbai with a persistent volume. Change `app` to your own unique name.
+# Fly.io: one machine in Singapore with a persistent volume. Change `app` to your own unique name.
 # The app keeps its scheduler (reminders, backups, photo clean-up) in the process and its database on one disk,
 # so it must stay a single, always-running machine.
 app = "seerah-quest-qa"
-primary_region = "bom"
+primary_region = "sin"
 
 [build]
 

@@ -2,7 +2,7 @@
 
 The repo is ready to deploy: `Dockerfile`, `fly.toml`, `scripts/smoke.mjs`. I could not run these from the build sandbox (no Docker daemon, no Fly account), so the first deploy is yours. The app itself was started from a clean copy of exactly the files the image contains, with production settings, and the smoke test passed.
 
-Why Fly: a persistent volume (the database and photos live on one disk), a Mumbai region close to Pakistan, HTTPS for free (web push and installing the app need it), and a single always-on machine, which is what this app needs.
+Why Fly: a persistent volume (the database and photos live on one disk), a Singapore region (Fly no longer offers Mumbai; Singapore is its nearest Asian region), HTTPS for free (web push and installing the app need it), and a single always-on machine, which is what this app needs.
 
 ## One-time setup (about 15 minutes)
 ```bash
@@ -11,7 +11,7 @@ fly auth signup                                  # or: fly auth login   (needs a
 cd durood
 # 1. edit fly.toml: change `app = "seerah-quest-qa"` to a name nobody has taken
 fly apps create <your-app-name>
-fly volumes create quest_data --region bom --size 1   # 1 GB is plenty for QA; grow later with `fly volumes extend`
+fly volumes create quest_data --region sin --size 1   # 1 GB is plenty for QA; grow later with `fly volumes extend`
 # 2. secrets (never commit these)
 fly secrets set \
   ADMIN_KEY="$(openssl rand -base64 36 | tr -d '/+=' | cut -c1-40)" \
