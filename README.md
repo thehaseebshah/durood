@@ -77,7 +77,7 @@ curl -X POST $URL/api/admin/lectures -H "x-admin-key: $ADMIN_KEY" -H 'content-ty
 - **Network layer:** unlimited-depth referral tree stored as a closure table. A person's *caravan* = themselves + everyone below them. Caravan totals, weekly caravan leaderboard, caravan milestone badges and XP (10K → 10M, counting only what invitees recited), invite via WhatsApp share.
 - **Referral reward is delayed:** the referrer gets XP only once the invitee recites their first durood (blocks fake sign-ups).
 - **Leaderboards:** weekly / all-time, individuals / caravans. Public; there is no opt-out. Flagged members are hidden until reviewed.
-- **Seerat Circles & lectures:** circle link (claim bonus once), YouTube lectures embedded with server-verified minimum watch time, one reward per lecture.
+- **Feed, likes, reflections:** see docs/SPEC.md section 15. Seerat Circle link on Home; one featured lecture a week with a quiz; sunnah and class photos; a daily written reflection; likes earn the poster points; reports hide content.
 - **National meter:** total durood across everyone vs a target.
 
 ## UI style

@@ -8,7 +8,7 @@ const date = (t) => new Date(t).toLocaleString('en-GB', { dateStyle: 'medium', t
 let KEY = sessionStorage.getItem('adminKey') || '';
 let tab = 'challenge';
 let notice = '';
-const TABS = [['challenge', 'Challenge'], ['invites', 'Invite codes'], ['waitlist', 'Waitlist'], ['flags', 'Flagged totals'], ['members', 'Members'], ['news', 'News'], ['exports', 'Exports']];
+const TABS = [['challenge', 'Challenge'], ['invites', 'Invite codes'], ['waitlist', 'Waitlist'], ['flags', 'Flagged totals'], ['members', 'Members'], ['news', 'News'], ['feed', 'Feed'], ['exports', 'Exports']];
 
 async function api(method, path, body) {
   const res = await fetch('/api/admin' + path, { method, headers: { 'content-type': 'application/json', 'x-admin-key': KEY }, body: body ? JSON.stringify(body) : undefined });
@@ -48,6 +48,27 @@ const views = {
       <div class="inline"><label class="check" style="margin:0"><input type="checkbox" id="npush"> Also send a notification</label><button class="chip solid" data-a="newspost">Post</button></div>
       <h3>Posted</h3>
       ${items.length ? `<table><tr><th>When</th><th>Title</th><th></th></tr>${items.map((a) => `<tr><td>${date(a.created_at)}</td><td>${esc(a.title_en)}</td><td><button class="chip" data-a="newsdel" data-id="${a.id}">Delete</button></td></tr>`).join('')}</table>` : '<p class="empty">Nothing posted yet.</p>'}`;
+  },
+  async feed() {
+    const [{ lectures }, { prompts }, { items }] = await Promise.all([api('GET', '/lectures'), api('GET', '/prompts'), api('GET', '/reported')]);
+    const photoLink = (i) => (i.photoUrl ? `<a href="${esc(i.photoUrl)}" target="_blank" rel="noopener">photo</a>` : '');
+    return `<h3>Lecture of the week</h3>
+      <p class="muted">Members see the lectures whose week is the current one. Any date in the week works. A quiz is optional: a JSON list like <code>[{"q_en":"Where was the Prophet ﷺ born?","options_en":["Makkah","Madinah"],"answer":0}]</code>.</p>
+      <div class="inline"><div><label>YouTube id (11 characters)</label><input id="lyt" maxlength="11"></div><div><label>Week (any date)</label><input id="lwk" type="date" value="${pktToday()}"></div><div><label>Minimum watch (seconds)</label><input id="lmin" type="number" min="30" value="600"></div></div>
+      <label>Title (English)</label><input id="ltE" maxlength="120"><label>Title (Urdu, optional)</label><input id="ltU" maxlength="120" dir="rtl"><label>Speaker</label><input id="lsp" maxlength="80">
+      <label>Quiz (optional JSON)</label><textarea id="lqz" rows="3"></textarea>
+      <div class="inline"><button class="chip solid" data-a="lecadd">Add lecture</button></div>
+      ${lectures.length ? `<table><tr><th>Week</th><th>Title</th><th>Speaker</th><th></th></tr>${lectures.map((l) => `<tr><td>${esc(l.week_start)}</td><td>${esc(l.title_en)}</td><td>${esc(l.speaker)}</td><td><button class="chip" data-a="lecdel" data-id="${l.id}">Delete</button></td></tr>`).join('')}</table>` : '<p class="empty">No lectures yet.</p>'}
+      <h3>Question of the day</h3>
+      <p class="muted">Shown above the daily reflection box. A day without a question shows a general prompt.</p>
+      <div class="inline"><div><label>Day</label><input id="pday" type="date" value="${pktToday()}"></div></div>
+      <label>Question (English)</label><input id="ptE" maxlength="200"><label>Question (Urdu, optional)</label><input id="ptU" maxlength="200" dir="rtl">
+      <div class="inline"><button class="chip solid" data-a="promptset">Save question</button></div>
+      ${prompts.length ? `<table><tr><th>Day</th><th>Question</th></tr>${prompts.slice(0, 10).map((p) => `<tr><td>${esc(p.day)}</td><td>${esc(p.text_en)}</td></tr>`).join('')}</table>` : ''}
+      <h3>Reported or hidden</h3>
+      <p class="muted">Three reports from different members hide a photo or reflection. Restore it, or leave it removed.</p>
+      ${items.length ? `<table><tr><th>Kind</th><th>Member</th><th>Content</th><th>Reports</th><th>Status</th><th></th></tr>${items.map((i) => `<tr><td>${esc(i.kind)}</td><td>${esc(i.username)}</td><td>${esc(i.text || '')} ${photoLink(i)}</td><td>${i.reports}</td><td>${esc(i.status)}</td>
+        <td>${i.status === 'removed' ? `<button class="chip solid" data-a="restore2" data-kind="${esc(i.kind)}" data-id="${i.id}">Restore</button>` : `<button class="chip" data-a="remove2" data-kind="${esc(i.kind)}" data-id="${i.id}">Remove</button>`}</td></tr>`).join('')}</table>` : '<p class="empty">Nothing reported.</p>'}`;
   },
   async exports() {
     return `<h3>Exports</h3><p class="muted">CSV files of totals as reported by members. Deleted members stay in totals. Open in Excel or Google Sheets.</p>
@@ -139,6 +160,15 @@ document.addEventListener('click', (ev) => {
       a.download = `seerah-quest-${d.k}-${pktToday()}.csv`; a.click();
       say('Downloaded.');
     },
+    lecadd: async () => {
+      const qz = $('#lqz').value.trim();
+      await api('POST', '/lectures', { youtube_id: $('#lyt').value.trim(), week: $('#lwk').value, min_seconds: Number($('#lmin').value), title_en: $('#ltE').value, title_ur: $('#ltU').value, speaker: $('#lsp').value, questions: qz ? JSON.parse(qz) : undefined });
+      say('Lecture added.');
+    },
+    lecdel: async () => { if (!confirm('Delete this lecture?')) return; await api('DELETE', `/lectures/${d.id}`); say('Deleted.'); },
+    promptset: async () => { await api('POST', '/prompts', { day: $('#pday').value, text_en: $('#ptE').value, text_ur: $('#ptU').value }); say('Question saved.'); },
+    remove2: async () => { await api('POST', `/content/${d.kind}/${d.id}`, { action: 'remove' }); say('Removed.'); },
+    restore2: async () => { await api('POST', `/content/${d.kind}/${d.id}`, { action: 'restore' }); say('Restored.'); },
     chtoday: async () => { if (!confirm('Make today day 1 of the challenge?')) return; await api('POST', '/challenge', { start: pktToday() }); say('Day 1 is now today.'); },
     pub: () => api('POST', '/public-code', { enabled: d.v === '1' }),
     pubcap: async () => { await api('POST', '/public-code', { dailyCap: Number($('#pubcap').value) }); say('Daily limit saved.'); },

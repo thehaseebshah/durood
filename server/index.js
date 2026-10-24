@@ -271,7 +271,8 @@ route('GET', '/api/feed', ({ user, query }) => {
   const before = query.get('before');
   const page = feedApi.feed(user, before || undefined);
   if (before) return page; // later pages are only the stream
-  return { ...page, lectures: feedApi.lectureList(user), today: sunnah.today(user), reflection: feedApi.reflectionToday(user) };
+  const seenAt = one('SELECT news_seen_at s FROM users WHERE id = ?', user).s;
+  return { ...page, seenAt, lectures: feedApi.lectureList(user), today: sunnah.today(user), reflection: feedApi.reflectionToday(user) };
 });
 route('POST', '/api/reflections', ({ user, body }) => {
   rateLimit(`refl:${user}`, 10, 60e3);

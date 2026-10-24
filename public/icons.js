@@ -21,6 +21,10 @@ const G = {
   camera: '<rect fill="FILL" x="3" y="7" width="18" height="12"/><circle fill="none" cx="12" cy="13" r="3.2"/><path fill="none" d="M8.5 7l1.2-2h4.6l1.2 2"/>',
   share: '<path fill="none" d="M5 12v7h14v-7M12 4v10M8 8l4-4 4 4"/>',
   bolt: '<path fill="FILL" d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  feed: '<rect fill="FILL" x="4" y="4" width="16" height="6"/><path fill="none" d="M4 14h16M4 18h10"/>',
+  heart: '<path fill="FILL" d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+  flag: '<path fill="none" d="M6 21V4"/><path fill="FILL" d="M6 5h11l-2.5 3.5L17 12H6z"/>',
+  pen: '<path fill="FILL" d="M4 20l1-4L16 5l3 3L8 19z"/><path fill="none" d="M14 7l3 3"/>',
 };
 const glyph = (name, fill) => G[name].replaceAll('FILL', fill);
 
@@ -34,7 +38,7 @@ export const BADGES = {
   first_step: ['beads', 1, 5], d1k: ['beads', 2, 5], d10k: ['beads', 3, 5], d100k: ['beads', 4, 5], d1m: ['beads', 5, 5],
   streak7: ['flame', 1, 3], streak30: ['flame', 2, 3], streak100: ['flame', 3, 3],
   sunnah1: ['leaf', 1, 3], sunnah7: ['leaf', 2, 3], sunnah30: ['leaf', 3, 3],
-  verifier10: ['lens', 1, 2], verifier100: ['lens', 2, 2],
+  group10k: ['caravan', 1, 3], group100k: ['caravan', 2, 3], group1m: ['caravan', 3, 3],
   recruit1: ['nodes', 1, 3], recruit5: ['nodes', 2, 3], recruit25: ['nodes', 3, 3],
   scholar1: ['book', 1, 2], scholar10: ['book', 2, 2], circle: ['seat', 1, 1],
   caravan10k: ['chain', 1, 4], caravan100k: ['chain', 2, 4], caravan1m: ['chain', 3, 4], caravan10m: ['chain', 4, 4],

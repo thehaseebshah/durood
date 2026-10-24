@@ -154,3 +154,20 @@ Home: number box first (type a total, presets +100/+500/+1,000 fill the field, A
 - The fifth tab is **Seerah** (it was labelled "Bonus", an internal word nobody uses). It holds today's Sunnah, the weekly class, the Seerat Circle and lectures. On Home the section is "Sunnah and Seerah".
 - **Language and display (white/dark) live in Me**, under "Language and display". The header keeps only the streak and the news bell. The sign-in and intro screens keep their own language switch because there is no account yet.
 - **No design notes in the app's wording.** Statements such as "durood always comes first" are decisions about how the app works, not copy for members. Review all new text for this before it ships.
+
+## 15. The feed, likes, reflections and the three rankings (replaces photo verification)
+**Terms (fixed):** a **caravan** is a member plus the people they invited themselves. A **referral tree** (internally *qabila*) is everyone under a member at every depth. The Caravan tab shows the caravan; the tree appears in Me (people, total, this week, tree milestones) and as one of three rankings. Internally the closure table's depth 1 is the caravan and every depth is the tree.
+
+**No verification.** Members are trusted. A sunnah photo pays its reward in the step that posts it (tick 20, photo +40; the weekly class photo 150). The review queue, voting, reviewer badges (Trusted Reviewer, Pillar of Trust) and the "review 3 photos" quest are gone. Likes and reports are the check: three reports from different members hide a photo or reflection until an admin restores it.
+
+**Likes.** One like per member per item, never taken back (so the points stay exact), nobody likes their own. The poster earns 2 points for each of the first 10 likes on that item; liking earns nothing. The audit checks the arithmetic.
+
+**Daily reflection.** One plain-text post a day, at most 280 characters, no links, answering the admin's question of the day (or a general prompt). It pays through a daily quest (15) and can be liked and reported. No replies, hashtags or follows, on purpose.
+
+**The feed** (fifth tab becomes Feed: Home, Feed, Ranks, Caravan, Me) is newest first, paged by time, with five kinds of item: announcements; sunnah and class photos; reflections; milestones of a member's own caravan (themselves, the people they invited, and the person who invited them); each crore of the challenge. The week's lecture(s) sit with the day's actions on the left of the desktop layout (above the stream on a phone). Lectures belong to a week (any date in the week works when adding one); only the current week's show.
+
+**Rankings:** People (week, challenge, all-time), Caravans and Referral trees (each by Total this week, Average per active member, Growth vs last week).
+
+**Milestones:** new *Caravan* badges at 10K, 100K and 1M (what the people you invited recited, 300 / 1,500 / 6,000 points); the old whole-tree badges are now called *Tree* 10K to 10M (same rewards as before). 24 badges in all.
+
+**Defaults I chose (change on request):** Urdu uses کارواں for caravan and "ریفرل ٹری" for referral tree; milestone posts reach the member, their invitees and their inviter only; feed photos are visible to every member; an admin can post one lecture or several per week; the photo reward stays 40 on top of the tick.

@@ -333,3 +333,22 @@ html[lang=ur] .ctitle { letter-spacing: 0; }
 @media (min-width: 1600px) { body.in-app { --side: 260px; } }
 .numbox label { padding-inline: 20px; }
 .padx { padding-inline: 20px; }
+
+/* feed */
+.fcard { padding: 0 20px 14px; border-top: 1px solid var(--line); }
+.fcard > h3 { margin-inline: -20px; margin-bottom: 8px; }
+.fcard textarea { width: 100%; font: inherit; padding: 12px; border: 2px solid var(--ink); border-radius: 0; background: var(--paper); color: var(--ink); box-sizing: border-box; resize: vertical; margin: 8px 0; }
+.stream .fitem { padding: 12px 20px; border-top: 1px solid var(--line); }
+.fitem .flabel { display: flex; align-items: center; gap: 6px; font-size: .68rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--sig-text); margin-bottom: 4px; }
+html[lang=ur] .fitem .flabel { text-transform: none; letter-spacing: 0; font-size: .85rem; }
+.fitem .when { margin-inline-start: auto; color: var(--soft); font-weight: 500; letter-spacing: 0; text-transform: none; }
+.fwho { display: flex; align-items: baseline; gap: 6px; } .fwho .when { margin-inline-start: auto; color: var(--soft); }
+.fprompt { font-size: .82rem; margin: 2px 0 4px; }
+.reflbody { font-size: 1.05rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; margin: 6px 0; }
+.facts { display: flex; gap: 8px; margin-top: 8px; }
+.chip.like.on { background: var(--sig); border-color: var(--sig); color: var(--on-sig); }
+.chip.like:disabled { opacity: 1; cursor: default; }
+.fitem.ann.unread { border-inline-start: 4px solid var(--sig); background: var(--sig-bg); }
+.fitem.ms { background: var(--cell); } .fitem.ms.mine { border-inline-start: 4px solid var(--sig); }
+.stream + .more { margin: 12px 20px; }
+@media (min-width: 1024px) { body.in-app .cols > .col + .col .stream .fitem { padding-inline: 24px; } }
