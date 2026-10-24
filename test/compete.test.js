@@ -182,3 +182,22 @@ test('special days: Fridays automatically, other days added by the admin; a bonu
   await api('DELETE', `/api/admin/special-days/${dayOf()}`, { headers: admin });
   assert.equal(specialToday(dayOf())?.nameEn === '12 Rabi ul Awwal', false);
 });
+
+test('caravan names are unique and share one namespace with usernames', async () => {
+  const a = await signup('cn_a'), b = await signup('cn_b');
+  const name = (u, n) => api('PUT', '/api/caravan/name', { token: u.token, body: { name: n } });
+  assert.equal((await name(a, 'cn_b')).error, 'caravan_name_taken');      // a member's username
+  assert.equal((await name(a, 'cn_a')).error, 'caravan_name_taken');      // my own username too
+  assert.equal((await name(a, 'ab')).error, 'bad_caravan_name');
+  assert.equal((await name(a, 'admin')).error, 'bad_caravan_name');
+  assert.equal((await name(a, 'Noor_Caravan')).me.caravanName, 'Noor_Caravan');
+  assert.equal((await name(b, 'noor_caravan')).error, 'caravan_name_taken'); // case-insensitive
+  assert.equal((await name(a, 'Noor_Caravan')).me.caravanName, 'Noor_Caravan'); // saving the same name again is fine
+  assert.equal((await api('GET', '/api/caravan-name-check?u=noor_caravan', { token: b.token })).ok, false);
+  // nobody can register a username that a caravan already uses
+  const reg = await api('POST', '/api/register', { body: { username: 'noor_caravan', email: 'x1@x.pk', phone: '03111111111', password: 'secret1', cityId: 1172451, invite: 'TESTFOUND' } });
+  assert.equal(reg.error, 'username_taken');
+  assert.equal((await api('GET', '/api/username-check?u=noor_caravan')).ok, false);
+  assert.equal((await name(a, '')).me.caravanName, null);                  // clearing frees the name
+  assert.equal((await name(b, 'noor_caravan')).me.caravanName, 'noor_caravan');
+});

@@ -604,7 +604,7 @@ function rank() {
   const grp = ['caravans', 'trees', 'cities'].includes(b.type);
   const list = b.type === 'league' ? leagueView() : !rows ? '<p class="muted center">…</p>' : rows.length ? `<ul class="lb">${rows.map((r) => `
     <li class="${r.me ? 'me' : ''}"><span class="rank">${r.rank}</span>
-      <span class="name">${esc(r.username)}${r.me ? ` <em class="tag">${t('you')}</em>` : ''}<small>${r.city ? `${esc(r.city)}` : ''}${grp ? `${r.city ? ' · ' : ''}${fmt(r.members)} ${t('members')}${b.metric === 'average' ? ` · ${fmt(r.active)} ${t('active')}` : ''}` : ''}</small></span>
+      <span class="name">${esc(r.caravanName || r.username)}${r.me ? ` <em class="tag">${t('you')}</em>` : ''}<small>${r.caravanName ? `${esc(r.username)}${r.city ? ' · ' : ''}` : ''}${r.city ? `${esc(r.city)}` : ''}${grp ? `${r.city ? ' · ' : ''}${fmt(r.members)} ${t('members')}${b.metric === 'average' ? ` · ${fmt(r.active)} ${t('active')}` : ''}` : ''}</small></span>
       <span class="score">${grp && b.metric === 'growth' && r.score > 0 ? '+' : ''}${fmt(r.score)}</span></li>`).join('')}</ul>` : `<p class="muted center">${t(b.type === 'cities' ? 'empty_cities' : 'empty_board')}</p>`;
   const kinds = [['users', 'rk_people'], ['league', 'rk_league'], ['caravans', 'rk_caravans'], ['trees', 'rk_trees'], ['cities', 'rk_cities']];
   const note = b.type === 'league' ? '' : grp ? `${t('rk_note_' + b.type)} ${t('cv_note_' + b.metric)}` : (b.period === 'challenge' ? t('challenge_note') : '');
@@ -626,7 +626,7 @@ function rank() {
 function uplineBlock(tm) {
   if (!tm?.upline?.length) return '';
   return `<h3>${t('upline_title')}</h3>
-  <ul class="lb upline">${tm.upline.map((u) => `<li><span class="name">${esc(u.username)}<small>${u.city ? `${esc(u.city)} · ` : ''}${fmt(u.members)} ${t('members')}</small></span><span class="score">${fmt(u.team)}</span></li>`).join('')}</ul>`;
+  <ul class="lb upline">${tm.upline.map((u) => `<li><span class="name">${esc(u.caravanName || u.username)}<small>${u.caravanName ? `${esc(u.username)} · ` : ''}${u.city ? `${esc(u.city)} · ` : ''}${fmt(u.members)} ${t('members')}</small></span><span class="score">${fmt(u.team)}</span></li>`).join('')}</ul>`;
 }
 
 function caravan() {
@@ -638,6 +638,9 @@ function caravan() {
   return `<div class="cols"><div class="col">
   <h3 class="first-d">${t('caravan_title')}</h3>
   <p class="muted">${t('caravan_sub')}</p>
+  <form class="cname" data-form="cname"><label for="cname">${m.caravanName ? t('cname_yours') : t('cname_title')}</label>
+    <div class="row"><input id="cname" name="name" type="text" maxlength="20" autocomplete="off" autocapitalize="off" dir="ltr" placeholder="${esc(t('cname_ph'))}" value="${esc(m.caravanName || '')}"><button class="chip solid" type="submit">${t('save')}</button></div>
+    <div class="hint" id="cnamecheck">${t('cname_hint')}</div></form>
   <div class="stats"><div><b>${fmt(m.caravan.members)}</b><span>${t('c_members')}</span></div><div><b>${fmt(own)}</b><span>${t('c_total')}</span></div><div><b>${tm ? fmt(tm.caravan.week) : '…'}</b><span>${t('c_week')}</span></div></div>
   <div class="lvl"><div class="row between"><span>${t('next_milestone')}</span><b>${fmt(next)}</b></div>${bar(next === prev ? 100 : ((m.caravan.down - prev) / (next - prev)) * 100)}</div>
   ${!tm ? '' : tm.karwan.active ? `<div class="karwan"><b>${uiIcon('flame', 16, 1.8)} ${t('karwan_streak')(tm.karwan.streak)}</b>
@@ -647,7 +650,7 @@ function caravan() {
 
   <h3>${t('direct_list')} (${fmt(m.team.direct)})</h3>
   ${!tm ? '…' : tm.direct.length ? `<ul class="lb">${tm.direct.map((d) => `
-    <li><span class="name">${esc(d.username)}<small>${d.city ? `${esc(d.city)} · ` : ''}${fmt(d.total)} · ${t('this_week')} ${fmt(d.week)}</small></span><span class="score">${fmt(d.total)}</span></li>`).join('')}</ul>` : `<p class="muted">${t('none_yet')}</p>`}
+    <li><span class="name">${esc(d.caravanName || d.username)}<small>${d.caravanName ? `${esc(d.username)} · ` : ''}${d.city ? `${esc(d.city)} · ` : ''}${fmt(d.total)} · ${t('this_week')} ${fmt(d.week)}</small></span><span class="score">${fmt(d.total)}</span></li>`).join('')}</ul>` : `<p class="muted">${t('none_yet')}</p>`}
   </div><div class="col">
   <h3 class="first-d">${t('your_code')}</h3>
   <div class="code">${esc(m.username)}</div>
@@ -1123,13 +1126,17 @@ app.addEventListener('submit', async (ev) => {
       if (!f.cityId) throw new Error('city_required');
       S.me = await api('/me', 'PATCH', { cityId: Number(f.cityId) });
       toast(t('saved')); draw();
+    } else if (kind === 'cname') {
+      S.me = (await api('/caravan/name', 'PUT', { name: f.name })).me;
+      S.team = await api('/team');
+      toast(t('saved')); draw();
     } else if (kind === 'delete') {
       if (!confirm(t('delete_confirm'))) { btn.disabled = false; return; }
       await api('/me', 'DELETE', { password: f.password });
       logout(false); S.authMode = 'login'; draw(); toast(t('deleted'));
     }
   } catch (e) {
-    if (kind === 'settings' || kind === 'delete' || kind === 'citysave') { toast(errText(e)); btn.disabled = false; }
+    if (kind === 'settings' || kind === 'delete' || kind === 'citysave' || kind === 'cname') { toast(errText(e)); btn.disabled = false; }
     else { S.error = errText(e); draw(); }
   }
 });
@@ -1178,6 +1185,20 @@ app.addEventListener('input', (ev) => {
 
 let checkTimer;
 app.addEventListener('input', (ev) => {
+  const cn = ev.target.closest('#cname');
+  if (cn) {
+    clearTimeout(checkTimer);
+    checkTimer = setTimeout(async () => {
+      const out = $('#cnamecheck'), v = cn.value.trim();
+      if (!v || v === S.me.caravanName) { out.className = 'hint'; out.textContent = t('cname_hint'); return; }
+      try {
+        const r = await api(`/caravan-name-check?u=${encodeURIComponent(v)}`);
+        out.className = 'hint ' + (r.ok ? 'ok' : 'bad');
+        out.textContent = r.ok ? `✓ ${t('ok_free')}` : r.reason ? t('err').bad_caravan_name : t('err').caravan_name_taken;
+      } catch { /* the server checks again on save */ }
+    }, 350);
+    return;
+  }
   const el = ev.target.closest('[data-check]');
   if (!el) return;
   clearTimeout(checkTimer);

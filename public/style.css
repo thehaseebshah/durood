@@ -451,3 +451,7 @@ html[dir=rtl] .cta b { transform: scaleX(-1); }
 @media (prefers-reduced-motion: reduce) { .stage *, .stage { animation: none !important; } .dur span { opacity: 1; } }
 
 .sheet .sec { border-top: 0; }
+
+/* the caravan name field */
+.cname { margin: 14px 20px 4px; } .cname label { display: block; font-weight: 700; margin-bottom: 6px; }
+.cname .row input { flex: 1; min-width: 0; }

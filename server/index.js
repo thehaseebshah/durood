@@ -23,6 +23,8 @@ const run = (sql, ...a) => db.prepare(sql).run(...a);
 const RESERVED = new Set(['admin', 'root', 'support', 'durood', 'qafila', 'quest', 'seerah', 'seerat', 'api', 'null', 'undefined']);
 const isReserved = (u) => RESERVED.has(u.toLowerCase()) || /^member_\d+$/i.test(u); // member_<id> is what deleted accounts become
 const USERNAME = /^[a-z0-9_]{3,20}$/i;
+// usernames and caravan names share one namespace: a name is free only when no profile and no caravan uses it
+const handleTaken = (name, exceptId = 0) => !!one('SELECT 1 FROM users WHERE (username = ? OR caravan_name = ? COLLATE NOCASE) AND id != ?', name, name, exceptId);
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 /**
@@ -82,7 +84,26 @@ route('GET', '/api/username-check', { auth: false }, ({ query, ip }) => {
   rateLimit(`uc:${ip}`, 120, 60e3);
   const u = String(query.get('u') || '');
   if (!USERNAME.test(u) || isReserved(u)) return { ok: false, reason: 'bad_username' };
-  return { ok: !one('SELECT 1 FROM users WHERE username = ?', u) };
+  return { ok: !handleTaken(u) };
+});
+
+// free for this member: nobody else uses it, and it is not their own username (their own current caravan name is fine)
+const nameFreeFor = (userId, n) => !handleTaken(n, userId) && !one('SELECT 1 FROM users WHERE id = ? AND username = ?', userId, n);
+route('GET', '/api/caravan-name-check', ({ user, query }) => {
+  const n = String(query.get('u') || '').trim();
+  if (!USERNAME.test(n) || isReserved(n)) return { ok: false, reason: 'bad_caravan_name' };
+  return { ok: nameFreeFor(user, n) };
+});
+route('PUT', '/api/caravan/name', ({ user, body }) => {
+  rateLimit(`cname:${user}`, 10, 3600e3);
+  const n = String(body.name ?? '').trim();
+  if (!n) { run('UPDATE users SET caravan_name = NULL WHERE id = ?', user); return { me: getMe(user) }; }
+  if (!USERNAME.test(n) || isReserved(n)) throw new HttpError(400, 'bad_caravan_name');
+  tx(() => {
+    if (!nameFreeFor(user, n)) throw new HttpError(409, 'caravan_name_taken');
+    run('UPDATE users SET caravan_name = ? WHERE id = ?', n, user);
+  });
+  return { me: getMe(user) };
 });
 
 route('GET', '/api/invite-check', { auth: false }, ({ query, ip }) => {
@@ -129,7 +150,7 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
     // resolve again inside the transaction so a code can't be used past its limit by two people at once
     let r = null;
     if (String(inviteRaw || '').trim()) r = access.resolveInvite(inviteRaw);
-    if (one('SELECT 1 FROM users WHERE username = ?', username)) throw new HttpError(409, 'username_taken');
+    if (handleTaken(username)) throw new HttpError(409, 'username_taken');
     if (one('SELECT 1 FROM users WHERE email = ?', email)) throw new HttpError(409, 'email_taken');
     if (one('SELECT 1 FROM users WHERE phone = ?', phone)) throw new HttpError(409, 'phone_taken');
     if (r) access.consumeInvite(r);

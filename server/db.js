@@ -431,6 +431,8 @@ addCol('users', 'league', 'INTEGER NOT NULL DEFAULT 0');           // 0 Bronze, 
 addCol('users', 'tree_active', 'INTEGER NOT NULL DEFAULT 0');     // people under this member (any depth) who have recited at least once
 addCol('users', 'reminder_time', "TEXT NOT NULL DEFAULT ''");       // 'HH:MM' Pakistan time, '' = no daily reminder
 addCol('users', 'news_seen_at', 'INTEGER NOT NULL DEFAULT 0');
+addCol('users', 'caravan_name', 'TEXT');                              // the member's own name for their caravan; shares one namespace with usernames
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_caravan_name ON users(caravan_name COLLATE NOCASE) WHERE caravan_name IS NOT NULL');
 
 export const getSetting = (key, fallback = null) => db.prepare('SELECT value FROM settings WHERE key = ?').get(key)?.value ?? fallback;
 export const setSetting = (key, value) => db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, String(value));

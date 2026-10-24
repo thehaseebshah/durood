@@ -407,7 +407,7 @@ export function history(userId) {
 /** Anonymises an account. The durood stays in every total; the person's name, phone and email are erased. */
 export function anonymiseUser(userId, passHash) {
   tx(() => {
-    run(`UPDATE users SET username = ?, email = ?, phone = ?, pass = ?, city = '', deleted_at = ?, hidden_from_ranks = 1, suspended = 0
+    run(`UPDATE users SET caravan_name = NULL, username = ?, email = ?, phone = ?, pass = ?, city = '', deleted_at = ?, hidden_from_ranks = 1, suspended = 0
          WHERE id = ?`, `member_${userId}`, `deleted-${userId}@deleted.invalid`, `deleted-${userId}`, passHash, Date.now(), userId);
     run('DELETE FROM tokens WHERE user_id = ?', userId);
   });
@@ -614,7 +614,7 @@ export function getMe(userId) {
   const direct = one('SELECT COUNT(*) n FROM users WHERE referrer_id = ?', userId).n;
   const streakAlive = u.last_day === day || (u.last_day && dayNum(day) - dayNum(u.last_day) === 1);
   return {
-    id: u.id, username: u.username, email: u.email, phone: u.phone, lang: u.lang, city: u.city, cityId: u.city_id, country: u.country, needsCity: !u.city_id,
+    id: u.id, username: u.username, caravanName: u.caravan_name, email: u.email, phone: u.phone, lang: u.lang, city: u.city, cityId: u.city_id, country: u.country, needsCity: !u.city_id,
     dailyGoal: u.daily_goal, hiddenFromRanks: !!u.hidden_from_ranks, emailVerified: !!u.email_verified_at,
     invites: inviteStatus(userId),
     total: u.total, today, week,
@@ -676,7 +676,7 @@ export function leaderboard(userId, type, period) {
         base = `SELECT u.id id, (CASE WHEN u.held = 0 THEN u.total ELSE 0 END) + COALESCE(c.s, 0) score FROM users u
                 JOIN (SELECT referrer_id id, SUM(CASE WHEN held = 0 THEN total ELSE 0 END) s FROM users WHERE referrer_id IS NOT NULL GROUP BY referrer_id) c ON c.id = u.id`;
       }
-      return all(`SELECT u.username, u.city, t.score, ${membersOf(scope)} members
+      return all(`SELECT u.username, u.caravan_name cn, u.city, t.score, ${membersOf(scope)} members
                   FROM (${base}) t JOIN users u ON u.id = t.id
                   WHERE ${VISIBLE} AND t.score > 0 AND EXISTS (SELECT 1 FROM users c WHERE c.referrer_id = u.id)
                   ORDER BY t.score DESC LIMIT 50`, ...(period === 'all' ? [] : [from, to]));
@@ -706,11 +706,11 @@ export function caravanBoard(userId, metric, scope = 'tree') {
         FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 WHERE d.day >= ? GROUP BY d.user_id),
       t AS (SELECT a.ancestor_id id, SUM(w.wk) week, SUM(w.last) last, SUM(w.active) active
             FROM w JOIN ancestors a ON a.user_id = w.user_id AND a.depth <= ${scopeDepth(scope)} GROUP BY a.ancestor_id)
-      SELECT u.username, u.city, t.week, t.last, t.active, ${membersOf(scope)} members
+      SELECT u.username, u.caravan_name cn, u.city, t.week, t.last, t.active, ${membersOf(scope)} members
       FROM t JOIN users u ON u.id = t.id
       WHERE ${VISIBLE} AND EXISTS (SELECT 1 FROM users c WHERE c.referrer_id = u.id)`, wk, wk, wk, prev);
     return raw.map((r) => ({
-      username: r.username, city: r.city, members: r.members, active: r.active,
+      username: r.username, caravanName: r.cn, city: r.city, members: r.members, active: r.active,
       score: metric === 'growth' ? r.week - r.last : r.active ? Math.round(r.week / r.active) : 0,
     })).filter((r) => (metric === 'growth' ? r.score !== 0 : r.score > 0))
       .sort((x, y) => y.score - x.score || x.username.localeCompare(y.username)).slice(0, 50);
@@ -720,7 +720,7 @@ export function caravanBoard(userId, metric, scope = 'tree') {
 
 export function teamView(userId) {
   const wk = weekStart();
-  const direct = all(`SELECT u.username, u.city, u.total, u.team_total, u.created_day,
+  const direct = all(`SELECT u.username, u.caravan_name cn, u.city, u.total, u.team_total, u.created_day,
         COALESCE((SELECT SUM(count) FROM daily d WHERE d.user_id = u.id AND d.day >= ?), 0) week,
         (SELECT COUNT(*) FROM ancestors a WHERE a.ancestor_id = u.id AND a.depth > 0) members
       FROM users u WHERE u.referrer_id = ? ORDER BY u.team_total DESC LIMIT 200`, wk, userId);
@@ -729,11 +729,11 @@ export function teamView(userId) {
   const byDepth = all(`SELECT depth, COUNT(*) n FROM ancestors WHERE ancestor_id = ? AND depth > 0 GROUP BY depth ORDER BY depth LIMIT 20`, userId);
   const total = one('SELECT team_total FROM users WHERE id = ?', userId).team_total;
   // the people above this member, nearest first; they already see this member's name, city and counts
-  const upline = all(`SELECT u.username, u.city, u.team_total, a.depth,
+  const upline = all(`SELECT u.username, u.caravan_name cn, u.city, u.team_total, a.depth,
         (SELECT COUNT(*) FROM ancestors x WHERE x.ancestor_id = u.id AND x.depth > 0) members
       FROM ancestors a JOIN users u ON u.id = a.ancestor_id
       WHERE a.user_id = ? AND a.depth > 0 AND u.deleted_at IS NULL ORDER BY a.depth LIMIT 20`, userId)
-    .map((u) => ({ username: u.username, city: u.city, team: u.team_total, members: u.members, depth: u.depth }));
+    .map((u) => ({ username: u.username, caravanName: u.cn, city: u.city, team: u.team_total, members: u.members, depth: u.depth }));
   const active = one(`SELECT COUNT(DISTINCT d.user_id) n FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 JOIN ancestors a ON a.user_id = d.user_id
                       WHERE a.ancestor_id = ? AND a.depth > 0 AND a.depth <= ? AND d.day >= ? AND d.count > 0`, userId, CFG.teamMaxDepth, wk).n;
   // the caravan: this member and the people they invited themselves (durood on hold left out, as everywhere)
@@ -743,11 +743,11 @@ export function teamView(userId) {
   const cactive = one(`SELECT COUNT(DISTINCT d.user_id) n FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0
                        WHERE d.day >= ? AND d.count > 0 AND d.user_id IN (SELECT id FROM users WHERE referrer_id = ?)`, wk, userId).n;
   return {
-    total, week, byDepth, upline, active,
+    total, week, byDepth, upline, active, name: one('SELECT caravan_name n FROM users WHERE id = ?', userId).n,
     caravan: { members: direct.length, down: cdown, week: cw, active: cactive },
     // there is no opt-out: inviters see their invitees' name, city and counts
     direct: direct.map((d) => ({
-      username: d.username, city: d.city, joined: d.created_day, members: d.members,
+      username: d.username, caravanName: d.cn, city: d.city, joined: d.created_day, members: d.members,
       total: d.total, week: d.week, team: d.team_total,
     })),
   };
