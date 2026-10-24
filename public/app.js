@@ -207,8 +207,8 @@ function shell() {
   const tabs = ['home', 'rank', 'caravan', 'bonus', 'me'];
   return `
   <div class="hd"><span>${t('app')}</span><span class="row"><span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button>${langToggle()}</span></div>
-  <div class="wrap">${view()}</div>
-  <nav class="tabs">${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}</nav>
+  <div class="wrap tab-${S.tab}">${view()}</div>
+  <nav class="tabs"><div class="brand">${t('app')}</div>${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}</nav>
   ${S.player ? playerModal() : ''}
   ${S.celebrate ? celebrateModal() : ''}`;
 }
@@ -223,7 +223,7 @@ function home() {
   const m = S.me;
   const title = t('titles')[Math.min(m.level - 1, 9)];
   const live = m.today + S.pending;
-  return `
+  return `<div class="cols"><div class="col">
   ${m.hiddenFromRanks ? `<div class="flagnote">${t('flagged')}</div>` : ''}
   <div class="sub"><span>${t('today')}</span><span>${t('goal_word')} ${N(fmt(m.dailyGoal))}</span></div>
   <div class="big ${bigClass(live)}" id="big">${fmt(live)}</div>
@@ -252,6 +252,7 @@ function home() {
     <div><b>${fmt(m.total)}</b><span>${t('total')}</span></div>
     <div><b>${m.level}</b><span>${esc(title)}</span></div>
   </div>
+  </div><div class="col">
   <div class="lvl"><div class="row between"><span>${uiIcon('bolt', 14, 1.9)} ${t('level')} ${m.level} · ${esc(title)}</span><span title="${esc(t('shield_hint'))}">${uiIcon('shield', 14, 1.9)} ${m.shields}</span></div>${bar(m.pct)}</div>
 
   ${pushPromptDue() ? `<div class="circlecard push"><b>${t('push_card_title')}</b><p>${t('push_card_text')}</p>
@@ -271,7 +272,8 @@ function home() {
   <h3>${t('caravan_title')}</h3>
   <button class="rowlink" data-act="tab" data-tab="caravan"><span>${fmt(m.team.members)} ${t('members')}</span><b>${fmt(m.team.total)}</b></button>
 
-  <p class="note">${t('reminder_note')}</p>`;
+  <p class="note">${t('reminder_note')}</p>
+  </div></div>`;
 }
 
 // keep the big number and its bar in step with taps without redrawing the screen
@@ -410,8 +412,8 @@ const pushPromptDue = () => S.me.streak >= 2 && pushSupported() && Notification.
 
 function bonus() {
   return `<p class="note first">${t('bonus_hint')}</p>
-    <h2 class="part"><i>01</i>${uiIcon('leaf', 24, 1.8)}${t('sunnah_heading')}</h2>${sunnah()}
-    <h2 class="part"><i>02</i>${uiIcon('book', 24, 1.8)}${t('seerah_heading')}</h2>${learn()}`;
+    <div class="cols"><div class="col"><h2 class="part"><i>01</i>${uiIcon('leaf', 24, 1.8)}${t('sunnah_heading')}</h2>${sunnah()}</div>
+    <div class="col"><h2 class="part"><i>02</i>${uiIcon('book', 24, 1.8)}${t('seerah_heading')}</h2>${learn()}</div></div>`;
 }
 
 function sunnah() {
@@ -517,9 +519,10 @@ function caravan() {
   const down = m.team.total - m.total;
   const next = MILESTONES.find((x) => x > down) || MILESTONES.at(-1);
   const prev = MILESTONES.filter((x) => x <= down).at(-1) || 0;
-  return `
+  return `<div class="cols"><div class="col">
   ${boardsBlock()}
-  <h3>${t('your_code')}</h3>
+  </div><div class="col">
+  <h3 class="first-d">${t('your_code')}</h3>
   <div class="code">${esc(m.username)}</div>
   <div class="muted" style="margin-top:12px">${t('your_link')}</div>
   <div class="link">${esc(link)}</div>
@@ -535,7 +538,8 @@ function caravan() {
   <h3>${t('direct_list')} (${fmt(m.team.direct)})</h3>
   ${!tm ? '…' : tm.direct.length ? `<ul class="lb">${tm.direct.map((d) => `
     <li><span class="name">${esc(d.username)}<small>${d.members ? `${fmt(d.members)} ${t('members')} · ` : ''}${d.total == null ? t('hidden') : fmt(d.total)}</small></span><span class="score">${fmt(d.team)}</span></li>`).join('')}</ul>` : `<p class="muted">${t('none_yet')}</p>`}
-  ${tm?.byDepth?.length ? `<p class="note">${tm.byDepth.map((d) => `${t('levels_deep')} ${d.depth}: ${fmt(d.n)}`).join(' · ')}</p>` : ''}`;
+  ${tm?.byDepth?.length ? `<p class="note">${tm.byDepth.map((d) => `${t('levels_deep')} ${d.depth}: ${fmt(d.n)}`).join(' · ')}</p>` : ''}
+  </div></div>`;
 }
 
 function learn() {
@@ -651,6 +655,7 @@ function playerModal() {
 function draw() {
   applyLang();
   if (S.me) checkCelebrate();
+  document.body.classList.toggle('in-app', !!S.me);
   app.innerHTML = S.me ? shell() : S.intro !== null ? introView() : authView();
 }
 

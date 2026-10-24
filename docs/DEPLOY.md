@@ -71,3 +71,14 @@ The image is plain Node with one volume mounted at `/data`, so any host with a p
 
 ## Cost
 About $2 to 4 a month: one shared-cpu-1x machine at 256 MB (about $2) plus a 1 GB volume (about $0.15 per GB) and volume snapshots. New Fly accounts have no free tier and need a card; check fly.io/pricing for current rates. Measured memory: 77 MB peak while serving a 10,000-member test database, so 256 MB has plenty of room.
+
+
+## Branches and environments
+| Branch | Purpose | Fly app | Config | Database |
+|---|---|---|---|---|
+| `dev` | integration and QA; disposable data | `seerah-quest-qa` | `fly.toml` | its own volume (wipe freely) |
+| `prod` | real members | `seerah-quest` (create when launching; the name must be unique on Fly, so change `app` in `fly.prod.toml` if taken) | `fly.prod.toml` | its own volume, never shared with dev |
+
+Flow: work lands on `dev` and is deployed to the dev app and QA'd (`fly deploy`). When QA passes, `dev` is merged into `prod` and deployed to production (`fly deploy -c fly.prod.toml`). Never deploy untested work to prod and never copy a dev database to prod.
+
+Prod differs from dev: its own `ADMIN_KEY` and `AUTH_SECRET`; a real mail provider (`MAIL_PROVIDER`, no `ALLOW_CONSOLE_MAIL`); no QA overrides such as `MAX_DAILY_NEW`; a larger volume (3 GB or more); the real `PUBLIC_FOUNDERS_CODE`; set `VAPID_SUBJECT` to a monitored address; and check the Challenge tab's start date before announcing.
