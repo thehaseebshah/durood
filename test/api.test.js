@@ -205,7 +205,7 @@ test('durood milestones and the weekly goal quest pay once; sunnah/seerah reward
   const again = await api('POST', '/api/log', { token, body: { count: 50 } });
   assert.equal(again.xpGained, 50); // nothing is paid twice
   const { CFG } = await import('../server/game.js');
-  assert.ok(CFG.sunnahXp + CFG.verifyXp + CFG.circleXp < 1000);
+  assert.ok(CFG.sunnahXp + CFG.likeCap * CFG.likeXp + CFG.circleXp < 1000);
   assert.deepEqual(audit().problems, []);
 });
 

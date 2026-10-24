@@ -138,6 +138,49 @@ CREATE TABLE IF NOT EXISTS lecture_quiz (
   PRIMARY KEY (user_id, lecture_id)
 ) WITHOUT ROWID;
 
+-- the feed: likes (one per member per item, never taken back, so the points they earn stay exact), a short written reflection per
+-- member per day, the question of the day, reports on either kind of content, and milestone events shown to a member's caravan
+CREATE TABLE IF NOT EXISTS likes (
+  kind       TEXT NOT NULL CHECK (kind IN ('post','reflection')),
+  item_id    INTEGER NOT NULL,
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (kind, item_id, user_id)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS reflections (
+  id         INTEGER PRIMARY KEY,
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  day        TEXT NOT NULL,
+  body       TEXT NOT NULL,
+  likes      INTEGER NOT NULL DEFAULT 0,
+  reports    INTEGER NOT NULL DEFAULT 0,
+  status     TEXT NOT NULL DEFAULT 'visible' CHECK (status IN ('visible','removed')),
+  created_at INTEGER NOT NULL,
+  UNIQUE (user_id, day)
+);
+CREATE INDEX IF NOT EXISTS reflections_feed ON reflections(status, created_at);
+CREATE TABLE IF NOT EXISTS prompts (
+  day     TEXT PRIMARY KEY,
+  text_en TEXT NOT NULL,
+  text_ur TEXT NOT NULL DEFAULT ''
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS content_reports (
+  kind       TEXT NOT NULL CHECK (kind IN ('post','reflection')),
+  item_id    INTEGER NOT NULL,
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (kind, item_id, user_id)
+) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS feed_events (
+  id         INTEGER PRIMARY KEY,
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  kind       TEXT NOT NULL,
+  ref        TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  UNIQUE (user_id, kind, ref)
+);
+CREATE INDEX IF NOT EXISTS feed_events_time ON feed_events(created_at);
+
 -- per-day totals of every member whose durood counts publicly (not on hold). A tiny table that answers the challenge questions
 -- without scanning every member's daily rows; kept in step by logDurood, editEntry and setHeld, and checked by the audit.
 CREATE TABLE IF NOT EXISTS day_totals (
@@ -307,6 +350,8 @@ addCol('sunnahs', 'kind', "TEXT NOT NULL DEFAULT 'daily'");        // 'daily' su
 addCol('users', 'held', 'INTEGER NOT NULL DEFAULT 0');             // an open/confirmed automatic flag: durood stays in the ledger but is left out of public totals
 addCol('users', 'token_ver', 'INTEGER NOT NULL DEFAULT 0');       // bumped to sign a member out of every device
 addCol('posts', 'purged_at', 'INTEGER');                          // photo file deleted (retention or account deletion)
+addCol('posts', 'likes', 'INTEGER NOT NULL DEFAULT 0');
+addCol('lectures', 'week_start', 'TEXT');                          // the Monday of the week this lecture is featured
 addCol('users', 'reminder_time', "TEXT NOT NULL DEFAULT ''");       // 'HH:MM' Pakistan time, '' = no daily reminder
 addCol('users', 'news_seen_at', 'INTEGER NOT NULL DEFAULT 0');
 

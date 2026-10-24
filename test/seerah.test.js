@@ -88,35 +88,16 @@ test('video quiz: wrong answers never reveal the key; reward needs a pass and is
   assert.deepEqual(audit().problems, []);
 });
 
-test('weekly class photo uses the feed and pays classXp once per week', async () => {
+test('the weekly class photo pays classXp at once, once per week, and shows in the feed', async () => {
   const a = await signup('class_a');
   const t0 = await xp(a);
   const post = await api('POST', '/api/class/post', { token: a.token, body: { image: fakeJpeg().toString('base64') } });
   assert.ok(post.id);
-  assert.equal(post.classPost.status, 'pending');
-  assert.equal((await api('POST', '/api/class/post', { token: a.token, body: { image: fakeJpeg().toString('base64') } })).error, 'already_posted');
-  const revs = [await signup('class_r1'), await signup('class_r2'), await signup('class_r3')];
-  for (const r of revs) await api('POST', `/api/posts/${post.id}/vote`, { token: r.token, body: { vote: 'confirm' } });
+  assert.equal(post.classPost.status, 'verified');
   assert.equal(await xp(a), t0 + CFG.classXp);
+  assert.equal((await api('POST', '/api/class/post', { token: a.token, body: { image: fakeJpeg().toString('base64') } })).error, 'already_posted');
+  const viewer = await signup('class_viewer');
+  const item = (await api('GET', '/api/feed', { token: viewer.token })).items.find((i) => i.type === 'photo' && i.id === post.id);
+  assert.equal(item.kind, 'class');
   assert.deepEqual(audit().problems, []);
-});
-
-test('caravan boards: average per active member, growth vs last week, and the upline', async () => {
-  const root = await signup('cv_root');
-  const reg = (u, ref) => api('POST', '/api/register', { body: { username: u, email: `${u}@x.pk`, phone: `0303${String(4000000 + ++n)}`, password: 'secret1', invite: ref } });
-  const kid = await reg('cv_kid', 'cv_root');
-  const grandkid = await reg('cv_grandkid', 'cv_kid');
-  const idle = await reg('cv_idle', 'cv_root');
-  for (const [u, c] of [[root, 400], [kid, 200], [grandkid, 600]]) await api('POST', '/api/log', { token: u.token, body: { count: c, rid: crypto.randomUUID() } });
-  const avg = await api('GET', '/api/leaderboard?type=teams&metric=average', { token: root.token });
-  const row = avg.rows.find((r) => r.username === 'cv_root');
-  assert.equal(row.active, 3);           // the idle invitee is not active
-  assert.equal(row.score, 400);          // 1200 / 3
-  assert.equal(row.members, 3);
-  const grow = await api('GET', '/api/leaderboard?type=teams&metric=growth', { token: root.token });
-  assert.equal(grow.rows.find((r) => r.username === 'cv_root').score, 1200); // nothing last week
-  const tv = await api('GET', '/api/team', { token: grandkid.token });
-  assert.deepEqual(tv.upline.map((u) => u.username), ['cv_kid', 'cv_root']);
-  assert.equal((await api('GET', '/api/team', { token: root.token })).active, 2);
-  assert.ok(idle.token);
 });

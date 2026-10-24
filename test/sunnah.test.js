@@ -56,7 +56,6 @@ function fakeJpeg({ exif = true, w = 400, h = 400, size = 2000 } = {}) {
 }
 const b64 = (b) => b.toString('base64');
 const post = (u, buf = fakeJpeg()) => api('POST', '/api/sunnah/post', { token: u.token, body: { image: b64(buf) } });
-const feedIds = async (u) => (await api('GET', '/api/feed', { token: u.token })).posts.map((p) => p.id);
 
 test('image cleaning strips metadata and rejects non-JPEGs', () => {
   const raw = fakeJpeg();
@@ -82,55 +81,44 @@ test('posting needs a scheduled sunnah; admin schedules one', async () => {
   assert.equal((await api('POST', '/api/sunnah/post', { token: a.token, body: { image: b64(Buffer.from('x'.repeat(5000))) } })).error, 'bad_image');
 });
 
-test('three independent confirmations verify a post and pay poster and agreeing reviewers once', async () => {
+test('posting a photo pays the reward at once and the post shows in the feed', async () => {
   const a = await signup('poster_v');
-  const [b, c, d, e] = [await signup('rev_b'), await signup('rev_c'), await signup('rev_d'), await signup('rev_e')];
+  const before = await xp(a);
   const img = fakeJpeg();
   const p = await post(a, img);
-  assert.equal(p.mine.status, 'pending');
+  assert.ok(p.id, 'posted');
+  assert.equal(p.mine.status, 'verified', 'no waiting for reviewers');
   assert.equal((await post(a)).error, 'already_posted');
-  assert.equal((await post(b, img)).error, 'duplicate_image'); // same file cannot be reused by someone else
-  const id = p.id;
-
-  assert.ok(!(await feedIds(a)).includes(id)); // own post is never offered
-  assert.equal((await api('POST', `/api/posts/${id}/vote`, { token: a.token, body: { vote: 'confirm' } })).error, 'own_post');
-  const item = (await api('GET', '/api/feed', { token: b.token })).posts.find((x) => x.id === id);
-  assert.ok(item && !('confirms' in item) && !('username' in item)); // votes and identity hidden from reviewers
-
-  const before = { a: await xp(a), b: await xp(b) };
-  await api('POST', `/api/posts/${id}/vote`, { token: b.token, body: { vote: 'confirm' } });
-  assert.equal((await api('POST', `/api/posts/${id}/vote`, { token: b.token, body: { vote: 'confirm' } })).error, 'already_voted');
-  assert.ok(!(await feedIds(b)).includes(id));
-  await api('POST', `/api/posts/${id}/vote`, { token: c.token, body: { vote: 'confirm' } });
-  assert.equal((await api('GET', '/api/sunnah/today', { token: a.token })).mine.status, 'pending');
-  assert.equal(await xp(a), before.a); // nothing paid before consensus
-  const last = await api('POST', `/api/posts/${id}/vote`, { token: d.token, body: { vote: 'confirm' } });
-  assert.equal(last.outcome, 'verified');
-
-  assert.equal((await api('GET', '/api/sunnah/today', { token: a.token })).mine.status, 'verified');
-  assert.equal(await xp(a), before.a + CFG.sunnahXp);
-  assert.equal(await xp(b), before.b + CFG.verifyXp);
+  assert.equal((await post(await signup('poster_dup'), img)).error, 'duplicate_image'); // the same file cannot be reused by someone else
+  assert.equal(await xp(a), before + CFG.sunnahXp, 'the photo reward is paid in the same step');
   const meA = await api('GET', '/api/me', { token: a.token });
   assert.ok(meA.badges.includes('sunnah1'));
-  assert.equal(meA.sunnah.verified, 1);
-  assert.equal((await api('POST', `/api/posts/${id}/vote`, { token: e.token, body: { vote: 'confirm' } })).error, 'already_resolved');
+  assert.equal(meA.sunnah.posted, 1);
+  const viewer = await signup('viewer_a');
+  const item = (await api('GET', '/api/feed', { token: viewer.token })).items.find((i) => i.type === 'photo' && i.id === p.id);
+  assert.ok(item && item.username === 'poster_v' && item.likes === 0 && item.liked === false);
   assert.deepEqual(audit().problems, []);
 });
 
-test('rejection pays only reviewers who matched the outcome, and nothing to the poster', async () => {
-  const f = await signup('poster_r');
-  const [g, h, i, j] = [await signup('rev_g'), await signup('rev_h'), await signup('rev_i'), await signup('rev_j')];
-  const { id } = await post(f);
-  const xpBefore = { f: await xp(f), g: await xp(g), h: await xp(h) };
-  await api('POST', `/api/posts/${id}/vote`, { token: g.token, body: { vote: 'confirm' } });
-  await api('POST', `/api/posts/${id}/vote`, { token: h.token, body: { vote: 'reject' } });
-  await api('POST', `/api/posts/${id}/vote`, { token: i.token, body: { vote: 'reject' } });
-  const last = await api('POST', `/api/posts/${id}/vote`, { token: j.token, body: { vote: 'reject' } });
-  assert.equal(last.outcome, 'rejected');
-  assert.equal((await api('GET', '/api/sunnah/today', { token: f.token })).mine.status, 'rejected');
-  assert.equal(await xp(f), xpBefore.f);
-  assert.equal(await xp(g), xpBefore.g); // voted against the consensus
-  assert.equal(await xp(h), xpBefore.h + CFG.verifyXp);
+test('likes: one per member, never your own, the poster earns 2 points each for the first 10 only, liking earns nothing', async () => {
+  const a = await signup('liked_a');
+  const p = await post(a);
+  const fans = [];
+  for (let i = 0; i < 12; i++) fans.push(await signup(`fan_${i}`));
+  const base = await xp(a);
+  assert.equal((await api('POST', '/api/like', { token: a.token, body: { kind: 'post', id: p.id } })).error, 'own_post');
+  const fanXp = await xp(fans[0]);
+  assert.equal((await api('POST', '/api/like', { token: fans[0].token, body: { kind: 'post', id: p.id } })).likes, 1);
+  assert.equal((await api('POST', '/api/like', { token: fans[0].token, body: { kind: 'post', id: p.id } })).error, 'already_liked');
+  assert.equal(await xp(fans[0]), fanXp, 'the person who likes earns nothing');
+  assert.equal(await xp(a), base + CFG.likeXp);
+  for (const f of fans.slice(1)) await api('POST', '/api/like', { token: f.token, body: { kind: 'post', id: p.id } });
+  assert.equal(await xp(a), base + CFG.likeCap * CFG.likeXp, 'only the first 10 likes pay');
+  const item = (await api('GET', '/api/feed', { token: fans[0].token })).items.find((i) => i.type === 'photo' && i.id === p.id);
+  assert.equal(item.likes, 12);
+  assert.equal(item.liked, true);
+  assert.equal((await api('POST', '/api/like', { token: fans[0].token, body: { kind: 'nope', id: 1 } })).error, 'bad_kind');
+  assert.equal((await api('POST', '/api/like', { token: fans[0].token, body: { kind: 'post', id: 99999 } })).error, 'not_found');
   assert.deepEqual(audit().problems, []);
 });
 
@@ -145,26 +133,34 @@ test('reports hide a post; admin can restore; photos are served only with a vali
   assert.ok(!Buffer.from(await ok.arrayBuffer()).includes('GPSLatitude'));
   assert.equal((await fetch(base + url.slice(0, -3) + 'abc')).status, 404);
 
-  for (const r of reporters) await api('POST', `/api/posts/${id}/report`, { token: r.token });
-  assert.ok(!(await feedIds(await signup('late_viewer'))).includes(id));
+  assert.equal((await api('POST', '/api/report', { token: k.token, body: { kind: 'post', id } })).error, 'own_post');
+  for (const r of reporters) await api('POST', '/api/report', { token: r.token, body: { kind: 'post', id } });
+  const viewer = await signup('late_viewer');
+  assert.ok(!(await api('GET', '/api/feed', { token: viewer.token })).items.some((i) => i.type === 'photo' && i.id === id));
   assert.equal((await fetch(base + url)).status, 404);
   assert.equal((await api('GET', '/api/sunnah/mine', { token: k.token })).posts[0].status, 'removed');
-
-  assert.equal((await api('POST', `/api/admin/posts/${id}`, { headers: admin, body: { action: 'restore' } })).ok, true);
-  assert.equal((await fetch(base + url)).status, 200);
-  assert.equal((await api('GET', '/api/sunnah/mine', { token: k.token })).posts[0].status, 'pending');
   const rep = await api('GET', '/api/admin/reported', { headers: admin });
-  assert.ok(Array.isArray(rep.posts));
+  assert.ok(rep.items.some((i) => i.kind === 'post' && i.id === id && i.status === 'removed'));
+
+  assert.equal((await api('POST', `/api/admin/content/post/${id}`, { headers: admin, body: { action: 'restore' } })).ok, true);
+  assert.equal((await fetch(base + url)).status, 200);
+  assert.equal((await api('GET', '/api/sunnah/mine', { token: k.token })).posts[0].status, 'verified');
+  assert.equal((await api('POST', `/api/admin/content/post/${id}`, { headers: admin, body: { action: 'bogus' } })).error, 'bad_action');
   assert.deepEqual(audit().problems, []);
 });
 
-test('audit detects tampered sunnah payouts and votes', async () => {
+test('audit detects tampered post payouts and like counts', async () => {
   const { db } = await import('../server/db.js');
-  db.prepare("UPDATE posts SET confirms = confirms + 1 WHERE status = 'verified'").run();
-  assert.ok(audit().problems.some((p) => p.kind === 'post_votes'));
-  db.prepare("UPDATE posts SET confirms = confirms - 1 WHERE status = 'verified'").run();
+  db.prepare("UPDATE posts SET likes = likes + 1 WHERE status = 'verified'").run();
+  assert.ok(audit().problems.some((p) => p.kind === 'post_likes'));
+  db.prepare("UPDATE posts SET likes = likes - 1 WHERE status = 'verified'").run();
+  assert.deepEqual(audit().problems.filter((p) => p.kind === 'post_likes'), []);
+  const saved = db.prepare("SELECT * FROM events WHERE kind = 'sunnah'").all();
   db.prepare("DELETE FROM events WHERE kind = 'sunnah'").run();
   assert.ok(audit().problems.some((p) => p.kind === 'post_payout'));
+  for (const e of saved) db.prepare('INSERT INTO events (user_id, kind, ref, day, xp, created_at) VALUES (?,?,?,?,?,?)').run(e.user_id, e.kind, e.ref, e.day, e.xp, e.created_at);
+  db.prepare("DELETE FROM events WHERE kind = 'like' AND ref = (SELECT MIN(ref) FROM events WHERE kind = 'like')").run();
+  assert.ok(audit().problems.some((p) => p.kind === 'like_payout'));
 });
 
 test('photos are deleted after review plus the retention period, and on account deletion; the record stays', async () => {
@@ -179,9 +175,9 @@ test('photos are deleted after review plus the retention period, and on account 
   assert.ok(p.id, 'posted');
   const row = () => db.prepare('SELECT * FROM posts WHERE id = ?').get(p.id);
   const file = path.join(UPLOAD_DIR, row().file);
-  assert.equal(purgeOldPhotos(), 0, 'a post still waiting for review is never purged');
-  db.prepare("UPDATE posts SET status = 'verified', resolved_at = ? WHERE id = ?").run(Date.now() - 3 * 86400e3, p.id);
-  assert.equal(purgeOldPhotos(), 0, 'decided 3 days ago: still inside the 14-day window');
+  assert.equal(purgeOldPhotos(), 0, 'a fresh post is kept');
+  db.prepare('UPDATE posts SET resolved_at = ? WHERE id = ?').run(Date.now() - 3 * 86400e3, p.id);
+  assert.equal(purgeOldPhotos(), 0, 'posted 3 days ago: still inside the 14-day window');
   assert.ok(existsSync(file));
   db.prepare('UPDATE posts SET resolved_at = ? WHERE id = ?').run(Date.now() - 15 * 86400e3, p.id);
   assert.equal(purgeOldPhotos(), 1);
@@ -198,5 +194,5 @@ test('photos are deleted after review plus the retention period, and on account 
   assert.equal((await api('DELETE', '/api/me', { token: b.token, body: { password: 'secret1' } })).ok, true);
   assert.ok(!existsSync(fb), 'deleting an account deletes its pictures at once');
   assert.equal(db.prepare('SELECT status FROM posts WHERE id = ?').get(pb.id).status, 'removed');
-  assert.ok(!(await feedIds(a)).includes(pb.id));
+  assert.ok(!(await api('GET', '/api/feed', { token: a.token })).items.some((i) => i.type === 'photo' && i.id === pb.id));
 });

@@ -55,23 +55,19 @@ export function audit({ fix = false } = {}) {
     else if (r.kind === 'replace' && !r.was_reversed) note('edit_chain', { entry: r.id, problem: 'replaces an entry that was never reversed' });
   }
 
-  // sunnah verification: cached vote counts, statuses and payouts must all follow from the votes table
-  const N = CFG.confirmsNeeded;
-  for (const p of all(`SELECT p.id, p.status, p.confirms, p.rejects, p.user_id,
-        (SELECT COUNT(*) FROM votes v WHERE v.post_id = p.id AND v.vote = 'confirm') c,
-        (SELECT COUNT(*) FROM votes v WHERE v.post_id = p.id AND v.vote = 'reject') r,
-        (SELECT COUNT(*) FROM events e WHERE e.kind IN ('sunnah','class') AND e.ref = CAST(p.id AS TEXT)) poster_paid,
-        (SELECT COUNT(*) FROM events e WHERE e.kind = 'verify' AND e.ref = CAST(p.id AS TEXT)) verifiers_paid
-      FROM posts p`)) {
-    if (p.confirms !== p.c || p.rejects !== p.r) note('post_votes', { post: p.id, stored: [p.confirms, p.rejects], ledger: [p.c, p.r] });
-    const verified = p.status === 'verified';
-    if (verified !== (p.poster_paid === 1)) note('post_payout', { post: p.id, status: p.status, posterPaid: p.poster_paid });
-    if (verified && p.c < N) note('post_status', { post: p.id, status: p.status, confirms: p.c });
-    if (p.status === 'rejected' && p.r < N) note('post_status', { post: p.id, status: p.status, rejects: p.r });
-    if (p.status === 'verified' && p.verifiers_paid !== p.c) note('verifier_payout', { post: p.id, expected: p.c, paid: p.verifiers_paid });
-    if (p.status === 'rejected' && p.verifiers_paid !== p.r) note('verifier_payout', { post: p.id, expected: p.r, paid: p.verifiers_paid });
-    if (['pending', 'expired', 'removed'].includes(p.status) && p.verifiers_paid) note('verifier_payout', { post: p.id, status: p.status, paid: p.verifiers_paid });
+  // photos: every post paid its reward exactly once, in the step that created it
+  for (const p of all(`SELECT p.id, p.likes, (SELECT COUNT(*) FROM events e WHERE e.kind IN ('sunnah','class') AND e.ref = CAST(p.id AS TEXT)) paid,
+        (SELECT COUNT(*) FROM likes l WHERE l.kind = 'post' AND l.item_id = p.id) l FROM posts p`)) {
+    if (p.paid !== 1) note('post_payout', { post: p.id, paid: p.paid });
+    if (p.likes !== p.l) note('post_likes', { post: p.id, stored: p.likes, ledger: p.l });
   }
+  for (const r of all(`SELECT r.id, r.likes, (SELECT COUNT(*) FROM likes l WHERE l.kind = 'reflection' AND l.item_id = r.id) l FROM reflections r`)) {
+    if (r.likes !== r.l) note('reflection_likes', { reflection: r.id, stored: r.likes, ledger: r.l });
+  }
+  // like points: the poster earned likeXp for each of the first likeCap likes on every item, and nothing else
+  const likeEvents = one("SELECT COUNT(*) n FROM events WHERE kind = 'like'").n;
+  const likeExpected = one(`SELECT COALESCE(SUM(MIN(likes, ?)), 0) n FROM (SELECT likes FROM posts UNION ALL SELECT likes FROM reflections)`, CFG.likeCap).n;
+  if (likeEvents !== likeExpected) note('like_payout', { events: likeEvents, expected: likeExpected });
 
   const national = {
     stored: one('SELECT COALESCE(SUM(total), 0) n FROM users').n,

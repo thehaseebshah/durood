@@ -10,7 +10,8 @@ import * as access from './access.js';
 import { sendMail, resetEmail, confirmEmail, inviteEmail, baseUrl } from './mail.js';
 import * as sunnah from './sunnah.js';
 import * as news from './news.js';
-import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, quizPassed, publicQuiz, parseQuestions, claimCircle, getMe, leaderboard, caravanBoard, teamView, publicStats } from './game.js';
+import * as feedApi from './feed.js';
+import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, quizPassed, publicQuiz, parseQuestions, claimCircle, getMe, weekStart, leaderboard, caravanBoard, teamView, publicStats } from './game.js';
 
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -229,26 +230,19 @@ route('DELETE', '/api/me', { admin: false }, async ({ user, body }) => {
 });
 
 route('GET', '/api/leaderboard', ({ user, query }) => {
-  const type = query.get('type') === 'teams' ? 'teams' : 'users';
+  const t = query.get('type');
+  const type = t === 'caravans' ? 'caravans' : t === 'trees' || t === 'teams' ? 'trees' : 'users';
   const p = query.get('period');
   const period = p === 'all' ? 'all' : p === 'challenge' ? 'challenge' : 'week';
   const metric = query.get('metric');
-  if (type === 'teams' && (metric === 'average' || metric === 'growth')) return caravanBoard(user, metric);
+  if (type !== 'users' && (metric === 'average' || metric === 'growth')) return caravanBoard(user, metric, type === 'caravans' ? 'caravan' : 'tree');
   return leaderboard(user, type, period);
 });
 
 route('GET', '/api/challenge', ({ user }) => ({ summary: challengeSummary(), series: challengeSeries() }));
 route('GET', '/api/team', ({ user }) => teamView(user));
 
-route('GET', '/api/lectures', ({ user }) => {
-  const rows = db.prepare(`SELECT l.*, EXISTS(SELECT 1 FROM events e WHERE e.user_id = ? AND e.kind = 'lecture' AND e.ref = CAST(l.id AS TEXT)) done
-                           FROM lectures l ORDER BY l.id DESC LIMIT 100`).all(user);
-  return { lectures: rows.map((l) => {
-    const quiz = publicQuiz(l);
-    return { id: l.id, youtubeId: l.youtube_id, titleEn: l.title_en, titleUr: l.title_ur, speaker: l.speaker, minSeconds: l.min_seconds, xp: l.xp, done: !!l.done,
-      quiz, quizPassed: quiz.length ? quizPassed(user, l.id) : null };
-  }), circleUrl: CFG.circleUrl, circleXp: CFG.circleXp, classXp: CFG.classXp };
-});
+route('GET', '/api/lectures', ({ user }) => ({ lectures: feedApi.lectureList(user), circleUrl: CFG.circleUrl, circleXp: CFG.circleXp, classXp: CFG.classXp }));
 route('POST', '/api/lectures/:id/quiz', ({ user, params, body }) => {
   rateLimit(`quiz:${user}`, 60, 60e3);
   return answerQuiz(user, Number(params.id), body.answers);
@@ -273,16 +267,32 @@ route('POST', '/api/class/post', { maxBody: 2_400_000 }, ({ user, body }) => {
   const r = sunnah.createPost(user, body.image, 'class');
   return { ...r, ...sunnah.today(user), me: getMe(user) };
 });
-route('GET', '/api/feed', ({ user }) => ({ posts: sunnah.feed(user) }));
-route('POST', '/api/posts/:id/vote', ({ user, params, body }) => {
-  const r = sunnah.vote(user, Number(params.id), body.vote);
+route('GET', '/api/feed', ({ user, query }) => {
+  const before = query.get('before');
+  const page = feedApi.feed(user, before || undefined);
+  if (before) return page; // later pages are only the stream
+  return { ...page, lectures: feedApi.lectureList(user), today: sunnah.today(user), reflection: feedApi.reflectionToday(user) };
+});
+route('POST', '/api/reflections', ({ user, body }) => {
+  rateLimit(`refl:${user}`, 10, 60e3);
+  const r = feedApi.postReflection(user, body.text);
+  return { ...r, reflection: feedApi.reflectionToday(user), me: getMe(user) };
+});
+route('POST', '/api/like', ({ user, body }) => {
+  rateLimit(`like:${user}`, 120, 60e3);
+  const r = feedApi.like(user, body.kind, Number(body.id));
   return { ...r, me: getMe(user) };
 });
-route('POST', '/api/posts/:id/report', ({ user, params }) => sunnah.report(user, Number(params.id)));
+route('POST', '/api/report', ({ user, body }) => {
+  rateLimit(`report:${user}`, 30, 60e3);
+  return feedApi.report(user, body.kind, Number(body.id));
+});
 
 route('POST', '/api/admin/sunnahs', { auth: false, admin: true }, ({ body }) => ({ days: sunnah.addSunnahs(body.sunnahs ?? body) }));
-route('GET', '/api/admin/reported', { auth: false, admin: true }, () => ({ posts: sunnah.reportedPosts() }));
-route('POST', '/api/admin/posts/:id', { auth: false, admin: true }, ({ params, body }) => sunnah.moderate(Number(params.id), body.action));
+route('GET', '/api/admin/reported', { auth: false, admin: true }, () => ({ items: feedApi.reportedContent() }));
+route('POST', '/api/admin/content/:kind/:id', { auth: false, admin: true }, ({ params, body }) => feedApi.moderateContent(params.kind, Number(params.id), body.action));
+route('GET', '/api/admin/prompts', { auth: false, admin: true }, () => ({ prompts: feedApi.listPrompts() }));
+route('POST', '/api/admin/prompts', { auth: false, admin: true }, ({ body }) => feedApi.setPrompt(body));
 route('GET', '/api/news', ({ user }) => news.listNews(user));
 route('POST', '/api/news/seen', ({ user }) => news.markNewsSeen(user));
 route('GET', '/api/push/key', () => news.pushKey());
@@ -327,11 +337,14 @@ route('POST', '/api/admin/lectures', { auth: false, admin: true }, ({ body }) =>
   const yt = String(body.youtube_id || '').trim();
   if (!/^[\w-]{11}$/.test(yt) || !body.title_en) throw new HttpError(400, 'bad_lecture');
   const questions = parseQuestions(body.questions);
-  const r = run('INSERT INTO lectures (youtube_id, title_en, title_ur, speaker, min_seconds, xp, questions, created_at) VALUES (?,?,?,?,?,?,?,?)',
+  if (body.week && (!/^\d{4}-\d{2}-\d{2}$/.test(String(body.week)) || Number.isNaN(Date.parse(`${body.week}T00:00:00Z`)))) throw new HttpError(400, 'bad_lecture');
+  const week = body.week ? weekStart(String(body.week)) : weekStart();
+  const r = run('INSERT INTO lectures (youtube_id, title_en, title_ur, speaker, min_seconds, xp, questions, week_start, created_at) VALUES (?,?,?,?,?,?,?,?,?)',
     yt, String(body.title_en), String(body.title_ur || ''), String(body.speaker || ''),
-    Math.max(30, Number(body.min_seconds) || 600), Math.max(1, Number(body.xp) || 100), questions.length ? JSON.stringify(questions) : '', Date.now());
+    Math.max(30, Number(body.min_seconds) || 600), Math.max(1, Number(body.xp) || 100), questions.length ? JSON.stringify(questions) : '', week, Date.now());
   return { id: Number(r.lastInsertRowid) };
 });
+route('GET', '/api/admin/lectures', { auth: false, admin: true }, () => ({ lectures: db.prepare('SELECT id, youtube_id, title_en, speaker, week_start, min_seconds, xp FROM lectures ORDER BY week_start DESC, id DESC LIMIT 60').all() }));
 route('DELETE', '/api/admin/lectures/:id', { auth: false, admin: true }, ({ params }) => {
   run('DELETE FROM lecture_starts WHERE lecture_id = ?', Number(params.id));
   run('DELETE FROM lecture_quiz WHERE lecture_id = ?', Number(params.id));

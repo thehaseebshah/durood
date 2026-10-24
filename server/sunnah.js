@@ -54,31 +54,11 @@ export function photoFile(id, sig) {
   return p ? path.join(UPLOAD_DIR, p.file) : null;
 }
 
-function expireOld() {
-  run("UPDATE posts SET status = 'expired', resolved_at = ? WHERE status = 'pending' AND created_at < ?", Date.now(), Date.now() - CFG.postWindowMs);
-}
-
 const sunnahOut = (s) => s && ({ id: s.id, day: s.day, titleEn: s.title_en, titleUr: s.title_ur, descEn: s.desc_en, descUr: s.desc_ur, source: s.source });
 const postOut = (p) => ({
-  id: p.id, day: p.day, status: p.status, confirms: p.confirms, rejects: p.rejects, photoUrl: p.purged_at ? null : photoUrl(p.id),
+  id: p.id, day: p.day, status: p.status, likes: p.likes, photoUrl: p.purged_at ? null : photoUrl(p.id),
   titleEn: p.title_en, titleUr: p.title_ur, createdAt: p.created_at,
 });
-
-export function today(userId) {
-  expireOld();
-  const s = one('SELECT * FROM sunnahs WHERE day = ?', dayOf());
-  const mine = s && one(`SELECT p.*, s.day, s.title_en, s.title_ur FROM posts p JOIN sunnahs s ON s.id = p.sunnah_id
-                         WHERE p.user_id = ? AND p.sunnah_id = ?`, userId, s.id);
-  const ticked = !!(s && one("SELECT 1 FROM events WHERE user_id = ? AND kind = 'sunnah_tick' AND ref = ?", userId, String(s.id)));
-  const cs = one('SELECT * FROM sunnahs WHERE day = ?', classDay());
-  const cmine = cs && one(`SELECT p.*, s.day, s.title_en, s.title_ur FROM posts p JOIN sunnahs s ON s.id = p.sunnah_id
-                           WHERE p.user_id = ? AND p.sunnah_id = ?`, userId, cs.id);
-  return {
-    sunnah: sunnahOut(s), mine: mine ? postOut(mine) : null, ticked,
-    classPost: cmine ? postOut(cmine) : null,
-    rules: { confirmsNeeded: CFG.confirmsNeeded, tickXp: CFG.sunnahTickXp, sunnahXp: CFG.sunnahXp, verifyXp: CFG.verifyXp, classXp: CFG.classXp },
-  };
-}
 
 // the weekly Seerah class photo has its own slot per week, keyed so it can never clash with a dated daily sunnah
 const classDay = () => `class-${weekStart(dayOf())}`;
@@ -91,18 +71,37 @@ function classSlot() {
   return one('SELECT * FROM sunnahs WHERE day = ?', day);
 }
 
+/** What the composer needs: today's sunnah, whether it was ticked, the member's own photo and this week's class photo. */
+export function today(userId) {
+  const s = one('SELECT * FROM sunnahs WHERE day = ?', dayOf());
+  const mine = s && one(`SELECT p.*, s.day, s.title_en, s.title_ur FROM posts p JOIN sunnahs s ON s.id = p.sunnah_id
+                         WHERE p.user_id = ? AND p.sunnah_id = ?`, userId, s.id);
+  const ticked = !!(s && one("SELECT 1 FROM events WHERE user_id = ? AND kind = 'sunnah_tick' AND ref = ?", userId, String(s.id)));
+  const cs = one('SELECT * FROM sunnahs WHERE day = ?', classDay());
+  const cmine = cs && one(`SELECT p.*, s.day, s.title_en, s.title_ur FROM posts p JOIN sunnahs s ON s.id = p.sunnah_id
+                           WHERE p.user_id = ? AND p.sunnah_id = ?`, userId, cs.id);
+  return {
+    sunnah: sunnahOut(s), mine: mine ? postOut(mine) : null, ticked,
+    classPost: cmine ? postOut(cmine) : null,
+    rules: { tickXp: CFG.sunnahTickXp, sunnahXp: CFG.sunnahXp, classXp: CFG.classXp },
+  };
+}
+
+export function mine(userId) {
+  return all(`SELECT p.*, s.day, s.title_en, s.title_ur FROM posts p JOIN sunnahs s ON s.id = p.sunnah_id
+              WHERE p.user_id = ? ORDER BY p.id DESC LIMIT 30`, userId).map(postOut);
+}
+
 export function tick(userId) {
   const s = one('SELECT * FROM sunnahs WHERE day = ?', dayOf());
   if (!s) throw new HttpError(404, 'no_sunnah');
   return tickSunnah(userId, s.id);
 }
 
-export function mine(userId) {
-  expireOld();
-  return all(`SELECT p.*, s.day, s.title_en, s.title_ur FROM posts p JOIN sunnahs s ON s.id = p.sunnah_id
-              WHERE p.user_id = ? ORDER BY p.id DESC LIMIT 30`, userId).map(postOut);
-}
-
+/**
+ * Posting a photo completes the sunnah (or the weekly class) at once: members are trusted, and the feed's likes and reports
+ * are the check. The reward is paid in the same step, exactly once.
+ */
 export function createPost(userId, imageB64, kind = 'sunnah') {
   const s = kind === 'class' ? classSlot() : one('SELECT * FROM sunnahs WHERE day = ?', dayOf());
   if (!s) throw new HttpError(404, 'no_sunnah');
@@ -115,11 +114,16 @@ export function createPost(userId, imageB64, kind = 'sunnah') {
   const file = `${crypto.randomBytes(16).toString('hex')}.jpg`;
   writeFileSync(path.join(UPLOAD_DIR, file), data, { mode: 0o600 });
   try {
+    const fresh = [];
     const id = tx(() => {
-      const r = run(`INSERT INTO posts (user_id, sunnah_id, file, sha256, created_day, created_at) VALUES (?,?,?,?,?,?)`,
-        userId, s.id, file, sha, dayOf(), Date.now());
+      const r = run(`INSERT INTO posts (user_id, sunnah_id, file, sha256, status, created_day, created_at, resolved_at) VALUES (?,?,?,?, 'verified', ?,?,?)`,
+        userId, s.id, file, sha, dayOf(), Date.now(), Date.now());
+      const postId = Number(r.lastInsertRowid);
+      const isClass = s.kind === 'class';
+      grant(userId, isClass ? 'class' : 'sunnah', postId, isClass ? CFG.classXp : CFG.sunnahXp);
       settleQuests(userId);
-      return Number(r.lastInsertRowid);
+      evalBadges(userId, fresh);
+      return postId;
     });
     return { id };
   } catch (e) {
@@ -128,69 +132,15 @@ export function createPost(userId, imageB64, kind = 'sunnah') {
   }
 }
 
-// Reviewers see the least-reviewed posts first so every post gets a fair chance. Vote counts and the
-// poster's name are hidden to keep reviews independent and unbiased.
-export function feed(userId) {
-  expireOld();
-  return all(`SELECT p.id, s.title_en, s.title_ur, s.desc_en, s.desc_ur, p.created_at FROM posts p JOIN sunnahs s ON s.id = p.sunnah_id
-    WHERE p.status = 'pending' AND p.user_id != ?
-      AND NOT EXISTS (SELECT 1 FROM votes v WHERE v.post_id = p.id AND v.user_id = ?)
-      AND NOT EXISTS (SELECT 1 FROM reports r WHERE r.post_id = p.id AND r.user_id = ?)
-    ORDER BY (p.confirms + p.rejects) ASC, p.created_at ASC LIMIT 10`, userId, userId, userId)
-    .map((p) => ({ id: p.id, titleEn: p.title_en, titleUr: p.title_ur, descEn: p.desc_en, descUr: p.desc_ur, photoUrl: photoUrl(p.id), createdAt: p.created_at }));
-}
-
-function resolve(post) {
-  const outcome = post.confirms >= CFG.confirmsNeeded ? 'verified' : post.rejects >= CFG.confirmsNeeded ? 'rejected' : null;
-  if (!outcome) return null;
-  const fresh = [];
-  run('UPDATE posts SET status = ?, resolved_at = ? WHERE id = ?', outcome, Date.now(), post.id);
-  if (outcome === 'verified') {
-    const isClass = one('SELECT kind FROM sunnahs WHERE id = ?', post.sunnah_id).kind === 'class';
-    grant(post.user_id, isClass ? 'class' : 'sunnah', post.id, isClass ? CFG.classXp : CFG.sunnahXp);
-    evalBadges(post.user_id, fresh);
+/** Posts that exist from before verification was dropped: make them visible and pay the reward they were waiting for. */
+function migrateOldPosts() {
+  run("UPDATE posts SET status = 'verified', resolved_at = COALESCE(resolved_at, created_at) WHERE status IN ('pending','expired','rejected')");
+  for (const p of all(`SELECT p.id, p.user_id, s.kind FROM posts p JOIN sunnahs s ON s.id = p.sunnah_id
+        WHERE p.status = 'verified' AND NOT EXISTS (SELECT 1 FROM events e WHERE e.kind IN ('sunnah','class') AND e.ref = CAST(p.id AS TEXT))`)) {
+    grant(p.user_id, p.kind === 'class' ? 'class' : 'sunnah', p.id, p.kind === 'class' ? CFG.classXp : CFG.sunnahXp);
   }
-  // reviewers are paid only when they agreed with the final outcome, so careless clicking earns nothing
-  const agreeing = all('SELECT user_id FROM votes WHERE post_id = ? AND vote = ?', post.id, outcome === 'verified' ? 'confirm' : 'reject');
-  for (const v of agreeing) {
-    grant(v.user_id, 'verify', post.id, CFG.verifyXp);
-    evalBadges(v.user_id, fresh);
-  }
-  return outcome;
 }
-
-export function vote(userId, postId, choice) {
-  if (choice !== 'confirm' && choice !== 'reject') throw new HttpError(400, 'bad_vote');
-  expireOld();
-  return tx(() => {
-    const post = one('SELECT * FROM posts WHERE id = ?', postId);
-    if (!post) throw new HttpError(404, 'not_found');
-    if (post.user_id === userId) throw new HttpError(403, 'own_post');
-    if (post.status !== 'pending') throw new HttpError(409, 'already_resolved');
-    if (one('SELECT 1 FROM votes WHERE post_id = ? AND user_id = ?', postId, userId)) throw new HttpError(409, 'already_voted');
-    if (one('SELECT COUNT(*) n FROM votes WHERE user_id = ? AND day = ?', userId, dayOf()).n >= CFG.maxVotesPerDay) throw new HttpError(429, 'vote_cap');
-
-    run('INSERT INTO votes (post_id, user_id, vote, day, created_at) VALUES (?,?,?,?,?)', postId, userId, choice, dayOf(), Date.now());
-    run(`UPDATE posts SET ${choice === 'confirm' ? 'confirms' : 'rejects'} = ${choice === 'confirm' ? 'confirms' : 'rejects'} + 1 WHERE id = ?`, postId);
-    const outcome = resolve(one('SELECT * FROM posts WHERE id = ?', postId));
-    settleQuests(userId);
-    return { outcome };
-  });
-}
-
-export function report(userId, postId) {
-  return tx(() => {
-    const post = one('SELECT * FROM posts WHERE id = ?', postId);
-    if (!post) throw new HttpError(404, 'not_found');
-    if (post.user_id === userId) throw new HttpError(403, 'own_post');
-    if (post.status !== 'pending') throw new HttpError(409, 'already_resolved');
-    if (run('INSERT OR IGNORE INTO reports (post_id, user_id, created_at) VALUES (?,?,?)', postId, userId, Date.now()).changes) {
-      run('UPDATE posts SET reports = reports + 1 WHERE id = ?', postId);
-      if (post.reports + 1 >= 3) run("UPDATE posts SET status = 'removed' WHERE id = ?", postId); // hidden until an admin restores it
-    }
-    return { ok: true };
-  });
-}
+migrateOldPosts();
 
 // ---- retention: photos are kept only as long as they are needed -----------------------------------------------------------
 const PHOTO_KEEP_MS = (Number(process.env.PHOTO_KEEP_DAYS) || 14) * 86400e3;
@@ -205,11 +155,11 @@ function purge(rows) {
 }
 /** Deletes the picture file of every post that was decided (or expired) more than PHOTO_KEEP_DAYS ago. The row, votes and payouts stay. */
 export function purgeOldPhotos(now = Date.now()) {
-  return purge(all("SELECT id, file FROM posts WHERE purged_at IS NULL AND status != 'pending' AND COALESCE(resolved_at, created_at) < ? LIMIT 500", now - PHOTO_KEEP_MS));
+  return purge(all("SELECT id, file FROM posts WHERE purged_at IS NULL AND COALESCE(resolved_at, created_at) < ? LIMIT 500", now - PHOTO_KEEP_MS));
 }
-/** Account deletion: every picture goes now and anything still waiting for review is pulled from the feed. */
+/** Account deletion: every picture goes now and the posts leave the feed. */
 export function purgeUser(userId) {
-  run("UPDATE posts SET status = 'removed' WHERE user_id = ? AND status = 'pending'", userId);
+  run("UPDATE posts SET status = 'removed' WHERE user_id = ?", userId);
   return purge(all('SELECT id, file FROM posts WHERE user_id = ? AND purged_at IS NULL', userId));
 }
 
@@ -225,22 +175,4 @@ export function addSunnahs(items) {
       x.day, String(x.title_en), String(x.title_ur || ''), String(x.desc_en || ''), String(x.desc_ur || ''), String(x.source || ''), Date.now());
     return x.day;
   }));
-}
-
-export function reportedPosts() {
-  return all(`SELECT p.id, p.status, p.reports, p.confirms, p.rejects, s.title_en FROM posts p JOIN sunnahs s ON s.id = p.sunnah_id
-              WHERE p.reports > 0 OR p.status = 'removed' ORDER BY p.id DESC LIMIT 50`)
-    .map((p) => ({ ...p, photoUrl: photoUrl(p.id) }));
-}
-
-export function moderate(postId, action) {
-  const post = one('SELECT * FROM posts WHERE id = ?', postId);
-  if (!post) throw new HttpError(404, 'not_found');
-  // only unresolved posts can be pulled or restored: a resolved post has already paid out and stays on the record
-  if (action === 'remove' && post.status === 'pending') run("UPDATE posts SET status = 'removed' WHERE id = ?", postId);
-  else if (action === 'restore' && post.status === 'removed') {
-    run("UPDATE posts SET status = 'pending', reports = 0 WHERE id = ?", postId);
-    run('DELETE FROM reports WHERE post_id = ?', postId);
-  } else throw new HttpError(400, 'bad_action');
-  return { ok: true };
 }
