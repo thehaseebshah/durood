@@ -1044,15 +1044,19 @@ app.addEventListener('submit', async (ev) => {
 });
 
 // shrink and re-encode as JPEG in the browser (also drops camera metadata) before upload
+// photos are squeezed hard before they leave the phone: small and low quality is enough for a feed and keeps storage and data costs down
+const PHOTO_MAX_BYTES = 110_000;
 async function toJpegDataUrl(file) {
   const bmp = await createImageBitmap(file);
-  const scale = Math.min(1, 1280 / Math.max(bmp.width, bmp.height));
-  const c = document.createElement('canvas');
-  c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
-  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
-  for (const q of [0.8, 0.6, 0.4]) {
-    const url = c.toDataURL('image/jpeg', q);
-    if (url.length * 0.75 < 1_300_000) return url;
+  for (const side of [720, 560, 440]) {
+    const scale = Math.min(1, side / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas');
+    c.width = Math.max(2, Math.round(bmp.width * scale)); c.height = Math.max(2, Math.round(bmp.height * scale));
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    for (const q of [0.45, 0.35, 0.28, 0.22]) {
+      const url = c.toDataURL('image/jpeg', q);
+      if (url.length * 0.75 <= PHOTO_MAX_BYTES) return url;
+    }
   }
   throw new Error('bad_image');
 }

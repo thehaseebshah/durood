@@ -66,6 +66,9 @@ test('image cleaning strips metadata and rejects non-JPEGs', () => {
   assert.equal(data[0], 0xff); assert.equal(data.at(-1), 0xd9);
   assert.throws(() => cleanJpeg(Buffer.from('not an image'.repeat(200))), /bad_image/);
   assert.throws(() => cleanJpeg(fakeJpeg({ w: 50, h: 50 })), /bad_image/);
+  assert.throws(() => cleanJpeg(fakeJpeg({ size: 250_000 })), /bad_image/, 'larger than the squeezed size the app produces');
+  assert.throws(() => cleanJpeg(fakeJpeg({ w: 2000, h: 1500 })), /bad_image/, 'an original-size photo is refused');
+  assert.doesNotThrow(() => cleanJpeg(fakeJpeg({ w: 720, h: 540, size: 100_000 })));
   assert.throws(() => cleanJpeg(raw.subarray(0, raw.length - 2)), /bad_image/);
 });
 

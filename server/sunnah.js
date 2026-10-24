@@ -14,7 +14,7 @@ export const UPLOAD_DIR = process.env.UPLOAD_DIR
   || (process.env.DB_PATH === ':memory:' ? mkdtempSync(path.join(os.tmpdir(), 'quest-')) : 'data/uploads');
 mkdirSync(UPLOAD_DIR, { recursive: true });
 
-const MAX_IMAGE = 1_500_000;
+const MAX_IMAGE = 200_000;      // the app squeezes photos to about 100 KB before upload; this is the most the server will take
 
 /**
  * Validates a JPEG and rebuilds it without metadata (EXIF/GPS, comments, ICC, thumbnails).
@@ -42,7 +42,7 @@ export function cleanJpeg(buf) {
   }
   const data = Buffer.concat(out);
   if (data[data.length - 2] !== 0xff || data[data.length - 1] !== 0xd9) throw bad();
-  if (!width || !height || width < 200 || height < 200 || width > 6000 || height > 6000) throw bad();
+  if (!width || !height || width < 200 || height < 200 || width > 1280 || height > 1280) throw bad();
   return { data, width, height };
 }
 

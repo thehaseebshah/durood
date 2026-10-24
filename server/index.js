@@ -284,13 +284,13 @@ route('POST', '/api/circle/claim', ({ user }) => ({ ...claimCircle(user), me: ge
 
 route('GET', '/api/sunnah/today', ({ user }) => sunnah.today(user));
 route('GET', '/api/sunnah/mine', ({ user }) => ({ posts: sunnah.mine(user) }));
-route('POST', '/api/sunnah/post', { maxBody: 2_400_000 }, ({ user, body }) => {
+route('POST', '/api/sunnah/post', { maxBody: 400_000 }, ({ user, body }) => {
   rateLimit(`post:${user}`, 10, 60e3);
   const r = sunnah.createPost(user, body.image);
   return { ...r, ...sunnah.today(user), me: getMe(user) };
 });
 route('POST', '/api/sunnah/tick', ({ user }) => ({ ...sunnah.tick(user), ...sunnah.today(user), me: getMe(user) }));
-route('POST', '/api/class/post', { maxBody: 2_400_000 }, ({ user, body }) => {
+route('POST', '/api/class/post', { maxBody: 400_000 }, ({ user, body }) => {
   rateLimit(`post:${user}`, 10, 60e3);
   const r = sunnah.createPost(user, body.image, 'class');
   return { ...r, ...sunnah.today(user), me: getMe(user) };
