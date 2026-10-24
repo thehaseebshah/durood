@@ -376,3 +376,73 @@ html[dir=rtl] .lb li.up { box-shadow: inset -4px 0 0 var(--sig); } html[dir=rtl]
 .thread .reply .fwho{display:flex;align-items:center;gap:6px}
 .thread .reply .fwho .chip{margin-inline-start:auto;padding:2px 6px}
 .thread input[type=text]{flex:1;min-width:0}
+
+/* ===== welcome, sign-in and intro: a dark emerald stage with a gold khatam lattice. Static SVG + transform/opacity animations only. ===== */
+.stage { --gold: #e3c374; --e1: #03231a; --e2: #0a4a36; position: relative; min-height: 100vh; color: #f4f1ea; overflow: hidden;
+  background: radial-gradient(120% 70% at 50% 0%, var(--e2) 0%, var(--e1) 55%, #02130e 100%); }
+.stage.auth { background: #02130e; }
+.hero { position: relative; overflow: hidden; background: radial-gradient(120% 90% at 50% 0%, var(--e2) 0%, var(--e1) 70%); padding-bottom: 64px; min-height: 330px; }
+.hero-art { position: absolute; inset: 0; pointer-events: none; }
+.hero-pat { position: absolute; inset: 0; opacity: .9; -webkit-mask-image: linear-gradient(#000 20%, transparent 95%); mask-image: linear-gradient(#000 20%, transparent 95%); }
+.hero-glow { position: absolute; left: 50%; top: 30%; width: 120%; aspect-ratio: 1; transform: translate(-50%, -50%); background: radial-gradient(closest-side, rgba(34, 214, 143, .28), transparent 70%); animation: breathe 7s ease-in-out infinite; }
+.hero-star { position: absolute; left: 50%; top: 36%; width: min(105vw, 460px); opacity: .55; transform: translate(-50%, -50%); animation: spin 120s linear infinite; }
+.spark { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: var(--gold); opacity: 0; animation: twinkle 5s ease-in-out infinite; }
+.sp0 { left: 12%; top: 18%; } .sp1 { left: 82%; top: 12%; animation-delay: 1.2s; } .sp2 { left: 70%; top: 40%; animation-delay: 2.4s; }
+.sp3 { left: 24%; top: 46%; animation-delay: 3.1s; } .sp4 { left: 90%; top: 62%; animation-delay: .6s; } .sp5 { left: 8%; top: 70%; animation-delay: 1.9s; }
+@keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+@keyframes breathe { 50% { opacity: .55; transform: translate(-50%, -50%) scale(1.08); } }
+@keyframes twinkle { 0%, 100% { opacity: 0; transform: scale(.6); } 50% { opacity: .9; transform: scale(1.4); } }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes slidein { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+html[dir=rtl] .stage-body { animation-name: slidein-rtl; } @keyframes slidein-rtl { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+
+.stage-top { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; }
+.brandmark { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: .78rem; letter-spacing: 1.6px; text-transform: uppercase; color: var(--gold); }
+html[lang=ur] .brandmark { letter-spacing: 0; text-transform: none; font-size: 1rem; }
+.stage .pill { color: #f4f1ea; border-color: rgba(244, 241, 234, .45); border-radius: 999px; background: rgba(255, 255, 255, .06); }
+.ghost { background: none; border: 0; color: rgba(244, 241, 234, .75); font: inherit; font-weight: 600; cursor: pointer; padding: 6px 10px; }
+.hero-in { position: relative; z-index: 2; text-align: center; padding: 18px 24px 0; }
+.arabic.gold { color: var(--gold); font-size: clamp(1.7rem, 7vw, 2.4rem); line-height: 2.1; text-shadow: 0 0 28px rgba(227, 195, 116, .35); }
+.dur span { display: inline-block; opacity: 0; animation: rise .8s cubic-bezier(.2, .7, .2, 1) forwards; animation-delay: var(--d); }
+.hero-in .tagl { margin: 6px auto 0; max-width: 30ch; color: rgba(244, 241, 234, .8); font-size: .98rem; animation: rise .8s .7s both; }
+.livepill { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; padding: 7px 14px; border-radius: 999px; background: rgba(255, 255, 255, .08); border: 1px solid rgba(227, 195, 116, .3); font-size: .82rem; animation: rise .8s 1s both; }
+.livepill b { color: var(--gold); }
+.pulse { width: 8px; height: 8px; border-radius: 50%; background: #22d68f; box-shadow: 0 0 0 0 rgba(34, 214, 143, .6); animation: ping 2s infinite; }
+@keyframes ping { 70% { box-shadow: 0 0 0 9px rgba(34, 214, 143, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 214, 143, 0); } }
+
+/* the sheet that slides up over the hero */
+.wrap.sheet { position: relative; z-index: 3; margin-top: -28px; border-radius: 26px 26px 0 0; border: 0; background: var(--paper); color: var(--ink); min-height: 60vh; padding-top: 6px; box-shadow: 0 -12px 40px rgba(0, 0, 0, .35); animation: rise .6s .25s both; }
+.sheet .seg { margin: 12px 20px 0; border: 1px solid var(--line); border-radius: 14px; padding: 4px; gap: 4px; background: var(--cell); }
+.sheet .seg button { border: 0; border-radius: 10px; margin: 0; padding: 12px 8px; }
+.sheet .seg button.on { background: var(--paper); box-shadow: 0 1px 6px rgba(0, 0, 0, .15); border: 0; color: var(--ink); }
+.sheet input:not([type=checkbox]), .sheet select, .sheet textarea { border-radius: 12px; transition: border-color .2s, box-shadow .2s; }
+.sheet input:focus, .sheet select:focus { outline: 0; box-shadow: 0 0 0 4px var(--tint); border-color: var(--sig); }
+.sheet .blk { border-radius: 14px; transition: transform .15s, box-shadow .2s; }
+.sheet .blk:active { transform: scale(.98); }
+.sheet .blk:not(:disabled):hover { box-shadow: 0 8px 22px rgba(0, 168, 107, .25); }
+
+/* the intro slides */
+.intro3 .stage-body { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 14px; padding: 8px 24px 40px; max-width: 520px; margin: 0 auto; animation: slidein .45s cubic-bezier(.2, .7, .2, 1) both; }
+.intro3 .steps { display: flex; gap: 6px; } .intro3 .steps i { flex: 1; height: 4px; border-radius: 4px; background: rgba(244, 241, 234, .2); transition: background .3s; } .intro3 .steps i.on { background: var(--gold); }
+.intro3 h2 { margin: 6px 0 0; font-size: 1.9rem; letter-spacing: -.5px; color: #fff; } html[lang=ur] .intro3 h2 { letter-spacing: 0; }
+.intro3 p { margin: 0; font-size: 1.05rem; line-height: 1.65; color: rgba(244, 241, 234, .82); }
+.intro3 .arabic.gold { text-align: center; padding: 18px 0; }
+.slide-art { width: 150px; height: 150px; margin: 14px auto 6px; display: block; filter: drop-shadow(0 0 22px rgba(227, 195, 116, .3)); animation: float 5s ease-in-out infinite; }
+@keyframes float { 50% { transform: translateY(-8px); } }
+.langpick { display: flex; gap: 10px; margin-top: 4px; }
+.lp { flex: 1; padding: 14px; border-radius: 14px; border: 1.5px solid rgba(244, 241, 234, .3); background: rgba(255, 255, 255, .05); color: #f4f1ea; font: inherit; font-weight: 700; cursor: pointer; transition: all .2s; }
+.lp.on { background: var(--gold); border-color: var(--gold); color: #1a1405; }
+.cta { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding: 18px 22px; border: 0; border-radius: 16px; background: linear-gradient(135deg, #22d68f, #00a86b); color: #04170f; font: inherit; font-weight: 800; font-size: 1.05rem; cursor: pointer; box-shadow: 0 10px 30px rgba(34, 214, 143, .25); transition: transform .15s; }
+.cta:active { transform: scale(.98); } .cta b { font-size: 1.3rem; }
+html[dir=rtl] .cta b { transform: scaleX(-1); }
+
+/* on a computer the sign-in is a centred card on the stage */
+@media (min-width: 760px) {
+  body:has(.stage.auth) { background: radial-gradient(120% 90% at 50% 0%, #0a4a36, #02130e); }
+  body:has(.stage.auth) { padding: 5vh 0; }
+  .stage.auth { max-width: 520px; margin: 0 auto; min-height: 0; border-radius: 28px; box-shadow: 0 30px 80px rgba(0, 0, 0, .5); }
+  .wrap.sheet { min-height: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .stage *, .stage { animation: none !important; } .dur span { opacity: 1; } }
+
+.sheet .sec { border-top: 0; }
