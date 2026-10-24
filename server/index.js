@@ -22,11 +22,13 @@ const run = (sql, ...a) => db.prepare(sql).run(...a);
 
 // ---- validation -----------------------------------------------------------
 const RESERVED = new Set(['admin', 'root', 'support', 'durood', 'qafila', 'quest', 'seerah', 'seerat', 'api', 'null', 'undefined']);
-const isReserved = (u) => RESERVED.has(u.toLowerCase()) || /^member_\d+$/i.test(u); // member_<id> is what deleted accounts become
+const isReserved = (u) => RESERVED.has(u.toLowerCase()) || /^member_\d+$/i.test(u) || /^\d+$/.test(u); // all digits could be taken for a phone number at login; // member_<id> is what deleted accounts become
 const USERNAME = /^[a-z0-9_]{3,20}$/i;
 // usernames and caravan names share one namespace: a name is free only when no profile and no caravan uses it
 const handleTaken = (name, exceptId = 0) => !!one('SELECT 1 FROM users WHERE (username = ? OR caravan_name = ? COLLATE NOCASE) AND id != ?', name, name, exceptId);
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const CITY_LOCK_MS = 14 * 86400e3;
+const EMAIL_RE = /^[^\s@]{1,64}@[^\s@.]+(\.[^\s@.]+)+$/;
+const EMAIL = { test: (e) => typeof e === 'string' && e.length <= 254 && EMAIL_RE.test(e) }; // length first: no regex work on huge input
 
 /**
  * Any international number. `cc` (a country code like "GB") lets a member type their national number: the country's calling
@@ -111,7 +113,10 @@ route('PUT', '/api/caravan/name', ({ user, body }) => {
 const B = (fn) => (ctx) => { burhan.guard(); return fn(ctx); };
 route('GET', '/api/burhan', B(({ user }) => burhan.burhanState(user)));
 route('POST', '/api/burhan/murabbi', B(async ({ user }) => { rateLimit(`bm:${user}`, 6, 3600e3); return { murabbi: await burhan.activateMurabbi(user) }; }));
+route('POST', '/api/burhan/murabbi/confirm', B(({ user }) => ({ murabbi: burhan.confirmMurabbi(user) })));
 route('DELETE', '/api/burhan/murabbi', B(({ user }) => burhan.unlinkMurabbi(user)));
+route('GET', '/api/burhan/requests', B(({ user }) => ({ requests: burhan.murabbiRequests(user) })));
+route('POST', '/api/burhan/requests/:username', B(({ user, params, body }) => burhan.answerRequest(user, params.username, body.accept === true)));
 route('PUT', '/api/burhan/masul', B(({ user, body }) => { rateLimit(`bms:${user}`, 20, 3600e3); return { masul: burhan.setMasul(user, body.username) }; }));
 route('DELETE', '/api/burhan/masul', B(({ user }) => burhan.clearMasul(user)));
 route('GET', '/api/burhan/usernames', B(({ user, query }) => { rateLimit(`bu:${user}`, 60, 60e3); return { usernames: burhan.searchUsernames(query.get('q'), user) }; }));
@@ -192,13 +197,22 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
   return { token: tokenFor(id), me: getMe(id) };
 });
 
+let dummyHash = null;
 route('POST', '/api/login', { auth: false }, async ({ body, ip }) => {
   rateLimit(`login:${ip}`, 120, 600e3);
-  const ident = String(body.id || '').trim();
-  rateLimit(`loginid:${ident.toLowerCase().slice(0, 80)}`, 10, 600e3); // guessing one account's password is capped however many addresses it comes from
-  const phone = normalizePhone(ident);
-  const u = one('SELECT id, pass, suspended, deleted_at FROM users WHERE username = ? OR email = ? OR phone = ?', ident, ident.toLowerCase(), phone ?? '\0');
-  if (!u || u.deleted_at || !(await checkPassword(String(body.password || ''), u.pass))) throw new HttpError(401, 'bad_login');
+  const ident = String(body.id || '').trim().slice(0, 254);
+  const password = String(body.password || '');
+  // the identifier is read by its shape, never with OR: an email, a phone number or a username
+  const phone = /^\+?[\d\s\-().]{7,}$/.test(ident) ? normalizePhone(ident) : null;
+  const u = ident.includes('@') ? one('SELECT id, pass, suspended, deleted_at FROM users WHERE email = ?', ident.toLowerCase())
+    : phone ? one('SELECT id, pass, suspended, deleted_at FROM users WHERE phone = ?', phone)
+    : one('SELECT id, pass, suspended, deleted_at FROM users WHERE username = ?', ident);
+  // wrong passwords are counted per account however the person is named, and only failures count, so a stranger cannot lock the owner out of a correct login
+  const key = `loginfail:${u ? u.id : ident.toLowerCase().slice(0, 80)}`;
+  if (lockedOut(key, 10)) throw new HttpError(429, 'rate_limited');
+  dummyHash ??= await hashPassword('timing-equaliser');
+  const ok = await checkPassword(password, u && !u.deleted_at ? u.pass : dummyHash); // the same work whether or not the account exists
+  if (!u || u.deleted_at || !ok) { recordFailure(key, 600e3); throw new HttpError(401, 'bad_login'); }
   if (u.suspended) throw new HttpError(403, 'suspended');
   return { token: tokenFor(u.id), me: getMe(u.id) };
 });
@@ -206,29 +220,43 @@ route('POST', '/api/login', { auth: false }, async ({ body, ip }) => {
 route('GET', '/api/public', { auth: false }, () => publicStats());
 route('GET', '/api/me', ({ user }) => getMe(user));
 
-route('PATCH', '/api/me', ({ user, body }) => {
-  if (body.lang !== undefined) run('UPDATE users SET lang = ? WHERE id = ?', lang(body.lang), user);
+route('PATCH', '/api/me', async ({ user, body }) => {
+  // validate every field first so a bad one cannot leave the others half-applied
+  let email = null, place = null, goal = null;
   if (body.email !== undefined) {
-    const email = String(body.email).trim().toLowerCase();
+    email = String(body.email).trim().toLowerCase();
     if (!EMAIL.test(email)) throw new HttpError(400, 'bad_email');
-    const cur = one('SELECT email FROM users WHERE id = ?', user).email;
-    if (email !== cur) {
+    const cur = one('SELECT email, pass FROM users WHERE id = ?', user);
+    if (email === cur.email) email = null;
+    else {
+      rateLimit(`emailchg:${user}`, 3, 86400e3);
+      if (!(await checkPassword(String(body.password || ''), cur.pass))) throw new HttpError(403, 'password_needed'); // a stolen session cannot redirect the account's mail
       if (one('SELECT 1 FROM users WHERE email = ?', email)) throw new HttpError(409, 'email_taken');
-      run('UPDATE users SET email = ?, email_verified_at = NULL WHERE id = ?', email, user);
-      sendMail(confirmEmail(email, `${baseUrl()}/?confirm=${makeToken(user, 'confirm', 7 * 86400e3)}`));
     }
   }
-  if (body.reminderTime !== undefined) news.setReminder(user, body.reminderTime);
   if (body.cityId !== undefined) {
-    const place = geo.cityById(body.cityId);
+    place = geo.cityById(body.cityId);
     if (!place) throw new HttpError(400, 'city_required');
-    run('UPDATE users SET city = ?, city_id = ?, country = ? WHERE id = ?', place.name, place.id, place.cc, user);
   }
   if (body.dailyGoal !== undefined) {
-    const g = Number(body.dailyGoal);
-    if (!Number.isInteger(g) || g < 1 || g > 100_000) throw new HttpError(400, 'bad_count');
-    run('UPDATE users SET daily_goal = ? WHERE id = ?', g, user);
+    goal = Number(body.dailyGoal);
+    if (!Number.isInteger(goal) || goal < 1 || goal > 100_000) throw new HttpError(400, 'bad_count');
   }
+  if (body.lang !== undefined) run('UPDATE users SET lang = ? WHERE id = ?', lang(body.lang), user);
+  if (email) {
+    run('UPDATE users SET email = ?, email_verified_at = NULL WHERE id = ?', email, user);
+    sendMail(confirmEmail(email, `${baseUrl()}/?confirm=${makeToken(user, 'confirm', 7 * 86400e3)}`));
+  }
+  if (body.reminderTime !== undefined) news.setReminder(user, body.reminderTime);
+  if (place) {
+    const cur = one('SELECT city_id, city_changed_at FROM users WHERE id = ?', user);
+    if (cur.city_id && cur.city_id !== place.id) {
+      if (cur.city_changed_at && Date.now() - cur.city_changed_at < CITY_LOCK_MS) throw new HttpError(429, 'city_locked'); // one change a fortnight: no hopping to the leading city before a weekly close
+      run('UPDATE users SET city_changed_at = ? WHERE id = ?', Date.now(), user);
+    }
+    run('UPDATE users SET city = ?, city_id = ?, country = ? WHERE id = ?', place.name, place.id, place.cc, user);
+  }
+  if (goal !== null) run('UPDATE users SET daily_goal = ? WHERE id = ?', goal, user);
   return getMe(user);
 });
 
@@ -244,7 +272,7 @@ route('POST', '/api/password/forgot', { auth: false }, async ({ body, ip }) => {
   if (!EMAIL.test(email)) throw new HttpError(400, 'bad_email');
   rateLimit(`pwe:${email}`, 3, 3600e3);
   const u = one('SELECT id, suspended, deleted_at FROM users WHERE email = ?', email);
-  if (u && !u.deleted_at) await sendMail(resetEmail(email, `${baseUrl()}/?reset=${makeToken(u.id, 'reset', 3600e3)}`));
+  if (u && !u.deleted_at) sendMail(resetEmail(email, `${baseUrl()}/?reset=${makeToken(u.id, 'reset', 3600e3)}`)).catch(() => {}); // not awaited: the answer must not reveal, by its speed, whether the address is registered
   return { ok: true }; // identical answer whether or not the address is registered
 });
 
@@ -441,14 +469,18 @@ async function readBody(req, limit) {
     chunks.push(c);
   }
   if (!chunks.length) return {};
-  try { return JSON.parse(Buffer.concat(chunks).toString()); } catch { throw new HttpError(400, 'bad_json'); }
+  let v;
+  try { v = JSON.parse(Buffer.concat(chunks).toString()); } catch { throw new HttpError(400, 'bad_json'); }
+  if (!v || typeof v !== 'object' || Array.isArray(v)) throw new HttpError(400, 'bad_json');
+  return v;
 }
 
 async function handleApi(req, res, url) {
   const route_ = routes.find((r) => r.method === req.method && r.re.test(url.pathname));
   if (!route_) throw new HttpError(404, 'not_found');
   const m = route_.re.exec(url.pathname);
-  const params = Object.fromEntries(route_.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])]));
+  let params;
+  try { params = Object.fromEntries(route_.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])])); } catch { throw new HttpError(400, 'bad_path'); }
   const ip = clientIp(req);
   const ctx = { query: url.searchParams, params, ip, body: {}, user: null };
 
@@ -537,6 +569,7 @@ export function createServer() {
     } catch (e) {
       const status = e instanceof HttpError ? e.status : 500;
       if (status === 500) console.error(e);
+      if (status === 413) { res.setHeader('Connection', 'close'); res.once('finish', () => req.destroy()); }
       if (!res.headersSent) res.writeHead(status, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: e instanceof HttpError ? e.code : 'server_error' }));
     }
@@ -558,6 +591,7 @@ function checkProduction() {
   if (!['resend', 'sendgrid'].includes((process.env.MAIL_PROVIDER || '').toLowerCase()) && process.env.ALLOW_CONSOLE_MAIL !== '1') problems.push('MAIL_PROVIDER must be resend or sendgrid (password-reset emails would never be sent; set ALLOW_CONSOLE_MAIL=1 to override)');
   if (String(process.env.ADMIN_KEY || '').length < 24) problems.push('ADMIN_KEY must be at least 24 random characters');
   if (!process.env.AUTH_SECRET) problems.push('AUTH_SECRET should be set so sessions survive a lost disk');
+  if (!process.env.PUBLIC_URL) problems.push('PUBLIC_URL must be set (password-reset and confirmation links are built from it)');
   if (problems.length) { console.error('Refusing to start:\n- ' + problems.join('\n- ')); process.exit(1); }
 }
 

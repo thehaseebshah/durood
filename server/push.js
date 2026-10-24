@@ -52,6 +52,7 @@ export function encryptPayload(plaintext, p256dh, authSecret, { ephemeral, salt 
 export async function sendPush(sub, message) {
   try {
     const res = await fetch(sub.endpoint, {
+      redirect: 'error',
       method: 'POST',
       headers: { 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream', TTL: '86400', Urgency: 'normal', Authorization: vapidHeader(sub.endpoint) },
       body: encryptPayload(JSON.stringify(message), sub.p256dh, sub.auth),

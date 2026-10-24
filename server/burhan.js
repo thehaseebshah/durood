@@ -49,13 +49,16 @@ const userRow = (id) => one('SELECT id, username, phone, email, city, country, c
 const livePerson = (id) => { const u = userRow(id); return u && !u.deleted_at ? u : null; };
 
 // ---- murabbi ---------------------------------------------------------------------------------------------------------
+// Phone numbers are not verified, so a number alone never grants access. A link has three steps: the Mamulaat app names a number, the salik
+// confirms the person found for it, and that person accepts. Reports are shared only when both have said yes.
+const ACTIVE = 'salik_ok = 1 AND murabbi_ok = 1 AND murabbi_id IS NOT NULL';
 /**
  * Asks the Mamulaat app who this member's murabbi is, then finds that person here by WhatsApp number. When the murabbi has no account yet
- * the link waits (and the member is told to ask them to sign up); it completes by itself when that number registers.
+ * the link waits (and the member is told to ask them to sign up). A different murabbi than before starts again from the salik's confirmation.
  */
 export async function activateMurabbi(userId) {
   const me = userRow(userId);
-  const found = await provider.murabbiOf(me.phone).catch((e) => { throw e; });
+  const found = await provider.murabbiOf(me.phone);
   if (!found) throw new HttpError(404, 'no_murabbi_set');
   const phone = toE164(found.whatsapp);
   if (!phone) throw new HttpError(502, 'mamulaat_bad_reply');
@@ -63,34 +66,56 @@ export async function activateMurabbi(userId) {
   const name = String(found.name ?? '').trim().slice(0, 80);
   tx(() => {
     const m = one('SELECT id FROM users WHERE phone = ? AND deleted_at IS NULL AND suspended = 0', phone);
+    const cur = one('SELECT murabbi_phone, murabbi_id, salik_ok, murabbi_ok FROM murabbi_links WHERE user_id = ?', userId);
+    const same = cur && cur.murabbi_phone === phone && cur.murabbi_id === (m?.id ?? null);
     const now = Date.now();
-    run(`INSERT INTO murabbi_links (user_id, murabbi_phone, murabbi_name, murabbi_id, checked_at, created_at) VALUES (?,?,?,?,?,?)
-         ON CONFLICT(user_id) DO UPDATE SET murabbi_phone = excluded.murabbi_phone, murabbi_name = excluded.murabbi_name, murabbi_id = excluded.murabbi_id, checked_at = excluded.checked_at`,
-      userId, phone, name, m?.id ?? null, now, now);
+    run(`INSERT INTO murabbi_links (user_id, murabbi_phone, murabbi_name, murabbi_id, salik_ok, murabbi_ok, checked_at, created_at) VALUES (?,?,?,?,?,?,?,?)
+         ON CONFLICT(user_id) DO UPDATE SET murabbi_phone = excluded.murabbi_phone, murabbi_name = excluded.murabbi_name, murabbi_id = excluded.murabbi_id,
+           salik_ok = excluded.salik_ok, murabbi_ok = excluded.murabbi_ok, checked_at = excluded.checked_at`,
+      userId, phone, name, m?.id ?? null, same ? cur.salik_ok : 0, same ? cur.murabbi_ok : 0, now, now);
+    if (!same) run("DELETE FROM burhan_views WHERE subject_id = ? AND kind = 'murabbi'", userId);
   });
   return murabbiState(userId);
 }
+/** The salik says: yes, this is my murabbi. Only possible once the person has an account to be shown. */
+export function confirmMurabbi(userId) {
+  const l = one('SELECT murabbi_id FROM murabbi_links WHERE user_id = ?', userId);
+  if (!l || !l.murabbi_id || !livePerson(l.murabbi_id)) throw new HttpError(409, 'murabbi_not_ready');
+  run('UPDATE murabbi_links SET salik_ok = 1 WHERE user_id = ?', userId);
+  return murabbiState(userId);
+}
 export function unlinkMurabbi(userId) {
-  tx(() => { run('DELETE FROM murabbi_links WHERE user_id = ?', userId); run('DELETE FROM burhan_views WHERE subject_id = ? AND kind = ?', userId, 'murabbi'); });
+  tx(() => { run('DELETE FROM murabbi_links WHERE user_id = ?', userId); run("DELETE FROM burhan_views WHERE subject_id = ? AND kind = 'murabbi'", userId); });
   return { ok: true };
 }
-/** A new account with this phone number completes any waiting murabbi links. Runs inside the sign-up transaction. */
+/** A new account with this phone number is shown to the saliks waiting for it, who must confirm it. Nothing is shared by this alone. */
 export function linkWaitingMurabbis(newUserId, phone) {
-  run('UPDATE murabbi_links SET murabbi_id = ? WHERE murabbi_phone = ? AND murabbi_id IS NULL AND user_id != ?', newUserId, phone, newUserId);
+  run('UPDATE murabbi_links SET murabbi_id = ?, salik_ok = 0, murabbi_ok = 0 WHERE murabbi_phone = ? AND murabbi_id IS NULL AND user_id != ?', newUserId, phone, newUserId);
 }
 export function murabbiState(userId) {
   const l = one('SELECT * FROM murabbi_links WHERE user_id = ?', userId);
   if (!l) return null;
   const m = l.murabbi_id ? livePerson(l.murabbi_id) : null;
-  const seen = m && one("SELECT at FROM burhan_views WHERE viewer_id = ? AND subject_id = ? AND kind = 'murabbi'", m.id, userId);
-  return { name: l.murabbi_name, username: m?.username ?? null, waiting: !m, lastViewed: seen?.at ?? null };
+  const stage = !m ? 'waiting' : !l.salik_ok ? 'confirm' : !l.murabbi_ok ? 'pending' : 'active';
+  const seen = stage === 'active' && one("SELECT at FROM burhan_views WHERE viewer_id = ? AND subject_id = ? AND kind = 'murabbi'", m.id, userId);
+  return { name: l.murabbi_name, username: m?.username ?? null, city: m?.city ?? null, stage, waiting: !m, lastViewed: seen?.at ?? null };
 }
-/** Re-asks the Mamulaat app (at most daily) so a change of murabbi there reaches this app. Failures keep the current link. */
+/** Re-asks the Mamulaat app (at most daily) so a change of murabbi there reaches this app. A different person must be confirmed again. */
 export async function refreshMurabbi(userId) {
   const l = one('SELECT checked_at FROM murabbi_links WHERE user_id = ?', userId);
   if (!l || Date.now() - l.checked_at < MURABBI_RECHECK_MS) return;
   run('UPDATE murabbi_links SET checked_at = ? WHERE user_id = ?', Date.now(), userId); // also spaces out retries when the app is down
   try { await activateMurabbi(userId); } catch (e) { if (e.code === 'no_murabbi_set') unlinkMurabbi(userId); }
+}
+/** The murabbi's side: who is waiting for their yes, and the yes or no itself. A "no" removes the request. */
+export const murabbiRequests = (murabbiId) => all(`SELECT u.username, u.city FROM murabbi_links l JOIN users u ON u.id = l.user_id
+  WHERE l.murabbi_id = ? AND l.salik_ok = 1 AND l.murabbi_ok = 0 AND u.deleted_at IS NULL ORDER BY l.created_at`, murabbiId);
+export function answerRequest(murabbiId, username, accept) {
+  const s = one(`SELECT u.id FROM users u JOIN murabbi_links l ON l.user_id = u.id WHERE u.username = ? AND l.murabbi_id = ? AND l.salik_ok = 1 AND l.murabbi_ok = 0`, String(username), murabbiId);
+  if (!s) throw new HttpError(404, 'not_found');
+  if (accept) run('UPDATE murabbi_links SET murabbi_ok = 1 WHERE user_id = ?', s.id);
+  else run('DELETE FROM murabbi_links WHERE user_id = ?', s.id);
+  return { ok: true };
 }
 
 // ---- mamulaat percentages --------------------------------------------------------------------------------------------------
@@ -113,7 +138,11 @@ export async function syncMamulaat(userId, { force = false } = {}) {
       run('INSERT INTO mamulaat_sync (user_id, fetched_at) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET fetched_at = excluded.fetched_at', userId, Date.now());
     });
     return { stale: false };
-  } catch { return { stale: true }; }
+  } catch {
+    // back off for a minute instead of retrying a dead service on every screen view
+    run('INSERT INTO mamulaat_sync (user_id, fetched_at) VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET fetched_at = excluded.fetched_at', userId, Date.now() - TTL_MS + 60e3);
+    return { stale: true };
+  }
 }
 export function mamulaatSeries(userId) {
   const to = dayOf(), n = dayNum(to);
@@ -130,6 +159,7 @@ export function setMasul(userId, username) {
   if (!m) throw new HttpError(404, 'masul_not_found');
   if (m.id === userId) throw new HttpError(400, 'own_masul');
   tx(() => {
+    if (one('SELECT COUNT(*) n FROM masul_links WHERE masul_id = ? AND razakar_id != ?', m.id, userId).n >= 200) throw new HttpError(409, 'masul_full');
     const cur = one('SELECT masul_id FROM masul_links WHERE razakar_id = ?', userId);
     if (cur && cur.masul_id !== m.id) endAll(userId);
     run(`INSERT INTO masul_links (razakar_id, masul_id, created_at) VALUES (?,?,?) ON CONFLICT(razakar_id) DO UPDATE SET masul_id = excluded.masul_id`, userId, m.id, Date.now());
@@ -270,7 +300,7 @@ export function razakarList(masulId) {
 
 /** A murabbi's report on one salik: the whole profile, all progress, mamulaat, and any tasks and routines they carry. */
 export async function saalikReport(murabbiId, username) {
-  const s = one(`SELECT u.id FROM users u JOIN murabbi_links l ON l.user_id = u.id WHERE u.username = ? AND l.murabbi_id = ? AND u.deleted_at IS NULL`, String(username), murabbiId);
+  const s = one(`SELECT u.id FROM users u JOIN murabbi_links l ON l.user_id = u.id WHERE u.username = ? AND l.murabbi_id = ? AND l.salik_ok = 1 AND l.murabbi_ok = 1 AND u.deleted_at IS NULL`, String(username), murabbiId);
   if (!s) throw new HttpError(404, 'not_found');
   touchView(murabbiId, s.id, 'murabbi');
   const sync = await syncMamulaat(s.id);
@@ -287,7 +317,7 @@ export async function saalikReport(murabbiId, username) {
     progress: g, extra, mamulaat: { ...mamulaatSeries(s.id), stale: sync.stale }, masul: masul?.username ?? null, assignments: items };
 }
 export function saalikList(murabbiId) {
-  return all(`SELECT u.id, u.username, u.city FROM murabbi_links l JOIN users u ON u.id = l.user_id WHERE l.murabbi_id = ? AND u.deleted_at IS NULL ORDER BY u.username`, murabbiId).map((u) => {
+  return all(`SELECT u.id, u.username, u.city FROM murabbi_links l JOIN users u ON u.id = l.user_id WHERE l.murabbi_id = ? AND l.salik_ok = 1 AND l.murabbi_ok = 1 AND u.deleted_at IS NULL ORDER BY u.username`, murabbiId).map((u) => {
     const g = generalProgress(u.id), m = mamulaatSeries(u.id);
     return { username: u.username, city: u.city, duroodToday: g.durood.today, duroodWeek: g.durood.week, streak: g.streak, mamulaatToday: m.today, mamulaatAverage: m.average };
   });
@@ -297,14 +327,15 @@ export function saalikList(murabbiId) {
 export async function burhanState(userId) {
   await refreshMurabbi(userId);
   const murabbi = murabbiState(userId);
-  if (murabbi && !murabbi.waiting) await syncMamulaat(userId);
+  if (murabbi?.stage === 'active') await syncMamulaat(userId);
   const assignments = myAssignments(userId);
   const today = assignments.filter((a) => (a.kind === 'routine' ? a.dueToday : !a.done));
   return {
     edition: edition(), murabbi, masul: masulState(userId),
-    mamulaat: murabbi ? mamulaatSeries(userId) : null,
+    mamulaat: murabbi?.stage === 'active' ? mamulaatSeries(userId) : null,
     assignments, today,
-    roles: { saaliks: one('SELECT COUNT(*) n FROM murabbi_links l JOIN users u ON u.id = l.user_id WHERE l.murabbi_id = ? AND u.deleted_at IS NULL', userId).n,
+    roles: { saaliks: one('SELECT COUNT(*) n FROM murabbi_links l JOIN users u ON u.id = l.user_id WHERE l.murabbi_id = ? AND l.salik_ok = 1 AND l.murabbi_ok = 1 AND u.deleted_at IS NULL', userId).n,
+      requests: murabbiRequests(userId).length,
       razakars: one('SELECT COUNT(*) n FROM masul_links l JOIN users u ON u.id = l.razakar_id WHERE l.masul_id = ? AND u.deleted_at IS NULL', userId).n },
   };
 }

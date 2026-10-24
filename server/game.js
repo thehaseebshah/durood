@@ -410,6 +410,19 @@ export function anonymiseUser(userId, passHash) {
     run(`UPDATE users SET caravan_name = NULL, username = ?, email = ?, phone = ?, pass = ?, city = '', deleted_at = ?, hidden_from_ranks = 1, suspended = 0
          WHERE id = ?`, `member_${userId}`, `deleted-${userId}@deleted.invalid`, `deleted-${userId}`, passHash, Date.now(), userId);
     run('DELETE FROM tokens WHERE user_id = ?', userId);
+    // everything personal goes with the name: push devices, written text, and all Al-Burhan links, reports and assignments
+    run('DELETE FROM push_subs WHERE user_id = ?', userId);
+    run("UPDATE reflections SET body = '', status = 'removed' WHERE user_id = ?", userId);
+    run("UPDATE lecture_comments SET body = '', status = 'removed' WHERE user_id = ?", userId);
+    run("UPDATE replies SET body = '', status = 'removed' WHERE user_id = ?", userId);
+    run('DELETE FROM mamulaat_days WHERE user_id = ?', userId);
+    run('DELETE FROM mamulaat_sync WHERE user_id = ?', userId);
+    run('DELETE FROM murabbi_links WHERE user_id = ?', userId);
+    run("UPDATE murabbi_links SET murabbi_id = NULL, murabbi_phone = '', murabbi_name = '' WHERE murabbi_id = ?", userId);
+    run('DELETE FROM masul_links WHERE razakar_id = ? OR masul_id = ?', userId, userId);
+    run('DELETE FROM assignment_ticks WHERE assignment_id IN (SELECT id FROM assignments WHERE masul_id = ? OR razakar_id = ?)', userId, userId);
+    run('DELETE FROM assignments WHERE masul_id = ? OR razakar_id = ?', userId, userId);
+    run('DELETE FROM burhan_views WHERE viewer_id = ? OR subject_id = ?', userId, userId);
   });
 }
 

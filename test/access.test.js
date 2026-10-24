@@ -302,9 +302,11 @@ test('email confirmation: a link is sent at sign-up, never blocks login, and con
   assert.equal((await api('POST', '/api/email/confirm', { body: { token } })).error, 'bad_token');
   outbox.length = 0;
   const changed = await api('PATCH', '/api/me', { token: u.token, body: { email: 'conf_new@x.pk' } });
-  assert.equal(changed.emailVerified, false, 'a new address must be confirmed again');
+  assert.equal(changed.error, 'password_needed', 'a stolen session cannot change the email without the password');
+  const changed2 = await api('PATCH', '/api/me', { token: u.token, body: { email: 'conf_new@x.pk', password: 'secret1' } });
+  assert.equal(changed2.emailVerified, false, 'a new address must be confirmed again');
   assert.ok(outbox.some((m) => m.to === 'conf_new@x.pk'));
-  assert.equal((await api('PATCH', '/api/me', { token: u.token, body: { email: 'reset_u@x.pk' } })).error, 'email_taken');
+  assert.equal((await api('PATCH', '/api/me', { token: u.token, body: { email: 'reset_u@x.pk', password: 'secret1' } })).error, 'email_taken');
 });
 
 test('deleting an account anonymises the person but keeps their durood in every total', async () => {

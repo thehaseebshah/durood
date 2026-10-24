@@ -35,6 +35,11 @@ const signup = async (username) => {
   phoneOf[username] = `+92${phone.slice(1)}`;
   return r;
 };
+// both sides say yes: the salik confirms the person shown, the murabbi accepts
+const connect = async (sal, mur, username) => {
+  assert.equal((await api('POST', '/api/burhan/murabbi/confirm', { token: sal.token })).murabbi.stage, 'pending');
+  assert.equal((await api('POST', `/api/burhan/requests/${username}`, { token: mur.token, body: { accept: true } })).ok, true);
+};
 const log = (u, count) => api('POST', '/api/log', { token: u.token, body: { count, rid: crypto.randomUUID() } });
 
 // the Mamulaat app, faked: who each member's murabbi is and their daily percentages
@@ -70,16 +75,34 @@ test('murabbi: found by WhatsApp number, waits until they sign up, then links by
   assert.ok(m.token);
   const st = await api('GET', '/api/burhan', { token: s.token });
   assert.equal(st.murabbi.username, 'mur_a');
-  assert.equal(st.murabbi.waiting, false);
+  assert.equal(st.murabbi.stage, 'confirm', 'a number that registered later is shown to the salik, not trusted');
+  // nothing is shared yet: the murabbi cannot see the salik until both have said yes
+  assert.equal((await api('GET', '/api/burhan/saaliks/sal_a', { token: m.token })).status, 404);
+  assert.equal((await api('GET', '/api/burhan', { token: s.token })).mamulaat, null);
+  assert.equal((await api('POST', '/api/burhan/requests/sal_a', { token: m.token, body: { accept: true } })).status, 404, 'cannot accept before the salik confirmed');
+  await connect(s, m, 'sal_a');
+  assert.equal((await api('GET', '/api/burhan', { token: s.token })).murabbi.stage, 'active');
   assert.equal((await api('GET', '/api/burhan', { token: m.token })).roles.saaliks, 1);
   assert.equal((await api('GET', '/api/burhan/saaliks', { token: m.token })).saaliks[0].username, 'sal_a');
   // a murabbi who already exists links at once; the member's own number is refused
   const s2 = await signup('sal_b');
   murabbis[phoneOf.sal_b] = { name: 'Hafiz Sahib', whatsapp: '+92 309 1999001' };
   assert.equal((await api('POST', '/api/burhan/murabbi', { token: s2.token })).murabbi.username, 'mur_a');
+  assert.equal((await api('GET', '/api/burhan/requests', { token: m.token })).requests.length, 0, 'no request until the salik confirms');
+  await api('POST', '/api/burhan/murabbi/confirm', { token: s2.token });
+  assert.deepEqual((await api('GET', '/api/burhan/requests', { token: m.token })).requests.map((r) => r.username), ['sal_b']);
+  assert.equal((await api('POST', '/api/burhan/requests/sal_b', { token: m.token, body: { accept: true } })).ok, true);
   const s3 = await signup('sal_c');
   murabbis[phoneOf.sal_c] = { name: 'Self', whatsapp: phoneOf.sal_c };
   assert.equal((await api('POST', '/api/burhan/murabbi', { token: s3.token })).error, 'own_murabbi');
+  // a murabbi can refuse, and a stranger posing as a murabbi cannot read anything
+  const s4 = await signup('sal_d');
+  murabbis[phoneOf.sal_d] = { name: 'Hafiz Sahib', whatsapp: '923091999001' };
+  await api('POST', '/api/burhan/murabbi', { token: s4.token });
+  await api('POST', '/api/burhan/murabbi/confirm', { token: s4.token });
+  assert.equal((await api('POST', '/api/burhan/requests/sal_d', { token: m.token, body: { accept: false } })).ok, true);
+  assert.equal((await api('GET', '/api/burhan/saaliks/sal_d', { token: m.token })).status, 404);
+  assert.equal((await api('GET', '/api/burhan', { token: s4.token })).murabbi, null);
   // unlinking removes the murabbi's view
   await api('DELETE', '/api/burhan/murabbi', { token: s2.token });
   assert.equal((await api('GET', '/api/burhan/saaliks/sal_b', { token: m.token })).status, 404);
@@ -119,6 +142,7 @@ test('masul: sees tasks, routines and general progress but never mamulaat; razak
   const masul = await signup('mas_a'), r = await signup('raz_a'), other = await signup('raz_other');
   murabbis[phoneOf.raz_a] = { name: 'M', whatsapp: '923091999001' };
   await api('POST', '/api/burhan/murabbi', { token: r.token });          // raz_a also has a murabbi, whose data the masul must not get
+  await connect(r, (await api('POST', '/api/login', { body: { id: 'mur_a', password: 'secret1' } })), 'raz_a');
   percents[phoneOf.raz_a] = [{ day: dayOf(), percent: 90 }];
   assert.equal((await api('PUT', '/api/burhan/masul', { token: r.token, body: { username: 'raz_a' } })).error, 'own_masul');
   assert.equal((await api('PUT', '/api/burhan/masul', { token: r.token, body: { username: 'nobody_x' } })).error, 'masul_not_found');
@@ -158,4 +182,30 @@ test('masul: sees tasks, routines and general progress but never mamulaat; razak
   await api('PUT', '/api/burhan/masul', { token: r.token, body: { username: 'raz_other' } });
   assert.equal((await api('GET', '/api/burhan', { token: r.token })).assignments.length, 0);
   assert.deepEqual(audit().problems, []);
+});
+
+test('a squatter on a murabbi\'s number gets nothing until a salik confirms them AND they accept; a changed murabbi must be confirmed again', async () => {
+  const sal = await signup('sq_sal');
+  murabbis[phoneOf.sq_sal] = { name: 'Real Murabbi', whatsapp: '923091999777' };
+  await api('POST', '/api/burhan/murabbi', { token: sal.token });
+  const squat = await api('POST', '/api/register', { body: { username: 'sq_squat', email: 'sq_squat@x.pk', phone: '03091999777', password: 'secret1', cityId: 1172451, invite: 'TESTFOUND' } });
+  assert.equal((await api('GET', '/api/burhan/saaliks/sq_sal', { token: squat.token })).status, 404);
+  assert.equal((await api('GET', '/api/burhan/saaliks', { token: squat.token })).saaliks.length, 0);
+  assert.equal((await api('GET', '/api/burhan', { token: squat.token })).roles.saaliks, 0);
+  // the salik sees the account that appeared and can decline it by removing the link
+  assert.equal((await api('GET', '/api/burhan', { token: sal.token })).murabbi.username, 'sq_squat');
+  await api('DELETE', '/api/burhan/murabbi', { token: sal.token });
+  // an active link that the Mamulaat app later points elsewhere stops sharing until the new person is confirmed
+  const real = await api('POST', '/api/register', { body: { username: 'sq_real', email: 'sq_real@x.pk', phone: '03091999888', password: 'secret1', cityId: 1172451, invite: 'TESTFOUND' } });
+  murabbis[phoneOf.sq_sal] = { name: 'Real', whatsapp: '923091999888' };
+  await api('POST', '/api/burhan/murabbi', { token: sal.token });
+  await connect(sal, real, 'sq_sal');
+  assert.equal((await api('GET', '/api/burhan/saaliks/sq_sal', { token: real.token })).status, 200);
+  murabbis[phoneOf.sq_sal] = { name: 'Someone else', whatsapp: '923091999777' };
+  db.prepare('UPDATE murabbi_links SET checked_at = 0 WHERE user_id = (SELECT id FROM users WHERE username = ?)').run('sq_sal');
+  const after = await api('GET', '/api/burhan', { token: sal.token });
+  assert.equal(after.murabbi.stage, 'confirm');
+  assert.equal(after.murabbi.username, 'sq_squat');
+  assert.equal((await api('GET', '/api/burhan/saaliks/sq_sal', { token: real.token })).status, 404, 'the old murabbi lost access at once');
+  assert.equal((await api('GET', '/api/burhan/saaliks/sq_sal', { token: squat.token })).status, 404, 'the new one has none until both agree');
 });

@@ -432,6 +432,7 @@ addCol('users', 'tree_active', 'INTEGER NOT NULL DEFAULT 0');     // people unde
 addCol('users', 'reminder_time', "TEXT NOT NULL DEFAULT ''");       // 'HH:MM' Pakistan time, '' = no daily reminder
 addCol('users', 'news_seen_at', 'INTEGER NOT NULL DEFAULT 0');
 addCol('users', 'caravan_name', 'TEXT');
+addCol('users', 'city_changed_at', 'INTEGER');                        // a member may change city once a fortnight
 // ---- Al-Burhan edition: murabbi / masul links, mamulaat percentages, tasks and routines -------------------------------------
 db.exec(`
 CREATE TABLE IF NOT EXISTS murabbi_links (
@@ -484,6 +485,8 @@ CREATE TABLE IF NOT EXISTS burhan_views (
   PRIMARY KEY (viewer_id, subject_id, kind)
 );
 `);
+addCol('murabbi_links', 'salik_ok', 'INTEGER NOT NULL DEFAULT 0');       // the salik confirmed the person they were shown
+addCol('murabbi_links', 'murabbi_ok', 'INTEGER NOT NULL DEFAULT 0');      // that person accepted. Nothing is shared until both are 1
                               // the member's own name for their caravan; shares one namespace with usernames
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_caravan_name ON users(caravan_name COLLATE NOCASE) WHERE caravan_name IS NOT NULL');
 

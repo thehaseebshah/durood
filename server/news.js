@@ -51,6 +51,7 @@ export function subscribe(userId, sub) {
   run(`INSERT INTO push_subs (endpoint, user_id, p256dh, auth, created_at) VALUES (?,?,?,?,?)
        ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth`,
     sub.endpoint, userId, sub.keys.p256dh, sub.keys.auth, Date.now());
+  run('DELETE FROM push_subs WHERE user_id = ? AND endpoint NOT IN (SELECT endpoint FROM push_subs WHERE user_id = ? ORDER BY created_at DESC LIMIT 5)', userId, userId); // a few devices per member
   return { ok: true };
 }
 export const unsubscribe = (userId) => { run('DELETE FROM push_subs WHERE user_id = ?', userId); return { ok: true }; };

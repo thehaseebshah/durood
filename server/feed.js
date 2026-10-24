@@ -55,7 +55,7 @@ const ITEMS = {
   comment: { table: 'lecture_comments', owner: 'user_id', live: "status = 'visible'", gone: "status = 'removed'", restore: "status = 'visible'" },
   reply: { table: 'replies', owner: 'user_id', live: "status = 'visible'", gone: "status = 'removed'", restore: "status = 'visible'", noLikes: true },
 };
-const itemOf = (kind) => ITEMS[kind] || (() => { throw new HttpError(400, 'bad_kind'); })();
+const itemOf = (kind) => (Object.hasOwn(ITEMS, kind) && ITEMS[kind]) || (() => { throw new HttpError(400, 'bad_kind'); })();
 
 /**
  * One like per member per item, never taken back, so the points it earns stay exact. The poster earns likeXp for each of the
@@ -146,7 +146,7 @@ const REPLY_TARGETS = {
 
 /** Up to REPLIES_PER_POST short replies per member per post, one level deep; two points for the first replyDailyCap a day, never on your own post. */
 export function postReply(userId, kind, itemId, text) {
-  const target = REPLY_TARGETS[kind];
+  const target = Object.hasOwn(REPLY_TARGETS, kind) && REPLY_TARGETS[kind];
   if (!target) throw new HttpError(400, 'bad_kind');
   const body = cleanText(text, REPLY_MAX);
   return tx(() => {
@@ -164,7 +164,7 @@ export function postReply(userId, kind, itemId, text) {
 }
 
 export function listReplies(userId, kind, itemId) {
-  if (!REPLY_TARGETS[kind]) throw new HttpError(400, 'bad_kind');
+  if (!Object.hasOwn(REPLY_TARGETS, kind)) throw new HttpError(400, 'bad_kind');
   return all(`SELECT r.id, r.body, r.created_at, r.user_id, u.username, u.city,
       EXISTS(SELECT 1 FROM content_reports c WHERE c.kind = 'reply' AND c.item_id = r.id AND c.user_id = ?) reported
     FROM replies r JOIN users u ON u.id = r.user_id
