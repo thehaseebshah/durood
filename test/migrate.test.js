@@ -53,3 +53,23 @@ test('opening the upgraded database again is a no-op', async () => {
   assert.equal(again.prepare('SELECT COUNT(*) n FROM entries').get().n, 3);
   again.close();
 });
+
+test('likes and reports from before comments and replies existed are carried over when the table is widened', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const f = path.join(dir, 'widen.db');
+  const url = new URL('../server/db.js', import.meta.url).href;
+  const child = (code) => spawnSync(process.execPath, ['--no-warnings', '--input-type=module', '-e', code], { env: { PATH: process.env.PATH, DB_PATH: f, AUTH_SECRET: 'x' }, encoding: 'utf8' });
+  assert.equal(child(`await import('${url}');`).stderr, '');          // a database with the current schema...
+  const old = new DatabaseSync(f);                                      // ...turned back into the earlier shape, with some rows
+  for (let i = 1; i <= 3; i++) old.prepare("INSERT INTO users (username, email, phone, pass, created_day, created_at) VALUES (?,?,?,?, '2026-01-01', 1)").run(`u${i}`, `u${i}@x.pk`, `+9230000000${i}`, 'x:y');
+  old.exec(`DROP TABLE likes; DROP TABLE content_reports;
+    CREATE TABLE likes (kind TEXT NOT NULL CHECK (kind IN ('post','reflection')), item_id INTEGER NOT NULL, user_id INTEGER NOT NULL REFERENCES users(id), created_at INTEGER NOT NULL, PRIMARY KEY (kind, item_id, user_id)) WITHOUT ROWID;
+    CREATE TABLE content_reports (kind TEXT NOT NULL CHECK (kind IN ('post','reflection')), item_id INTEGER NOT NULL, user_id INTEGER NOT NULL REFERENCES users(id), created_at INTEGER NOT NULL, PRIMARY KEY (kind, item_id, user_id)) WITHOUT ROWID;
+    INSERT INTO likes VALUES ('post', 7, 1, 1000), ('reflection', 3, 2, 2000); INSERT INTO content_reports VALUES ('post', 7, 3, 3000);`);
+  old.close();
+  const run = child(`const { db } = await import('${url}');
+    db.prepare("INSERT INTO likes VALUES ('comment', 1, 1, 5)").run(); db.prepare("INSERT INTO content_reports VALUES ('reply', 1, 1, 5)").run();
+    console.log(JSON.stringify([db.prepare('SELECT COUNT(*) n FROM likes').get().n, db.prepare('SELECT COUNT(*) n FROM content_reports').get().n]));`);
+  assert.equal(run.stderr, '', run.stderr);
+  assert.equal(run.stdout.trim(), '[3,2]', 'two old likes plus one comment like; one old report plus one reply report');
+});

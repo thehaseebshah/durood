@@ -11,6 +11,28 @@ db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeou
 const cols = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name);
 const hasTable = (t) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(t);
 
+// likes and reports apply to photos, reflections, lecture comments and replies. Older databases limited them to the first two (a CHECK
+// constraint), so rebuild those two small tables once, keeping every row.
+const LIKES_DDL = `CREATE TABLE IF NOT EXISTS likes (
+  kind TEXT NOT NULL CHECK (kind IN ('post','reflection','comment','reply')), item_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL REFERENCES users(id), created_at INTEGER NOT NULL, PRIMARY KEY (kind, item_id, user_id)) WITHOUT ROWID`;
+const REPORTS_DDL = `CREATE TABLE IF NOT EXISTS content_reports (
+  kind TEXT NOT NULL CHECK (kind IN ('post','reflection','comment','reply')), item_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL REFERENCES users(id), created_at INTEGER NOT NULL, PRIMARY KEY (kind, item_id, user_id)) WITHOUT ROWID`;
+for (const [table, ddl] of [['likes', LIKES_DDL], ['content_reports', REPORTS_DDL]]) {
+  const row = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?").get(table);
+  if (row && !row.sql.includes("'comment'")) {
+    db.exec('BEGIN');
+    try {
+      db.exec(`ALTER TABLE ${table} RENAME TO ${table}_old`);
+      db.exec(ddl);
+      db.exec(`INSERT INTO ${table} SELECT kind, item_id, user_id, created_at FROM ${table}_old`);
+      db.exec(`DROP TABLE ${table}_old`);
+      db.exec('COMMIT');
+    } catch (e) { db.exec('ROLLBACK'); throw e; }
+  }
+}
+
 // An older database has a ledger with CHECK (count > 0) and no edit columns. Rebuild it once, keeping every row and id,
 // BEFORE the schema below runs, because that schema creates indexes on the new columns.
 if (hasTable('entries') && !cols('entries').includes('kind')) {
@@ -178,13 +200,6 @@ CREATE TABLE IF NOT EXISTS special_days (
 
 -- the feed: likes (one per member per item, never taken back, so the points they earn stay exact), a short written reflection per
 -- member per day, the question of the day, reports on either kind of content, and milestone events shown to a member's caravan
-CREATE TABLE IF NOT EXISTS likes (
-  kind       TEXT NOT NULL CHECK (kind IN ('post','reflection')),
-  item_id    INTEGER NOT NULL,
-  user_id    INTEGER NOT NULL REFERENCES users(id),
-  created_at INTEGER NOT NULL,
-  PRIMARY KEY (kind, item_id, user_id)
-) WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS reflections (
   id         INTEGER PRIMARY KEY,
   user_id    INTEGER NOT NULL REFERENCES users(id),
@@ -202,13 +217,30 @@ CREATE TABLE IF NOT EXISTS prompts (
   text_en TEXT NOT NULL,
   text_ur TEXT NOT NULL DEFAULT ''
 ) WITHOUT ROWID;
-CREATE TABLE IF NOT EXISTS content_reports (
-  kind       TEXT NOT NULL CHECK (kind IN ('post','reflection')),
+-- one comment per member on each week's lecture (only after passing its quiz), and short replies to photos, reflections and comments
+CREATE TABLE IF NOT EXISTS lecture_comments (
+  id         INTEGER PRIMARY KEY,
+  lecture_id INTEGER NOT NULL REFERENCES lectures(id),
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  body       TEXT NOT NULL,
+  likes      INTEGER NOT NULL DEFAULT 0,
+  reports    INTEGER NOT NULL DEFAULT 0,
+  status     TEXT NOT NULL DEFAULT 'visible' CHECK (status IN ('visible','removed')),
+  created_at INTEGER NOT NULL,
+  UNIQUE (lecture_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS lecture_comments_feed ON lecture_comments(status, created_at);
+CREATE TABLE IF NOT EXISTS replies (
+  id         INTEGER PRIMARY KEY,
+  kind       TEXT NOT NULL CHECK (kind IN ('post','reflection','comment')),
   item_id    INTEGER NOT NULL,
   user_id    INTEGER NOT NULL REFERENCES users(id),
-  created_at INTEGER NOT NULL,
-  PRIMARY KEY (kind, item_id, user_id)
-) WITHOUT ROWID;
+  body       TEXT NOT NULL,
+  reports    INTEGER NOT NULL DEFAULT 0,
+  status     TEXT NOT NULL DEFAULT 'visible' CHECK (status IN ('visible','removed')),
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS replies_item ON replies(kind, item_id, id);
 CREATE TABLE IF NOT EXISTS feed_events (
   id         INTEGER PRIMARY KEY,
   user_id    INTEGER NOT NULL REFERENCES users(id),
@@ -358,6 +390,8 @@ CREATE TABLE IF NOT EXISTS reports (
   PRIMARY KEY (post_id, user_id)
 ) WITHOUT ROWID;
 `);
+db.exec(LIKES_DDL);
+db.exec(REPORTS_DDL);
 
 export const tx = (fn) => {
   db.exec('BEGIN IMMEDIATE');

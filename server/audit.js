@@ -68,7 +68,7 @@ export function audit({ fix = false } = {}) {
   }
   // like points: the poster earned likeXp for each of the first likeCap likes on every item, and nothing else
   const likeEvents = one("SELECT COUNT(*) n FROM events WHERE kind = 'like'").n;
-  const likeExpected = one(`SELECT COALESCE(SUM(MIN(likes, ?)), 0) n FROM (SELECT likes FROM posts UNION ALL SELECT likes FROM reflections)`, CFG.likeCap).n;
+  const likeExpected = one(`SELECT COALESCE(SUM(MIN(likes, ?)), 0) n FROM (SELECT likes FROM posts UNION ALL SELECT likes FROM reflections UNION ALL SELECT likes FROM lecture_comments)`, CFG.likeCap).n;
   if (likeEvents !== likeExpected) note('like_payout', { events: likeEvents, expected: likeExpected });
 
   const national = {

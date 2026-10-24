@@ -53,7 +53,7 @@ fly secrets set MAIL_PROVIDER=resend RESEND_API_KEY=... MAIL_FROM="Seerah Quest 
 3. Three intro screens, language choice; log durood by typing, presets, tapping; edit an entry in Me → History.
 4. Invite a second tester with your username as the code; they log; check Caravan boards, "caravans above you", the invite counter.
 5. Reminders: turn them on (Home card after a 2-day streak, or Me), set a reminder a few minutes ahead, lock the phone; post News with the notification ticked. **Push delivery has never run on a real device, so this is the most important test.**
-6. Sunnah: tick, post a photo, have two others confirm on the feed; class photo; video + quiz (add a lecture, see README); Circle card.
+6. Sunnah: tick, post a photo, have two others confirm on the feed; video + quiz + comment; a reply (add a lecture, see README); Circle card.
 7. Flag path: new members are capped at 10,000 a day, so to reach the 20,000 flag line during QA run `fly secrets set MAX_DAILY_NEW=50000` (remove it before launch with `fly secrets unset MAX_DAILY_NEW`). Log 25,000 on one test account, watch the Home challenge number drop to "pending" and the inviter's caravan total drop, then clear it in the admin page's Flagged totals and watch both return.
 8. Admin: audit button (must be clean), exports, suspend and unsuspend a member, account deletion (photos disappear).
 9. Forgot password with the link from `fly logs`.

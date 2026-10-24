@@ -15,7 +15,8 @@ export const CFG = {
   circleXp: 300,             // one-time, for registering with a Seerat Circle
   sunnahTickXp: 20,          // "I did today's sunnah"
   sunnahXp: 40,              // added when the photo is verified, so a verified day is worth 3x the tick (60)
-  classXp: 150,              // the weekly Seerah class photo, once verified
+  replyXp: 2,                // for a short reply, never on your own post...
+  replyDailyCap: 5,          // ...and for at most this many replies a day
   likeXp: 2,                 // the poster earns this for each like on a photo or reflection...
   likeCap: 10,               // ...for the first 10 likes on each (liking itself earns nothing)
   reflectXp: 15,             // the daily written reflection (a quest)

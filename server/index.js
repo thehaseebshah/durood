@@ -270,7 +270,7 @@ route('GET', '/api/challenge', ({ user }) => ({ summary: challengeSummary(), ser
 route('GET', '/api/league', ({ user }) => { compete.ensureWeekClosed(); return compete.leagueView(user); });
 route('GET', '/api/team', ({ user }) => ({ ...teamView(user), karwan: compete.karwanStatus(user) }));
 
-route('GET', '/api/lectures', ({ user }) => ({ lectures: feedApi.lectureList(user), circleUrl: CFG.circleUrl, circleXp: CFG.circleXp, classXp: CFG.classXp }));
+route('GET', '/api/lectures', ({ user }) => ({ lectures: feedApi.lectureList(user), circleUrl: CFG.circleUrl, circleXp: CFG.circleXp }));
 route('POST', '/api/lectures/:id/quiz', ({ user, params, body }) => {
   rateLimit(`quiz:${user}`, 60, 60e3);
   return answerQuiz(user, Number(params.id), body.answers);
@@ -290,11 +290,6 @@ route('POST', '/api/sunnah/post', { maxBody: 400_000 }, ({ user, body }) => {
   return { ...r, ...sunnah.today(user), me: getMe(user) };
 });
 route('POST', '/api/sunnah/tick', ({ user }) => ({ ...sunnah.tick(user), ...sunnah.today(user), me: getMe(user) }));
-route('POST', '/api/class/post', { maxBody: 400_000 }, ({ user, body }) => {
-  rateLimit(`post:${user}`, 10, 60e3);
-  const r = sunnah.createPost(user, body.image, 'class');
-  return { ...r, ...sunnah.today(user), me: getMe(user) };
-});
 route('GET', '/api/feed', ({ user, query }) => {
   const before = query.get('before');
   const page = feedApi.feed(user, before || undefined);
@@ -306,6 +301,17 @@ route('POST', '/api/reflections', ({ user, body }) => {
   rateLimit(`refl:${user}`, 10, 60e3);
   const r = feedApi.postReflection(user, body.text);
   return { ...r, reflection: feedApi.reflectionToday(user), me: getMe(user) };
+});
+route('POST', '/api/lectures/:id/comment', ({ user, params, body }) => {
+  rateLimit(`lcom:${user}`, 10, 60e3);
+  const r = feedApi.postComment(user, Number(params.id), body.text);
+  return { ...r, lectures: feedApi.lectureList(user), me: getMe(user) };
+});
+route('GET', '/api/replies', ({ user, query }) => ({ replies: feedApi.listReplies(user, query.get('kind'), Number(query.get('id'))) }));
+route('POST', '/api/replies', ({ user, body }) => {
+  rateLimit(`reply:${user}`, 30, 60e3);
+  const r = feedApi.postReply(user, body.kind, Number(body.id), body.text);
+  return { ...r, replies: feedApi.listReplies(user, body.kind, Number(body.id)), me: getMe(user) };
 });
 route('POST', '/api/like', ({ user, body }) => {
   rateLimit(`like:${user}`, 120, 60e3);

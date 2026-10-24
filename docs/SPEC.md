@@ -23,7 +23,7 @@ Status: decisions from the interview. **Step 1 (access and accuracy) is built**;
 | Streaks and shields | Keep. |
 | Quests | Keep the four durood quests. Sunnah, review and lecture quests go with their features. |
 | Sunnah (secondary) | **Stays, with XP.** Tick "I did today's sunnah" = 20 XP; a photo verified on the feed adds 40 more (a verified day = 3x the tick). |
-| Seerah (tertiary) | **Stays, with XP.** Circle sign-up 300 XP once; a lecture pays only after its quiz is passed (admin-written, all answers right, unlimited retries); the weekly class photo, verified on the feed, pays 150 XP. |
+| Seerah (tertiary) | **Stays, with XP.** Circle sign-up 300 XP once; a lecture pays only after its quiz is passed (admin-written, all answers right, unlimited retries); the weekly lecture's quiz and comment thread are the weekly Seerah activity (the class photo was removed). |
 | Seerat Circles | **A card on Home, no tab.** One sign-up link and a short explanation. No dedication or per-Circle tracking. |
 | National meter | Keep, with the "reported by members" label. |
 | Sign-up | **Invite-only, code required.** Founders get in through (a) one **public founders code** and (b) an **admin-approved waitlist**. |
@@ -158,13 +158,13 @@ Home: number box first (type a total, presets +100/+500/+1,000 fill the field, A
 ## 15. The feed, likes, reflections and the three rankings (replaces photo verification)
 **Terms (fixed):** a **caravan** is a member plus the people they invited themselves. A **referral tree** (internally *qabila*) is everyone under a member at every depth. The Caravan tab shows the caravan; the tree appears in Me (people, total, this week, tree milestones) and as one of three rankings. Internally the closure table's depth 1 is the caravan and every depth is the tree.
 
-**No verification.** Members are trusted. A sunnah photo pays its reward in the step that posts it (tick 20, photo +40; the weekly class photo 150). The review queue, voting, reviewer badges (Trusted Reviewer, Pillar of Trust) and the "review 3 photos" quest are gone. Likes and reports are the check: three reports from different members hide a photo or reflection until an admin restores it.
+**No verification.** Members are trusted. A sunnah photo pays its reward in the step that posts it (tick 20, photo +40). The review queue, voting, reviewer badges (Trusted Reviewer, Pillar of Trust) and the "review 3 photos" quest are gone. Likes and reports are the check: three reports from different members hide a photo or reflection until an admin restores it.
 
 **Likes.** One like per member per item, never taken back (so the points stay exact), nobody likes their own. The poster earns 2 points for each of the first 10 likes on that item; liking earns nothing. The audit checks the arithmetic.
 
 **Daily reflection.** One plain-text post a day, at most 280 characters, no links, answering the admin's question of the day (or a general prompt). It pays through a daily quest (15) and can be liked and reported. No replies, hashtags or follows, on purpose.
 
-**The feed** (fifth tab becomes Feed: Home, Feed, Ranks, Caravan, Me) is newest first, paged by time, with five kinds of item: announcements; sunnah and class photos; reflections; milestones of a member's own caravan (themselves, the people they invited, and the person who invited them); each crore of the challenge. The week's lecture(s) sit with the day's actions on the left of the desktop layout (above the stream on a phone). Lectures belong to a week (any date in the week works when adding one); only the current week's show.
+**The feed** (fifth tab becomes Feed: Home, Feed, Ranks, Caravan, Me) is newest first, paged by time, with five kinds of item: announcements; sunnah photos; reflections; lecture comments; milestones of a member's own caravan (themselves, the people they invited, and the person who invited them); each crore of the challenge. The week's lecture(s) sit with the day's actions on the left of the desktop layout (above the stream on a phone). Lectures belong to a week (any date in the week works when adding one); only the current week's show.
 
 **Rankings:** People (week, challenge, all-time), Caravans and Referral trees (each by Total this week, Average per active member, Growth vs last week).
 
@@ -192,3 +192,10 @@ Home: number box first (type a total, presets +100/+500/+1,000 fill the field, A
 **New badges (34 in all):** Caravan Week/Month; Qabila of 10/50/250 (people who have recited); Silver/Gold/Diamond League; City Podium and City Champion. The old whole-tree badges are renamed Qabila 10K to 10M.
 
 **Credits:** GeoNames and DB-IP.com (both CC BY 4.0) are credited in the footer. To refresh the data, see `scripts/build-geo.mjs`.
+
+## 17. Lecture comments, replies, no class photo
+
+- **Class photo removed.** No weekly class photo, route, card or 150 XP. Old class posts are hidden from the feed; what they paid stays paid (the ledger is append-only).
+- **Lecture comments.** Only members who passed the lecture's quiz (or, for a lecture without a quiz, completed it) may comment; one comment per lecture per member; 280 characters, plain text, no links. They appear in the feed labelled with the lecture title, can be liked (poster earns the usual like points) and reported (3 reports hide).
+- **Replies** on sunnah photos, reflections and lecture comments: 140 characters, plain text, no links, one level deep, 3 per member per post. 3 reports from different members hide a reply; admin can restore. A reply earns 2 XP (`CFG.replyXp`), at most 5 a day (`replyDailyCap`), and nothing on your own post. No push notification to the poster. Replies cannot be liked.
+- Admin: the Reported list covers comments and replies.

@@ -52,7 +52,7 @@ Environment variables:
 | `MAX_DAILY`, `MAX_DAILY_NEW` | Most durood one member can report in a day (default 50,000; 10,000 during their first 7 days) |
 | `PUBLIC_DAILY_CAP` | Sign-ups per day through the public founders code (default 200; change it on the admin page) |
 | `PUBLIC_CACHE_MS` | How long boards and the public meter are cached (default 30 s boards / 15 s meter; `0` turns caching off, used by the tests) |
-| `PHOTO_KEEP_DAYS` | Days a decided Sunnah/class photo is kept before the file is deleted (default 14). Deleting an account deletes its photos at once |
+| `PHOTO_KEEP_DAYS` | Days a decided Sunnah photo is kept before the file is deleted (default 14). Deleting an account deletes its photos at once |
 | `BACKUP_DIR`, `BACKUP_KEEP`, `BACKUP_EVERY_HOURS` | Nightly database snapshot (default every 24 h, newest 14 kept). Also `node scripts/backup.mjs`. Copy the folder off the machine, and back up `UPLOAD_DIR` and `AUTH_SECRET` separately |
 | `UPLOAD_DIR` | Where photos are stored (default `data/uploads`); must be on a persistent volume |
 | `VAPID_SUBJECT`, `PUSH_HOSTS` | A real `mailto:` address for push; extra allowed push hosts (browsers' own services are built in) |
@@ -77,7 +77,7 @@ curl -X POST $URL/api/admin/lectures -H "x-admin-key: $ADMIN_KEY" -H 'content-ty
 - **Network layer:** unlimited-depth referral tree stored as a closure table. A person's *caravan* = themselves + everyone below them. Caravan totals, weekly caravan leaderboard, caravan milestone badges and XP (10K → 10M, counting only what invitees recited), invite via WhatsApp share.
 - **Referral reward is delayed:** the referrer gets XP only once the invitee recites their first durood (blocks fake sign-ups).
 - **Leaderboards:** weekly / all-time, individuals / caravans. Public; there is no opt-out. Flagged members are hidden until reviewed.
-- **Feed, likes, reflections:** see docs/SPEC.md section 15. Seerat Circle link on Home; one featured lecture a week with a quiz; sunnah and class photos; a daily written reflection; likes earn the poster points; reports hide content.
+- **Feed, likes, reflections:** see docs/SPEC.md section 15. Seerat Circle link on Home; one featured lecture a week with a quiz; sunnah photos; comments on the lecture (after its quiz) and short replies; a daily written reflection; likes earn the poster points; reports hide content.
 - **National meter:** total durood across everyone vs a target.
 
 ## UI style

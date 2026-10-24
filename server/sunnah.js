@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { db, tx } from './db.js';
 import { HttpError, photoSig } from './auth.js';
-import { CFG, dayOf, weekStart, grant, evalBadges, settleQuests, tickSunnah } from './game.js';
+import { CFG, dayOf, grant, evalBadges, settleQuests, tickSunnah } from './game.js';
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
@@ -60,31 +60,13 @@ const postOut = (p) => ({
   titleEn: p.title_en, titleUr: p.title_ur, createdAt: p.created_at,
 });
 
-// the weekly Seerah class photo has its own slot per week, keyed so it can never clash with a dated daily sunnah
-const classDay = () => `class-${weekStart(dayOf())}`;
-function classSlot() {
-  const day = classDay();
-  const hit = one('SELECT * FROM sunnahs WHERE day = ?', day);
-  if (hit) return hit;
-  run(`INSERT INTO sunnahs (day, kind, title_en, title_ur, desc_en, desc_ur, created_at) VALUES (?,?,?,?,?,?,?)`,
-    day, 'class', 'Seerah class this week', 'اس ہفتے کی سیرت کلاس', 'A photo from the Seerah class you attended this week.', 'اس ہفتے آپ نے جس سیرت کلاس میں شرکت کی اس کی تصویر۔', Date.now());
-  return one('SELECT * FROM sunnahs WHERE day = ?', day);
-}
-
 /** What the composer needs: today's sunnah, whether it was ticked, the member's own photo and this week's class photo. */
 export function today(userId) {
   const s = one('SELECT * FROM sunnahs WHERE day = ?', dayOf());
   const mine = s && one(`SELECT p.*, s.day, s.title_en, s.title_ur FROM posts p JOIN sunnahs s ON s.id = p.sunnah_id
                          WHERE p.user_id = ? AND p.sunnah_id = ?`, userId, s.id);
   const ticked = !!(s && one("SELECT 1 FROM events WHERE user_id = ? AND kind = 'sunnah_tick' AND ref = ?", userId, String(s.id)));
-  const cs = one('SELECT * FROM sunnahs WHERE day = ?', classDay());
-  const cmine = cs && one(`SELECT p.*, s.day, s.title_en, s.title_ur FROM posts p JOIN sunnahs s ON s.id = p.sunnah_id
-                           WHERE p.user_id = ? AND p.sunnah_id = ?`, userId, cs.id);
-  return {
-    sunnah: sunnahOut(s), mine: mine ? postOut(mine) : null, ticked,
-    classPost: cmine ? postOut(cmine) : null,
-    rules: { tickXp: CFG.sunnahTickXp, sunnahXp: CFG.sunnahXp, classXp: CFG.classXp },
-  };
+  return { sunnah: sunnahOut(s), mine: mine ? postOut(mine) : null, ticked, rules: { tickXp: CFG.sunnahTickXp, sunnahXp: CFG.sunnahXp } };
 }
 
 export function mine(userId) {
@@ -102,8 +84,8 @@ export function tick(userId) {
  * Posting a photo completes the sunnah (or the weekly class) at once: members are trusted, and the feed's likes and reports
  * are the check. The reward is paid in the same step, exactly once.
  */
-export function createPost(userId, imageB64, kind = 'sunnah') {
-  const s = kind === 'class' ? classSlot() : one('SELECT * FROM sunnahs WHERE day = ?', dayOf());
+export function createPost(userId, imageB64) {
+  const s = one('SELECT * FROM sunnahs WHERE day = ?', dayOf());
   if (!s) throw new HttpError(404, 'no_sunnah');
   if (one('SELECT 1 FROM posts WHERE user_id = ? AND sunnah_id = ?', userId, s.id)) throw new HttpError(409, 'already_posted');
   const raw = Buffer.from(String(imageB64 || '').replace(/^data:image\/jpeg;base64,/, ''), 'base64');
@@ -119,8 +101,7 @@ export function createPost(userId, imageB64, kind = 'sunnah') {
       const r = run(`INSERT INTO posts (user_id, sunnah_id, file, sha256, status, created_day, created_at, resolved_at) VALUES (?,?,?,?, 'verified', ?,?,?)`,
         userId, s.id, file, sha, dayOf(), Date.now(), Date.now());
       const postId = Number(r.lastInsertRowid);
-      const isClass = s.kind === 'class';
-      grant(userId, isClass ? 'class' : 'sunnah', postId, isClass ? CFG.classXp : CFG.sunnahXp);
+      grant(userId, 'sunnah', postId, CFG.sunnahXp);
       settleQuests(userId);
       evalBadges(userId, fresh);
       return postId;
@@ -137,8 +118,10 @@ function migrateOldPosts() {
   run("UPDATE posts SET status = 'verified', resolved_at = COALESCE(resolved_at, created_at) WHERE status IN ('pending','expired','rejected')");
   for (const p of all(`SELECT p.id, p.user_id, s.kind FROM posts p JOIN sunnahs s ON s.id = p.sunnah_id
         WHERE p.status = 'verified' AND NOT EXISTS (SELECT 1 FROM events e WHERE e.kind IN ('sunnah','class') AND e.ref = CAST(p.id AS TEXT))`)) {
-    grant(p.user_id, p.kind === 'class' ? 'class' : 'sunnah', p.id, p.kind === 'class' ? CFG.classXp : CFG.sunnahXp);
+    grant(p.user_id, p.kind === 'class' ? 'class' : 'sunnah', p.id, p.kind === 'class' ? 150 : CFG.sunnahXp);
   }
+  // the weekly class photo no longer exists: take those posts out of the feed (what they paid stays paid)
+  run("UPDATE posts SET status = 'removed' WHERE status != 'removed' AND sunnah_id IN (SELECT id FROM sunnahs WHERE kind = 'class')");
 }
 migrateOldPosts();
 

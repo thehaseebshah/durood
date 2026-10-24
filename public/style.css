@@ -370,3 +370,9 @@ html[dir=rtl] .lb li.up { box-shadow: inset -4px 0 0 var(--sig); } html[dir=rtl]
 .karwan { margin: 10px 20px; padding: 10px 12px; border: 1.5px solid var(--ink); }
 .chipname { display: inline-block; border: 1px solid var(--line); padding: 0 6px; margin: 2px 2px 0 0; font-size: .75rem; }
 .cnum.long { font-size: 3.2rem !important; line-height: 1.1; }
+
+/* replies under feed items */
+.thread{margin-top:10px;padding-inline-start:12px;border-inline-start:2px solid var(--line,#ddd);display:grid;gap:8px}
+.thread .reply .fwho{display:flex;align-items:center;gap:6px}
+.thread .reply .fwho .chip{margin-inline-start:auto;padding:2px 6px}
+.thread input[type=text]{flex:1;min-width:0}

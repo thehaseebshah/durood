@@ -455,7 +455,7 @@ function sunnahCard(d) {
   if (!sn) return `<div class="fcard"><h3>${t('sunnah_title')}</h3><p class="muted">${t('no_sunnah')}</p></div>`;
   let photoPart;
   if (mine) photoPart = `<div class="row between"><b>${t('your_post')}</b>${statusTag(mine.status)}</div>${mine.photoUrl ? `<img class="shot" src="${esc(mine.photoUrl)}" alt="">` : `<p class="muted">${t('photo_gone')}</p>`}`;
-  else if (S.draft && S.draftKind !== 'class') photoPart = `<b>${t('photo_preview')}</b><img class="shot" src="${esc(S.draft)}" alt="">
+  else if (S.draft) photoPart = `<b>${t('photo_preview')}</b><img class="shot" src="${esc(S.draft)}" alt="">
       <div class="row"><button class="blk" style="flex:1" data-act="postit" data-kind="sunnah"><span>${t('post_it')}</span><b>→</b></button><button class="chip" data-act="draftx">${t('cancel')}</button></div>`;
   else photoPart = `<label class="blk upload"><span class="lab">${uiIcon('camera', 24, 1.8)} ${t('take_photo')}</span><b>+</b><input type="file" accept="image/*" capture="environment" data-photo="sunnah" hidden></label>`;
   const tick = d.ticked
@@ -465,17 +465,6 @@ function sunnahCard(d) {
     <div class="head">${esc(pick(sn.titleEn, sn.titleUr))}</div><p>${esc(pick(sn.descEn, sn.descUr))}</p>${sn.source ? `<div class="muted">${t('source')}: ${esc(sn.source)}</div>` : ''}
     <div class="spacer"></div>${tick}${photoPart}
     ${mine ? '' : `<p class="note">${t('photo_rules')}</p>`}</div>`;
-}
-
-function classCard(d) {
-  const cp = d.classPost;
-  const body = cp
-    ? `<div class="row between"><b>${t('your_post')}</b>${statusTag(cp.status)}</div>${cp.photoUrl ? `<img class="shot" src="${esc(cp.photoUrl)}" alt="">` : `<p class="muted">${t('photo_gone')}</p>`}`
-    : S.draft && S.draftKind === 'class'
-      ? `<b>${t('photo_preview')}</b><img class="shot" src="${esc(S.draft)}" alt="">
-         <div class="row"><button class="blk" style="flex:1" data-act="postit" data-kind="class"><span>${t('post_it')}</span><b>→</b></button><button class="chip" data-act="draftx">${t('cancel')}</button></div>`
-      : `<label class="blk upload"><span class="lab">${uiIcon('camera', 24, 1.8)} ${t('class_photo')}</span><b>+</b><input type="file" accept="image/*" capture="environment" data-photo="class" hidden></label>`;
-  return `<div class="fcard"><h3>${t('class_title')}</h3><p class="muted">${t('class_text')}</p>${body}</div>`;
 }
 
 function reflectionCard(r) {
@@ -488,28 +477,55 @@ function reflectionCard(r) {
 }
 
 function lectureCard(x) {
+  let talk = '';
+  if (x.myComment) talk = `<div class="reflbody" dir="auto">${esc(x.myComment.body)}</div><div class="muted">${uiIcon('heart', 14, 2)} ${fmt(x.myComment.likes)}</div>`;
+  else if (x.canComment) talk = `<textarea data-cbox="${x.id}" maxlength="${x.commentMax}" rows="2" placeholder="${t('comment_ph')}" dir="auto">${esc((S.cDraft || {})[x.id] || '')}</textarea>
+      <div class="row between"><small class="muted">${t('comment_rules')}</small><button class="chip solid" data-act="comment" data-id="${x.id}">${t('reflect_post')}</button></div>`;
+  else talk = `<small class="muted">${t(x.quiz && x.quiz.length ? 'comment_locked' : 'comment_locked_watch')}</small>`;
   return `<div class="fcard"><h3>${uiIcon('play', 14, 2)} ${t('lecture_week')}</h3>
     <div class="q ${x.done ? 'd' : ''}"><span class="bx"></span>
       <span class="t">${esc(pick(x.titleEn, x.titleUr))}<small>${esc(x.speaker)}</small></span>
       <button class="chip ${x.done ? '' : 'solid'}" data-act="watch" data-id="${x.id}">${x.done ? t('watched') : `${uiIcon('play', 13, 2)} ${t('watch')}`}</button>
-    </div></div>`;
+    </div>
+    <div class="spacer"></div><b>${t('comment_title')}</b>${talk}</div>`;
+}
+
+// replies: short, one level, opened under the item they belong to
+const replyKind = (it) => (it.type === 'photo' ? 'post' : it.type);
+const threadKey = (it) => `${replyKind(it)}:${it.id}`;
+function threadHtml(it) {
+  const th = (S.threads || {})[threadKey(it)];
+  if (!th) return '';
+  const list = (th.list || []).map((r) => `<div class="reply"><div class="fwho"><b>${esc(r.username)}</b>${r.city ? ` <small>${esc(r.city)}</small>` : ''}<small class="when">${ago(r.at)}</small>
+      ${r.mine ? '' : `<button class="chip" data-act="rreport" data-id="${r.id}" data-key="${threadKey(it)}" title="${esc(t('report_ask'))}">${uiIcon('flag', 12, 2)}</button>`}</div>
+      <div class="reflbody" dir="auto">${esc(r.body)}</div></div>`).join('');
+  const mineN = (th.list || []).filter((r) => r.mine).length;
+  const form = mineN >= 3 ? `<small class="muted">${t('reply_limit_note')}</small>`
+    : `<div class="row"><input type="text" data-rbox="${threadKey(it)}" maxlength="140" placeholder="${esc(t('reply_ph'))}" dir="auto" value="${esc(th.draft || '')}"><button class="chip solid" data-act="reply" data-key="${threadKey(it)}">${t('reply_send')}</button></div>`;
+  return `<div class="thread">${th.loading ? '<small class="muted">…</small>' : list}${form}</div>`;
 }
 
 function feedItem(it) {
   const who = (name, city) => `<div class="fwho"><b>${esc(name)}</b>${city ? ` <small>${esc(city)}</small>` : ''}<small class="when">${ago(it.at)}</small></div>`;
-  const acts = `<div class="facts"><button class="chip like ${it.liked ? 'on' : ''}" data-act="like" data-kind="${it.type === 'photo' ? 'post' : 'reflection'}" data-id="${it.id}" ${it.mine || it.liked ? 'disabled' : ''}>${uiIcon('heart', 14, 2)} ${fmt(it.likes)}</button>
-    ${it.mine ? '' : `<button class="chip" data-act="report" data-kind="${it.type === 'photo' ? 'post' : 'reflection'}" data-id="${it.id}" title="${esc(t('report_ask'))}">${uiIcon('flag', 14, 2)}</button>`}</div>`;
+  const rk = replyKind(it);
+  const acts = `<div class="facts"><button class="chip like ${it.liked ? 'on' : ''}" data-act="like" data-kind="${rk}" data-id="${it.id}" ${it.mine || it.liked ? 'disabled' : ''}>${uiIcon('heart', 14, 2)} ${fmt(it.likes)}</button>
+    <button class="chip" data-act="thread" data-kind="${rk}" data-id="${it.id}">${uiIcon('pen', 14, 2)} ${it.replies ? fmt(it.replies) : t('reply_btn')}</button>
+    ${it.mine ? '' : `<button class="chip" data-act="report" data-kind="${rk}" data-id="${it.id}" title="${esc(t('report_ask'))}">${uiIcon('flag', 14, 2)}</button>`}</div>${threadHtml(it)}`;
   if (it.type === 'announcement') {
     return `<div class="fitem ann ${it.at > (S.feedSeen || Infinity) ? 'unread' : ''}"><div class="flabel">${uiIcon('feed', 12, 2)} ${t('ann_label')}<small class="when">${ago(it.at)}</small></div>
       <b>${esc(pick(it.titleEn, it.titleUr))}</b>${it.bodyEn || it.bodyUr ? `<p>${esc(pick(it.bodyEn, it.bodyUr))}</p>` : ''}</div>`;
   }
   if (it.type === 'photo') {
-    return `<div class="fitem"><div class="flabel">${uiIcon(it.kind === 'class' ? 'book' : 'leaf', 12, 2)} ${it.kind === 'class' ? t('class_label') : esc(pick(it.titleEn, it.titleUr))}</div>${who(it.username, it.city)}
+    return `<div class="fitem"><div class="flabel">${uiIcon('leaf', 12, 2)} ${esc(pick(it.titleEn, it.titleUr))}</div>${who(it.username, it.city)}
       <img class="shot" loading="lazy" src="${esc(it.photoUrl)}" alt="">${acts}</div>`;
   }
   if (it.type === 'reflection') {
     return `<div class="fitem"><div class="flabel">${uiIcon('pen', 12, 2)} ${t('reflect_title')}</div>${who(it.username, it.city)}
       ${it.promptEn ? `<div class="muted fprompt">${esc(pick(it.promptEn, it.promptUr))}</div>` : ''}<div class="reflbody" dir="auto">${esc(it.body)}</div>${acts}</div>`;
+  }
+  if (it.type === 'comment') {
+    return `<div class="fitem"><div class="flabel">${uiIcon('play', 12, 2)} ${esc(pick(it.lectureEn, it.lectureUr))}</div>${who(it.username, it.city)}
+      <div class="reflbody" dir="auto">${esc(it.body)}</div>${acts}</div>`;
   }
   if (it.type === 'milestone') {
     const b = t('badge')[it.code] || [it.code, ''];
@@ -533,7 +549,6 @@ function feedView() {
     ${f.lectures.map(lectureCard).join('')}
     ${sunnahCard(f.today)}
     ${reflectionCard(f.reflection)}
-    ${classCard(f.today)}
   </div><div class="col">
     <h3 class="first-d">${t('stream_title')}</h3>
     <div class="stream">${f.items.length ? f.items.map(feedItem).join('') : `<p class="muted center">${t('feed_empty')}</p>`}</div>
@@ -897,7 +912,7 @@ app.addEventListener('click', async (ev) => {
   if (act === 'postit') {
     el.disabled = true; el.textContent = t('posting');
     try {
-      const r = await api(el.dataset.kind === 'class' ? '/class/post' : '/sunnah/post', 'POST', { image: S.draft });
+      const r = await api('/sunnah/post', 'POST', { image: S.draft });
       S.draft = null; S.draftKind = null; S.me = r.me;
       return enterTab('feed');
     } catch (e) { toast(errText(e)); if (e.message === 'bad_image' || e.message === 'duplicate_image') S.draft = null; return draw(); }
@@ -913,12 +928,53 @@ app.addEventListener('click', async (ev) => {
     } catch (e) { toast(errText(e)); el.disabled = false; }
     return;
   }
+  if (act === 'comment') {
+    const box = document.querySelector(`[data-cbox="${el.dataset.id}"]`);
+    S.cDraft = { ...(S.cDraft || {}), [el.dataset.id]: box.value };
+    el.disabled = true;
+    try {
+      const r = await api(`/lectures/${el.dataset.id}/comment`, 'POST', { text: box.value });
+      S.me = r.me; S.feed.lectures = r.lectures; S.cDraft[el.dataset.id] = '';
+      S.feed = { ...S.feed, ...(await api('/feed')) };
+    } catch (e) { toast(errText(e)); el.disabled = false; return; }
+    return draw();
+  }
+  if (act === 'thread') {
+    const key = `${el.dataset.kind}:${el.dataset.id}`;
+    S.threads = S.threads || {};
+    if (S.threads[key]) { delete S.threads[key]; return draw(); }
+    S.threads[key] = { loading: true, list: [] }; draw();
+    try { S.threads[key] = { list: (await api(`/replies?kind=${el.dataset.kind}&id=${el.dataset.id}`)).replies }; } catch (e) { delete S.threads[key]; toast(errText(e)); }
+    return draw();
+  }
+  if (act === 'reply') {
+    const key = el.dataset.key, [kind, id] = key.split(':');
+    const box = document.querySelector(`[data-rbox="${key}"]`);
+    S.threads[key].draft = box.value;
+    el.disabled = true;
+    try {
+      const r = await api('/replies', 'POST', { kind, id: Number(id), text: box.value });
+      S.me = r.me; S.threads[key] = { list: r.replies };
+      const it = S.feed.items.find((x) => threadKey(x) === key); if (it) it.replies = r.replies.length;
+      if (r.xp) toast(`+${r.xp} XP`);
+    } catch (e) { toast(errText(e)); el.disabled = false; return; }
+    return draw();
+  }
+  if (act === 'rreport') {
+    if (!confirm(t('report_ask_reply'))) return;
+    try {
+      await api('/report', 'POST', { kind: 'reply', id: Number(el.dataset.id) });
+      const th = S.threads[el.dataset.key]; th.list = th.list.filter((r) => r.id !== Number(el.dataset.id));
+      toast(t('reported')); draw();
+    } catch (e) { toast(errText(e)); }
+    return;
+  }
   if (act === 'like') {
     el.disabled = true;
     try {
       const r = await api('/like', 'POST', { kind: el.dataset.kind, id: Number(el.dataset.id) });
       S.me = r.me;
-      const it = S.feed.items.find((x) => x.id === Number(el.dataset.id) && (x.type === 'photo') === (el.dataset.kind === 'post'));
+      const it = S.feed.items.find((x) => x.id === Number(el.dataset.id) && replyKind(x) === el.dataset.kind);
       if (it) { it.likes = r.likes; it.liked = true; }
     } catch (e) { toast(errText(e)); if (e.message === 'already_liked') { const it = S.feed.items.find((x) => x.id === Number(el.dataset.id)); if (it) it.liked = true; } }
     return draw();
@@ -927,7 +983,7 @@ app.addEventListener('click', async (ev) => {
     if (!confirm(t('report_ask'))) return;
     try {
       await api('/report', 'POST', { kind: el.dataset.kind, id: Number(el.dataset.id) });
-      S.feed.items = S.feed.items.filter((x) => !(x.id === Number(el.dataset.id) && (x.type === 'photo') === (el.dataset.kind === 'post')));
+      S.feed.items = S.feed.items.filter((x) => !(x.id === Number(el.dataset.id) && replyKind(x) === el.dataset.kind));
       toast(t('reported')); draw();
     } catch (e) { toast(errText(e)); }
     return;
