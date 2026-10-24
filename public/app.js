@@ -92,9 +92,11 @@ function setSession(token, me) {
   S.token = token; S.me = me; S.lang = me.lang;
   ls.set('token', token); ls.set('lang', me.lang); ls.del('ref');
   S.ref = ''; S.error = '';
+  setTimeout(initBurhan, 0);
 }
 
 function logout(render = true) {
+  S.bh = null; S.bhDetail = null; S.bhLists = null;
   S.token = null; S.me = null; ls.del('token');
   S.tab = 'home'; S.team = S.learn = S.feed = S.board.data = null;
   if (render) draw();
@@ -262,6 +264,7 @@ function shell() {
   <div class="wrap tab-${S.tab}">${view()}</div>
   <nav class="tabs"><div class="brand">${t('app')}</div>${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}</nav>
   ${S.player ? playerModal() : ''}
+  ${S.bhDetail ? detailModal() : ''}
   ${S.celebrate ? celebrateModal() : ''}
   ${S.me.needsCity ? cityModal() : ''}`;
 }
@@ -308,6 +311,7 @@ function home() {
     <div><b>${m.level}</b><span>${esc(title)}</span></div>
   </div>
   </div><div class="col">
+  ${burhanToday()}
   <div class="lvl"><div class="row between"><span>${uiIcon('bolt', 14, 1.9)} ${t('level')} ${m.level} · ${esc(title)}</span><span title="${esc(t('shield_hint'))}">${uiIcon('shield', 14, 1.9)} ${m.shields}</span></div>${bar(m.pct)}</div>
 
   ${pushPromptDue() ? `<div class="circlecard push"><b>${t('push_card_title')}</b><p>${t('push_card_text')}</p>
@@ -651,6 +655,7 @@ function caravan() {
   <h3>${t('direct_list')} (${fmt(m.team.direct)})</h3>
   ${!tm ? '…' : tm.direct.length ? `<ul class="lb">${tm.direct.map((d) => `
     <li><span class="name">${esc(d.caravanName || d.username)}<small>${d.caravanName ? `${esc(d.username)} · ` : ''}${d.city ? `${esc(d.city)} · ` : ''}${fmt(d.total)} · ${t('this_week')} ${fmt(d.week)}</small></span><span class="score">${fmt(d.total)}</span></li>`).join('')}</ul>` : `<p class="muted">${t('none_yet')}</p>`}
+  ${burhanCaravan()}
   </div><div class="col">
   <h3 class="first-d">${t('your_code')}</h3>
   <div class="code">${esc(m.username)}</div>
@@ -696,6 +701,7 @@ function me() {
   ${m.emailVerified ? '' : `<div class="notice">${t('email_unconfirmed')} <button class="linkbtn" data-act="resend">${t('resend')}</button></div>`}
   <div class="stats"><div><b>${m.level}</b><span>${t('level')}</span></div><div><b>${fmt(m.total)}</b><span>${t('total')}</span></div><div><b>${m.bestStreak}</b><span>${t('best_streak')}</span></div></div>
 
+  ${burhanMe()}
   <h3>${t('tree_title')}</h3>
   <p class="note first">${t('tree_sub')}</p>
   <div class="stats"><div><b>${fmt(m.team.members)}</b><span>${t('tree_people')}</span></div><div><b>${fmt(m.team.total)}</b><span>${t('tree_total')}</span></div><div><b>${S.team ? fmt(S.team.week) : '…'}</b><span>${t('tree_week')}</span></div></div>
@@ -768,6 +774,122 @@ function playerModal() {
   </div></div>`;
 }
 
+
+// ---- Al-Burhan (internal edition only): murabbi, masul, mamulaat percentages, tasks and routines ------------------------------------------
+const inBurhan = () => S.edition === 'internal';
+async function initBurhan() {
+  if (!S.me) return;
+  if (S.edition === undefined) { try { S.edition = (await api('/config')).edition; } catch { return; } }
+  await loadBurhan();
+}
+async function loadBurhan() {
+  if (!inBurhan() || !S.me) return;
+  try { S.bh = await api('/burhan'); draw(); } catch { /* the app works without it */ }
+}
+const wdName = (d) => t('weekdays')[d];
+const mamulaatBars = (m) => !m ? '' : `<div class="mam"><div class="row between"><b>${t('mam_title')}</b><span class="muted">${m.average == null ? '' : t('mam_avg')(m.average)}</span></div>
+  <div class="bars" aria-label="${esc(t('mam_title'))}">${m.series.map((x) => `<i title="${esc(x.day)}${x.percent == null ? '' : ` · ${x.percent}%`}" class="${x.percent == null ? 'none' : ''}" style="height:${x.percent == null ? 6 : Math.max(6, x.percent)}%"></i>`).join('')}</div>
+  <div class="muted">${m.today == null ? t('mam_none_today') : t('mam_today')(m.today)}</div></div>`;
+const asgLabel = (a) => a.kind === 'routine' ? t('every')(wdName(a.weekday)) : a.dueDay ? t('due')(esc(a.dueDay)) : t('task_word');
+
+function assignRow(a, mode) { // mode: 'mine' (razakar ticks) or 'masul' (masul can end)
+  const state = a.kind === 'routine'
+    ? (a.dueToday || !a.last4.due ? '' : `<small class="muted">${t('routine_stats')(a.last4.done, a.last4.due)}</small>`)
+    : (a.done ? `<small class="ok">${t('done_on')(esc(a.doneOn))}</small>` : a.overdue ? `<small class="bad">${t('overdue')}</small>` : '');
+  const tickable = mode === 'mine' && (a.kind === 'routine' ? a.dueToday : true);
+  const done = a.kind === 'routine' ? a.doneToday : a.done;
+  return `<div class="q ${done ? 'd' : ''}"><span class="bx"></span>
+    <span class="t">${esc(a.title)}<small>${asgLabel(a)}</small>${state}</span>
+    ${tickable ? `<button class="chip ${done ? '' : 'solid'}" data-act="atick" data-id="${a.id}" data-done="${done ? 0 : 1}">${done ? t('undo') : t('mark_done')}</button>` : ''}
+    ${mode === 'masul' ? `<button class="chip" data-act="endassign" data-id="${a.id}" title="${esc(t('end_assign'))}">✕</button>` : ''}</div>`;
+}
+
+function burhanToday() {
+  const b = S.bh;
+  if (!b || (!b.today.length && !(b.mamulaat && b.mamulaat.today != null))) return '';
+  return `<h3>${t('bh_title')} · ${t('today')}</h3>
+  ${b.today.map((a) => assignRow(a, 'mine')).join('')}
+  ${b.mamulaat && b.mamulaat.today != null ? `<button class="rowlink" data-act="tab" data-tab="me"><span>${t('mam_title')}</span><b>${b.mamulaat.today}%</b></button>` : ''}`;
+}
+
+function whoSees() {
+  const b = S.bh;
+  const last = (x) => (x && x.lastViewed ? ` <small class="muted">${t('last_viewed')(ago(x.lastViewed))}</small>` : '');
+  return `<div class="circlecard who"><b>${t('who_title')}</b>
+    <p><b>${t('murabbi_word')}${b.murabbi && !b.murabbi.waiting ? ` (${esc(b.murabbi.username)})` : ''}:</b> ${t('who_murabbi')}${last(b.murabbi)}</p>
+    <p><b>${t('masul_word')}${b.masul ? ` (${esc(b.masul.username)})` : ''}:</b> ${t('who_masul')}${last(b.masul)}</p>
+    <p class="muted">${t('who_nobody')}</p></div>`;
+}
+
+function burhanMe() {
+  const b = S.bh;
+  if (!b) return '';
+  const mu = b.murabbi;
+  const murabbiBox = !mu
+    ? `<p class="muted">${t('murabbi_text')}</p><button class="blk" data-act="bhactivate"><span>${t('murabbi_find')}</span><b>→</b></button>`
+    : mu.waiting
+      ? `<div class="notice">${t('murabbi_waiting')(esc(mu.name || '—'))}</div><div class="row"><button class="chip solid" data-act="bhactivate">${t('check_again')}</button><button class="chip" data-act="bhunlink">${t('unlink')}</button></div>`
+      : `<div class="row between"><span>${t('murabbi_word')}: <b>${esc(mu.username)}</b></span><button class="chip" data-act="bhunlink">${t('unlink')}</button></div>`;
+  const masulBox = b.masul
+    ? `<div class="row between"><span>${t('masul_word')}: <b>${esc(b.masul.username)}</b></span><button class="chip" data-act="bhmasulclear">${t('unlink')}</button></div>`
+    : `<p class="muted">${t('masul_text')}</p><div class="row"><input id="masulq" type="text" autocomplete="off" autocapitalize="off" dir="ltr" placeholder="${esc(t('masul_ph'))}"></div><div id="masulres" class="chips"></div>`;
+  return `<h3>${t('bh_title')}</h3>
+  <div class="padx bh">
+    <b>${t('murabbi_word')}</b>${murabbiBox}
+    ${mu && !mu.waiting ? mamulaatBars(b.mamulaat) : ''}
+    <div class="spacer"></div><b>${t('masul_word')}</b>${masulBox}
+    ${b.assignments.length ? `<div class="spacer"></div><b>${t('assigned_title')}</b>${b.assignments.map((a) => assignRow(a, 'mine')).join('')}` : ''}
+    <div class="spacer"></div>${whoSees()}
+  </div>`;
+}
+
+function burhanCaravan() {
+  const b = S.bh;
+  if (!b || (!b.roles.saaliks && !b.roles.razakars)) return '';
+  const sa = S.bhLists?.saaliks, ra = S.bhLists?.razakars;
+  return `${b.roles.saaliks ? `<h3>${t('saaliks_title')} (${b.roles.saaliks})</h3>
+    ${!sa ? '…' : `<ul class="lb">${sa.map((x) => `<li><button class="rowbtn" data-act="opensaalik" data-u="${esc(x.username)}"><span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('durood_week')(fmt(x.duroodWeek))}${x.mamulaatToday == null ? '' : ` · ${t('mam_short')} ${x.mamulaatToday}%`}</small></span><span class="score">${fmt(x.duroodToday)}</span></button></li>`).join('')}</ul>`}` : ''}
+  ${b.roles.razakars ? `<h3>${t('razakars_title')} (${b.roles.razakars})</h3>
+    ${!ra ? '…' : `<ul class="lb">${ra.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}"><span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${x.routinePercent}%`}</small></span><span class="score">${fmt(x.duroodWeek)}</span></button></li>`).join('')}</ul>`}` : ''}`;
+}
+
+function progressGrid(g) {
+  const c = (v, l) => `<div><b>${fmt(v)}</b><span>${l}</span></div>`;
+  return `<div class="stats">${c(g.durood.total, t('total'))}${c(g.durood.today, t('today'))}${c(g.durood.week, t('week'))}</div>
+    <div class="stats">${c(g.streak, t('streak'))}${c(g.xp, 'XP')}${c(g.level, t('level'))}</div>
+    <div class="stats">${c(g.sunnahs, t('sunnah_word'))}${c(g.lectures, t('lectures_word'))}${c(g.reflections, t('reflect_title'))}</div>`;
+}
+
+function detailModal() {
+  const d = S.bhDetail, r = d.data;
+  const head = `<div class="row between"><h3 class="in">${esc(d.username)}</h3><button class="chip" data-act="closedetail">${t('close')}</button></div>`;
+  if (!r) return `<div class="modal"><div class="box">${head}<p class="muted center">…</p></div></div>`;
+  if (d.type === 'saalik') {
+    const p = r.profile;
+    return `<div class="modal"><div class="box wide">${head}
+      <p class="muted" dir="ltr">${esc(p.phone)} · ${esc(p.email)}<br>${esc(p.city || '')}${p.country ? ` · ${esc(p.country)}` : ''} · ${t('joined')} ${esc(p.joined)}</p>
+      ${progressGrid(r.progress)}
+      <div class="stats"><div><b>${fmt(r.extra.caravan)}</b><span>${t('c_members')}</span></div><div><b>${fmt(r.extra.qabila)}</b><span>${t('rk_trees')}</span></div><div><b>${fmt(r.extra.badges)}</b><span>${t('badges_word')}</span></div></div>
+      ${mamulaatBars(r.mamulaat)}${r.mamulaat.stale ? `<small class="muted">${t('mam_stale')}</small>` : ''}
+      ${r.masul ? `<p class="muted">${t('masul_word')}: <b>${esc(r.masul)}</b></p>` : ''}
+      ${r.assignments.length ? `<b>${t('assigned_view')}</b>${r.assignments.map((a) => assignRow(a, 'view')).join('')}` : ''}</div></div>`;
+  }
+  const f = S.assignForm || { kind: 'task' };
+  return `<div class="modal"><div class="box wide">${head}
+    <p class="muted">${esc(r.city || '')} · ${t('joined')} ${esc(r.joined)}</p>
+    ${progressGrid(r.progress)}
+    <b>${t('assigned_view')}</b>
+    ${r.assignments.length ? r.assignments.map((a) => assignRow(a, 'masul')).join('') : `<p class="muted">${t('none_yet')}</p>`}
+    <form data-form="assign" class="assign"><b>${t('assign_new')}</b>
+      <div class="seg thin"><button type="button" class="${f.kind === 'task' ? 'on' : ''}" data-act="assignkind" data-k="task">${t('task_word')}</button><button type="button" class="${f.kind === 'routine' ? 'on' : ''}" data-act="assignkind" data-k="routine">${t('routine_word')}</button></div>
+      <input type="text" name="title" maxlength="80" required placeholder="${esc(t('assign_ph'))}" dir="auto">
+      ${f.kind === 'routine'
+        ? `<label>${t('weekday_word')}</label><select name="weekday">${t('weekdays').map((n, i) => `<option value="${i}" ${i === 5 ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`
+        : `<label>${t('due_optional')}</label><input type="date" name="dueDay" dir="ltr">`}
+      <button class="blk" type="submit"><span>${t('assign_btn')}</span><b>→</b></button></form>
+  </div></div>`;
+}
+
 // ---- drawing + data loading -----------------------------------------------------
 let liveAt = 0;
 async function loadLive() {
@@ -792,6 +914,7 @@ async function enterTab(tab) {
   draw();
   try {
     if (tab === 'rank') { S.board.data = null; draw(); S.board.data = await api(boardUrl(S.board)); }
+    if (inBurhan() && ['home', 'me', 'caravan'].includes(tab)) { loadBurhan().then(async () => { if (tab === 'caravan' && S.bh && (S.bh.roles.saaliks || S.bh.roles.razakars)) { S.bhLists = { saaliks: S.bh.roles.saaliks ? (await api('/burhan/saaliks')).saaliks : [], razakars: S.bh.roles.razakars ? (await api('/burhan/razakars')).razakars : [] }; if (S.tab === 'caravan') draw(); } }); }
     if (tab === 'caravan') { S.team = await api('/team'); }
     if (tab === 'me') { [S.history, S.team] = await Promise.all([api('/history'), api('/team')]); }
     if (tab === 'feed') {
@@ -966,6 +1089,34 @@ app.addEventListener('click', async (ev) => {
     } catch (e) { toast(errText(e)); el.disabled = false; }
     return;
   }
+  if (act === 'bhactivate') {
+    el.disabled = true;
+    try { await api('/burhan/murabbi', 'POST'); await loadBurhan(); } catch (e) { toast(errText(e)); el.disabled = false; }
+    return;
+  }
+  if (act === 'bhunlink') { if (!confirm(t('unlink_ask'))) return; try { await api('/burhan/murabbi', 'DELETE'); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
+  if (act === 'bhmasulpick') { try { await api('/burhan/masul', 'PUT', { username: el.dataset.u }); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
+  if (act === 'bhmasulclear') { if (!confirm(t('unlink_ask'))) return; try { await api('/burhan/masul', 'DELETE'); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
+  if (act === 'atick') {
+    try { await api(`/assignments/${el.dataset.id}/tick`, 'POST', { done: el.dataset.done === '1' }); await loadBurhan(); } catch (e) { toast(errText(e)); }
+    return;
+  }
+  if (act === 'opensaalik' || act === 'openrazakar') {
+    const type = act === 'opensaalik' ? 'saalik' : 'razakar';
+    S.bhDetail = { type, username: el.dataset.u, data: null }; S.assignForm = { kind: 'task' }; draw();
+    try { S.bhDetail.data = await api(`/burhan/${type === 'saalik' ? 'saaliks' : 'razakars'}/${encodeURIComponent(el.dataset.u)}`); } catch (e) { S.bhDetail = null; toast(errText(e)); }
+    return draw();
+  }
+  if (act === 'closedetail') { S.bhDetail = null; return draw(); }
+  if (act === 'assignkind') { S.assignForm = { kind: el.dataset.k }; return draw(); }
+  if (act === 'endassign') {
+    try {
+      await api(`/assignments/${el.dataset.id}`, 'DELETE');
+      S.bhDetail.data = await api(`/burhan/razakars/${encodeURIComponent(S.bhDetail.username)}`);
+      S.bhLists = { ...S.bhLists, razakars: (await api('/burhan/razakars')).razakars };
+    } catch (e) { toast(errText(e)); }
+    return draw();
+  }
   if (act === 'comment') {
     const box = document.querySelector(`[data-cbox="${el.dataset.id}"]`);
     S.cDraft = { ...(S.cDraft || {}), [el.dataset.id]: box.value };
@@ -1126,6 +1277,12 @@ app.addEventListener('submit', async (ev) => {
       if (!f.cityId) throw new Error('city_required');
       S.me = await api('/me', 'PATCH', { cityId: Number(f.cityId) });
       toast(t('saved')); draw();
+    } else if (kind === 'assign') {
+      const k = (S.assignForm || {}).kind || 'task';
+      await api('/assignments', 'POST', { razakar: S.bhDetail.username, kind: k, title: f.title, ...(k === 'routine' ? { weekday: Number(f.weekday) } : f.dueDay ? { dueDay: f.dueDay } : {}) });
+      S.bhDetail.data = await api(`/burhan/razakars/${encodeURIComponent(S.bhDetail.username)}`);
+      S.bhLists = { ...S.bhLists, razakars: (await api('/burhan/razakars')).razakars };
+      toast(t('saved')); draw();
     } else if (kind === 'cname') {
       S.me = (await api('/caravan/name', 'PUT', { name: f.name })).me;
       S.team = await api('/team');
@@ -1136,7 +1293,7 @@ app.addEventListener('submit', async (ev) => {
       logout(false); S.authMode = 'login'; draw(); toast(t('deleted'));
     }
   } catch (e) {
-    if (kind === 'settings' || kind === 'delete' || kind === 'citysave' || kind === 'cname') { toast(errText(e)); btn.disabled = false; }
+    if (kind === 'settings' || kind === 'delete' || kind === 'citysave' || kind === 'cname' || kind === 'assign') { toast(errText(e)); btn.disabled = false; }
     else { S.error = errText(e); draw(); }
   }
 });
@@ -1185,6 +1342,16 @@ app.addEventListener('input', (ev) => {
 
 let checkTimer;
 app.addEventListener('input', (ev) => {
+  const mq = ev.target.closest('#masulq');
+  if (mq) {
+    clearTimeout(checkTimer);
+    checkTimer = setTimeout(async () => {
+      const out = $('#masulres'), v = mq.value.trim();
+      if (v.length < 2) { out.innerHTML = ''; return; }
+      try { out.innerHTML = (await api(`/burhan/usernames?q=${encodeURIComponent(v)}`)).usernames.map((u) => `<button class="chip" data-act="bhmasulpick" data-u="${esc(u)}">${esc(u)}</button>`).join(''); } catch { /* ignore */ }
+    }, 300);
+    return;
+  }
   const cn = ev.target.closest('#cname');
   if (cn) {
     clearTimeout(checkTimer);
@@ -1233,6 +1400,7 @@ async function boot() {
     try { await refreshMe(); } catch { /* offline keeps login screen unless token is bad */ }
   }
   draw();
+  initBurhan();
   const confirmToken = params.get('confirm');
   if (confirmToken) {
     try { await api('/email/confirm', 'POST', { token: confirmToken }); toast(t('email_confirmed')); if (S.token) await refreshMe().then(draw); } catch (e) { toast(errText(e)); }

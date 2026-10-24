@@ -431,7 +431,60 @@ addCol('users', 'league', 'INTEGER NOT NULL DEFAULT 0');           // 0 Bronze, 
 addCol('users', 'tree_active', 'INTEGER NOT NULL DEFAULT 0');     // people under this member (any depth) who have recited at least once
 addCol('users', 'reminder_time', "TEXT NOT NULL DEFAULT ''");       // 'HH:MM' Pakistan time, '' = no daily reminder
 addCol('users', 'news_seen_at', 'INTEGER NOT NULL DEFAULT 0');
-addCol('users', 'caravan_name', 'TEXT');                              // the member's own name for their caravan; shares one namespace with usernames
+addCol('users', 'caravan_name', 'TEXT');
+// ---- Al-Burhan edition: murabbi / masul links, mamulaat percentages, tasks and routines -------------------------------------
+db.exec(`
+CREATE TABLE IF NOT EXISTS murabbi_links (
+  user_id        INTEGER PRIMARY KEY REFERENCES users(id),
+  murabbi_phone  TEXT NOT NULL,                       -- the murabbi's WhatsApp number as the Mamulaat app reports it (+E.164)
+  murabbi_name   TEXT NOT NULL DEFAULT '',
+  murabbi_id     INTEGER REFERENCES users(id),        -- NULL until the murabbi has an account here
+  checked_at     INTEGER NOT NULL,
+  created_at     INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS murabbi_links_murabbi ON murabbi_links(murabbi_id);
+CREATE INDEX IF NOT EXISTS murabbi_links_phone ON murabbi_links(murabbi_phone);
+CREATE TABLE IF NOT EXISTS mamulaat_days (
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  day     TEXT NOT NULL,
+  percent INTEGER NOT NULL CHECK (percent BETWEEN 0 AND 100),
+  PRIMARY KEY (user_id, day)
+);
+CREATE TABLE IF NOT EXISTS mamulaat_sync (user_id INTEGER PRIMARY KEY REFERENCES users(id), fetched_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS masul_links (
+  razakar_id INTEGER PRIMARY KEY REFERENCES users(id),
+  masul_id   INTEGER NOT NULL REFERENCES users(id),
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS masul_links_masul ON masul_links(masul_id);
+CREATE TABLE IF NOT EXISTS assignments (
+  id         INTEGER PRIMARY KEY,
+  masul_id   INTEGER NOT NULL REFERENCES users(id),
+  razakar_id INTEGER NOT NULL REFERENCES users(id),
+  kind       TEXT NOT NULL CHECK (kind IN ('task','routine')),
+  title      TEXT NOT NULL,
+  weekday    INTEGER CHECK (weekday BETWEEN 0 AND 6),   -- routines: 0 = Sunday ... 6 = Saturday, every week
+  due_day    TEXT,                                      -- tasks: optional due date
+  created_at INTEGER NOT NULL,
+  ended_at   INTEGER
+);
+CREATE INDEX IF NOT EXISTS assignments_razakar ON assignments(razakar_id, ended_at);
+CREATE TABLE IF NOT EXISTS assignment_ticks (
+  assignment_id INTEGER NOT NULL REFERENCES assignments(id),
+  day           TEXT NOT NULL,
+  created_at    INTEGER NOT NULL,
+  PRIMARY KEY (assignment_id, day)
+);
+-- the last time a murabbi or masul opened someone's report, shown to that person
+CREATE TABLE IF NOT EXISTS burhan_views (
+  viewer_id  INTEGER NOT NULL REFERENCES users(id),
+  subject_id INTEGER NOT NULL REFERENCES users(id),
+  kind       TEXT NOT NULL CHECK (kind IN ('murabbi','masul')),
+  at         INTEGER NOT NULL,
+  PRIMARY KEY (viewer_id, subject_id, kind)
+);
+`);
+                              // the member's own name for their caravan; shares one namespace with usernames
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_caravan_name ON users(caravan_name COLLATE NOCASE) WHERE caravan_name IS NOT NULL');
 
 export const getSetting = (key, fallback = null) => db.prepare('SELECT value FROM settings WHERE key = ?').get(key)?.value ?? fallback;

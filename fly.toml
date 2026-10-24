@@ -14,6 +14,7 @@ primary_region = "sin"
   BACKUP_DIR = "/data/backups"
   TRUST_PROXY = "1"
   CLIENT_IP_HEADER = "fly-client-ip"
+  EDITION = "internal"
   FORCE_HSTS = "1"
 
 [mounts]

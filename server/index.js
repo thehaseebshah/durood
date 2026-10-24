@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import crypto from 'node:crypto';
 import { db, tx, getSetting } from './db.js';
+import * as burhan from './burhan.js';
 import { HttpError, hashPassword, checkPassword, signToken, verifyToken, rateLimit, lockedOut, recordFailure, clientIp, sameSecret } from './auth.js';
 import { auditAsync } from './audit.js';
 import * as access from './access.js';
@@ -106,6 +107,22 @@ route('PUT', '/api/caravan/name', ({ user, body }) => {
   return { me: getMe(user) };
 });
 
+// ---- Al-Burhan edition: murabbi, masul, mamulaat, tasks and routines (404 in the public edition) ----------------------------------
+const B = (fn) => (ctx) => { burhan.guard(); return fn(ctx); };
+route('GET', '/api/burhan', B(({ user }) => burhan.burhanState(user)));
+route('POST', '/api/burhan/murabbi', B(async ({ user }) => { rateLimit(`bm:${user}`, 6, 3600e3); return { murabbi: await burhan.activateMurabbi(user) }; }));
+route('DELETE', '/api/burhan/murabbi', B(({ user }) => burhan.unlinkMurabbi(user)));
+route('PUT', '/api/burhan/masul', B(({ user, body }) => { rateLimit(`bms:${user}`, 20, 3600e3); return { masul: burhan.setMasul(user, body.username) }; }));
+route('DELETE', '/api/burhan/masul', B(({ user }) => burhan.clearMasul(user)));
+route('GET', '/api/burhan/usernames', B(({ user, query }) => { rateLimit(`bu:${user}`, 60, 60e3); return { usernames: burhan.searchUsernames(query.get('q'), user) }; }));
+route('POST', '/api/assignments', B(({ user, body }) => { rateLimit(`as:${user}`, 60, 3600e3); return burhan.addAssignment(user, body.razakar, body); }));
+route('DELETE', '/api/assignments/:id', B(({ user, params }) => burhan.endAssignment(user, Number(params.id))));
+route('POST', '/api/assignments/:id/tick', B(({ user, params, body }) => burhan.tickAssignment(user, Number(params.id), body.done !== false)));
+route('GET', '/api/burhan/saaliks', B(({ user }) => ({ saaliks: burhan.saalikList(user) })));
+route('GET', '/api/burhan/saaliks/:username', B(({ user, params }) => { rateLimit(`bsr:${user}`, 120, 3600e3); return burhan.saalikReport(user, params.username); }));
+route('GET', '/api/burhan/razakars', B(({ user }) => ({ razakars: burhan.razakarList(user) })));
+route('GET', '/api/burhan/razakars/:username', B(({ user, params }) => burhan.razakarReport(user, params.username)));
+
 route('GET', '/api/invite-check', { auth: false }, ({ query, ip }) => {
   rateLimit(`inv:${ip}`, 60, 60e3);
   try {
@@ -117,7 +134,7 @@ route('GET', '/api/invite-check', { auth: false }, ({ query, ip }) => {
   }
 });
 
-route('GET', '/api/config', { auth: false }, () => ({ inviteOnly: access.INVITE_ONLY() }));
+route('GET', '/api/config', { auth: false }, () => ({ inviteOnly: access.INVITE_ONLY(), edition: burhan.edition() }));
 
 route('POST', '/api/waitlist', { auth: false }, ({ body, ip }) => {
   rateLimit(`wl:${ip}`, 5, 3600e3);
@@ -162,6 +179,7 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
     const uid = Number(res.lastInsertRowid);
     startChallengeIfNeeded(); // day 1 of the challenge is the day the first member joins
     run('INSERT INTO ancestors (user_id, ancestor_id, depth) VALUES (?,?,0)', uid, uid);
+    burhan.linkWaitingMurabbis(uid, phone); // a murabbi who signs up completes the links of the saliks waiting for them
     if (referrerId) {
       run(`INSERT INTO ancestors (user_id, ancestor_id, depth)
            SELECT ?, ancestor_id, depth + 1 FROM ancestors WHERE user_id = ?`, uid, referrerId);

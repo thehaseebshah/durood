@@ -16,6 +16,7 @@ primary_region = "sin"
   TRUST_PROXY = "1"
   CLIENT_IP_HEADER = "fly-client-ip"
   FORCE_HSTS = "1"
+  EDITION = "internal"   # Al-Burhan members only for now; set "public" for the public edition (docs/SPEC.md section 19)
 
 [mounts]
   source = "quest_data"

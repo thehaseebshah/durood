@@ -217,3 +217,27 @@ Durood stays the main earner (1 XP per durood, plus its quests). Everything else
 | Invited member's first durood | 500 | per invitee |
 
 **Fixed:** the durood quests (daily 100, weekly 300, five days 200, Friday 150) now need at least 100 durood a day whatever personal goal a member sets. Before, a goal of 1 paid them for almost nothing. Lecture XP is capped, and lectures pay more than before because they were the lowest per minute. One-time badge rewards are unchanged.
+
+## 19. Two editions, and the Al-Burhan features
+
+**Two editions of one codebase.** `EDITION=internal` is for Al-Burhan members and is what is released now. `EDITION=public` is the future public app (durood, Sunnah, Seerah, caravans, rankings) and has none of the Al-Burhan features below: their routes answer 404 and the screens do not appear. Public is the default when the variable is missing, so a forgotten setting never exposes anything. `fly.toml` and `fly.prod.toml` both set `internal`. `/api/config` reports the edition.
+
+**Words.** *Salik*: a person following a murabbi. *Murabbi*: their mentor, who sees their reports. *Razakar*: a volunteer who follows a masul. *Masul*: the manager who gives a razakar tasks and routines. One person can hold several roles.
+
+**Murabbi and mamulaat.**
+- A salik taps "Find my murabbi" (Me tab). Seerah Quest asks the Mamulaat app (`docs/BURHAN-API.md`) for the murabbi's WhatsApp number and matches it to an account by phone. Found: murabbi mode turns on for that person. Not found: the salik is told to ask the murabbi to sign up, and the link completes by itself when that number registers.
+- The murabbi list refreshes from the Mamulaat app at most daily. A salik can remove the link at any time.
+- Only a daily percentage is kept (14 days, cached 30 minutes). If the Mamulaat app is down the last numbers are shown and marked possibly old.
+- The murabbi sees everything about the salik: profile (including phone and email), durood, XP, streak, Sunnahs, lectures, reflections, caravan, Qabila, badges, mamulaat, and any tasks and routines they carry.
+
+**Masul, tasks and routines.**
+- The razakar names their masul by username (Me tab). That is their consent: it is the only link.
+- The masul gives **tasks** (once, optional due date) and **routines** (every week on a chosen day, such as the Thursday Majlis-e-Zikr). The razakar ticks them off themselves, with no confirmation. A routine can only be ticked on its day. Changing masul ends the old masul's assignments. The masul can remove an assignment.
+- The masul sees tasks, routines (done of due over the last 4 weeks) and general progress. Never mamulaat, phone or email. The server enforces this: the masul report has no mamulaat in it.
+- Tasks and routines give no XP: they are duties, and paying for them would unbalance section 18.
+
+**Where it lives.** Me tab: murabbi, mamulaat bars, masul, "Assigned to you" and a plain "Who can see your data" card with when each person last looked. Home: today's routines and open tasks, and today's mamulaat percentage. Caravan tab: "Your saliks" and "Your razakars" lists, each opening a full report (for razakars, with the form to assign).
+
+**Setup.** `MAMULAAT_API_URL`, `MAMULAAT_API_KEY` (keep the key a Fly secret), optional `MAMULAAT_TTL_MS`.
+
+**Future public release.** Deploy with `EDITION=public`. Durood, Sunnah, Seerah, caravans, rankings, feed and the welcome screens stay. Nothing in the Al-Burhan tables is read or written. Keep new Al-Burhan features behind `burhan.guard()`.

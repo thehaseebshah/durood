@@ -52,6 +52,8 @@ Environment variables:
 | `MAX_DAILY`, `MAX_DAILY_NEW` | Most durood one member can report in a day (default 50,000; 10,000 during their first 7 days) |
 | `PUBLIC_DAILY_CAP` | Sign-ups per day through the public founders code (default 200; change it on the admin page) |
 | `PUBLIC_CACHE_MS` | How long boards and the public meter are cached (default 30 s boards / 15 s meter; `0` turns caching off, used by the tests) |
+| `EDITION` | `internal` (Al-Burhan: murabbi, masul, mamulaat, tasks, routines) or `public` (none of those). Default `public`; the Fly configs set `internal` |
+| `MAMULAAT_API_URL`, `MAMULAAT_API_KEY` | The Mamulaat app's API (docs/BURHAN-API.md). Set the key with `fly secrets set`. `MAMULAAT_TTL_MS` changes the 30 minute cache |
 | `PHOTO_KEEP_DAYS` | Days a decided Sunnah photo is kept before the file is deleted (default 14). Deleting an account deletes its photos at once |
 | `BACKUP_DIR`, `BACKUP_KEEP`, `BACKUP_EVERY_HOURS` | Nightly database snapshot (default every 24 h, newest 14 kept). Also `node scripts/backup.mjs`. Copy the folder off the machine, and back up `UPLOAD_DIR` and `AUTH_SECRET` separately |
 | `UPLOAD_DIR` | Where photos are stored (default `data/uploads`); must be on a persistent volume |
