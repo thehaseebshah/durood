@@ -67,9 +67,9 @@ export const setSender = (fn) => { sender = fn || sendPush; };
 const MSG = {
   remind: { en: ['Time for durood', 'Take a moment to send salawat on the Prophet ﷺ today.'], ur: ['درود کا وقت', 'آج نبی ﷺ پر درود بھیجنے کے لیے کچھ لمحے نکالیں۔'] },
   streak: { en: ['Your streak is about to break', 'You have not recited today. A few durood keep your streak alive.'], ur: ['آپ کا سلسلہ ٹوٹنے والا ہے', 'آج آپ نے درود نہیں پڑھا۔ چند درود سے سلسلہ قائم رہتا ہے۔'] },
-  joined: (who) => ({ en: ['Someone joined your caravan', `${who} joined with your code.`], ur: ['آپ کے قافلے میں کوئی شامل ہوا', `${who} آپ کے کوڈ سے شامل ہوا۔`] }),
+  joined: (who) => ({ en: ['Someone joined your caravan', `${who} joined with your code.`], ur: ['آپ کے کارواں میں کوئی شامل ہوا', `${who} آپ کے کوڈ سے شامل ہوا۔`] }),
   crore: (k) => ({ en: [`${k} crore reached`, `Together we have recited ${k} crore durood in the challenge.`], ur: [`${k} کروڑ مکمل`, `سب نے مل کر چیلنج میں ${k} کروڑ درود پڑھ لیا۔`] }),
-  caravan: { en: ['Your caravan reached a milestone', 'Open the app to see the new badge.'], ur: ['آپ کے قافلے نے سنگِ میل عبور کیا', 'نیا بیج دیکھنے کے لیے ایپ کھولیں۔'] },
+  caravan: { en: ['Your caravan reached a milestone', 'Open the app to see the new badge.'], ur: ['آپ کے کارواں نے سنگِ میل عبور کیا', 'نیا بیج دیکھنے کے لیے ایپ کھولیں۔'] },
 };
 const pack = (m, lang, tag) => ({ title: m[lang][0], body: m[lang][1], tag, url: '/' });
 
