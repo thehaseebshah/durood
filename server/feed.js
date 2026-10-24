@@ -133,7 +133,8 @@ export function postComment(userId, lectureId, text) {
     if (!done) throw new HttpError(403, 'quiz_first');
     if (one('SELECT 1 FROM lecture_comments WHERE lecture_id = ? AND user_id = ?', l.id, userId)) throw new HttpError(409, 'already_posted');
     const r = run('INSERT INTO lecture_comments (lecture_id, user_id, body, created_at) VALUES (?,?,?,?)', l.id, userId, body, Date.now());
-    return { id: Number(r.lastInsertRowid) };
+    grant(userId, 'comment', l.id, CFG.commentXp);
+    return { id: Number(r.lastInsertRowid), xp: CFG.commentXp };
   });
 }
 

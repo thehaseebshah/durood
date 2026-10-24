@@ -199,3 +199,21 @@ Home: number box first (type a total, presets +100/+500/+1,000 fill the field, A
 - **Lecture comments.** Only members who passed the lecture's quiz (or, for a lecture without a quiz, completed it) may comment; one comment per lecture per member; 280 characters, plain text, no links. They appear in the feed labelled with the lecture title, can be liked (poster earns the usual like points) and reported (3 reports hide).
 - **Replies** on sunnah photos, reflections and lecture comments: 140 characters, plain text, no links, one level deep, 3 per member per post. 3 reports from different members hide a reply; admin can restore. A reply earns 2 XP (`CFG.replyXp`), at most 5 a day (`replyDailyCap`), and nothing on your own post. No push notification to the poster. Replies cannot be liked.
 - Admin: the Reported list covers comments and replies.
+
+## 18. XP balance
+
+Durood stays the main earner (1 XP per durood, plus its quests). Everything else is sized so no single action outweighs the others, and each is worth doing. All numbers live in `CFG` (server/game.js) and a test (`XP balance`) fails if a small action grows past a whole Sunnah day (60).
+
+| Action | XP | Limit |
+|---|---|---|
+| Sunnah tick + photo | 20 + 40 | daily |
+| Daily reflection | 15 | daily |
+| Lecture (quiz passed) | 150 (admin can set up to 200) | per lecture |
+| "Watch a lecture" quest | 50 | daily |
+| Lecture comment | 20 | once per lecture |
+| Reply to someone else's post | 2 | 5 a day |
+| Like on your photo, reflection or comment | 2 | first 10 likes on each |
+| Circle sign-up | 300 | once |
+| Invited member's first durood | 500 | per invitee |
+
+**Fixed:** the durood quests (daily 100, weekly 300, five days 200, Friday 150) now need at least 100 durood a day whatever personal goal a member sets. Before, a goal of 1 paid them for almost nothing. Lecture XP is capped, and lectures pay more than before because they were the lowest per minute. One-time badge rewards are unchanged.

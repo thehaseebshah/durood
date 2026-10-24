@@ -10,6 +10,7 @@ process.env.REG_LIMIT_PER_HOUR = '1000';
 process.env.MAX_DAILY_NEW = '50000'; // first-week limit is tested on its own
 process.env.CIRCLE_URL = 'https://example.org/circle';
 
+const { CFG } = await import('../server/game.js');
 const { createServer, normalizePhone } = await import('../server/index.js');
 const { db } = await import('../server/db.js');
 const { audit } = await import('../server/audit.js');
@@ -128,7 +129,7 @@ test('lectures: server-enforced watch time, once only; circle claim once', async
   assert.equal((await api('POST', `/api/lectures/${lec.id}/complete`, { token })).error, 'too_soon');
   db.prepare('UPDATE lecture_starts SET started_at = started_at - 120000').run();
   const done = await api('POST', `/api/lectures/${lec.id}/complete`, { token });
-  assert.equal(done.xpGained, 100);
+  assert.equal(done.xpGained, CFG.lectureXp);
   assert.ok(done.newBadges.includes('scholar1'));
   assert.equal((await api('POST', `/api/lectures/${lec.id}/complete`, { token })).already, true);
 

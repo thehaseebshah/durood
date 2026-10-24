@@ -82,8 +82,8 @@ test('video quiz: wrong answers never reveal the key; reward needs a pass and is
   assert.equal((await api('POST', `/api/lectures/${lec.id}/quiz`, { token: a.token, body: { answers: [0, 0] } })).passed, true);
   const before = await xp(a);
   const done = await api('POST', `/api/lectures/${lec.id}/complete`, { token: a.token });
-  assert.equal(done.xpGained, 100);
-  assert.equal(await xp(a), before + 100 + 30); // lecture plus the daily lecture quest
+  assert.equal(done.xpGained, CFG.lectureXp);
+  assert.equal(await xp(a), before + CFG.lectureXp + CFG.lectureQuestXp); // lecture plus the daily lecture quest
   assert.equal((await api('POST', `/api/lectures/${lec.id}/complete`, { token: a.token })).already, true);
   assert.deepEqual(audit().problems, []);
 });
@@ -99,6 +99,7 @@ test('lecture comments need a passed quiz, one per lecture; replies are short, c
   assert.equal((await post(a, 'x'.repeat(281))).error, 'text_too_long');
   const mine = await post(a, 'Beautiful lesson');
   assert.ok(mine.id);
+  assert.equal(mine.xp, CFG.commentXp);
   assert.equal((await post(a, 'Again')).error, 'already_posted');
   assert.equal(mine.lectures.find((l) => l.id === lec.id).myComment.body, 'Beautiful lesson');
 
@@ -134,4 +135,25 @@ test('the class photo is gone: the route is not there and daily posts still work
   const a = await signup('noclass');
   assert.equal((await api('POST', '/api/class/post', { token: a.token, body: { image: fakeJpeg().toString('base64') } })).status, 404);
   assert.equal((await api('GET', '/api/sunnah/today', { token: a.token })).classPost, undefined);
+});
+
+test('XP balance: a tiny personal goal pays nothing extra, and no single recurring action outweighs a Sunnah day', async () => {
+  const a = await signup('econ_a');
+  await api('PATCH', '/api/me', { token: a.token, body: { dailyGoal: 1 } });
+  const t0 = await xp(a);
+  const r = await api('POST', '/api/log', { token: a.token, body: { count: 1, rid: crypto.randomUUID() } });
+  assert.equal(r.me.quests.find((q) => q.id === 'goal').done, false);
+  assert.equal(await xp(a), t0 + 1);
+  // the daily ceilings of the small actions, from the configuration itself
+  const sunnahDay = CFG.sunnahTickXp + CFG.sunnahXp;
+  const daily = {
+    reflection: CFG.reflectXp + CFG.likeXp * CFG.likeCap,
+    replies: CFG.replyXp * CFG.replyDailyCap,
+    photoLikes: CFG.likeXp * CFG.likeCap,
+  };
+  for (const [k, v] of Object.entries(daily)) assert.ok(v <= sunnahDay, `${k} pays ${v}, more than a whole Sunnah day (${sunnahDay})`);
+  // the weekly lecture, its quest and a comment together stay within about twice a Sunnah day's weekly total share
+  assert.ok(CFG.lectureXp + CFG.lectureQuestXp + CFG.commentXp <= 250);
+  const big = await api('POST', '/api/admin/lectures', { headers: admin, body: { youtube_id: 'dQw4w9WgXcQ', title_en: 'Greedy', xp: 99999 } });
+  assert.equal(db.prepare('SELECT xp FROM lectures WHERE id = ?').get(big.id).xp, CFG.lectureXpMax);
 });

@@ -379,7 +379,7 @@ route('POST', '/api/admin/lectures', { auth: false, admin: true }, ({ body }) =>
   const week = body.week ? weekStart(String(body.week)) : weekStart();
   const r = run('INSERT INTO lectures (youtube_id, title_en, title_ur, speaker, min_seconds, xp, questions, week_start, created_at) VALUES (?,?,?,?,?,?,?,?,?)',
     yt, String(body.title_en), String(body.title_ur || ''), String(body.speaker || ''),
-    Math.max(30, Number(body.min_seconds) || 600), Math.max(1, Number(body.xp) || 100), questions.length ? JSON.stringify(questions) : '', week, Date.now());
+    Math.max(30, Number(body.min_seconds) || 600), Math.min(CFG.lectureXpMax, Math.max(1, Number(body.xp) || CFG.lectureXp)), questions.length ? JSON.stringify(questions) : '', week, Date.now());
   return { id: Number(r.lastInsertRowid) };
 });
 route('GET', '/api/admin/lectures', { auth: false, admin: true }, () => ({ lectures: db.prepare('SELECT id, youtube_id, title_en, speaker, week_start, min_seconds, xp FROM lectures ORDER BY week_start DESC, id DESC LIMIT 60').all() }));

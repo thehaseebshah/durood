@@ -17,6 +17,11 @@ export const CFG = {
   sunnahXp: 40,              // added when the photo is verified, so a verified day is worth 3x the tick (60)
   replyXp: 2,                // for a short reply, never on your own post...
   replyDailyCap: 5,          // ...and for at most this many replies a day
+  questMinDurood: 100,       // a durood quest needs at least this many a day, whatever personal goal a member sets (a goal of 1 must not pay)
+  lectureXp: 150,            // default for a weekly lecture (admin can set up to lectureXpMax)
+  lectureXpMax: 200,
+  lectureQuestXp: 50,        // the daily "watch a lecture" quest, on top of the lecture itself
+  commentXp: 20,             // for a lecture comment (once per lecture)
   likeXp: 2,                 // the poster earns this for each like on a photo or reflection...
   likeCap: 10,               // ...for the first 10 likes on each (liking itself earns nothing)
   reflectXp: 15,             // the daily written reflection (a quest)
@@ -162,7 +167,8 @@ function questState(u) {
   const today = one('SELECT count FROM daily WHERE user_id = ? AND day = ?', u.id, day)?.count ?? 0;
   const weekSum = one('SELECT COALESCE(SUM(count), 0) n FROM daily WHERE user_id = ? AND day >= ?', u.id, wk).n;
   const lecturesToday = one("SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = 'lecture' AND day = ?", u.id, day).n;
-  const daysWeek = one('SELECT COUNT(*) n FROM daily WHERE user_id = ? AND day >= ?', u.id, wk).n;
+  const daysWeek = one('SELECT COUNT(*) n FROM daily WHERE user_id = ? AND day >= ? AND count >= ?', u.id, wk, CFG.questMinDurood).n;
+  const goal = Math.max(u.daily_goal, CFG.questMinDurood);
   const invitedWeek = one('SELECT COUNT(*) n FROM users WHERE referrer_id = ? AND created_day >= ?', u.id, wk).n;
   const tickedToday = one("SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = 'sunnah_tick' AND day = ?", u.id, day).n;
   const reflectedToday = one('SELECT COUNT(*) n FROM reflections WHERE user_id = ? AND day = ?', u.id, day).n;
@@ -174,14 +180,14 @@ function questState(u) {
   };
   return [
     // durood quests first and richest; sunnah / seerah quests are small bonuses
-    q('goal', 'durood', 'day', 100, today, u.daily_goal),
-    q('weekgoal', 'durood', 'week', 300, weekSum, u.daily_goal * 7),
+    q('goal', 'durood', 'day', 100, today, goal),
+    q('weekgoal', 'durood', 'week', 300, weekSum, goal * 7),
     q('days5', 'durood', 'week', 200, daysWeek, 5),
     q('invite', 'durood', 'week', 250, invitedWeek, 1),
-    ...(specialToday(day) ? [q('special', 'durood', 'day', CFG.specialXp, today, u.daily_goal)] : []),
+    ...(specialToday(day) ? [q('special', 'durood', 'day', CFG.specialXp, today, goal)] : []),
     q('sunnah', 'bonus', 'day', CFG.sunnahTickXp, tickedToday, 1, true),
     q('reflect', 'bonus', 'day', CFG.reflectXp, reflectedToday, 1),
-    q('lecture', 'bonus', 'day', 30, lecturesToday, 1),
+    q('lecture', 'bonus', 'day', CFG.lectureQuestXp, lecturesToday, 1),
   ];
 }
 
