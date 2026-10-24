@@ -50,7 +50,7 @@ const views = {
       ${items.length ? `<table><tr><th>When</th><th>Title</th><th></th></tr>${items.map((a) => `<tr><td>${date(a.created_at)}</td><td>${esc(a.title_en)}</td><td><button class="chip" data-a="newsdel" data-id="${a.id}">Delete</button></td></tr>`).join('')}</table>` : '<p class="empty">Nothing posted yet.</p>'}`;
   },
   async feed() {
-    const [{ lectures }, { prompts }, { items }] = await Promise.all([api('GET', '/lectures'), api('GET', '/prompts'), api('GET', '/reported')]);
+    const [{ lectures }, { prompts }, { items }, { days }] = await Promise.all([api('GET', '/lectures'), api('GET', '/prompts'), api('GET', '/reported'), api('GET', '/special-days')]);
     const photoLink = (i) => (i.photoUrl ? `<a href="${esc(i.photoUrl)}" target="_blank" rel="noopener">photo</a>` : '');
     return `<h3>Lecture of the week</h3>
       <p class="muted">Members see the lectures whose week is the current one. Any date in the week works. A quiz is optional: a JSON list like <code>[{"q_en":"Where was the Prophet ﷺ born?","options_en":["Makkah","Madinah"],"answer":0}]</code>.</p>
@@ -65,6 +65,12 @@ const views = {
       <label>Question (English)</label><input id="ptE" maxlength="200"><label>Question (Urdu, optional)</label><input id="ptU" maxlength="200" dir="rtl">
       <div class="inline"><button class="chip solid" data-a="promptset">Save question</button></div>
       ${prompts.length ? `<table><tr><th>Day</th><th>Question</th></tr>${prompts.slice(0, 10).map((p) => `<tr><td>${esc(p.day)}</td><td>${esc(p.text_en)}</td></tr>`).join('')}</table>` : ''}
+      <h3>Special days</h3>
+      <p class="muted">Every Friday is special automatically. Add other days (the first of Ramadan, 12 Rabi ul Awwal, a night of worship): members see a banner and get a bonus quest for reaching their goal that day.</p>
+      <div class="inline"><div><label>Day</label><input id="sday" type="date" value="${pktToday()}"></div></div>
+      <label>Name (English)</label><input id="snE" maxlength="60"><label>Name (Urdu, optional)</label><input id="snU" maxlength="60" dir="rtl">
+      <div class="inline"><button class="chip solid" data-a="specialset">Save day</button></div>
+      ${days.length ? `<table><tr><th>Day</th><th>Name</th><th></th></tr>${days.slice(0, 15).map((d) => `<tr><td>${esc(d.day)}</td><td>${esc(d.name_en)}</td><td><button class="chip" data-a="specialdel" data-day="${esc(d.day)}">Remove</button></td></tr>`).join('')}</table>` : ''}
       <h3>Reported or hidden</h3>
       <p class="muted">Three reports from different members hide a photo or reflection. Restore it, or leave it removed.</p>
       ${items.length ? `<table><tr><th>Kind</th><th>Member</th><th>Content</th><th>Reports</th><th>Status</th><th></th></tr>${items.map((i) => `<tr><td>${esc(i.kind)}</td><td>${esc(i.username)}</td><td>${esc(i.text || '')} ${photoLink(i)}</td><td>${i.reports}</td><td>${esc(i.status)}</td>
@@ -167,6 +173,8 @@ document.addEventListener('click', (ev) => {
     },
     lecdel: async () => { if (!confirm('Delete this lecture?')) return; await api('DELETE', `/lectures/${d.id}`); say('Deleted.'); },
     promptset: async () => { await api('POST', '/prompts', { day: $('#pday').value, text_en: $('#ptE').value, text_ur: $('#ptU').value }); say('Question saved.'); },
+    specialset: async () => { await api('POST', '/special-days', { day: $('#sday').value, name_en: $('#snE').value, name_ur: $('#snU').value }); say('Day saved.'); },
+    specialdel: async () => { await api('DELETE', `/special-days/${d.day}`); say('Removed.'); },
     remove2: async () => { await api('POST', `/content/${d.kind}/${d.id}`, { action: 'remove' }); say('Removed.'); },
     restore2: async () => { await api('POST', `/content/${d.kind}/${d.id}`, { action: 'restore' }); say('Restored.'); },
     chtoday: async () => { if (!confirm('Make today day 1 of the challenge?')) return; await api('POST', '/challenge', { start: pktToday() }); say('Day 1 is now today.'); },

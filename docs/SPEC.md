@@ -171,3 +171,24 @@ Home: number box first (type a total, presets +100/+500/+1,000 fill the field, A
 **Milestones:** new *Caravan* badges at 10K, 100K and 1M (what the people you invited recited, 300 / 1,500 / 6,000 points); the old whole-tree badges are now called *Tree* 10K to 10M (same rewards as before). 24 badges in all.
 
 **Defaults I chose (change on request):** Urdu uses کارواں for caravan and "ریفرل ٹری" for referral tree; milestone posts reach the member, their invitees and their inviter only; feed photos are visible to every member; an admin can post one lecture or several per week; the photo reward stays 40 on top of the tick.
+
+## 16. Cities, phone, the Compete tab, leagues and more (round 3)
+**Terms, as the product owner set them:** *Karwan/Caravan* = a member plus the people they invited themselves. *Qabila* = everyone under a member at every depth, shown with a short hint ("everyone who joined through you, at every level"). Badges and rewards come in three families (Personal, Caravan, Qabila) plus the city podium; the Me screen shows them in those groups.
+
+**City is required.** Members search as they type over about 70,000 places of 5,000+ people (GeoNames, 493 in Pakistan) and must pick one at sign-up; if a town is missing they pick the nearest bigger one. Members from before the list existed are matched by name (Pakistan first) or asked to choose on their next visit. City boards (Total, Average per active member, Growth) show a city only once **5 of its members recited this week**. The three best cities each week (by average) earn the **City Podium** badge for every member who recited; the winner also gets **City Champion**; the result appears in the feed.
+
+**Phone and country.** The sign-up form has a country selector and the national number; any real international calling code is accepted. The country starts from the visitor's IP (DB-IP.com IP-to-Country Lite, bundled, IPv4 and IPv6, never stored), then the browser's time zone, then Pakistan. Numbers are format-checked only; they are not verified.
+
+**Compete** (the old Ranks tab): the 40-day challenge on top, then People, League, Caravans, Qabila and Cities. The tab keeps its name after day 40.
+
+**Weekly leagues** (like Duolingo): a member's first durood of a week puts them in a group of up to 30 at their tier (Bronze, Silver, Gold, Diamond). At the week's close the top third (at most 5, only with something recited) move up and the bottom third (at most 5) move down; promotion pays 100 points times the new tier and the league badge. The close runs once, on the hourly job or the first league view of the new week.
+
+**Caravan streak:** a caravan of three or more people has a streak of days on which at least half recited; today never breaks it until it is over. Badges at 7 and 30 days.
+
+**Live counter and special days:** Home shows durood and members today across everyone. Every Friday is a special day, and the admin adds others (Ramadan, 12 Rabi ul Awwal); members see a banner and a bonus quest (150 points) for reaching their goal.
+
+**Share cards** now exist for badges and levels as well as the crore milestones.
+
+**New badges (34 in all):** Caravan Week/Month; Qabila of 10/50/250 (people who have recited); Silver/Gold/Diamond League; City Podium and City Champion. The old whole-tree badges are renamed Qabila 10K to 10M.
+
+**Credits:** GeoNames and DB-IP.com (both CC BY 4.0) are credited in the footer. To refresh the data, see `scripts/build-geo.mjs`.

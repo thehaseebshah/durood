@@ -352,3 +352,21 @@ html[lang=ur] .fitem .flabel { text-transform: none; letter-spacing: 0; font-siz
 .fitem.ms { background: var(--cell); } .fitem.ms.mine { border-inline-start: 4px solid var(--sig); }
 .stream + .more { margin: 12px 20px; }
 @media (min-width: 1024px) { body.in-app .cols > .col + .col .stream .fitem { padding-inline: 24px; } }
+
+/* city picker, phone, compete, league */
+.cityfield { position: relative; }
+.suggest { list-style: none; margin: 0; padding: 0; position: absolute; inset-inline: 0; top: 100%; z-index: 8; background: var(--paper); border: 2px solid var(--ink); border-top: 0; max-height: 260px; overflow-y: auto; }
+.suggest li { padding: 10px 12px; border-top: 1px solid var(--line); cursor: pointer; }
+.suggest li:hover, .suggest li:focus { background: var(--sig-bg); }
+.suggest li.none { color: var(--soft); cursor: default; }
+.phonerow { display: flex; gap: 8px; } .phonerow select { flex: 0 0 44%; min-width: 0; font: inherit; padding: 12px 8px; border: 2px solid var(--ink); border-radius: 0; background: var(--paper); color: var(--ink); } .phonerow input { flex: 1; min-width: 0; }
+.seg.five button { padding: 12px 2px; font-size: .78rem; }
+.leaguehead { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+.leaguehead small { color: var(--soft); }
+.lb li.up { box-shadow: inset 4px 0 0 var(--sig); } .lb li.down { box-shadow: inset 4px 0 0 var(--err); }
+html[dir=rtl] .lb li.up { box-shadow: inset -4px 0 0 var(--sig); } html[dir=rtl] .lb li.down { box-shadow: inset -4px 0 0 var(--err); }
+.special { margin: 10px 20px 0; padding: 10px 12px; background: var(--sig-bg); border-inline-start: 4px solid var(--sig); font-weight: 600; }
+.live { margin: 8px 20px 0; color: var(--soft); font-size: .8rem; display: flex; gap: 6px; align-items: center; }
+.karwan { margin: 10px 20px; padding: 10px 12px; border: 1.5px solid var(--ink); }
+.chipname { display: inline-block; border: 1px solid var(--line); padding: 0 6px; margin: 2px 2px 0 0; font-size: .75rem; }
+.cnum.long { font-size: 3.2rem !important; line-height: 1.1; }

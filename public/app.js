@@ -26,7 +26,7 @@ const S = {
   refName: null,
   pending: Number(ls.get('pending')) || 0,
   board: { type: 'users', period: 'week', metric: 'total', data: null },
-  feed: null, feedSeen: null, reflDraft: '', tapOpen: false,
+  feed: null, feedSeen: null, reflDraft: '', tapOpen: false, geo: null, league: null,
   intro: ls.get('intro') ? null : 0,
   team: null,
   learn: null,
@@ -108,7 +108,14 @@ function celebrate(res) {
   for (const b of res.newBadges || []) bits.push(`${t('new_badge')} ${t('badge')[b][0]}`);
   if (bits.length) toast(bits.join(' · '), (res.newBadges || [])[0]);
   if (res.levelUp || res.newBadges?.length) navigator.vibrate?.([60, 40, 60]);
+  // a card to share for a real milestone (not the very first small ones) or a new level
+  const big = (res.newBadges || []).find((c) => SHAREABLE.has(c));
+  if (!S.celebrate) {
+    if (big) S.celebrate = { kind: 'badge', code: big };
+    else if (res.levelUp && res.levelUp >= 2) S.celebrate = { kind: 'level', level: res.levelUp };
+  }
 }
+const SHAREABLE = new Set(['d1k', 'd10k', 'd100k', 'd1m', 'streak7', 'streak30', 'streak100', 'recruit5', 'recruit25', 'karwan7', 'karwan30', 'qabila10', 'qabila50', 'qabila250', 'league_silver', 'league_gold', 'league_diamond', 'city_podium', 'city_champion', 'group10k', 'group100k', 'group1m', 'caravan10k', 'caravan100k', 'caravan1m', 'caravan10m']);
 
 // ---- views (Swiss style: type, hairline rules, flat colour) --------------------------
 const NAV_GLYPH = { home: 'home', feed: 'feed', rank: 'bars', caravan: 'caravan', me: 'me' };
@@ -124,7 +131,7 @@ function langToggle() {
   return `<span class="row"><button class="pill icon" data-act="scheme" aria-label="${t(isDark() ? 'mode_white' : 'mode_dark')}" title="${t(isDark() ? 'mode_white' : 'mode_dark')}">${isDark() ? ICON_SUN : ICON_MOON}</button><button class="pill" data-act="lang">${S.lang === 'ur' ? 'English' : 'اردو'}</button></span>`;
 }
 
-const footerLinks = () => `<p class="note foot"><a href="/privacy.html">${t('privacy')}</a></p>`;
+const footerLinks = () => `<p class="note foot"><a href="/privacy.html">${t('privacy')}</a></p><p class="note foot credit">${t('credit')}</p>`;
 
 function introView() {
   const i = S.intro, last = i === 2;
@@ -139,6 +146,16 @@ function introView() {
     ${i === 0 ? `<div class="langpick"><button class="blk ${S.lang === 'en' ? '' : 'out'}" data-act="setlang" data-l="en"><span>English</span></button><button class="blk ${S.lang === 'ur' ? '' : 'out'}" data-act="setlang" data-l="ur"><span>اردو</span></button></div>` : ''}
     <button class="blk" data-act="intronext"><span>${last ? t('start') : t('next')}</span><b>→</b></button>
   </div>`;
+}
+
+// ---- the city picker (search as you type) and the phone country --------------------------------------------------------
+const cityPicker = (label, initial = '') => `<label>${label}</label>
+  <div class="cityfield"><input type="text" data-city autocomplete="off" placeholder="${t('city_ph')}" value="${esc(initial)}">
+  <input type="hidden" name="cityId" value=""><ul class="suggest" hidden></ul></div><div class="hint">${t('city_hint')}</div>`;
+const countryOptions = () => (S.geo?.countries || [{ cc: 'PK', name: 'Pakistan', dial: '92' }])
+  .map((c) => `<option value="${c.cc}" ${c.cc === (S.geo?.country || 'PK') ? 'selected' : ''}>${esc(c.name)} (+${c.dial})</option>`).join('');
+async function loadGeo() {
+  try { S.geo = await api(`/geo?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone || '')}`); if (!S.me) draw(); } catch { /* the form falls back to Pakistan */ }
 }
 
 function authView() {
@@ -163,9 +180,10 @@ function authView() {
       <input type="text" name="username" data-check="username" autocapitalize="none" autocomplete="username" maxlength="20" required dir="ltr">
       <div class="hint" id="ucheck">${t('username_hint')}</div>
       ${field(t('email'), 'email', 'email', 'autocomplete="email" required dir="ltr"')}
-      ${field(t('phone'), 'phone', 'tel', 'autocomplete="tel" required dir="ltr"')}
+      <label>${t('phone')}</label>
+      <div class="phonerow"><select name="phoneCountry" aria-label="${esc(t('country'))}">${countryOptions()}</select><input type="tel" name="phone" autocomplete="tel-national" required dir="ltr" placeholder="300 1234567"></div>
       <div class="hint">${t('phone_hint')}</div>
-      ${field(t('city'), 'city', 'text', 'maxlength="40"')}
+      ${cityPicker(t('city'))}
       ${field(t('password'), 'password', 'password', 'autocomplete="new-password" minlength="6" required dir="ltr"')}
       <button class="blk" type="submit"><span>${t('register')}</span><b>→</b></button></form>`;
   } else if (mode === 'waitlist') {
@@ -204,6 +222,11 @@ function authView() {
   </div>`;
 }
 
+function cityModal() {
+  return `<div class="modal"><div class="box"><form data-form="citysave"><h3 class="in">${t('city_needed_title')}</h3><p class="muted">${t('city_needed_text')}</p>${cityPicker(t('city'))}
+    <button class="blk" type="submit"><span>${t('save')}</span><b>→</b></button></form></div></div>`;
+}
+
 function shell() {
   const tabs = ['home', 'feed', 'rank', 'caravan', 'me'];
   return `
@@ -211,7 +234,8 @@ function shell() {
   <div class="wrap tab-${S.tab}">${view()}</div>
   <nav class="tabs"><div class="brand">${t('app')}</div>${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}</nav>
   ${S.player ? playerModal() : ''}
-  ${S.celebrate ? celebrateModal() : ''}`;
+  ${S.celebrate ? celebrateModal() : ''}
+  ${S.me.needsCity ? cityModal() : ''}`;
 }
 
 function view() {
@@ -230,6 +254,8 @@ function home() {
   <div class="big ${bigClass(live)}" id="big">${fmt(live)}</div>
   <div id="livebar">${bar((live / m.dailyGoal) * 100)}</div>
 
+  ${m.special ? `<div class="special">${uiIcon('star', 14, 2)} ${t('special_banner')(esc(pick(m.special.nameEn, m.special.nameUr)))}</div>` : ''}
+  <div class="live">${uiIcon('feed', 13, 2)} ${t('live_today')(fmt(m.pub.today || 0), fmt(m.pub.membersToday || 0))}</div>
   <div class="numbox">
     <label for="manual">${t('enter_total')}</label>
     <div class="row"><input type="number" id="manual" inputmode="numeric" min="1" placeholder="${t('count_ph')}" dir="ltr"><button class="blk addbtn" data-act="manual"><span>${t('add')}</span><b>→</b></button></div>
@@ -258,6 +284,8 @@ function home() {
 
   ${pushPromptDue() ? `<div class="circlecard push"><b>${t('push_card_title')}</b><p>${t('push_card_text')}</p>
     <div class="row"><button class="blk fill1" data-act="pushon"><span>${t('push_enable')}</span><b>→</b></button><button class="chip" data-act="pushno">${t('push_later')}</button></div></div>` : ''}
+  <button class="rowlink" data-act="goleague"><span>${uiIcon('bolt', 14, 2)} ${t('league_title')}</span><b>${t('tier_' + TIER_KEYS[m.league || 0])}</b></button>
+
   <div class="circlecard">
     <b>${t('circle_title')}</b>
     <p>${t('circle_text')}</p>
@@ -330,23 +358,30 @@ function checkCelebrate() {
   }
 }
 
+function cardOf(x) {
+  if (x.kind === 'badge') { const b = t('badge')[x.code]; return { big: b[0], label: t('new_badge'), line: b[1], title: b[0], text: b[1] }; }
+  if (x.kind === 'level') return { big: String(x.level), label: t('level'), line: t('titles')[Math.min(x.level - 1, 9)], title: `${t('level')} ${x.level}`, text: t('titles')[Math.min(x.level - 1, 9)] };
+  return { big: x.done ? human(x.target).split(' ')[0] : String(x.k), label: t('crore'), line: t('celebrate_text')(x.day), bar: true,
+    title: x.done ? t('celebrate_done') : t('celebrate_crore')(x.k), text: t('celebrate_text')(x.day) };
+}
+
 function celebrateModal() {
-  const x = S.celebrate;
+  const x = S.celebrate, c = cardOf(x);
   return `<div class="modal celebrate"><div class="box">
-    <div class="cnum">${x.done ? human(x.target).split(' ')[0] : x.k}</div>
-    <div class="ctitle">${x.done ? t('celebrate_done') : t('celebrate_crore')(x.k)}</div>
-    <p>${t('celebrate_text')(x.day)}</p>
+    <div class="cnum ${c.big.length > 6 ? 'long' : ''}">${esc(c.big)}</div>
+    <div class="ctitle">${esc(c.title)}</div>
+    <p>${esc(c.text)}</p>
     <div class="row"><button class="blk fill1" data-act="shareCard"><span class="lab">${uiIcon('share', 20, 1.8)} ${t('share')}</span><b>→</b></button><button class="chip" data-act="celebrateX">${t('close')}</button></div>
   </div></div>`;
 }
 
 // a portrait card in the app's own style, drawn in the browser so nothing is uploaded
 async function shareCard() {
-  const x = S.celebrate, dark = isDark();
+  const x = S.celebrate, c = cardOf(x), dark = isDark();
   const ink = dark ? '#f4f1ea' : '#0b0b0b', paper = dark ? '#0b0b0b' : '#ffffff', sig = dark ? '#22d68f' : '#00a86b', soft = dark ? '#92928b' : '#66665f';
   const W = 1080, H = 1350;
-  const c = document.createElement('canvas'); c.width = W; c.height = H;
-  const g = c.getContext('2d');
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
   const family = S.lang === 'ur' ? "Inter, 'Noto Nastaliq Urdu', serif" : 'Inter, Helvetica, Arial, sans-serif';
   try { await Promise.all(['800 100px Inter', '600 40px Inter', S.lang === 'ur' ? '400 40px "Noto Nastaliq Urdu"' : '400 40px Inter'].map((f) => document.fonts.load(f))); } catch { /* fall back */ }
   g.fillStyle = paper; g.fillRect(0, 0, W, H);
@@ -354,21 +389,28 @@ async function shareCard() {
   g.textBaseline = 'alphabetic'; g.direction = S.lang === 'ur' ? 'rtl' : 'ltr';
   const left = S.lang === 'ur' ? W - 80 : 80; g.textAlign = S.lang === 'ur' ? 'right' : 'left';
   g.fillStyle = soft; g.font = `600 44px ${family}`; g.fillText(t('app'), left, 130);
-  g.fillStyle = ink; g.font = `800 560px ${family}`; g.direction = 'ltr'; g.textAlign = 'left';
-  const big = x.done ? human(x.target).split(' ')[0] : String(x.k);
-  g.fillText(big, 60, 760);
+  // the headline shrinks until it fits the card
+  let size = 560;
+  g.direction = 'ltr'; g.textAlign = 'left';
+  while (size > 90) { g.font = `800 ${size}px ${family}`; if (g.measureText(c.big).width <= W - 120) break; size -= 20; }
+  g.fillStyle = ink; g.fillText(c.big, 60, 130 + size * 0.95 + 70);
+  const y = 130 + size * 0.95 + 70;
   g.direction = S.lang === 'ur' ? 'rtl' : 'ltr'; g.textAlign = S.lang === 'ur' ? 'right' : 'left';
-  g.fillStyle = sig; g.font = `800 120px ${family}`; g.fillText(t('crore'), left, 900);
-  g.fillStyle = ink; g.font = `600 56px ${family}`; g.fillText(t('celebrate_text')(x.day), left, 990);
-  const total = S.me.pub.challenge.total, target = x.target;
-  g.fillStyle = dark ? '#1c1c1a' : '#ecece6'; g.fillRect(80, 1090, W - 160, 36);
-  g.fillStyle = sig; const w = (W - 160) * Math.min(1, total / target);
-  if (S.lang === 'ur') g.fillRect(W - 80 - w, 1090, w, 36); else g.fillRect(80, 1090, w, 36);
-  g.fillStyle = soft; g.font = `600 40px ${family}`;
-  g.fillText(`${human(total)} ${t('of')} ${human(target)} · ${t('challenge_title')}`, left, 1190);
-  const blob = await new Promise((ok) => c.toBlob(ok, 'image/png'));
+  g.fillStyle = sig; g.font = `800 110px ${family}`; g.fillText(c.label, left, y + 150);
+  g.fillStyle = ink; g.font = `600 52px ${family}`; g.fillText(c.line.slice(0, 48), left, y + 250);
+  if (c.bar) {
+    const total = S.me.pub.challenge.total, target = x.target;
+    g.fillStyle = dark ? '#1c1c1a' : '#ecece6'; g.fillRect(80, 1090, W - 160, 36);
+    g.fillStyle = sig; const w = (W - 160) * Math.min(1, total / target);
+    if (S.lang === 'ur') g.fillRect(W - 80 - w, 1090, w, 36); else g.fillRect(80, 1090, w, 36);
+    g.fillStyle = soft; g.font = `600 40px ${family}`;
+    g.fillText(`${human(total)} ${t('of')} ${human(target)} · ${t('challenge_title')}`, left, 1190);
+  } else {
+    g.fillStyle = soft; g.font = `600 44px ${family}`; g.fillText(S.me.username, left, 1190);
+  }
+  const blob = await new Promise((ok) => cv.toBlob(ok, 'image/png'));
   const file = new File([blob], 'seerah-quest.png', { type: 'image/png' });
-  const text = `${t('share_text')(x.done ? human(x.target).split(' ')[0] : x.k, x.day)} ${location.origin}`;
+  const text = x.kind ? `${c.title}: ${c.text}. ${location.origin}` : `${t('share_text')(x.done ? human(x.target).split(' ')[0] : x.k, x.day)} ${location.origin}`;
   try {
     if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], text }); return; }
   } catch (e) { if (e.name === 'AbortError') return; }
@@ -474,6 +516,9 @@ function feedItem(it) {
     return `<div class="fitem ms ${it.mine ? 'mine' : ''}"><div class="flabel">${uiIcon('star', 12, 2)} ${t('ms_label')}<small class="when">${ago(it.at)}</small></div>
       <b>${t('ms_text')(esc(it.username), esc(b[0]))}</b><div class="muted">${esc(b[1])}</div></div>`;
   }
+  if (it.type === 'city') {
+    return `<div class="fitem ms"><div class="flabel">${uiIcon('star', 12, 2)} ${t('city_label')}<small class="when">${ago(it.at)}</small></div><b>${t('city_item')(it.rank, esc(it.label))}</b></div>`;
+  }
   if (it.type === 'crore') {
     return `<div class="fitem ms"><div class="flabel">${uiIcon('star', 12, 2)} ${t('challenge_title')}<small class="when">${ago(it.at)}</small></div><b>${t('crore_text')(it.k)}</b></div>`;
   }
@@ -496,24 +541,41 @@ function feedView() {
   </div></div>`;
 }
 
-// ---- rankings: people, caravans, referral trees ---------------------------------------------------------------------
+// ---- compete: the challenge, the weekly league, and rankings of people, caravans, Qabilas and cities ----------------------------
+const TIER_KEYS = ['bronze', 'silver', 'gold', 'diamond'];
+function leagueView() {
+  const L = S.board.data;
+  if (!L) return '<p class="muted center">…</p>';
+  const name = t('tier_' + TIER_KEYS[L.tier]);
+  const head = `<div class="leaguehead"><b>${uiIcon('bolt', 16, 2)} ${t('league_title')} · ${name}</b><small>${t('league_days')(L.daysLeft)}</small></div>`;
+  const last = L.last ? `<p class="note">${t('league_last_' + L.last.result)(L.last.rank)}</p>` : '';
+  if (!L.joined) return `${head}<p class="muted" style="margin-inline:20px">${t('league_join')(name)}</p>${last}<p class="note">${t('league_rules')}</p>`;
+  return `${head}${last}<ul class="lb">${L.rows.map((r) => `
+    <li class="${r.me ? 'me' : ''} ${r.up ? 'up' : ''} ${r.down ? 'down' : ''}"><span class="rank">${r.rank}</span>
+      <span class="name">${esc(r.username)}${r.me ? ` <em class="tag">${t('you')}</em>` : ''}<small>${r.up ? t('league_up') : r.down ? t('league_down') : esc(r.city || '')}</small></span>
+      <span class="score">${fmt(r.score)}</span></li>`).join('')}</ul><p class="note">${t('league_rules')}</p>`;
+}
+
 function rank() {
   const b = S.board, rows = b.data?.rows;
-  const grp = b.type !== 'users';
-  const list = !rows ? '<p class="muted center">…</p>' : rows.length ? `<ul class="lb">${rows.map((r) => `
+  const grp = ['caravans', 'trees', 'cities'].includes(b.type);
+  const list = b.type === 'league' ? leagueView() : !rows ? '<p class="muted center">…</p>' : rows.length ? `<ul class="lb">${rows.map((r) => `
     <li class="${r.me ? 'me' : ''}"><span class="rank">${r.rank}</span>
       <span class="name">${esc(r.username)}${r.me ? ` <em class="tag">${t('you')}</em>` : ''}<small>${r.city ? `${esc(r.city)}` : ''}${grp ? `${r.city ? ' · ' : ''}${fmt(r.members)} ${t('members')}${b.metric === 'average' ? ` · ${fmt(r.active)} ${t('active')}` : ''}` : ''}</small></span>
-      <span class="score">${grp && b.metric === 'growth' && r.score > 0 ? '+' : ''}${fmt(r.score)}</span></li>`).join('')}</ul>` : `<p class="muted center">${t('empty_board')}</p>`;
-  const kinds = [['users', 'rk_people'], ['caravans', 'rk_caravans'], ['trees', 'rk_trees']];
+      <span class="score">${grp && b.metric === 'growth' && r.score > 0 ? '+' : ''}${fmt(r.score)}</span></li>`).join('')}</ul>` : `<p class="muted center">${t(b.type === 'cities' ? 'empty_cities' : 'empty_board')}</p>`;
+  const kinds = [['users', 'rk_people'], ['league', 'rk_league'], ['caravans', 'rk_caravans'], ['trees', 'rk_trees'], ['cities', 'rk_cities']];
+  const note = b.type === 'league' ? '' : grp ? `${t('rk_note_' + b.type)} ${t('cv_note_' + b.metric)}` : (b.period === 'challenge' ? t('challenge_note') : '');
   return `
-  <div class="seg">${kinds.map(([k, l]) => `<button class="${b.type === k ? 'on' : ''}" data-act="board" data-type="${k}">${t(l)}</button>`).join('')}</div>
+  ${challengeCard(S.me)}
+  <div class="seg five">${kinds.map(([k, l]) => `<button class="${b.type === k ? 'on' : ''}" data-act="board" data-type="${k}">${t(l)}</button>`).join('')}</div>
   ${grp ? `<div class="seg thin">${['total', 'average', 'growth'].map((x) => `<button class="${b.metric === x ? 'on' : ''}" data-act="board" data-metric="${x}">${t('cv_' + x)}</button>`).join('')}</div>`
-    : `<div class="seg thin">
+    : b.type === 'users' ? `<div class="seg thin">
     <button class="${b.period === 'week' ? 'on' : ''}" data-act="board" data-period="week">${t('this_week')}</button>
     <button class="${b.period === 'challenge' ? 'on' : ''}" data-act="board" data-period="challenge">${t('challenge_board')}</button>
-    <button class="${b.period === 'all' ? 'on' : ''}" data-act="board" data-period="all">${t('all_time')}</button></div>`}
+    <button class="${b.period === 'all' ? 'on' : ''}" data-act="board" data-period="all">${t('all_time')}</button></div>` : ''}
   ${list}
-  <p class="note">${grp ? t('rk_note_' + b.type) + ' ' + t('cv_note_' + b.metric) : (b.period === 'challenge' ? t('challenge_note') : '')}</p>
+  ${note ? `<p class="note">${note}</p>` : ''}
+  ${b.type === 'cities' ? `<p class="note">${t('cities_min')(b.data?.minActive || 5)}</p>` : ''}
   <p class="note">${t('self_reported')}</p>
   <p class="note">${t('reminder_note')}</p>`;
 }
@@ -535,6 +597,10 @@ function caravan() {
   <p class="muted">${t('caravan_sub')}</p>
   <div class="stats"><div><b>${fmt(m.caravan.members)}</b><span>${t('c_members')}</span></div><div><b>${fmt(own)}</b><span>${t('c_total')}</span></div><div><b>${tm ? fmt(tm.caravan.week) : '…'}</b><span>${t('c_week')}</span></div></div>
   <div class="lvl"><div class="row between"><span>${t('next_milestone')}</span><b>${fmt(next)}</b></div>${bar(next === prev ? 100 : ((m.caravan.down - prev) / (next - prev)) * 100)}</div>
+  ${!tm ? '' : tm.karwan.active ? `<div class="karwan"><b>${uiIcon('flame', 16, 1.8)} ${t('karwan_streak')(tm.karwan.streak)}</b>
+      <div>${t('karwan_today')(fmt(tm.karwan.today), fmt(tm.karwan.size))}</div>
+      ${tm.karwan.missing.length ? `<div class="muted">${t('karwan_missing')} ${tm.karwan.missing.map((n) => `<span class="chipname">${esc(n)}</span>`).join(' ')}</div>` : ''}</div>`
+    : `<p class="note">${t('karwan_need')}</p>`}
 
   <h3>${t('direct_list')} (${fmt(m.team.direct)})</h3>
   ${!tm ? '…' : tm.direct.length ? `<ul class="lb">${tm.direct.map((d) => `
@@ -567,9 +633,16 @@ function historyBlock() {
       </div>`).join('')}`).join('');
 }
 
+// three families of achievements, plus the city podium: personal, caravan (people you invited yourself), Qabila (everyone under you)
+const BADGE_FAMILIES = [
+  ['personal', ['first_step', 'd1k', 'd10k', 'd100k', 'd1m', 'streak7', 'streak30', 'streak100', 'scholar1', 'scholar10', 'circle', 'sunnah1', 'sunnah7', 'sunnah30', 'league_silver', 'league_gold', 'league_diamond']],
+  ['karwan', ['recruit1', 'recruit5', 'recruit25', 'group10k', 'group100k', 'group1m', 'karwan7', 'karwan30']],
+  ['qabila', ['qabila10', 'qabila50', 'qabila250', 'caravan10k', 'caravan100k', 'caravan1m', 'caravan10m']],
+  ['city', ['city_podium', 'city_champion']],
+];
+
 function me() {
   const m = S.me;
-  const codes = Object.keys(I18N.en.badge).sort((x, y) => m.badges.includes(y) - m.badges.includes(x)); // earned first, then the usual order
   return `
   <div class="uname">${esc(m.username)}</div>
   <div class="muted" dir="ltr">${esc(m.email)} · ${esc(m.phone)}</div>
@@ -586,15 +659,14 @@ function me() {
   <p class="note first">${t('hist_hint')}</p>
   ${historyBlock()}
 
-  <h3>${t('badges')}</h3>
-  <div class="badges">${codes.map((c) => { const got = m.badges.includes(c); return `<div class="badge ${got ? 'got' : ''}" title="${esc(t('badge')[c][1])}">${badgeSvg(c, got)}<b>${esc(t('badge')[c][0])}</b><span>${esc(t('badge')[c][1])}</span></div>`; }).join('')}</div>
+  ${BADGE_FAMILIES.map(([fam, list]) => `<h3>${t('badges')} · ${t('fam_' + fam)}</h3>
+  <div class="badges">${list.slice().sort((x, y) => m.badges.includes(y) - m.badges.includes(x)).map((c) => { const got = m.badges.includes(c); return `<div class="badge ${got ? 'got' : ''}" title="${esc(t('badge')[c][1])}">${badgeSvg(c, got)}<b>${esc(t('badge')[c][0])}</b><span>${esc(t('badge')[c][1])}</span></div>`; }).join('')}</div>`).join('')}
 
   <h3>${t('settings')}</h3>
   <form data-form="settings">
     <label>${t('daily_goal')}</label>
     <input type="number" name="dailyGoal" min="1" max="100000" value="${m.dailyGoal}" dir="ltr">
-    <label>${t('city')}</label>
-    <input type="text" name="city" maxlength="40" value="${esc(m.city)}">
+    ${cityPicker(t('city'), m.city)}
     <label>${t('reminder_time')}</label>
     <input type="time" name="reminderTime" value="${esc(m.reminderTime || '')}" dir="ltr">
     <div class="hint">${t('reminder_hint')}</div>
@@ -659,6 +731,8 @@ function draw() {
 }
 
 const boardUrl = (b) => (b.type === 'users' ? `/leaderboard?type=users&period=${b.period}`
+  : b.type === 'league' ? '/league'
+  : b.type === 'cities' ? `/leaderboard?type=cities&metric=${b.metric}`
   : b.metric === 'total' ? `/leaderboard?type=${b.type}&period=week` : `/leaderboard?type=${b.type}&metric=${b.metric}`);
 async function enterTab(tab) {
   S.tab = tab;
@@ -783,6 +857,14 @@ app.addEventListener('click', async (ev) => {
   if (act === 'setmode') { document.documentElement.setAttribute('data-mode', el.dataset.m); ls.set('mode', el.dataset.m); return draw(); }
   if (act === 'intronext') { if (S.intro >= 2) { S.intro = null; ls.set('intro', '1'); } else S.intro += 1; return draw(); }
   if (act === 'introskip') { S.intro = null; ls.set('intro', '1'); return draw(); }
+  if (act === 'goleague') { S.board.type = 'league'; return enterTab('rank'); }
+  if (act === 'pickcity') {
+    const field = el.closest('.cityfield');
+    field.querySelector('input[name=cityId]').value = el.dataset.id;
+    field.querySelector('[data-city]').value = el.dataset.label;
+    el.parentElement.hidden = true;
+    return;
+  }
   if (act === 'news') return enterTab('feed');
   if (act === 'pushno') { ls.set('pushNo', '1'); return draw(); }
   if (act === 'pushon') { try { await enablePush(); toast(t('push_on')); } catch (e) { toast(errText(e)); } return draw(); }
@@ -926,6 +1008,7 @@ app.addEventListener('submit', async (ev) => {
       setSession(r.token, r.me);
       draw();
     } else if (kind === 'register') {
+      if (!f.cityId) throw new Error('city_required');
       const r = await api('/register', 'POST', { ...f, invite: (f.invite || '').trim(), lang: S.lang });
       setSession(r.token, r.me);
       draw();
@@ -942,16 +1025,20 @@ app.addEventListener('submit', async (ev) => {
       setSession(r.token, r.me); toast(t('reset_done'));
       draw();
     } else if (kind === 'settings') {
-      S.me = await api('/me', 'PATCH', { dailyGoal: Number(f.dailyGoal), city: f.city, email: f.email, reminderTime: f.reminderTime || '' });
+      S.me = await api('/me', 'PATCH', { dailyGoal: Number(f.dailyGoal), ...(f.cityId ? { cityId: Number(f.cityId) } : {}), email: f.email, reminderTime: f.reminderTime || '' });
       toast(t('saved'));
       draw();
+    } else if (kind === 'citysave') {
+      if (!f.cityId) throw new Error('city_required');
+      S.me = await api('/me', 'PATCH', { cityId: Number(f.cityId) });
+      toast(t('saved')); draw();
     } else if (kind === 'delete') {
       if (!confirm(t('delete_confirm'))) { btn.disabled = false; return; }
       await api('/me', 'DELETE', { password: f.password });
       logout(false); S.authMode = 'login'; draw(); toast(t('deleted'));
     }
   } catch (e) {
-    if (kind === 'settings' || kind === 'delete') { toast(errText(e)); btn.disabled = false; }
+    if (kind === 'settings' || kind === 'delete' || kind === 'citysave') { toast(errText(e)); btn.disabled = false; }
     else { S.error = errText(e); draw(); }
   }
 });
@@ -973,6 +1060,25 @@ app.addEventListener('change', async (ev) => {
   const el = ev.target.closest('input[data-photo]');
   if (!el || !el.files[0]) return;
   try { S.draft = await toJpegDataUrl(el.files[0]); S.draftKind = el.dataset.photo; draw(); } catch (e) { toast(I18N[S.lang].err.bad_image); }
+});
+
+let cityTimer;
+app.addEventListener('input', (ev) => {
+  const box = ev.target.closest('[data-city]');
+  if (!box) return;
+  const field = box.closest('.cityfield'), list = field.querySelector('.suggest'), hidden = field.querySelector('input[name=cityId]');
+  hidden.value = ''; // typing again means the earlier pick no longer applies
+  clearTimeout(cityTimer);
+  cityTimer = setTimeout(async () => {
+    const q = box.value.trim();
+    if (q.length < 2) { list.hidden = true; return; }
+    const cc = document.querySelector('select[name=phoneCountry]')?.value || S.me?.country || S.geo?.country || '';
+    try {
+      const { cities } = await api(`/cities?q=${encodeURIComponent(q)}&cc=${cc}`);
+      list.innerHTML = cities.length ? cities.map((c) => `<li data-act="pickcity" data-id="${c.id}" data-label="${esc(c.label)}">${esc(c.label)}</li>`).join('') : `<li class="none">${t('city_none')}</li>`;
+      list.hidden = false;
+    } catch { /* offline: try again */ }
+  }, 220);
 });
 
 let checkTimer;
@@ -1018,4 +1124,5 @@ async function boot() {
   if (urlInvite || params.get('reset') || confirmToken) history.replaceState(null, '', '/');
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
+if (!S.token) loadGeo();
 boot();
