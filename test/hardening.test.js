@@ -197,3 +197,20 @@ test('a production server refuses to start without a mail provider or a long adm
   assert.match(bad.stderr, /ADMIN_KEY/);
   assert.match(bad.stderr, /AUTH_SECRET/);
 });
+
+test('boards are cached for a short time and the per-day public totals stay equal to the ledger', async () => {
+  const a = await signup('cache_a');
+  await log(a, 100);
+  const board = () => api('GET', '/api/leaderboard?type=users&period=week', { token: a.token });
+  await withEnv({ PUBLIC_CACHE_MS: '60000' }, async () => {
+    const first = (await board()).rows.find((r) => r.username === 'cache_a').score;
+    await log(a, 50);
+    assert.equal((await board()).rows.find((r) => r.username === 'cache_a').score, first, 'served from the cache');
+    assert.equal((await board()).rows.find((r) => r.username === 'cache_a').me, true, 'the "you" marker is still per viewer');
+  });
+  assert.equal((await board()).rows.find((r) => r.username === 'cache_a').score, 150, 'fresh again when caching is off');
+  const dt = db.prepare('SELECT COALESCE(SUM(total),0) n FROM day_totals').get().n;
+  const pub = await api('GET', '/api/public');
+  assert.equal(dt, pub.total, 'day_totals and the national total agree (both leave out durood on hold)');
+  assert.deepEqual(audit().problems, []);
+});

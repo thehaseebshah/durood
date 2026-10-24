@@ -115,6 +115,11 @@ async function render() {
   try { $('#panel').innerHTML = (notice ? `<div class="msg">${esc(notice)}</div>` : '') + (await views[tab]()); }
   catch (e) { $('#panel').innerHTML = `<div class="msg" style="border-color:var(--err)">${esc(e.message)}</div>`; }
   notice = '';
+  try {
+    const st = await api('GET', '/status');
+    const a = st.lastAudit;
+    $('#audit').innerHTML = `<div class="msg" style="${a && !a.ok ? 'border-color:var(--err)' : ''}">Nightly audit: ${a ? `${date(a.at)} · ${a.ok ? 'clean' : `${a.problems} problem(s), run the audit`}` : 'not run yet (runs after 03:00 Pakistan time)'} · Last backup: ${st.lastBackup ? date(st.lastBackup) : 'none yet (set BACKUP_DIR)'}</div>`;
+  } catch { /* status is a nicety */ }
 }
 
 document.addEventListener('click', (ev) => {

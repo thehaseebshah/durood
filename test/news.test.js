@@ -112,3 +112,39 @@ test('exports are CSV, formula-safe, and admin only', async () => {
   for (const k of ['caravans', 'weeks']) assert.ok((await (await fetch(`${base}/api/admin/export?kind=${k}`, { headers: admin })).json()).csv.includes('\n'));
   assert.equal((await api('GET', '/api/admin/export?kind=nope', { headers: admin })).error, 'bad_export');
 });
+
+test('reminders: only inside the three hours after the chosen time; a total push failure is retried, a few times at most', async () => {
+  const u = await signup('rem_window');
+  await api('PATCH', '/api/me', { token: u.token, body: { reminderTime: '07:30' } });
+  await api('POST', '/api/push/subscribe', { token: u.token, body: fakeSub('https://fcm.googleapis.com/fcm/send/window') });
+  const at = (day, hhmm) => Date.parse(`${day}T${hhmm}:00+05:00`);
+  const sent = [];
+  news.setSender(async (sub, msg) => { if (sub.endpoint.endsWith('/window')) sent.push(msg.tag); return 'ok'; });
+  await news.runReminders(at('2031-01-10', '10:31'));
+  assert.equal(sent.length, 0, 'more than 3 hours after 07:30: no reminder');
+  await news.runReminders(at('2031-01-10', '21:00'));
+  assert.equal(sent.length, 0, 'setting a time and being pinged hours later is not wanted');
+  await news.runReminders(at('2031-01-11', '10:29'));
+  assert.deepEqual(sent, ['remind'], 'inside the window');
+
+  let calls = 0;
+  news.setSender(async (sub) => { if (sub.endpoint.endsWith('/window')) calls += 1; return 'failed'; });
+  const day = '2031-01-12';
+  for (let i = 0; i < 8; i++) await news.runReminders(at(day, '08:00'));
+  assert.equal(calls, 4, 'tried four times, then gave up for the day');
+  const mine = [];
+  news.setSender(async (sub) => { if (sub.endpoint.endsWith('/window')) mine.push(1); return 'ok'; });
+  await news.runReminders(at('2031-01-13', '08:00'));
+  assert.equal(mine.length, 1, 'the next day starts fresh');
+  news.setSender(null);
+});
+
+test('the nightly audit runs once a day after 03:00 Pakistan time and records its result', async () => {
+  const { getSetting } = await import('../server/db.js');
+  assert.equal(await news.nightlyAudit(Date.parse('2031-02-01T02:00:00+05:00')), null, 'too early');
+  const r = await news.nightlyAudit(Date.parse('2031-02-01T04:00:00+05:00'));
+  assert.equal(typeof r.ok, 'boolean');
+  assert.equal(JSON.parse(getSetting('last_audit')).problems, r.problems.length);
+  assert.equal(await news.nightlyAudit(Date.parse('2031-02-01T23:00:00+05:00')), null, 'once a day');
+  assert.ok(await news.nightlyAudit(Date.parse('2031-02-02T03:30:00+05:00')), 'next day runs again');
+});

@@ -5,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import crypto from 'node:crypto';
 import { db, tx, getSetting } from './db.js';
 import { HttpError, hashPassword, checkPassword, signToken, verifyToken, rateLimit, lockedOut, recordFailure, clientIp, sameSecret } from './auth.js';
-import { audit } from './audit.js';
+import { auditAsync } from './audit.js';
 import * as access from './access.js';
 import { sendMail, resetEmail, confirmEmail, inviteEmail, baseUrl } from './mail.js';
 import * as sunnah from './sunnah.js';
@@ -321,7 +321,8 @@ route('GET', '/api/admin/news', adm, () => ({ items: db.prepare('SELECT * FROM a
 route('POST', '/api/admin/news', adm, ({ body }) => news.postNews(body));
 route('DELETE', '/api/admin/news/:id', adm, ({ params }) => news.deleteNews(Number(params.id)));
 route('GET', '/api/admin/export', adm, ({ query }) => ({ csv: news.exportCsv(query.get('kind')) }));
-route('GET', '/api/admin/audit', { auth: false, admin: true }, () => audit());
+route('GET', '/api/admin/audit', { auth: false, admin: true }, () => auditAsync());
+route('GET', '/api/admin/status', adm, () => ({ lastAudit: getSetting('last_audit') ? JSON.parse(getSetting('last_audit')) : null, lastBackup: Number(getSetting('last_backup_at', '0')) || null }));
 route('POST', '/api/admin/lectures', { auth: false, admin: true }, ({ body }) => {
   const yt = String(body.youtube_id || '').trim();
   if (!/^[\w-]{11}$/.test(yt) || !body.title_en) throw new HttpError(400, 'bad_lecture');

@@ -88,6 +88,13 @@ function stats(userId) {
   return { ...u, downline: u.team_total - u.total, referrals: count('referral'), lectures: count('lecture'), sunnahs: count('sunnah'), verifies: count('verify'), circle: count('circle') > 0 };
 }
 
+const bumpDay = (day, delta) => run('INSERT INTO day_totals (day, total) VALUES (?, ?) ON CONFLICT(day) DO UPDATE SET total = total + excluded.total', day, delta);
+/** Rebuilds the per-day public totals from the daily rows (first start after an upgrade, and the audit's repair). */
+export function rebuildDayTotals() {
+  run('DELETE FROM day_totals');
+  run('INSERT INTO day_totals (day, total) SELECT d.day, SUM(d.count) FROM daily d JOIN users u ON u.id = d.user_id AND u.held = 0 GROUP BY d.day');
+}
+
 /** Side effects that must not run inside a write transaction (push messages) hook in here. */
 export const hooks = { milestone: null, badge: null };
 
@@ -178,7 +185,10 @@ export function logDurood(userId, count, rid) {
     run(`UPDATE users SET total = total + ?, xp = xp + ?, streak = ?, best_streak = MAX(best_streak, ?),
          shields = ?, last_day = ? WHERE id = ?`, count, count, streak, streak, shields, day, userId);
 
-    if (!u.held) run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth <= ?)', count, userId, CFG.teamMaxDepth);
+    if (!u.held) {
+      run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth <= ?)', count, userId, CFG.teamMaxDepth);
+      bumpDay(day, count);
+    }
     evaluateFlags(userId, day);
 
     // referrer is paid only once the invitee actually recites - blocks fake sign-ups
@@ -240,6 +250,7 @@ export function setHeld(userId, held) {
   if (!u || !!u.held === held) return;
   run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth <= ?)', held ? -u.total : u.total, userId, CFG.teamMaxDepth);
   run('UPDATE users SET held = ? WHERE id = ?', held ? 1 : 0, userId);
+  for (const d of all('SELECT day, count FROM daily WHERE user_id = ?', userId)) bumpDay(d.day, held ? -d.count : d.count);
 }
 
 function refreshHidden(userId) {
@@ -308,7 +319,10 @@ export function editEntry(userId, entryId, newCount, ridIn) {
     run("INSERT INTO entries (user_id, day, count, rid, created_at, kind, ref_id) VALUES (?,?,?,?,?, 'replace', ?)", userId, e.day, newCount, `${base}:n`, now, e.id);
     run('UPDATE daily SET count = count + ? WHERE user_id = ? AND day = ?', delta, userId, e.day);
     run('UPDATE users SET total = total + ?, xp = xp + ? WHERE id = ?', delta, delta, userId);
-    if (!eu.held) run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth <= ?)', delta, userId, CFG.teamMaxDepth);
+    if (!eu.held) {
+      run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth <= ?)', delta, userId, CFG.teamMaxDepth);
+      bumpDay(e.day, delta);
+    }
     evaluateFlags(userId, e.day);
   });
   if (!duplicate) recordChallenge();
@@ -475,8 +489,8 @@ export function challengeSummary(now = Date.now()) {
   const today = dayOf(now);
   const idx = dayNum(today) - dayNum(start) + 1;                 // 1 on the first day
   const end = dayStr(dayNum(start) + days - 1);
-  const total = one('SELECT COALESCE(SUM(d.count), 0) n FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 WHERE d.day >= ?', start).n;
-  const todayCount = idx >= 1 ? one('SELECT COALESCE(SUM(d.count), 0) n FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 WHERE d.day = ?', today).n : 0;
+  const total = one('SELECT COALESCE(SUM(total), 0) n FROM day_totals WHERE day >= ?', start).n;
+  const todayCount = idx >= 1 ? (one('SELECT total FROM day_totals WHERE day = ?', today)?.total ?? 0) : 0;
   const before = total - todayCount;                             // reported before today
   const crores = Math.floor(total / CRORE);
   const milestones = milestoneList(Math.max(crores, Math.floor(target / CRORE)));
@@ -496,7 +510,7 @@ export function challengeSummary(now = Date.now()) {
   let projectedTotal = null;
   if (completeDays > 0) {
     const from = dayStr(dayNum(today) - completeDays);
-    const recent = one('SELECT COALESCE(SUM(d.count), 0) n FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 WHERE d.day >= ? AND d.day < ?', from, today).n;
+    const recent = one('SELECT COALESCE(SUM(total), 0) n FROM day_totals WHERE day >= ? AND day < ?', from, today).n;
     projectedTotal = Math.round(before + (recent / completeDays) * daysLeft);
   }
   return {
@@ -511,9 +525,13 @@ export function challengeSummary(now = Date.now()) {
 export function recordChallenge() {
   const { start, target } = challengeConfig();
   if (!start) return;
-  const total = one('SELECT COALESCE(SUM(d.count), 0) n FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 WHERE d.day >= ?', start).n;
+  const total = one('SELECT COALESCE(SUM(total), 0) n FROM day_totals WHERE day >= ?', start).n;
   const now = Date.now();
-  for (let k = 1; k <= Math.floor(total / CRORE); k++) if (!getSetting(`ch_m_${k}`)) { setSetting(`ch_m_${k}`, now); hooks.milestone?.(k); }
+  const crores = Math.floor(total / CRORE), seen = Number(getSetting('ch_m_max', '0'));
+  if (crores > seen) { // only look at crores not yet recorded; ch_m_max is cleared together with the milestones
+    for (let k = seen + 1; k <= crores; k++) if (!getSetting(`ch_m_${k}`)) { setSetting(`ch_m_${k}`, now); hooks.milestone?.(k); }
+    setSetting('ch_m_max', crores);
+  }
   if (total >= target && !getSetting('ch_done_at')) setSetting('ch_done_at', now);
 }
 
@@ -521,7 +539,7 @@ export function recordChallenge() {
 export const challengeSeries = () => {
   const { start } = challengeConfig();
   if (!start) return [];
-  return all('SELECT d.day, SUM(d.count) total FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 WHERE d.day >= ? GROUP BY d.day ORDER BY d.day LIMIT 400', start);
+  return all('SELECT day, total FROM day_totals WHERE day >= ? ORDER BY day LIMIT 400', start);
 };
 
 // ---- reads ----------------------------------------------------------------
@@ -563,34 +581,47 @@ export function getMe(userId) {
   };
 }
 
+// Boards are the same for everyone except the "this is you" marker, so the rows are computed once and shared for a short time.
+// Admin actions (hide, suspend, clear a flag) show up on boards within PUBLIC_CACHE_MS (default 30 s).
+const boardCache = new Map();
+function cachedBoard(key, compute) {
+  const ttl = Number(process.env.PUBLIC_CACHE_MS ?? 30_000);
+  const k = `${key}|${dayOf()}`, hit = boardCache.get(k);
+  if (ttl > 0 && hit && Date.now() - hit.at < ttl) return hit.rows;
+  const rows = compute();
+  if (ttl > 0) { if (boardCache.size > 60) boardCache.clear(); boardCache.set(k, { at: Date.now(), rows }); }
+  return rows;
+}
+const withMe = (rows, me) => rows.map((r, i) => ({ rank: i + 1, ...r, me: r.username === me }));
+const VISIBLE = 'u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL';
+
 export function leaderboard(userId, type, period) {
   const wk = weekStart();
   const ch = challengeConfig();
   const chFrom = ch.start || '9999-12-31', chTo = ch.start ? dayStr(dayNum(ch.start) + ch.days - 1) : '0000-01-01';
   const me = one('SELECT username FROM users WHERE id = ?', userId).username;
-  let rows;
-  if (type === 'teams') {
-    const base = period === 'week'
-      ? `SELECT a.ancestor_id id, SUM(d.count) score FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 JOIN ancestors a ON a.user_id = d.user_id
-         WHERE d.day >= ? AND a.depth <= ? GROUP BY a.ancestor_id`
-      : period === 'challenge'
-        ? `SELECT a.ancestor_id id, SUM(d.count) score FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 JOIN ancestors a ON a.user_id = d.user_id
-           WHERE d.day >= ? AND d.day <= ? AND a.depth <= ? GROUP BY a.ancestor_id`
-        : 'SELECT id, team_total score FROM users';
-    const args = period === 'week' ? [wk, CFG.teamMaxDepth] : period === 'challenge' ? [chFrom, chTo, CFG.teamMaxDepth] : [];
-    rows = all(`SELECT u.username, u.city, t.score,
-                  (SELECT COUNT(*) FROM ancestors x WHERE x.ancestor_id = u.id AND x.depth > 0 AND x.depth <= ${CFG.teamMaxDepth}) members
-                FROM (${base}) t JOIN users u ON u.id = t.id
-                WHERE u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL AND t.score > 0 AND EXISTS (SELECT 1 FROM users c WHERE c.referrer_id = u.id)
-                ORDER BY t.score DESC LIMIT 50`, ...args);
-  } else if (period === 'week' || period === 'challenge') {
-    const [from, to] = period === 'week' ? [wk, '9999-12-31'] : [chFrom, chTo];
-    rows = all(`SELECT u.username, u.city, SUM(d.count) score FROM daily d JOIN users u ON u.id = d.user_id
-                WHERE d.day >= ? AND d.day <= ? AND u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL GROUP BY u.id ORDER BY score DESC LIMIT 50`, from, to);
-  } else {
-    rows = all('SELECT username, city, total score FROM users u WHERE u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL AND total > 0 ORDER BY total DESC LIMIT 50');
-  }
-  return { rows: rows.map((r, i) => ({ rank: i + 1, ...r, me: r.username === me })), weekStart: wk };
+  const rows = cachedBoard(`${type}:${period}`, () => {
+    if (type === 'teams') {
+      // add up each member's days first (one row per member), then spread those totals up the tree: far fewer rows than joining every day
+      const from = period === 'week' ? wk : chFrom, to = period === 'week' ? '9999-12-31' : chTo;
+      const base = period === 'all'
+        ? 'SELECT id, team_total score FROM users'
+        : `WITH w AS (SELECT d.user_id, SUM(d.count) s FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 WHERE d.day >= ? AND d.day <= ? GROUP BY d.user_id)
+           SELECT a.ancestor_id id, SUM(w.s) score FROM w JOIN ancestors a ON a.user_id = w.user_id AND a.depth <= ${CFG.teamMaxDepth} GROUP BY a.ancestor_id`;
+      return all(`SELECT u.username, u.city, t.score,
+                    (SELECT COUNT(*) FROM ancestors x WHERE x.ancestor_id = u.id AND x.depth > 0 AND x.depth <= ${CFG.teamMaxDepth}) members
+                  FROM (${base}) t JOIN users u ON u.id = t.id
+                  WHERE ${VISIBLE} AND t.score > 0 AND EXISTS (SELECT 1 FROM users c WHERE c.referrer_id = u.id)
+                  ORDER BY t.score DESC LIMIT 50`, ...(period === 'all' ? [] : [from, to]));
+    }
+    if (period === 'week' || period === 'challenge') {
+      const [from, to] = period === 'week' ? [wk, '9999-12-31'] : [chFrom, chTo];
+      return all(`SELECT u.username, u.city, SUM(d.count) score FROM daily d JOIN users u ON u.id = d.user_id
+                  WHERE d.day >= ? AND d.day <= ? AND ${VISIBLE} GROUP BY u.id ORDER BY score DESC LIMIT 50`, from, to);
+    }
+    return all(`SELECT username, city, total score FROM users u WHERE ${VISIBLE} AND total > 0 ORDER BY total DESC LIMIT 50`);
+  });
+  return { rows: withMe(rows, me), weekStart: wk };
 }
 
 /**
@@ -601,22 +632,24 @@ export function leaderboard(userId, type, period) {
 export function caravanBoard(userId, metric) {
   const wk = weekStart(), prev = dayStr(dayNum(wk) - 7);
   const me = one('SELECT username FROM users WHERE id = ?', userId).username;
-  const rows = all(`SELECT u.username, u.city,
-      COALESCE(SUM(CASE WHEN d.day >= ? THEN d.count END), 0) week,
-      COALESCE(SUM(CASE WHEN d.day >= ? AND d.day < ? THEN d.count END), 0) last,
-      COUNT(DISTINCT CASE WHEN d.day >= ? AND d.count > 0 THEN d.user_id END) active,
-      (SELECT COUNT(*) FROM ancestors x WHERE x.ancestor_id = u.id AND x.depth > 0 AND x.depth <= ${CFG.teamMaxDepth}) members
-    FROM users u JOIN ancestors a ON a.ancestor_id = u.id AND a.depth <= ${CFG.teamMaxDepth}
-    LEFT JOIN (SELECT dd.user_id, dd.day, dd.count FROM daily dd JOIN users hu ON hu.id = dd.user_id AND hu.held = 0 WHERE dd.day >= ?) d ON d.user_id = a.user_id
-    WHERE u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL
-      AND EXISTS (SELECT 1 FROM users c WHERE c.referrer_id = u.id)
-    GROUP BY u.id`, wk, prev, wk, wk, prev);
-  const scored = rows.map((r) => ({
-    username: r.username, city: r.city, members: r.members, active: r.active,
-    score: metric === 'growth' ? r.week - r.last : r.active ? Math.round(r.week / r.active) : 0,
-  })).filter((r) => (metric === 'growth' ? r.score !== 0 : r.score > 0))
-    .sort((x, y) => y.score - x.score || x.username.localeCompare(y.username)).slice(0, 50);
-  return { rows: scored.map((r, i) => ({ rank: i + 1, ...r, me: r.username === me })), weekStart: wk, metric };
+  const rows = cachedBoard(`caravan:${metric}`, () => {
+    const raw = all(`WITH w AS (
+        SELECT d.user_id, SUM(CASE WHEN d.day >= ? THEN d.count ELSE 0 END) wk, SUM(CASE WHEN d.day < ? THEN d.count ELSE 0 END) last,
+               MAX(CASE WHEN d.day >= ? AND d.count > 0 THEN 1 ELSE 0 END) active
+        FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 WHERE d.day >= ? GROUP BY d.user_id),
+      t AS (SELECT a.ancestor_id id, SUM(w.wk) week, SUM(w.last) last, SUM(w.active) active
+            FROM w JOIN ancestors a ON a.user_id = w.user_id AND a.depth <= ${CFG.teamMaxDepth} GROUP BY a.ancestor_id)
+      SELECT u.username, u.city, t.week, t.last, t.active,
+             (SELECT COUNT(*) FROM ancestors x WHERE x.ancestor_id = u.id AND x.depth > 0 AND x.depth <= ${CFG.teamMaxDepth}) members
+      FROM t JOIN users u ON u.id = t.id
+      WHERE ${VISIBLE} AND EXISTS (SELECT 1 FROM users c WHERE c.referrer_id = u.id)`, wk, wk, wk, prev);
+    return raw.map((r) => ({
+      username: r.username, city: r.city, members: r.members, active: r.active,
+      score: metric === 'growth' ? r.week - r.last : r.active ? Math.round(r.week / r.active) : 0,
+    })).filter((r) => (metric === 'growth' ? r.score !== 0 : r.score > 0))
+      .sort((x, y) => y.score - x.score || x.username.localeCompare(y.username)).slice(0, 50);
+  });
+  return { rows: withMe(rows, me), weekStart: wk, metric };
 }
 
 export function teamView(userId) {
@@ -646,3 +679,6 @@ export function teamView(userId) {
     })),
   };
 }
+
+// first start after an upgrade: build the per-day public totals once
+if (!one('SELECT 1 FROM day_totals LIMIT 1') && one('SELECT 1 FROM daily LIMIT 1')) tx(() => rebuildDayTotals());

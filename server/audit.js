@@ -1,5 +1,6 @@
+import { Worker } from 'node:worker_threads';
 import { db, tx } from './db.js';
-import { CFG } from './game.js';
+import { CFG, rebuildDayTotals } from './game.js';
 
 const all = (sql, ...a) => db.prepare(sql).all(...a);
 const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -36,6 +37,13 @@ export function audit({ fix = false } = {}) {
     SELECT l.user_id, l.day, 0, l.s FROM (${LEDGER_DAILY}) l
       LEFT JOIN daily d ON d.user_id = l.user_id AND d.day = l.day WHERE d.user_id IS NULL`);
   for (const d of dailyBad) note('daily', d);
+
+  // the per-day public totals must equal the ledger of members who are not on hold
+  for (const d of all(`SELECT t.day, t.total stored, COALESCE(l.s, 0) ledger FROM day_totals t
+        LEFT JOIN (SELECT e.day, SUM(e.count) s FROM entries e JOIN users u ON u.id = e.user_id AND u.held = 0 GROUP BY e.day) l ON l.day = t.day
+        WHERE t.total != COALESCE(l.s, 0)
+      UNION ALL SELECT l.day, 0, l.s FROM (SELECT e.day, SUM(e.count) s FROM entries e JOIN users u ON u.id = e.user_id AND u.held = 0 GROUP BY e.day HAVING s != 0) l
+        LEFT JOIN day_totals t ON t.day = l.day WHERE t.day IS NULL`)) note('day_totals', d);
 
   // edits: every reversing entry negates exactly one standing entry of the same member and day, and every replacement
   // points at an entry that was reversed
@@ -80,10 +88,27 @@ export function audit({ fix = false } = {}) {
       db.exec(`UPDATE users SET held = EXISTS(SELECT 1 FROM flags f WHERE f.user_id = users.id AND f.status IN ('open','confirmed') AND f.reason != 'manual')`);
       db.prepare(`UPDATE users SET team_total = COALESCE((SELECT SUM(e.count) FROM entries e JOIN users hu ON hu.id = e.user_id AND hu.held = 0 JOIN ancestors a ON a.user_id = e.user_id
                   WHERE a.ancestor_id = users.id AND a.depth <= ?), 0)`).run(CFG.teamMaxDepth);
+      rebuildDayTotals();
       db.exec(`UPDATE users SET xp = total + COALESCE((SELECT SUM(xp) FROM events ev WHERE ev.user_id = users.id), 0)`);
     });
   }
   return { ok, fixed: !ok && fix, users: users.length, ledgerTotal: national.ledger, problems };
+}
+
+/**
+ * The audit scans the whole ledger, which blocks the server for seconds on a big database. This runs it on a worker thread with
+ * its own connection (SQLite lets readers and the writer work at once). An in-memory database cannot be shared, so tests and
+ * development run it inline.
+ */
+export function auditAsync() {
+  const t0 = Date.now();
+  if (!process.env.DB_PATH || process.env.DB_PATH === ':memory:') return Promise.resolve({ ...audit(), ms: Date.now() - t0 });
+  return new Promise((resolve, reject) => {
+    const w = new Worker(new URL('./audit-worker.js', import.meta.url));
+    w.once('message', (r) => resolve({ ...r, ms: Date.now() - t0 }));
+    w.once('error', reject);
+    w.once('exit', (c) => { if (c !== 0) reject(new Error(`audit worker exited with ${c}`)); });
+  });
 }
 
 if (process.argv[1]?.endsWith('audit.js')) {

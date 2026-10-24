@@ -51,6 +51,14 @@ Fine for the planned launch (200 to 2,000 members) **once the integrity and secu
 ## Status after the before-launch fixes
 Fixed and tested: 1 (hold + lower caps + public-code cap; phone verification still open), 6, 7, 8, 9, 10, 11, 12 (only the username check is now rate-limited; registration still says which email or phone is taken), 14, 15 (retention and deletion; storage is still local disk, so use a persistent volume), 16, and the server timeouts in 5. The scheduler overlap guard from 17 is in; the reminder window and retry parts of 17 are not. Open: 2 and 3 (performance), 4, 13, 17 (rest), 18, 19, 20, 21.
 
+## Status after the performance batch
+Done and measured (synthetic databases, same machine, 50 concurrent clients): 2 fixed, 3 mostly fixed, 17 fixed.
+- Per-day public totals (`day_totals`) replace the full challenge scan after every log. At 50,000 members a log's challenge step went from 624 ms to 0.4 ms; log throughput from about 1.6 per second to about 244 per second (10,000 members: 9 to 262 per second); `getMe` 644 ms to 8 ms.
+- Boards are cached for 30 s (`PUBLIC_CACHE_MS`) and computed by adding up each member's days first, then spreading totals up the tree. Computation at 50,000 members: challenge caravan board 8.2 s to 1.6 s, caravan average and growth 2.7 s to 0.7 s, weekly caravan total 1.2 s to 0.5 s. Cached reads: about 1,400 to 2,900 per second. **Still true:** the first request after the cache expires computes the board on the main thread, so at 50,000 members one request in 30 s per board takes up to 1.6 s and pauses everyone for that long; at 10,000 it is about a fifth of that. Moving board computation to a worker is the next step if that matters.
+- The audit runs on a worker thread (event-loop stall while it ran: 3 ms; it takes about 9 s at 50,000 members), nightly after 03:00 Pakistan time, and the admin page shows the last result and last backup.
+- Reminders: only within three hours after the chosen time, a total failure to push is retried up to four times, sends run ten at a time.
+- Not done: 4 (single instance by design), 18 (metrics), 19 (schema versions), phone verification.
+
 ## Suggested order
 - **Before launch:** 1, 6, 7, 9, 10, 11, 14, 15 (retention at least), 16.
 - **Before about 5,000 members:** 2, 3, 5, 17, 18.

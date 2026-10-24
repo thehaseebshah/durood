@@ -138,6 +138,13 @@ CREATE TABLE IF NOT EXISTS lecture_quiz (
   PRIMARY KEY (user_id, lecture_id)
 ) WITHOUT ROWID;
 
+-- per-day totals of every member whose durood counts publicly (not on hold). A tiny table that answers the challenge questions
+-- without scanning every member's daily rows; kept in step by logDurood, editEntry and setHeld, and checked by the audit.
+CREATE TABLE IF NOT EXISTS day_totals (
+  day   TEXT PRIMARY KEY,
+  total INTEGER NOT NULL
+) WITHOUT ROWID;
+
 -- short announcements, newest first; members see them in the News screen
 CREATE TABLE IF NOT EXISTS announcements (
   id         INTEGER PRIMARY KEY,

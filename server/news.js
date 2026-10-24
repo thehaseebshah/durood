@@ -1,9 +1,10 @@
-import { db } from './db.js';
+import { db, getSetting, setSetting } from './db.js';
 import { HttpError } from './auth.js';
 import { dayOf, dayNum, hooks } from './game.js';
 import { sendPush, vapidPublicKey } from './push.js';
 import { purgeOldPhotos } from './sunnah.js';
 import { backupIfDue } from './backup.js';
+import { auditAsync } from './audit.js';
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
@@ -80,16 +81,26 @@ export async function notify(userId, kind, ref, message) {
   if (!subs.length) return 0;
   if (!run('INSERT OR IGNORE INTO push_log (user_id, kind, ref, at) VALUES (?,?,?,?)', userId, kind, String(ref), Date.now()).changes) return 0;
   const payload = typeof message === 'function' ? message(u.lang) : pack(message, u.lang, kind);
-  let sent = 0;
+  let sent = 0, failed = 0;
   for (const s of subs) {
     const r = await sender(s, payload);
     if (r === 'gone') run('DELETE FROM push_subs WHERE endpoint = ?', s.endpoint);
     else if (r === 'ok') sent += 1;
+    else failed += 1;
+  }
+  // every device failed (push service down, network): forget that we tried so the next run retries, a few times at most
+  if (!sent && failed) {
+    const k = `${userId}|${kind}|${ref}`, n = (attempts.get(k) || 0) + 1;
+    attempts.set(k, n);
+    if (attempts.size > 5000) attempts.clear();
+    if (n < MAX_ATTEMPTS) run('DELETE FROM push_log WHERE user_id = ? AND kind = ? AND ref = ?', userId, kind, String(ref));
   }
   return sent;
 }
+const attempts = new Map(), MAX_ATTEMPTS = 4;
 async function notifyAll(ref, message) {
-  for (const { user_id } of all('SELECT DISTINCT user_id FROM push_subs')) await notify(user_id, 'broadcast', ref, message);
+  const ids = all('SELECT DISTINCT user_id FROM push_subs').map((r) => r.user_id);
+  for (let i = 0; i < ids.length; i += SEND_POOL) await Promise.all(ids.slice(i, i + SEND_POOL).map((id) => notify(id, 'broadcast', ref, message)));
 }
 
 /**
@@ -99,15 +110,31 @@ async function notifyAll(ref, message) {
 export async function runReminders(now = Date.now()) {
   const hm = new Date(now + 5 * 3600e3).toISOString().slice(11, 16);
   const day = new Date(now + 5 * 3600e3).toISOString().slice(0, 10);
+  const mins = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
   const rows = all(`SELECT DISTINCT u.id, u.reminder_time, u.streak, u.last_day FROM users u JOIN push_subs p ON p.user_id = u.id
                     WHERE u.suspended = 0 AND u.deleted_at IS NULL`);
-  let sent = 0;
+  const jobs = [];
   for (const u of rows) {
     if (u.last_day === day) continue; // already recited today
-    if (u.reminder_time && hm >= u.reminder_time) sent += await notify(u.id, 'remind', day, MSG.remind);
-    if (hm >= '20:00' && u.streak >= 2 && u.last_day && dayNum(day) - dayNum(u.last_day) === 1) sent += await notify(u.id, 'streak', day, MSG.streak);
+    // the daily reminder is for the three hours after the chosen time: a member who sets 07:30 at 21:00 is not pinged at once
+    if (u.reminder_time && mins(hm) >= mins(u.reminder_time) && mins(hm) < mins(u.reminder_time) + REMIND_WINDOW_MIN) jobs.push(() => notify(u.id, 'remind', day, MSG.remind));
+    if (hm >= '20:00' && u.streak >= 2 && u.last_day && dayNum(day) - dayNum(u.last_day) === 1) jobs.push(() => notify(u.id, 'streak', day, MSG.streak));
   }
+  let sent = 0;
+  for (let i = 0; i < jobs.length; i += SEND_POOL) sent += (await Promise.all(jobs.slice(i, i + SEND_POOL).map((j) => j()))).reduce((a, b) => a + b, 0);
   return sent;
+}
+const REMIND_WINDOW_MIN = 180, SEND_POOL = 10;
+
+/** After 03:00 Pakistan time, once a day: re-check every total against the ledger on a worker thread (never blocks members). */
+export async function nightlyAudit(now = Date.now()) {
+  const day = new Date(now + 5 * 3600e3).toISOString().slice(0, 10);
+  if (new Date(now + 5 * 3600e3).getUTCHours() < 3 || getSetting('last_audit_day') === day) return null;
+  setSetting('last_audit_day', day);
+  const r = await auditAsync();
+  setSetting('last_audit', JSON.stringify({ at: Date.now(), ok: r.ok, problems: r.problems.length, ms: r.ms }));
+  if (!r.ok) console.error(`NIGHTLY AUDIT FOUND ${r.problems.length} PROBLEM(S):`, JSON.stringify(r.problems.slice(0, 5)));
+  return r;
 }
 
 export function startScheduler() {
@@ -124,6 +151,7 @@ export function startScheduler() {
   const housekeeping = () => {
     try { purgeOldPhotos(); } catch (e) { console.error('photo purge', e); }
     try { backupIfDue(); } catch (e) { console.error('backup', e); }
+    nightlyAudit().catch((e) => console.error('audit', e));
   };
   const h = setInterval(housekeeping, 3600e3);
   h.unref();

@@ -51,6 +51,7 @@ Environment variables:
 | `ADMIN_IP_ALLOWLIST` | Comma-separated addresses allowed to use the admin API (optional; ten wrong admin keys lock an address out for 15 minutes either way) |
 | `MAX_DAILY`, `MAX_DAILY_NEW` | Most durood one member can report in a day (default 50,000; 10,000 during their first 7 days) |
 | `PUBLIC_DAILY_CAP` | Sign-ups per day through the public founders code (default 200; change it on the admin page) |
+| `PUBLIC_CACHE_MS` | How long boards and the public meter are cached (default 30 s boards / 15 s meter; `0` turns caching off, used by the tests) |
 | `PHOTO_KEEP_DAYS` | Days a decided Sunnah/class photo is kept before the file is deleted (default 14). Deleting an account deletes its photos at once |
 | `BACKUP_DIR`, `BACKUP_KEEP`, `BACKUP_EVERY_HOURS` | Nightly database snapshot (default every 24 h, newest 14 kept). Also `node scripts/backup.mjs`. Copy the folder off the machine, and back up `UPLOAD_DIR` and `AUTH_SECRET` separately |
 | `UPLOAD_DIR` | Where photos are stored (default `data/uploads`); must be on a persistent volume |
