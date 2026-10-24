@@ -37,7 +37,6 @@ const S = {
 };
 
 const MILESTONES = [10_000, 100_000, 1_000_000, 10_000_000, 100_000_000];   // referral tree
-const CARAVAN_MILESTONES = [10_000, 100_000, 1_000_000];                  // the people I invited myself
 
 const t = (k) => I18N[S.lang][k] ?? I18N.en[k] ?? k;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -98,7 +97,7 @@ function setSession(token, me) {
 function logout(render = true) {
   S.bh = null; S.bhDetail = null; S.bhLists = null;
   S.token = null; S.me = null; ls.del('token');
-  S.tab = 'home'; S.team = S.learn = S.feed = S.board.data = null;
+  S.tab = 'home'; S.team = S.cv = S.learn = S.feed = S.board.data = null;
   if (render) draw();
 }
 
@@ -265,7 +264,7 @@ function shell() {
   <a class="skip" href="#main">${t('skip_to')}</a>
   <header class="hd"><span>${t('app')}</span><span class="row"><span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button></span></header>
   <main id="main" tabindex="-1" class="wrap tab-${S.tab}"><h1 class="sr">${t('nav_' + S.tab)}</h1>${view()}</main>
-  <nav class="tabs" aria-label="${esc(t('app'))}"><div class="brand">${t('app')}</div>${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" ${S.tab === k ? 'aria-current="page"' : ''} data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}</nav>
+  <nav class="tabs" aria-label="${esc(t('app'))}"><div class="brand">${t('app')}</div>${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" ${S.tab === k ? 'aria-current="page"' : ''} data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em>${k === 'caravan' && (S.me.caravanInvites || S.me.caravanRequests) ? '<i class="pip" aria-hidden="true"></i>' : ''}</button>`).join('')}</nav>
   ${S.player ? playerModal() : ''}
   ${S.bhDetail ? detailModal() : ''}
   ${S.celebrate ? celebrateModal() : ''}
@@ -335,7 +334,7 @@ function home() {
   ${m.quests.filter((q) => q.group === 'bonus').map((q) => quest(q, true)).join('')}
 
   <h3>${t('caravan_title')}</h3>
-  <button class="rowlink" data-act="tab" data-tab="caravan"><span>${fmt(m.caravan.members)} ${t('members')}</span><b>${fmt(m.total + m.caravan.down)}</b></button>
+  <button class="rowlink" data-act="tab" data-tab="caravan">${m.caravan ? `<span>${esc(m.caravan.name)} · ${fmt(m.caravan.members)} ${t('members')}</span><b>${m.caravanRequests ? `${m.caravanRequests} ` : ''}→</b>` : `<span>${m.caravanInvites ? t('cv_home_invited')(m.caravanInvites) : t('cv_home_none')}</span><b class="ar">→</b>`}</button>
 
   <p class="note">${t('reminder_note')}</p>
   </div></div>`;
@@ -620,7 +619,7 @@ function rank() {
   const grp = ['caravans', 'trees', 'cities'].includes(b.type);
   const list = b.type === 'league' ? leagueView() : !rows ? '<p class="muted center">…</p>' : rows.length ? `<ul class="lb">${rows.map((r) => `
     <li class="${r.me ? 'me' : ''}"><span class="rank">${r.rank}</span>
-      <span class="name">${esc(r.caravanName || r.username)}${r.me ? ` <em class="tag">${t('you')}</em>` : ''}<small>${r.caravanName ? `${esc(r.username)}${r.city ? ' · ' : ''}` : ''}${r.city ? `${esc(r.city)}` : ''}${grp ? `${r.city ? ' · ' : ''}${fmt(r.members)} ${t('members')}${b.metric === 'average' ? ` · ${fmt(r.active)} ${t('active')}` : ''}` : ''}</small></span>
+      <span class="name">${esc(r.name ?? r.username)}${r.me ? ` <em class="tag">${t(b.type === 'caravans' ? 'cv_yours' : 'you')}</em>` : ''}<small>${r.city ? `${esc(r.city)}` : ''}${grp ? `${r.city ? ' · ' : ''}${fmt(r.members)} ${t('members')}${b.metric === 'average' ? ` · ${fmt(r.active)} ${t('active')}` : ''}` : ''}</small></span>
       <span class="score">${grp && b.metric === 'growth' && r.score > 0 ? '+' : ''}${fmt(r.score)}</span></li>`).join('')}</ul>` : `<p class="muted center">${t(b.type === 'cities' ? 'empty_cities' : 'empty_board')}</p>`;
   const kinds = [['users', 'rk_people'], ['league', 'rk_league'], ['caravans', 'rk_caravans'], ['trees', 'rk_trees'], ['cities', 'rk_cities']];
   const note = b.type === 'league' ? '' : grp ? `${t('rk_note_' + b.type)} ${t('cv_note_' + b.metric)}` : (b.period === 'challenge' ? t('challenge_note') : '');
@@ -642,40 +641,66 @@ function rank() {
 function uplineBlock(tm) {
   if (!tm?.upline?.length) return '';
   return `<h3>${t('upline_title')}</h3>
-  <ul class="lb upline">${tm.upline.map((u) => `<li><span class="name">${esc(u.caravanName || u.username)}<small>${u.caravanName ? `${esc(u.username)} · ` : ''}${u.city ? `${esc(u.city)} · ` : ''}${fmt(u.members)} ${t('members')}</small></span><span class="score">${fmt(u.team)}</span></li>`).join('')}</ul>`;
+  <ul class="lb upline">${tm.upline.map((u) => `<li><span class="name">${esc(u.username)}<small>${u.city ? `${esc(u.city)} · ` : ''}${fmt(u.members)} ${t('members')}</small></span><span class="score">${fmt(u.team)}</span></li>`).join('')}</ul>`;
 }
 
+// ---- caravans: a group you create and name, joined by invitation or by asking ----------------------------------------------------
+const cvRow = (r, extra = '') => `<li><span class="name">${esc(r.username)}${r.owner ? ` <em class="tag">${t('cv_owner')}</em>` : ''}<small>${r.city ? `${esc(r.city)} · ` : ''}${t('this_week')} ${fmt(r.week)}${r.today ? ` · ${t('cv_today')}` : ''}</small></span><span class="score">${fmt(r.total)}</span>${extra}</li>`;
+function cvJoinOrCreate(cv) {
+  return `<h3 class="first-d">${t('caravan_title')}</h3>
+  <p class="muted">${t('cv_intro')}</p>
+  ${cv.invitations.length ? `<h3>${t('cv_invitations')}</h3>${cv.invitations.map((i) => `<div class="circlecard"><b>${esc(i.name)}</b> · ${fmt(i.members)} ${t('members')}
+      <div class="row" style="margin-top:8px"><button class="blk fill1" data-act="cvaccept" data-id="${i.id}"><span>${t('cv_join_it')}</span><b class="ar">→</b></button><button class="chip" data-act="cvdecline" data-id="${i.id}">${t('decline')}</button></div></div>`).join('')}` : ''}
+  <form novalidate class="cname" data-form="cvcreate"><label for="cv-new">${t('cv_create')}</label>
+    <div class="row"><input id="cv-new" name="name" type="text" maxlength="20" autocomplete="off" autocapitalize="off" dir="ltr" placeholder="${esc(t('cv_name_ph'))}"><button class="chip solid" type="submit">${t('cv_create_btn')}</button></div>
+    <div class="hint" id="cvcheck">${t('cv_name_hint')}</div></form>
+  <h3>${t('cv_join_title')}</h3>
+  <div class="padx bh"><p class="muted">${t('cv_join_text')}</p>
+    <input id="cvjoinq" type="text" aria-label="${esc(t('cv_join_ph'))}" autocomplete="off" autocapitalize="off" dir="ltr" placeholder="${esc(t('cv_join_ph'))}"><div id="cvjoinres" class="chips"></div>
+    ${cv.requests.length ? `<b>${t('cv_my_requests')}</b>${cv.requests.map((r) => `<div class="row between"><span>${esc(r.name)}</span><button class="chip" data-act="cvcancelreq" data-id="${r.id}">${t('cv_cancel')}</button></div>`).join('')}` : ''}</div>`;
+}
+function cvHome(cv) {
+  const c = cv.caravan, ks = cv.streak, shown = S.cvAll ? cv.members : cv.members.slice(0, 8);
+  const pending = cv.pending || [];
+  return `<h3 class="first-d">${t('caravan_title')}</h3>
+  <div class="uname cvname">${esc(c.name)}</div>
+  <div class="muted padx">${t('cv_owner_is')(esc(c.ownerName))}</div>
+  <div class="stats"><div><b>${fmt(c.members)}</b><span>${t('c_members')}</span></div><div><b>${fmt(c.total)}</b><span>${t('c_total')}</span></div><div><b>${fmt(c.week)}</b><span>${t('c_week')}</span></div></div>
+  <div class="lvl"><div class="row between"><span>${t('next_milestone')}</span><b>${fmt(c.next)}</b></div>${bar(c.next === c.prev ? 100 : ((c.total - c.prev) / (c.next - c.prev)) * 100)}</div>
+  ${ks.active ? `<div class="karwan"><b>${uiIcon('flame', 16, 1.8)} ${t('karwan_streak')(ks.streak)}</b>
+      <div>${t('karwan_today')(fmt(ks.today), fmt(ks.size))}</div>
+      ${ks.missing.length ? `<div class="muted">${t('karwan_missing')} ${ks.missing.map((n) => `<span class="chipname">${esc(n)}</span>`).join(' ')}</div>` : ''}</div>` : `<p class="note">${t('karwan_need')}</p>`}
+  <h3>${t('cv_members')} (${fmt(c.members)})</h3>
+  <ul class="lb">${shown.map((m) => cvRow(m, c.owner && !m.owner ? `<button class="chip" data-act="cvremove" data-u="${esc(m.username)}" aria-label="${esc(t('cv_remove'))}" title="${esc(t('cv_remove'))}">✕</button>` : '')).join('')}</ul>
+  ${cv.members.length > 8 && !S.cvAll ? `<button class="chip more" data-act="cvall">${t('cv_show_all')(fmt(cv.members.length))}</button>` : ''}
+  ${c.owner ? `<h3>${t('cv_invite_title')}</h3><div class="padx bh">
+      <input id="cvinvq" type="text" aria-label="${esc(t('cv_invite_ph'))}" autocomplete="off" autocapitalize="off" dir="ltr" placeholder="${esc(t('cv_invite_ph'))}"><div id="cvinvres" class="chips"></div>
+      ${pending.length ? `<b>${t('cv_pending')}</b>${pending.map((p) => `<div class="circlecard"><b>${esc(p.username)}</b>${p.city ? ` · ${esc(p.city)}` : ''}
+        <p class="muted">${p.kind === 'request' ? t('cv_asked') : t('cv_invited')}</p>
+        <div class="row">${p.kind === 'request' ? `<button class="blk fill1" data-act="cvreqyes" data-u="${esc(p.username)}"><span>${t('accept')}</span><b class="ar">→</b></button><button class="chip" data-act="cvreqno" data-u="${esc(p.username)}">${t('decline')}</button>` : `<button class="chip" data-act="cvcancelinv" data-u="${esc(p.username)}">${t('cv_cancel')}</button>`}</div></div>`).join('')}` : ''}</div>
+    <form novalidate class="cname" data-form="cvrename"><label for="cv-rename">${t('cv_rename')}</label>
+      <div class="row"><input id="cv-rename" name="name" type="text" maxlength="20" autocomplete="off" autocapitalize="off" dir="ltr" value="${esc(c.name)}"><button class="chip solid" type="submit">${t('save')}</button></div>
+      <div class="hint" id="cvcheck">${t('cv_name_hint')}</div></form>` : ''}
+  <div class="padx" style="margin-top:14px"><button class="chip" data-act="cvleave">${t('cv_leave')}</button></div>`;
+}
 function caravan() {
-  const m = S.me, tm = S.team;
+  const m = S.me, tm = S.team, cv = S.cv;
   const link = `${location.origin}/?invite=${m.username}`;
-  const own = m.total + m.caravan.down;                           // the caravan: me and the people I invited myself
-  const next = CARAVAN_MILESTONES.find((x) => x > m.caravan.down) || CARAVAN_MILESTONES.at(-1);
-  const prev = CARAVAN_MILESTONES.filter((x) => x <= m.caravan.down).at(-1) || 0;
+  const main = !cv ? '<p class="muted center">…</p>' : cv.caravan ? cvHome(cv) : cvJoinOrCreate(cv);
   return `<div class="cols"><div class="col">
+  ${main}
+  </div><div class="col">
   <h3 class="first-d">${t('your_code')}</h3>
+  <p class="note first">${t('cq_def')}</p>
   <div class="code">${esc(m.username)}</div>
   <div class="muted" style="margin-top:12px">${t('your_link')}</div>
   <div class="link">${esc(link)}</div>
   <div class="invleft"><b>${m.invites.left}</b> <span>${t('invites_left')} · ${N(`${m.invites.used} / ${m.invites.cap}`)}</span><small>${t('invites_next')(m.invites.nextAt)}</small></div>
   <div class="row" style="margin-top:12px"><button class="blk wa fill1" data-act="wa"><span class="lab">${uiIcon('share', 22, 1.8)} ${t('share_wa')}</span><b class="ar">→</b></button><button class="chip" data-act="copy" data-text="${esc(link)}">${t('copy')}</button></div>
-  <p class="note">${t('cq_def')}</p>
   ${burhanCaravan()}
-  <h3>${t('caravan_title')}</h3>
-  <p class="muted">${t('caravan_sub')}</p>
-  <form novalidate class="cname" data-form="cname"><label for="cname">${m.caravanName ? t('cname_yours') : t('cname_title')}</label>
-    <div class="row"><input id="cname" name="name" type="text" maxlength="20" autocomplete="off" autocapitalize="off" dir="ltr" placeholder="${esc(t('cname_ph'))}" value="${esc(m.caravanName || '')}"><button class="chip solid" type="submit">${t('save')}</button></div>
-    <div class="hint" id="cnamecheck">${t('cname_hint')}</div></form>
-  <div class="stats"><div><b>${fmt(m.caravan.members)}</b><span>${t('c_members')}</span></div><div><b>${fmt(own)}</b><span>${t('c_total')}</span></div><div><b>${tm ? fmt(tm.caravan.week) : '…'}</b><span>${t('c_week')}</span></div></div>
-  <div class="lvl"><div class="row between"><span>${t('next_milestone')}</span><b>${fmt(next)}</b></div>${bar(next === prev ? 100 : ((m.caravan.down - prev) / (next - prev)) * 100)}</div>
-  </div><div class="col">
-  ${!tm ? '' : tm.karwan.active ? `<div class="karwan"><b>${uiIcon('flame', 16, 1.8)} ${t('karwan_streak')(tm.karwan.streak)}</b>
-      <div>${t('karwan_today')(fmt(tm.karwan.today), fmt(tm.karwan.size))}</div>
-      ${tm.karwan.missing.length ? `<div class="muted">${t('karwan_missing')} ${tm.karwan.missing.map((n) => `<span class="chipname">${esc(n)}</span>`).join(' ')}</div>` : ''}</div>`
-    : `<p class="note">${t('karwan_need')}</p>`}
-
   <h3>${t('direct_list')} (${fmt(m.team.direct)})</h3>
   ${!tm ? '…' : tm.direct.length ? `<ul class="lb">${tm.direct.map((d) => `
-    <li><span class="name">${esc(d.caravanName || d.username)}<small>${d.caravanName ? `${esc(d.username)} · ` : ''}${d.city ? `${esc(d.city)} · ` : ''}${fmt(d.total)} · ${t('this_week')} ${fmt(d.week)}</small></span><span class="score">${fmt(d.total)}</span></li>`).join('')}</ul>` : `<p class="muted">${t('none_yet')}</p>`}
+    <li><span class="name">${esc(d.username)}<small>${d.city ? `${esc(d.city)} · ` : ''}${fmt(d.total)} · ${t('this_week')} ${fmt(d.week)}</small></span><span class="score">${fmt(d.total)}</span></li>`).join('')}</ul>` : `<p class="muted">${t('none_yet')}</p>`}
   ${uplineBlock(tm)}
   </div></div>`;
 }
@@ -926,7 +951,7 @@ async function loadLive() {
 }
 // Every redraw rebuilds the page. So what the person typed, and where their cursor was, is carried over by name.
 const fieldKey = (el) => `${el.closest('form')?.dataset.form || ''}|${el.name || el.id || (el.hasAttribute('data-city') ? 'city' : '') || el.dataset.cbox || el.dataset.rbox || ''}`;
-const FIELDS = 'input[name]:not([type=file]):not([type=hidden]), textarea, input[data-city], input[data-cbox], input[data-rbox], #cname, #masulq, select[name]';
+const FIELDS = 'input[name]:not([type=file]):not([type=hidden]), textarea, input[data-city], input[data-cbox], input[data-rbox], #cv-new, #cv-rename, #cvinvq, #cvjoinq, #masulq, select[name]';
 function snapshotFields() {
   const snap = new Map();
   app.querySelectorAll(FIELDS).forEach((el) => { const k = fieldKey(el); if (k.endsWith('|')) return; snap.set(k, el.type === 'radio' || el.type === 'checkbox' ? el.checked : el.value); });
@@ -1007,7 +1032,7 @@ async function enterTab(tab) {
   try {
     if (tab === 'rank') { S.board.data = null; draw(); S.board.data = await api(boardUrl(S.board)); }
     if (inBurhan() && ['home', 'me', 'caravan'].includes(tab)) { loadBurhan().then(async () => { if (tab === 'caravan' && S.bh && (S.bh.roles.saaliks || S.bh.roles.razakars || S.bh.roles.requests)) { S.bhLists = { saaliks: S.bh.roles.saaliks ? (await api('/burhan/saaliks')).saaliks : [], razakars: S.bh.roles.razakars ? (await api('/burhan/razakars')).razakars : [], requests: S.bh.roles.requests ? (await api('/burhan/requests')).requests : [] }; if (S.tab === 'caravan') draw(); } }); }
-    if (tab === 'caravan') { S.team = await api('/team'); }
+    if (tab === 'caravan') { [S.team, S.cv] = await Promise.all([api('/team'), api('/caravan')]); }
     if (tab === 'me') { [S.history, S.team] = await Promise.all([api('/history'), api('/team')]); }
     if (tab === 'feed') {
       S.feed = null; draw();
@@ -1190,6 +1215,18 @@ app.addEventListener('click', async (ev) => {
       return enterTab('feed');
     } catch (e) { toast(errText(e)); el.disabled = false; }
     return;
+  }
+  if (act.startsWith('cv')) {
+    const call = async (path, body, after) => { try { const r = await api(path, 'POST', body); if (r.view) S.cv = r.view; if (r.me) S.me = r.me; if (after) after(r); } catch (e) { toast(errText(e)); } draw(); };
+    if (act === 'cvall') { S.cvAll = true; return draw(); }
+    if (act === 'cvinvite') return call('/caravan/invite', { username: el.dataset.u }, (r) => toast(r.joined ? t('saved') : t('cv_invited')));
+    if (act === 'cvjoin') return call('/caravan/join', { name: el.dataset.name }, (r) => toast(r.joined ? t('saved') : t('cv_asked_sent')));
+    if (act === 'cvaccept' || act === 'cvdecline') return call(`/caravan/invitations/${el.dataset.id}`, { accept: act === 'cvaccept' });
+    if (act === 'cvreqyes' || act === 'cvreqno') return call(`/caravan/requests/${encodeURIComponent(el.dataset.u)}`, { accept: act === 'cvreqyes' });
+    if (act === 'cvcancelreq') return call('/caravan/cancel', { caravanId: Number(el.dataset.id) });
+    if (act === 'cvcancelinv') return call('/caravan/cancel', { username: el.dataset.u });
+    if (act === 'cvremove') { if (!confirm(t('cv_remove_ask')(el.dataset.u))) return; return call('/caravan/remove', { username: el.dataset.u }); }
+    if (act === 'cvleave') { if (!confirm(t('cv_leave_ask'))) return; S.cvAll = false; return call('/caravan/leave', {}); }
   }
   if (act === 'bhactivate') {
     el.disabled = true; S.bhError = '';
@@ -1401,17 +1438,18 @@ app.addEventListener('submit', async (ev) => {
       S.bhDetail.data = await api(`/burhan/razakars/${encodeURIComponent(S.bhDetail.username)}`);
       S.bhLists = { ...S.bhLists, razakars: (await api('/burhan/razakars')).razakars };
       toast(t('saved')); draw();
-    } else if (kind === 'cname') {
-      S.me = (await api('/caravan/name', 'PUT', { name: f.name })).me;
-      S.team = await api('/team');
-      toast(t('saved')); draw();
+    } else if (kind === 'cvcreate') {
+      const r = await api('/caravan', 'POST', { name: f.name });
+      S.cv = r.view; S.me = r.me; toast(t('saved')); draw();
+    } else if (kind === 'cvrename') {
+      S.cv = (await api('/caravan/name', 'PUT', { name: f.name })).view; toast(t('saved')); draw();
     } else if (kind === 'delete') {
       if (!confirm(t('delete_confirm'))) { btn.disabled = false; return; }
       await api('/me', 'DELETE', { password: f.password });
       logout(false); S.authMode = 'login'; draw(); toast(t('deleted'));
     }
   } catch (e) {
-    if (kind === 'settings' || kind === 'delete' || kind === 'citysave' || kind === 'cname' || kind === 'assign') { toast(errText(e)); btn.disabled = false; }
+    if (kind === 'settings' || kind === 'delete' || kind === 'citysave' || kind === 'cvcreate' || kind === 'cvrename' || kind === 'assign') { toast(errText(e)); btn.disabled = false; }
     else { S.error = errText(e); draw(); }
   }
 });
@@ -1481,14 +1519,30 @@ app.addEventListener('input', (ev) => {
     }, 300);
     return;
   }
-  const cn = ev.target.closest('#cname');
+  const cs = ev.target.closest('#cvinvq, #cvjoinq');
+  if (cs) {
+    clearTimeout(checkTimer);
+    checkTimer = setTimeout(async () => {
+      const out = cs.id === 'cvinvq' ? $('#cvinvres') : $('#cvjoinres'), v = cs.value.trim();
+      if (v.length < 2) { out.innerHTML = ''; return; }
+      try {
+        const r = await api(`/caravan/search?q=${encodeURIComponent(v)}`);
+        out.innerHTML = cs.id === 'cvinvq'
+          ? r.usernames.map((u) => `<button class="chip" data-act="cvinvite" data-u="${esc(u)}">${esc(u)}</button>`).join('')
+          : r.caravans.map((c) => `<button class="chip" data-act="cvjoin" data-name="${esc(c.name)}">${esc(c.name)} · ${fmt(c.members)}</button>`).join('');
+        if (!out.innerHTML) out.innerHTML = `<small class="muted">${t('cv_none_found')}</small>`;
+      } catch { /* ignore */ }
+    }, 300);
+    return;
+  }
+  const cn = ev.target.closest('#cv-new, #cv-rename');
   if (cn) {
     clearTimeout(checkTimer);
     checkTimer = setTimeout(async () => {
-      const out = $('#cnamecheck'), v = cn.value.trim();
-      if (!v || v === S.me.caravanName) { out.className = 'hint'; out.textContent = t('cname_hint'); return; }
+      const out = $('#cvcheck'), v = cn.value.trim();
+      if (!v || v === S.cv?.caravan?.name) { out.className = 'hint'; out.textContent = t('cv_name_hint'); return; }
       try {
-        const r = await api(`/caravan-name-check?u=${encodeURIComponent(v)}`);
+        const r = await api(`/caravan/name-check?u=${encodeURIComponent(v)}`);
         out.className = 'hint ' + (r.ok ? 'ok' : 'bad');
         out.textContent = r.ok ? `✓ ${t('ok_free')}` : r.reason ? t('err').bad_caravan_name : t('err').caravan_name_taken;
       } catch { /* the server checks again on save */ }

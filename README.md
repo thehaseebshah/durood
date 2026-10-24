@@ -72,13 +72,13 @@ curl -X POST $URL/api/admin/lectures -H "x-admin-key: $ADMIN_KEY" -H 'content-ty
 
 ## What's in the MVP
 
-- **Accounts:** username (unique, case-insensitive; doubles as the invite code), email, WhatsApp number (any country, normalised to `+<code>…`), password. Login by username, email or phone. Usernames and caravan names share one namespace and can never look like a phone number.
+- **Accounts:** username (unique, case-insensitive; doubles as the invite code), email, WhatsApp number (any country, normalised to `+<code>…`), password. Login by username, email or phone. Usernames and caravan names share one namespace (case-insensitive) and can never look like a phone number.
 - **Daily durood:** tap-counter or type a number. Pakistan-time days (UTC+5). Anti-cheat caps: 50,000 per day (10,000 in a member's first week). A day above 20,000, or above 5,000 for an account under two weeks old, is flagged and that member's durood is held out of the public, challenge and caravan totals until an admin clears it.
 - **Priorities:** durood stays the main earner; Sunnah, the weekly lecture, reflections and replies pay small, balanced amounts (docs/SPEC.md section 18).
 - **RPG layer:** XP (1 per durood + milestone and quest bonuses), levels with a "Musafir → Muqarrab" title ladder, daily streaks with *streak shields* (one earned per 7-day streak, auto-saves a missed day), daily/weekly quests, 18 badges.
-- **Network layer:** unlimited-depth referral tree stored as a closure table. A member's *caravan* is themselves plus the people they invited directly; their *Qabila* is everyone under them at every depth. Both have totals, boards and badges.
+- **Two kinds of group:** a *Qabila* is everyone under a member in the invite tree, at every depth (stored as a closure table; it has its own totals, boards and badges). A *caravan* is a group a member creates and names, joined by the owner's invitation (by username) or by asking; one caravan per member, no size limit. Caravan totals, average and growth boards, the caravan streak and the caravan badges (Caravan Week/Month, group milestones) belong to the named group.
 - **Referral reward is delayed:** the inviter gets 500 points only once the invitee has recited 100 durood in all (blocks fake sign-ups), and the weekly invite quest counts only such invitees.
-- **Leaderboards:** weekly / all-time, individuals / caravans. Public; there is no opt-out. Flagged members are hidden until reviewed.
+- **Leaderboards:** weekly / all-time, individuals / caravans / Qabila / cities, plus the weekly league. Public; there is no opt-out. Flagged members are hidden until reviewed.
 - **Feed, likes, reflections:** see docs/SPEC.md section 15. Seerat Circle link on Home; one featured lecture a week with a quiz; sunnah photos; comments on the lecture (after its quiz) and short replies; a daily written reflection; likes earn the poster points; reports hide content.
 - **National meter:** total durood across everyone vs a target.
 
