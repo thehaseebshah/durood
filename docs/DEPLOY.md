@@ -11,7 +11,7 @@ fly auth signup                                  # or: fly auth login   (needs a
 cd durood
 # 1. edit fly.toml: change `app = "seerah-quest-qa"` to a name nobody has taken
 fly apps create <your-app-name>
-fly volumes create quest_data --region bom --size 3
+fly volumes create quest_data --region bom --size 1   # 1 GB is plenty for QA; grow later with `fly volumes extend`
 # 2. secrets (never commit these)
 fly secrets set \
   ADMIN_KEY="$(openssl rand -base64 36 | tr -d '/+=' | cut -c1-40)" \
@@ -70,4 +70,4 @@ This deletes everything on the volume's database (keep `/data/backups` if you wa
 The image is plain Node with one volume mounted at `/data`, so any host with a persistent disk works (Render, Railway, a VPS with `docker run -v quest:/data -p 80:8080 …`). Set the same environment variables; behind a proxy set `TRUST_PROXY=1` (or `CLIENT_IP_HEADER` if the host sets a trusted client-IP header).
 
 ## Cost
-Roughly a few US dollars a month for one small machine plus a 3 GB volume (check Fly's current pricing).
+About $2 to 4 a month: one shared-cpu-1x machine at 256 MB (about $2) plus a 1 GB volume (about $0.15 per GB) and volume snapshots. New Fly accounts have no free tier and need a card; check fly.io/pricing for current rates. Measured memory: 77 MB peak while serving a 10,000-member test database, so 256 MB has plenty of room.
