@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import crypto from 'node:crypto';
+import { gzipSync } from 'node:zlib';
 import { db, tx, getSetting } from './db.js';
 import * as burhan from './burhan.js';
 import { HttpError, hashPassword, checkPassword, signToken, verifyToken, rateLimit, lockedOut, recordFailure, clientIp, sameSecret } from './auth.js';
@@ -19,6 +20,7 @@ import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChall
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const run = (sql, ...a) => db.prepare(sql).run(...a);
+const all = (sql, ...a) => db.prepare(sql).all(...a);
 
 // ---- validation -----------------------------------------------------------
 const RESERVED = new Set(['admin', 'root', 'support', 'durood', 'qafila', 'quest', 'seerah', 'seerat', 'api', 'null', 'undefined']);
@@ -35,12 +37,18 @@ const EMAIL = { test: (e) => typeof e === 'string' && e.length <= 254 && EMAIL_R
  * code is put in front and a leading 0 dropped. Pakistani 03xx numbers keep working without a country.
  */
 export function normalizePhone(raw, cc) {
-  let p = String(raw || '').replace(/[\s\-().]/g, '');
+  let p = String(raw || '').replace(/[\s\-.]/g, '').replace(/^(\+\d{1,3})\(0\)/, '$1').replace(/[()]/g, ''); // "+44 (0)7911…": the trunk 0 in brackets is not part of the number
   if (p.startsWith('00')) p = '+' + p.slice(2);
   if (!p.startsWith('+')) {
-    if (/^03\d{9}$/.test(p)) p = '+92' + p.slice(1);
-    else if (/^92\d{10}$/.test(p)) p = '+' + p;
-    else if (cc && geo.dialOf(cc) && /^\d{4,14}$/.test(p)) p = `+${geo.dialOf(cc)}${p.replace(/^0+/, '')}`;
+    const dial = cc && geo.dialOf(cc);
+    if (!cc || cc === 'PK') {
+      if (/^03\d{9}$/.test(p)) p = '+92' + p.slice(1);
+      else if (/^92\d{10}$/.test(p)) p = '+' + p;
+      else if (dial && /^\d{4,14}$/.test(p)) p = `+${dial}${p.replace(/^0+/, '')}`;
+    } else if (dial && /^\d{4,14}$/.test(p)) {
+      // a national number that already starts with the country's dial code is that number, not a second copy of the code
+      p = p.startsWith(dial) && p.length >= dial.length + 7 && !p.startsWith('0') ? `+${p}` : `+${dial}${p.replace(/^0+/, '')}`;
+    }
   }
   return /^\+[1-9]\d{7,14}$/.test(p) && geo.knownDialCode(p) ? p : null;
 }
@@ -262,6 +270,7 @@ route('PATCH', '/api/me', async ({ user, body }) => {
 
 route('POST', '/api/log', ({ user, body }) => {
   rateLimit(`log:${user}`, 60, 60e3);
+  compete.ensureWeekClosed(); // the first durood of a new week must find last week's promotions already made
   const result = logDurood(user, Number(body.count), body.rid);
   return { ...result, me: getMe(user) };
 });
@@ -451,9 +460,23 @@ route('POST', '/api/admin/lectures', { auth: false, admin: true }, ({ body }) =>
 });
 route('GET', '/api/admin/lectures', { auth: false, admin: true }, () => ({ lectures: db.prepare('SELECT id, youtube_id, title_en, speaker, week_start, min_seconds, xp FROM lectures ORDER BY week_start DESC, id DESC LIMIT 60').all() }));
 route('DELETE', '/api/admin/lectures/:id', { auth: false, admin: true }, ({ params }) => {
-  run('DELETE FROM lecture_starts WHERE lecture_id = ?', Number(params.id));
-  run('DELETE FROM lecture_quiz WHERE lecture_id = ?', Number(params.id));
-  run('DELETE FROM lectures WHERE id = ?', Number(params.id));
+  const id = Number(params.id);
+  tx(() => { // all or nothing: comments, their replies, likes and reports go with the lecture
+    // the points the comments and their likes paid go with them, so every member's XP still equals their events
+    const gone = all(`SELECT user_id, kind, ref, xp FROM events WHERE (kind = 'comment' AND ref = ?) OR (kind = 'like' AND ref IN
+                      (SELECT 'comment:' || c.id || ':' || l.user_id FROM lecture_comments c JOIN likes l ON l.kind = 'comment' AND l.item_id = c.id WHERE c.lecture_id = ?))`, String(id), id);
+    for (const e of gone) {
+      run('DELETE FROM events WHERE user_id = ? AND kind = ? AND ref = ?', e.user_id, e.kind, e.ref);
+      run('UPDATE users SET xp = xp - ? WHERE id = ?', e.xp, e.user_id);
+    }
+    run("DELETE FROM replies WHERE kind = 'comment' AND item_id IN (SELECT id FROM lecture_comments WHERE lecture_id = ?)", id);
+    run("DELETE FROM likes WHERE kind = 'comment' AND item_id IN (SELECT id FROM lecture_comments WHERE lecture_id = ?)", id);
+    run("DELETE FROM content_reports WHERE kind = 'comment' AND item_id IN (SELECT id FROM lecture_comments WHERE lecture_id = ?)", id);
+    run('DELETE FROM lecture_comments WHERE lecture_id = ?', id);
+    run('DELETE FROM lecture_starts WHERE lecture_id = ?', id);
+    run('DELETE FROM lecture_quiz WHERE lecture_id = ?', id);
+    run('DELETE FROM lectures WHERE id = ?', id);
+  });
   return { ok: true };
 });
 
@@ -535,13 +558,25 @@ async function handleStatic(req, res, url) {
   }
   const ext = path.extname(file);
   if (ext === '.html') res.setHeader('Content-Security-Policy', csp(data.toString()));
-  res.writeHead(200, {
+  // a short entity tag plus gzip for the text assets: the app shell is 195 KB raw and about 54 KB compressed, on mobile data
+  const compressible = ['.html', '.js', '.css', '.webmanifest', '.svg', '.json'].includes(ext);
+  const etag = `"${crypto.createHash('sha1').update(data).digest('base64url').slice(0, 16)}"`;
+  const headers = {
     'Content-Type': MIME[ext] || 'application/octet-stream',
     'Cache-Control': ['.html', '.js', '.css', '.webmanifest'].includes(ext) ? 'no-cache' : 'public, max-age=86400',
-    'X-Content-Type-Options': 'nosniff',
-  });
-  res.end(data);
+    'X-Content-Type-Options': 'nosniff', ETag: etag, Vary: 'Accept-Encoding',
+  };
+  if (req.headers['if-none-match'] === etag) { res.writeHead(304, headers); return res.end(); }
+  if (compressible && data.length > 1024 && /\bgzip\b/.test(req.headers['accept-encoding'] || '')) {
+    let gz = gzCache.get(etag);
+    if (!gz) { gz = gzipSync(data, { level: 9 }); if (gzCache.size > 64) gzCache.clear(); gzCache.set(etag, gz); }
+    res.writeHead(200, { ...headers, 'Content-Encoding': 'gzip', 'Content-Length': gz.length });
+    return res.end(req.method === 'HEAD' ? undefined : gz);
+  }
+  res.writeHead(200, headers);
+  res.end(req.method === 'HEAD' ? undefined : data);
 }
+const gzCache = new Map();
 
 async function handlePhoto(res, url) {
   const m = /^\/photos\/(\d+)\/([\w-]+)$/.exec(url.pathname);
@@ -596,8 +631,17 @@ function checkProduction() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  process.on('unhandledRejection', (e) => console.error('unhandled rejection:', e)); // log it: a stray failed promise must not take the service down
   checkProduction();
   const port = Number(process.env.PORT) || 3000;
   news.startScheduler();
-  createServer().listen(port, () => console.log(`Seerah Quest running on http://localhost:${port}`));
+  const server = createServer();
+  server.listen(port, () => console.log(`Seerah Quest running on http://localhost:${port}`));
+  // a deploy sends SIGTERM: stop taking new connections, let requests in flight finish, then leave (a write is never cut in half)
+  for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
+    console.log(`${sig}: draining`);
+    server.close(() => process.exit(0));
+    server.closeIdleConnections?.();
+    setTimeout(() => process.exit(0), 8000).unref();
+  });
 }

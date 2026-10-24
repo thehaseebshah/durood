@@ -11,4 +11,4 @@ RUN mkdir -p /data && chown -R node:node /data /app
 USER node
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s CMD node -e "fetch('http://localhost:'+process.env.PORT+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "--no-warnings", "server/index.js"]
+CMD ["node", "--no-warnings", "--max-old-space-size=160", "server/index.js"]

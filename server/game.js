@@ -7,7 +7,8 @@ export const CFG = {
   maxDaily: Number(process.env.MAX_DAILY) || 50_000,          // ceiling per person per day (about 8 hours at 100 a minute)
   maxDailyNew: Number(process.env.MAX_DAILY_NEW) || 10_000,   // ceiling during a member's first 7 days
   newMemberDays: 7,
-  referralXp: 500,           // paid to the referrer when the invitee logs their first durood
+  referralXp: 500,           // paid to the referrer when the invitee has recited this many in all (referralMin)...
+  referralMin: 100,          // ...so a sign-up that logs one durood earns the inviter nothing
   // Durood is the primary activity (1 XP per durood plus the milestone/quest bonuses below). Sunnah and seerah
   // rewards are deliberately small so they can never outweigh reciting.
   specialXp: 150,            // the bonus quest on a special day (every Friday, and days the admin marks)
@@ -169,7 +170,7 @@ function questState(u) {
   const lecturesToday = one("SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = 'lecture' AND day = ?", u.id, day).n;
   const daysWeek = one('SELECT COUNT(*) n FROM daily WHERE user_id = ? AND day >= ? AND count >= ?', u.id, wk, CFG.questMinDurood).n;
   const goal = Math.max(u.daily_goal, CFG.questMinDurood);
-  const invitedWeek = one('SELECT COUNT(*) n FROM users WHERE referrer_id = ? AND created_day >= ?', u.id, wk).n;
+  const invitedWeek = one('SELECT COUNT(*) n FROM users WHERE referrer_id = ? AND created_day >= ? AND total >= ?', u.id, wk, CFG.referralMin).n; // an invitee counts once they have really recited
   const tickedToday = one("SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = 'sunnah_tick' AND day = ?", u.id, day).n;
   const reflectedToday = one('SELECT COUNT(*) n FROM reflections WHERE user_id = ? AND day = ?', u.id, day).n;
   const done = (id, key) => !!one("SELECT 1 FROM events WHERE user_id = ? AND kind = 'quest' AND ref = ?", u.id, `${id}:${key}`);
@@ -189,6 +190,26 @@ function questState(u) {
     q('reflect', 'bonus', 'day', CFG.reflectXp, reflectedToday, 1),
     q('lecture', 'bonus', 'day', CFG.lectureQuestXp, lecturesToday, 1),
   ];
+}
+
+/**
+ * After a number is edited down, quest rewards whose condition no longer holds are taken back (the day's goal and special quests for that
+ * day, the weekly ones for its week), so logging a big number and editing it down cannot keep the payout.
+ */
+function revokeQuests(userId, day) {
+  const u = one('SELECT daily_goal FROM users WHERE id = ?', userId);
+  const goal = Math.max(u.daily_goal, CFG.questMinDurood), wk = weekStart(day);
+  const count = one('SELECT count FROM daily WHERE user_id = ? AND day = ?', userId, day)?.count ?? 0;
+  const weekSum = one('SELECT COALESCE(SUM(count), 0) n FROM daily WHERE user_id = ? AND day >= ? AND day < ?', userId, wk, dayStr(dayNum(wk) + 7)).n;
+  const daysWeek = one('SELECT COUNT(*) n FROM daily WHERE user_id = ? AND day >= ? AND day < ? AND count >= ?', userId, wk, dayStr(dayNum(wk) + 7), CFG.questMinDurood).n;
+  const holds = { [`goal:${day}`]: count >= goal, [`special:${day}`]: count >= goal, [`weekgoal:${wk}`]: weekSum >= goal * 7, [`days5:${wk}`]: daysWeek >= 5 };
+  for (const [ref, ok] of Object.entries(holds)) {
+    if (ok) continue;
+    const ev = one("SELECT xp FROM events WHERE user_id = ? AND kind = 'quest' AND ref = ?", userId, ref);
+    if (!ev) continue;
+    run("DELETE FROM events WHERE user_id = ? AND kind = 'quest' AND ref = ?", userId, ref);
+    run('UPDATE users SET xp = xp - ? WHERE id = ?', ev.xp, userId);
+  }
 }
 
 export function settleQuests(userId) {
@@ -241,8 +262,8 @@ export function logDurood(userId, count, rid) {
 
     // the first durood a member ever reports: it counts them as an active person in every tree above them
     if (u.total === 0) run('UPDATE users SET tree_active = tree_active + 1 WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth > 0)', userId);
-    // referrer is paid only once the invitee actually recites - blocks fake sign-ups
-    if (u.total === 0 && u.referrer_id && grant(u.referrer_id, 'referral', userId, CFG.referralXp)) {
+    // the referrer is paid only once the invitee has really recited (referralMin in all): a fake sign-up that logs 1 earns nothing
+    if (u.total < CFG.referralMin && u.total + count >= CFG.referralMin && u.referrer_id && grant(u.referrer_id, 'referral', userId, CFG.referralXp)) {
       settleQuests(u.referrer_id);
       evalBadges(u.referrer_id, fresh);
     }
@@ -268,6 +289,8 @@ export function logDurood(userId, count, rid) {
 export const FLAG = {
   daily: 20_000,        // more than this in one day is flagged
   spikeMult: 10,        // or more than 10x the member's average day over the previous 7 days
+  newHigh: Number(process.env.FLAG_NEW_HIGH) || 5_000, // a new account (under newWindow days old) with this much in one day is held for a look
+  newWindow: 14,
   spikeMin: 2_000,      // ...but only once the day is at least this big, so 15 -> 200 never trips it
   newMemberDays: 7,     // a member's first 7 days are flagged by the daily line only
 };
@@ -279,13 +302,19 @@ export function evaluateFlags(userId, day) {
   let reason = null, detail = '';
   if (dayTotal > FLAG.daily) {
     reason = 'daily_20k'; detail = `${dayTotal} in one day`;
+  } else if (dayNum(day) - dayNum(u.created_day) < FLAG.newWindow && dayTotal >= FLAG.newHigh) {
+    reason = 'spike_10x'; detail = `new account (${dayNum(day) - dayNum(u.created_day)} days old): ${dayTotal} in one day`; // the cheapest way to fake numbers is a fresh account
   } else if (dayNum(day) - dayNum(u.created_day) >= FLAG.newMemberDays && dayTotal >= FLAG.spikeMin) {
     const prior = one('SELECT COALESCE(SUM(count), 0) n FROM daily WHERE user_id = ? AND day < ? AND day >= ?', userId, day, dayStr(dayNum(day) - 7)).n;
     const avg = prior / 7;
     if (avg > 0 && dayTotal > FLAG.spikeMult * avg) { reason = 'spike_10x'; detail = `${dayTotal} against a recent average of ${Math.round(avg)} a day`; }
   }
-  if (!reason || one('SELECT 1 FROM flags WHERE user_id = ? AND reason = ? AND day = ?', userId, reason, day)) return null;
-  run('INSERT INTO flags (user_id, reason, day, detail, created_at) VALUES (?,?,?,?,?)', userId, reason, day, detail, Date.now());
+  if (!reason) return null;
+  // one open flag per reason and day; after an admin cleared one, a clearly bigger day (half as much again) is looked at again
+  if (one("SELECT 1 FROM flags WHERE user_id = ? AND reason = ? AND day = ? AND status IN ('open','confirmed')", userId, reason, day)) return null;
+  const cleared = one("SELECT MAX(day_total) m FROM flags WHERE user_id = ? AND reason = ? AND day = ? AND status = 'cleared'", userId, reason, day).m;
+  if (cleared && dayTotal <= cleared * 1.5) return null;
+  run('INSERT INTO flags (user_id, reason, day, detail, day_total, created_at) VALUES (?,?,?,?,?,?)', userId, reason, day, detail, dayTotal, Date.now());
   run('UPDATE users SET hidden_from_ranks = 1 WHERE id = ?', userId);
   setHeld(userId, true);
   return reason;
@@ -344,7 +373,7 @@ export function setHidden(username, hidden) {
 /**
  * Changes one of the member's own entries from today or yesterday. Nothing is overwritten: the ledger gets a reversing
  * entry for the old number and a replacement entry for the new one, so the whole history stays on record.
- * Badges, quest XP and invite rewards already earned are not taken back. A day can't be edited down to nothing.
+ * Quest rewards whose condition no longer holds are taken back (revokeQuests); badge and invite rewards already earned are not. A day can't be edited down to nothing.
  */
 export function editEntry(userId, entryId, newCount, ridIn) {
   if (!Number.isInteger(newCount) || newCount < 1 || newCount > CFG.maxSingle) throw new HttpError(400, 'bad_count');
@@ -375,6 +404,7 @@ export function editEntry(userId, entryId, newCount, ridIn) {
       bumpDay(e.day, delta);
     }
     evaluateFlags(userId, e.day);
+    if (delta < 0) revokeQuests(userId, e.day);
   });
   if (!duplicate) recordChallenge();
   return { duplicate };
@@ -625,7 +655,8 @@ export function getMe(userId) {
   const week = one('SELECT COALESCE(SUM(count),0) n FROM daily WHERE user_id = ? AND day >= ?', userId, wk).n;
   const team = one(`SELECT COUNT(*) members FROM ancestors WHERE ancestor_id = ? AND depth > 0 AND depth <= ?`, userId, CFG.teamMaxDepth);
   const direct = one('SELECT COUNT(*) n FROM users WHERE referrer_id = ?', userId).n;
-  const streakAlive = u.last_day === day || (u.last_day && dayNum(day) - dayNum(u.last_day) === 1);
+  const gapDays = u.last_day ? dayNum(day) - dayNum(u.last_day) : null;
+  const streakAlive = gapDays === 0 || gapDays === 1 || (gapDays === 2 && u.shields > 0); // a shield bridges one missed day
   return {
     id: u.id, username: u.username, caravanName: u.caravan_name, email: u.email, phone: u.phone, lang: u.lang, city: u.city, cityId: u.city_id, country: u.country, needsCity: !u.city_id,
     dailyGoal: u.daily_goal, hiddenFromRanks: !!u.hidden_from_ranks, emailVerified: !!u.email_verified_at,

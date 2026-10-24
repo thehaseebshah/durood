@@ -7,7 +7,7 @@
   "engines": { "node": ">=22.13" },
   "scripts": {
     "start": "node server/index.js",
-    "test": "node --test --no-warnings test/*.test.js",
+    "test": "FLAG_NEW_HIGH=1000000000 node --test --no-warnings test/*.test.js",
     "audit": "node server/audit.js",
     "icons": "node scripts/make-icons.js"
   }

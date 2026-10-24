@@ -7,6 +7,7 @@ const FROM = () => process.env.MAIL_FROM || 'Seerah Quest <no-reply@example.org>
 
 async function viaResend({ to, subject, text }) {
   const r = await fetch('https://api.resend.com/emails', {
+    signal: AbortSignal.timeout(10_000),
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.RESEND_API_KEY}` },
     body: JSON.stringify({ from: FROM(), to: [to], subject, text }),
@@ -18,6 +19,7 @@ async function viaSendgrid({ to, subject, text }) {
   const from = FROM();
   const m = /^(.*)<(.+)>$/.exec(from);
   const r = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    signal: AbortSignal.timeout(10_000),
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.SENDGRID_API_KEY}` },
     body: JSON.stringify({

@@ -69,6 +69,7 @@ test('city boards: total, average and growth, only for cities with 5 members who
 test('the weekly close awards the city podium, once, and the feed announces it', async () => {
   // last week: Lahore 6 members, Multan 5 members, Karachi 5 members, Quetta (id from search) 5 members
   const prev = weekStart(dayStr(dayNum(weekStart()) - 7));
+  db.prepare("DELETE FROM settings WHERE key LIKE 'week_closed:%'").run(); // earlier logging already closed the (empty) weeks
   const mk = async (prefix, cityId, count, per) => { const out = []; for (let i = 0; i < count; i++) { const u = await signup(`${prefix}_${i}`, 'TESTFOUND', cityId); out.push(u); const id = uid(`${prefix}_${i}`); db.prepare('INSERT INTO daily (user_id, day, count) VALUES (?,?,?)').run(id, prev, per); } return out; };
   const a = await mk('pa', 1174872, 5, 1000), b = await mk('pb', 1169825, 5, 600), c = await mk('pc', 1172451, 5, 300), d = await mk('pd', 1168197, 5, 100);
   const closed = compete.ensureWeekClosed();

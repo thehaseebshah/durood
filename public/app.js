@@ -442,7 +442,7 @@ async function shareCard() {
   }
   const blob = await new Promise((ok) => cv.toBlob(ok, 'image/png'));
   const file = new File([blob], 'seerah-quest.png', { type: 'image/png' });
-  const text = x.kind ? `${c.title}: ${c.text}. ${location.origin}` : `${t('share_text')(x.done ? human(x.target).split(' ')[0] : x.k, x.day)} ${location.origin}`;
+  const text = x.kind ? `${c.title}: ${c.text}. ${location.origin}` : `${t('share_crore')(x.done ? human(x.target).split(' ')[0] : x.k, x.day)} ${location.origin}`;
   try {
     if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], text }); return; }
   } catch (e) { if (e.name === 'AbortError') return; }

@@ -12,6 +12,12 @@ const LEDGER_DAILY = 'SELECT user_id, day, SUM(count) s FROM entries GROUP BY us
  * With { fix: true } the caches are rebuilt from the ledger (the ledger itself is never modified).
  */
 export function audit({ fix = false } = {}) {
+  // one read snapshot for the whole check: members keep logging while it runs, and a statement-by-statement read would raise false alarms
+  let snap = false;
+  if (!fix) { try { db.exec('BEGIN'); snap = true; } catch { /* already inside a transaction */ } }
+  try { return auditChecks({ fix }); } finally { if (snap) db.exec('COMMIT'); }
+}
+function auditChecks({ fix }) {
   const problems = [];
   const note = (kind, detail) => { if (problems.length < 100) problems.push({ kind, ...detail }); };
 
@@ -57,15 +63,22 @@ export function audit({ fix = false } = {}) {
     else if (r.kind === 'replace' && !r.was_reversed) note('edit_chain', { entry: r.id, problem: 'replaces an entry that was never reversed' });
   }
 
-  // photos: every post paid its reward exactly once, in the step that created it
+  // photos: every post paid its reward exactly once, in the step that created it. Only mismatches come back, so memory stays flat as the data grows.
   for (const p of all(`SELECT p.id, p.likes, (SELECT COUNT(*) FROM events e WHERE e.kind IN ('sunnah','class') AND e.ref = CAST(p.id AS TEXT)) paid,
-        (SELECT COUNT(*) FROM likes l WHERE l.kind = 'post' AND l.item_id = p.id) l FROM posts p`)) {
+        (SELECT COUNT(*) FROM likes l WHERE l.kind = 'post' AND l.item_id = p.id) l FROM posts p
+        WHERE paid != 1 OR p.likes != l LIMIT 50`)) {
     if (p.paid !== 1) note('post_payout', { post: p.id, paid: p.paid });
     if (p.likes !== p.l) note('post_likes', { post: p.id, stored: p.likes, ledger: p.l });
   }
-  for (const r of all(`SELECT r.id, r.likes, (SELECT COUNT(*) FROM likes l WHERE l.kind = 'reflection' AND l.item_id = r.id) l FROM reflections r`)) {
-    if (r.likes !== r.l) note('reflection_likes', { reflection: r.id, stored: r.likes, ledger: r.l });
+  for (const r of all(`SELECT r.id, r.likes, (SELECT COUNT(*) FROM likes l WHERE l.kind = 'reflection' AND l.item_id = r.id) l FROM reflections r WHERE r.likes != l LIMIT 50`)) {
+    note('reflection_likes', { reflection: r.id, stored: r.likes, ledger: r.l });
   }
+  for (const r of all(`SELECT c.id, c.likes, (SELECT COUNT(*) FROM likes l WHERE l.kind = 'comment' AND l.item_id = c.id) l FROM lecture_comments c WHERE c.likes != l LIMIT 50`)) {
+    note('comment_likes', { comment: r.id, stored: r.likes, ledger: r.l });
+  }
+  // the referral closure must agree with the referrer chain: every member has a row for each ancestor and nothing else
+  const closureBad = one(`SELECT COUNT(*) n FROM users u WHERE u.referrer_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM ancestors a WHERE a.user_id = u.id AND a.ancestor_id = u.referrer_id AND a.depth = 1)`).n;
+  if (closureBad) note('ancestors', { problem: 'members whose referrer is missing from the closure table', count: closureBad });
   // like points: the poster earned likeXp for each of the first likeCap likes on every item, and nothing else
   const likeEvents = one("SELECT COUNT(*) n FROM events WHERE kind = 'like'").n;
   const likeExpected = one(`SELECT COALESCE(SUM(MIN(likes, ?)), 0) n FROM (SELECT likes FROM posts UNION ALL SELECT likes FROM reflections UNION ALL SELECT likes FROM lecture_comments)`, CFG.likeCap).n;
@@ -103,7 +116,7 @@ export function auditAsync() {
   const t0 = Date.now();
   if (!process.env.DB_PATH || process.env.DB_PATH === ':memory:') return Promise.resolve({ ...audit(), ms: Date.now() - t0 });
   return new Promise((resolve, reject) => {
-    const w = new Worker(new URL('./audit-worker.js', import.meta.url));
+    const w = new Worker(new URL('./audit-worker.js', import.meta.url), { resourceLimits: { maxOldGenerationSizeMb: 64 } }); // never let the check take the whole machine's memory
     w.once('message', (r) => resolve({ ...r, ms: Date.now() - t0 }));
     w.once('error', reject);
     w.once('exit', (c) => { if (c !== 0) reject(new Error(`audit worker exited with ${c}`)); });

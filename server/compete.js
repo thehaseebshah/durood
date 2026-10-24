@@ -116,15 +116,24 @@ function closeCities(week) {
   return rows.length;
 }
 
-/** Closes last week once: league promotions and the city podium. Safe to call as often as you like. */
+/**
+ * Closes last week once, and any earlier week that was never closed (up to four back, oldest first): league promotions and the city podium.
+ * Safe to call as often as you like. It runs before a member's first durood of a new week, so the group they join is at their new tier.
+ */
 export function ensureWeekClosed() {
-  const week = prevWeek();
-  if (getSetting(`week_closed:${week}`)) return null;
-  return tx(() => {
-    const leagues = closeLeagues(week), cities = closeCities(week);
-    setSetting(`week_closed:${week}`, Date.now());
-    return { week, leagues, cities };
-  });
+  const todo = [];
+  for (let w = prevWeek(), i = 0; i < 4 && !getSetting(`week_closed:${w}`); w = prevWeek(w), i++) todo.unshift(w);
+  if (!todo.length) return null;
+  let last = null;
+  for (const week of todo) {
+    last = tx(() => {
+      if (getSetting(`week_closed:${week}`)) return null;
+      const leagues = closeLeagues(week), cities = closeCities(week);
+      setSetting(`week_closed:${week}`, Date.now());
+      return { week, leagues, cities };
+    });
+  }
+  return last;
 }
 
 // ---- the caravan streak ------------------------------------------------------------------------------------------------------

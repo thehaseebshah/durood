@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { mkdirSync, writeFileSync, unlinkSync, mkdtempSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { db, tx } from './db.js';
+import { db, tx, getSetting, setSetting } from './db.js';
 import { HttpError, photoSig } from './auth.js';
 import { CFG, dayOf, grant, evalBadges, settleQuests, tickSunnah } from './game.js';
 
@@ -115,7 +115,8 @@ export function createPost(userId, imageB64) {
 
 /** Posts that exist from before verification was dropped: make them visible and pay the reward they were waiting for. */
 function migrateOldPosts() {
-  run("UPDATE posts SET status = 'verified', resolved_at = COALESCE(resolved_at, created_at) WHERE status IN ('pending','expired','rejected')");
+  run("UPDATE posts SET status = 'verified', resolved_at = COALESCE(resolved_at, created_at) WHERE status IN ('pending','expired')");
+  run("UPDATE posts SET status = 'removed', resolved_at = COALESCE(resolved_at, created_at) WHERE status = 'rejected'"); // a photo that was turned down stays hidden
   for (const p of all(`SELECT p.id, p.user_id, s.kind FROM posts p JOIN sunnahs s ON s.id = p.sunnah_id
         WHERE p.status = 'verified' AND NOT EXISTS (SELECT 1 FROM events e WHERE e.kind IN ('sunnah','class') AND e.ref = CAST(p.id AS TEXT))`)) {
     grant(p.user_id, p.kind === 'class' ? 'class' : 'sunnah', p.id, p.kind === 'class' ? 150 : CFG.sunnahXp);
@@ -123,7 +124,7 @@ function migrateOldPosts() {
   // the weekly class photo no longer exists: take those posts out of the feed (what they paid stays paid)
   run("UPDATE posts SET status = 'removed' WHERE status != 'removed' AND sunnah_id IN (SELECT id FROM sunnahs WHERE kind = 'class')");
 }
-migrateOldPosts();
+if (getSetting('posts_migrated_v') !== '1') { migrateOldPosts(); setSetting('posts_migrated_v', '1'); } // once, not on every start
 
 // ---- retention: photos are kept only as long as they are needed -----------------------------------------------------------
 const PHOTO_KEEP_MS = (Number(process.env.PHOTO_KEEP_DAYS) || 14) * 86400e3;

@@ -112,12 +112,12 @@ const views = {
     const status = window.__fl || 'open';
     const { flags } = await api('GET', `/flags?status=${status}`);
     return `<h3>Flagged totals</h3>
-      <p class="muted">A member is flagged over 20,000 in a day, or over 10 times their recent average. Flagged members are hidden from public ranks; their durood still counts everywhere. <b>Clear</b> shows them again. <b>Confirm</b> keeps them hidden.</p>
+      <p class="muted">A member is flagged over 20,000 in a day, or over 10 times their recent average. Flagged members are hidden from public ranks and their durood is held out of the national, challenge and caravan totals (it stays in their own total). <b>Release</b> counts it again and shows them. <b>Keep held</b> keeps it out until you unhide the member.</p>
       <div class="inline">${['open', 'confirmed', 'cleared'].map((s) => `<button class="chip ${s === status ? 'solid' : ''}" data-a="flfilter" data-s="${s}">${s}</button>`).join('')}</div>
       ${flags.length ? `<table><tr><th>Member</th><th>Why</th><th>Total</th><th></th></tr>${flags.map((f) => `<tr>
         <td><b>${esc(f.username)}</b><br><span class="muted">${esc(f.city)} · joined ${esc(f.joined)}</span></td>
         <td>${esc(f.reason)}<br><span class="muted">${esc(f.day)} · ${esc(f.detail)}</span></td><td>${fmt(f.total)}</td>
-        <td>${f.status === 'open' ? `<button class="chip solid" data-a="flclear" data-id="${f.id}">Clear</button><button class="chip" data-a="flconfirm" data-id="${f.id}">Confirm</button>` : `<span class="pillbox">${esc(f.status)}</span>`}</td></tr>`).join('')}</table>` : `<p class="empty">No ${status} flags.</p>`}`;
+        <td>${f.status === 'open' ? `<button class="chip solid" data-a="flclear" data-id="${f.id}">Release</button><button class="chip" data-a="flconfirm" data-id="${f.id}">Keep held</button>` : `<span class="pillbox">${esc(f.status)}</span>`}</td></tr>`).join('')}</table>` : `<p class="empty">No ${status} flags.</p>`}`;
   },
   async members() {
     const q = window.__q || '';

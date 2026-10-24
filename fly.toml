@@ -6,6 +6,8 @@ primary_region = "sin"
 
 [build]
 
+swap_size_mb = 512   # headroom for the nightly audit and housekeeping on a 256 MB machine
+
 [env]
   PORT = "8080"
   NODE_ENV = "production"

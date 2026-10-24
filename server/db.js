@@ -400,7 +400,7 @@ export const tx = (fn) => {
     db.exec('COMMIT');
     return r;
   } catch (e) {
-    db.exec('ROLLBACK');
+    try { db.exec('ROLLBACK'); } catch { /* the engine already rolled back (disk full at COMMIT): keep the real error */ }
     throw e;
   }
 };
@@ -432,7 +432,9 @@ addCol('users', 'tree_active', 'INTEGER NOT NULL DEFAULT 0');     // people unde
 addCol('users', 'reminder_time', "TEXT NOT NULL DEFAULT ''");       // 'HH:MM' Pakistan time, '' = no daily reminder
 addCol('users', 'news_seen_at', 'INTEGER NOT NULL DEFAULT 0');
 addCol('users', 'caravan_name', 'TEXT');
-addCol('users', 'city_changed_at', 'INTEGER');                        // a member may change city once a fortnight
+addCol('users', 'city_changed_at', 'INTEGER');
+addCol('flags', 'day_total', 'INTEGER');
+db.exec('CREATE INDEX IF NOT EXISTS events_kind_ref ON events(kind, ref)'); // payouts are looked up by what they paid for                              // the day's total when the flag was raised                        // a member may change city once a fortnight
 // ---- Al-Burhan edition: murabbi / masul links, mamulaat percentages, tasks and routines -------------------------------------
 db.exec(`
 CREATE TABLE IF NOT EXISTS murabbi_links (
