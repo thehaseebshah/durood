@@ -1,7 +1,7 @@
 export const I18N = {
   en: {
     app: 'Seerah Quest',
-    tagline: 'Send salawat. Grow your caravan. Support the Seerat Circles.',
+    tagline: 'Durood, Sunnah and Seerah. Grow your love for Rasool Allah ﷺ',
     durood: 'اللّٰهُمَّ صَلِّ عَلٰى مُحَمَّدٍ وَعَلٰى اٰلِ مُحَمَّدٍ',
     dedication: 'Every durood recited here is dedicated to facilitating the work of the Seerat Circles across Pakistan.',
     login: 'Log in', register: 'Join Seerah Quest', logout: 'Log out',
@@ -136,7 +136,7 @@ export const I18N = {
   },
   ur: {
     app: 'سیرت کوئسٹ',
-    tagline: 'درود بھیجیں، اپنا کارواں بڑھائیں، سیرت سرکلز کی خدمت کریں۔',
+    tagline: 'درود، سنت اور سیرت۔ رسول اللہ ﷺ سے اپنی محبت بڑھائیں',
     durood: 'اللّٰهُمَّ صَلِّ عَلٰى مُحَمَّدٍ وَعَلٰى اٰلِ مُحَمَّدٍ',
     dedication: 'یہاں پڑھا جانے والا ہر درود پاکستان بھر میں سیرت سرکلز کے کام میں آسانی کے لیے ایصالِ ثواب ہے۔',
     login: 'لاگ اِن', register: 'سیرت کوئسٹ میں شامل ہوں', logout: 'لاگ آؤٹ',

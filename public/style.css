@@ -29,7 +29,8 @@ body { font: 14px/1.5 'Inter', Helvetica, Arial, system-ui, sans-serif; padding-
 /* Inter first: it has no Arabic glyphs, so Urdu letters fall through to Nastaliq while every digit stays Inter, identical to English */
 html[lang=ur] body { font-family: 'Inter', 'Noto Nastaliq Urdu', 'Noto Naskh Arabic', 'Jameel Noori Nastaleeq', serif; line-height: 1.95; }
 html[lang=ur] button, html[lang=ur] input { font-family: inherit; line-height: 1.7; }
-.arabic { font-family: 'Noto Naskh Arabic', 'Amiri', serif; line-height: 2.1; }
+@font-face { font-family: 'Amiri'; src: url('/fonts/amiri-arabic.woff2') format('woff2'); font-display: swap; unicode-range: U+0600-06FF, U+200C-200E, U+2010-2011, U+204F, U+25CC, U+FB50-FDFF, U+FE70-FEFF; }
+.arabic { font-family: 'Amiri', 'Noto Naskh Arabic', serif; line-height: 2.1; }
 a { color: inherit; }
 .wrap { max-width: 560px; margin: 0 auto; border-inline: 1px solid var(--line); min-height: 100vh; }
 .muted { color: var(--soft); font-size: .86rem; }
@@ -378,13 +379,17 @@ html[dir=rtl] .lb li.up { box-shadow: inset -4px 0 0 var(--sig); } html[dir=rtl]
 .thread input[type=text]{flex:1;min-width:0}
 
 /* ===== welcome, sign-in and intro: a dark emerald stage with a gold khatam lattice. Static SVG + transform/opacity animations only. ===== */
-.stage { --gold: #e3c374; --e1: #03231a; --e2: #0a4a36; position: relative; min-height: 100vh; color: #f4f1ea; overflow: hidden;
-  background: radial-gradient(120% 70% at 50% 0%, var(--e2) 0%, var(--e1) 55%, #02130e 100%); }
-.stage.auth { background: #02130e; }
-.hero { position: relative; overflow: hidden; background: radial-gradient(120% 90% at 50% 0%, var(--e2) 0%, var(--e1) 70%); padding-bottom: 64px; min-height: 330px; }
+.stage { --gold: #f0cf86; --night: #0c0e2b; position: relative; min-height: 100vh; color: #f4f1ea; overflow: hidden; background: var(--night); }
+.stage.auth { background: var(--night); }
+.hero { position: relative; overflow: hidden; background: var(--night); padding-bottom: 64px; min-height: 330px; }
+.stage::before, .hero::before { content: ""; position: absolute; inset: -20%; pointer-events: none; animation: drift 24s ease-in-out infinite alternate;
+  background: radial-gradient(38% 32% at 18% 78%, rgba(244, 164, 96, .55), transparent 70%), radial-gradient(40% 34% at 86% 62%, rgba(214, 82, 140, .42), transparent 70%),
+    radial-gradient(46% 36% at 52% 6%, rgba(54, 190, 176, .38), transparent 70%), radial-gradient(60% 50% at 50% 50%, rgba(86, 70, 190, .35), transparent 75%); }
+.stage.auth::before { display: none; }
+@keyframes drift { to { transform: translate3d(3%, -2%, 0) scale(1.08); } }
 .hero-art { position: absolute; inset: 0; pointer-events: none; }
-.hero-pat { position: absolute; inset: 0; opacity: .9; -webkit-mask-image: linear-gradient(#000 20%, transparent 95%); mask-image: linear-gradient(#000 20%, transparent 95%); }
-.hero-glow { position: absolute; left: 50%; top: 30%; width: 120%; aspect-ratio: 1; transform: translate(-50%, -50%); background: radial-gradient(closest-side, rgba(34, 214, 143, .28), transparent 70%); animation: breathe 7s ease-in-out infinite; }
+.hero-pat { position: absolute; inset: 0; opacity: .8; -webkit-mask-image: linear-gradient(#000 20%, transparent 95%); mask-image: linear-gradient(#000 20%, transparent 95%); }
+.hero-glow { position: absolute; left: 50%; top: 30%; width: 120%; aspect-ratio: 1; transform: translate(-50%, -50%); background: radial-gradient(closest-side, rgba(240, 207, 134, .22), transparent 70%); animation: breathe 7s ease-in-out infinite; }
 .hero-star { position: absolute; left: 50%; top: 36%; width: min(105vw, 460px); opacity: .55; transform: translate(-50%, -50%); animation: spin 120s linear infinite; }
 .spark { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: var(--gold); opacity: 0; animation: twinkle 5s ease-in-out infinite; }
 .sp0 { left: 12%; top: 18%; } .sp1 { left: 82%; top: 12%; animation-delay: 1.2s; } .sp2 { left: 70%; top: 40%; animation-delay: 2.4s; }
@@ -402,13 +407,13 @@ html[lang=ur] .brandmark { letter-spacing: 0; text-transform: none; font-size: 1
 .stage .pill { color: #f4f1ea; border-color: rgba(244, 241, 234, .45); border-radius: 999px; background: rgba(255, 255, 255, .06); }
 .ghost { background: none; border: 0; color: rgba(244, 241, 234, .75); font: inherit; font-weight: 600; cursor: pointer; padding: 6px 10px; }
 .hero-in { position: relative; z-index: 2; text-align: center; padding: 18px 24px 0; }
-.arabic.gold { color: var(--gold); font-size: clamp(1.7rem, 7vw, 2.4rem); line-height: 2.1; text-shadow: 0 0 28px rgba(227, 195, 116, .35); }
+.arabic.gold { color: var(--gold); font-size: clamp(2rem, 9.5vw, 2.9rem); line-height: 1.9; text-shadow: 0 0 28px rgba(227, 195, 116, .35); }
 .dur span { display: inline-block; opacity: 0; animation: rise .8s cubic-bezier(.2, .7, .2, 1) forwards; animation-delay: var(--d); }
 .hero-in .tagl { margin: 6px auto 0; max-width: 30ch; color: rgba(244, 241, 234, .8); font-size: .98rem; animation: rise .8s .7s both; }
 .livepill { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; padding: 7px 14px; border-radius: 999px; background: rgba(255, 255, 255, .08); border: 1px solid rgba(227, 195, 116, .3); font-size: .82rem; animation: rise .8s 1s both; }
 .livepill b { color: var(--gold); }
-.pulse { width: 8px; height: 8px; border-radius: 50%; background: #22d68f; box-shadow: 0 0 0 0 rgba(34, 214, 143, .6); animation: ping 2s infinite; }
-@keyframes ping { 70% { box-shadow: 0 0 0 9px rgba(34, 214, 143, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 214, 143, 0); } }
+.pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 0 rgba(240, 207, 134, .6); animation: ping 2s infinite; }
+@keyframes ping { 70% { box-shadow: 0 0 0 9px rgba(240, 207, 134, 0); } 100% { box-shadow: 0 0 0 0 rgba(240, 207, 134, 0); } }
 
 /* the sheet that slides up over the hero */
 .wrap.sheet { position: relative; z-index: 3; margin-top: -28px; border-radius: 26px 26px 0 0; border: 0; background: var(--paper); color: var(--ink); min-height: 60vh; padding-top: 6px; box-shadow: 0 -12px 40px rgba(0, 0, 0, .35); animation: rise .6s .25s both; }
@@ -432,13 +437,13 @@ html[lang=ur] .brandmark { letter-spacing: 0; text-transform: none; font-size: 1
 .langpick { display: flex; gap: 10px; margin-top: 4px; }
 .lp { flex: 1; padding: 14px; border-radius: 14px; border: 1.5px solid rgba(244, 241, 234, .3); background: rgba(255, 255, 255, .05); color: #f4f1ea; font: inherit; font-weight: 700; cursor: pointer; transition: all .2s; }
 .lp.on { background: var(--gold); border-color: var(--gold); color: #1a1405; }
-.cta { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding: 18px 22px; border: 0; border-radius: 16px; background: linear-gradient(135deg, #22d68f, #00a86b); color: #04170f; font: inherit; font-weight: 800; font-size: 1.05rem; cursor: pointer; box-shadow: 0 10px 30px rgba(34, 214, 143, .25); transition: transform .15s; }
+.cta { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding: 18px 22px; border: 0; border-radius: 16px; background: linear-gradient(135deg, #f7dd9a, #e0a845); color: #1c1405; font: inherit; font-weight: 800; font-size: 1.05rem; cursor: pointer; box-shadow: 0 10px 30px rgba(240, 190, 90, .28); transition: transform .15s; }
 .cta:active { transform: scale(.98); } .cta b { font-size: 1.3rem; }
 html[dir=rtl] .cta b { transform: scaleX(-1); }
 
 /* on a computer the sign-in is a centred card on the stage */
 @media (min-width: 760px) {
-  body:has(.stage.auth) { background: radial-gradient(120% 90% at 50% 0%, #0a4a36, #02130e); }
+  body:has(.stage.auth) { background: #0c0e2b; }
   body:has(.stage.auth) { padding: 5vh 0; }
   .stage.auth { max-width: 520px; margin: 0 auto; min-height: 0; border-radius: 28px; box-shadow: 0 30px 80px rgba(0, 0, 0, .5); }
   .wrap.sheet { min-height: 0; }

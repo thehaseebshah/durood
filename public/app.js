@@ -131,18 +131,18 @@ function langToggle() {
   return `<span class="row"><button class="pill icon" data-act="scheme" aria-label="${t(isDark() ? 'mode_white' : 'mode_dark')}" title="${t(isDark() ? 'mode_white' : 'mode_dark')}">${isDark() ? ICON_SUN : ICON_MOON}</button><button class="pill" data-act="lang">${S.lang === 'ur' ? 'English' : 'اردو'}</button></span>`;
 }
 
-const footerLinks = () => `<p class="note foot"><a href="/privacy.html">${t('privacy')}</a></p><p class="note foot credit">${t('credit')}</p>`;
+const footerLinks = () => `<p class="note foot credit">${t('credit')}</p>`;
 
 // ---- welcome art: static SVG plus a few CSS-only transforms, so it costs almost nothing to draw ------------------------------
 const STAR_PATH = 'M50 4 L61 27 L84 16 L73 39 L96 50 L73 61 L84 84 L61 73 L50 96 L39 73 L16 84 L27 61 L4 50 L27 39 L16 16 L39 27 Z';
 const heroArt = () => `<div class="hero-art" aria-hidden="true">
   <svg class="hero-pat" width="100%" height="100%"><defs><pattern id="khatam" width="64" height="64" patternUnits="userSpaceOnUse">
-    <path d="${STAR_PATH}" transform="scale(.5) translate(14 14)" fill="none" stroke="#e3c374" stroke-opacity=".16" stroke-width="1.2"/>
-    <circle cx="0" cy="0" r="1.6" fill="#e3c374" fill-opacity=".25"/><circle cx="64" cy="64" r="1.6" fill="#e3c374" fill-opacity=".25"/></pattern></defs>
+    <path d="${STAR_PATH}" transform="scale(.5) translate(14 14)" fill="none" stroke="#f0cf86" stroke-opacity=".16" stroke-width="1.2"/>
+    <circle cx="0" cy="0" r="1.6" fill="#f0cf86" fill-opacity=".25"/><circle cx="64" cy="64" r="1.6" fill="#f0cf86" fill-opacity=".25"/></pattern></defs>
     <rect width="100%" height="100%" fill="url(#khatam)"/></svg>
   <div class="hero-glow"></div>
-  <svg class="hero-star" viewBox="0 0 100 100"><path d="${STAR_PATH}" fill="none" stroke="#e3c374" stroke-opacity=".5" stroke-width=".6"/>
-    <path d="${STAR_PATH}" transform="rotate(22.5 50 50) translate(7 7) scale(.86)" fill="none" stroke="#22d68f" stroke-opacity=".35" stroke-width=".5"/><circle cx="50" cy="50" r="30" fill="none" stroke="#e3c374" stroke-opacity=".18" stroke-width=".4"/></svg>
+  <svg class="hero-star" viewBox="0 0 100 100"><path d="${STAR_PATH}" fill="none" stroke="#f0cf86" stroke-opacity=".5" stroke-width=".6"/>
+    <path d="${STAR_PATH}" transform="rotate(22.5 50 50) translate(7 7) scale(.86)" fill="none" stroke="#8fe0d2" stroke-opacity=".35" stroke-width=".5"/><circle cx="50" cy="50" r="30" fill="none" stroke="#f0cf86" stroke-opacity=".18" stroke-width=".4"/></svg>
   ${[0, 1, 2, 3, 4, 5].map((n) => `<i class="spark sp${n}"></i>`).join('')}</div>`;
 const duroodWords = () => esc(t('durood')).split(' ').map((w, n) => `<span style="--d:${0.15 + n * 0.12}s">${w}</span>`).join(' ');
 const liveLine = () => {
@@ -151,11 +151,11 @@ const liveLine = () => {
   return `<div class="livepill"><i class="pulse"></i><span>${t('welcome_live')(`<b class="n">${fmt(l.today)}</b>`, `<b class="n">${fmt(l.membersToday || l.members)}</b>`)}</span></div>`;
 };
 const SLIDE_ART = [
-  `<svg viewBox="0 0 120 120" class="slide-art"><path d="${STAR_PATH}" transform="translate(10 10) scale(1)" fill="none" stroke="#e3c374" stroke-width="1.4"/><text x="60" y="68" text-anchor="middle" font-size="26" fill="#e3c374" font-family="Noto Naskh Arabic, serif">ﷺ</text></svg>`,
-  `<svg viewBox="0 0 120 120" class="slide-art"><g fill="none" stroke="#e3c374" stroke-width="1.4"><rect x="22" y="62" width="76" height="34" rx="3"/><path d="M34 62V44M60 62V28M86 62V50"/></g>
-    <g fill="#22d68f"><circle cx="34" cy="40" r="5"/><circle cx="60" cy="24" r="6"/><circle cx="86" cy="46" r="5"/></g><text x="60" y="84" text-anchor="middle" font-size="16" fill="#e3c374" font-weight="800" font-family="Inter, sans-serif">+1</text></svg>`,
-  `<svg viewBox="0 0 120 120" class="slide-art"><g stroke="#e3c374" stroke-width="1.4" fill="none"><path d="M60 30L30 62M60 30L90 62M30 62L16 92M30 62L44 92M90 62L76 92M90 62L104 92"/></g>
-    <g fill="#22d68f"><circle cx="60" cy="28" r="9"/></g><g fill="#e3c374"><circle cx="30" cy="62" r="6"/><circle cx="90" cy="62" r="6"/></g><g fill="#0b0b0b" stroke="#e3c374" stroke-width="1.2"><circle cx="16" cy="92" r="4.5"/><circle cx="44" cy="92" r="4.5"/><circle cx="76" cy="92" r="4.5"/><circle cx="104" cy="92" r="4.5"/></g></svg>`,
+  `<svg viewBox="0 0 120 120" class="slide-art"><path d="${STAR_PATH}" transform="translate(10 10) scale(1)" fill="none" stroke="#f0cf86" stroke-width="1.4"/><text x="60" y="68" text-anchor="middle" font-size="26" fill="#f0cf86" font-family="Noto Naskh Arabic, serif">ﷺ</text></svg>`,
+  `<svg viewBox="0 0 120 120" class="slide-art"><g fill="none" stroke="#f0cf86" stroke-width="1.4"><rect x="22" y="62" width="76" height="34" rx="3"/><path d="M34 62V44M60 62V28M86 62V50"/></g>
+    <g fill="#8fe0d2"><circle cx="34" cy="40" r="5"/><circle cx="60" cy="24" r="6"/><circle cx="86" cy="46" r="5"/></g><text x="60" y="84" text-anchor="middle" font-size="16" fill="#f0cf86" font-weight="800" font-family="Inter, sans-serif">+1</text></svg>`,
+  `<svg viewBox="0 0 120 120" class="slide-art"><g stroke="#f0cf86" stroke-width="1.4" fill="none"><path d="M60 30L30 62M60 30L90 62M30 62L16 92M30 62L44 92M90 62L76 92M90 62L104 92"/></g>
+    <g fill="#8fe0d2"><circle cx="60" cy="28" r="9"/></g><g fill="#f0cf86"><circle cx="30" cy="62" r="6"/><circle cx="90" cy="62" r="6"/></g><g fill="#0b0b0b" stroke="#f0cf86" stroke-width="1.2"><circle cx="16" cy="92" r="4.5"/><circle cx="44" cy="92" r="4.5"/><circle cx="76" cy="92" r="4.5"/><circle cx="104" cy="92" r="4.5"/></g></svg>`,
 ];
 function introView() {
   const i = S.intro, last = i === 2;
@@ -164,7 +164,7 @@ function introView() {
     <div class="stage-top"><span class="brandmark">${uiIcon('star', 14, 2)} ${t('app')}</span><button class="ghost" data-act="introskip">${t('skip')}</button></div>
     <div class="stage-body" key="${i}">
       <div class="steps">${[0, 1, 2].map((n) => `<i class="${n <= i ? 'on' : ''}"></i>`).join('')}</div>
-      ${i === 0 ? `<div class="arabic gold dur">${duroodWords()}</div>` : SLIDE_ART[i]}
+      ${i === 0 ? `<div class="arabic gold dur" dir="rtl" lang="ar">${duroodWords()}</div>` : SLIDE_ART[i]}
       <h2>${titles[i]}</h2>
       <p>${texts[i]}</p>
       ${i === 0 ? `<div class="langpick"><button class="lp ${S.lang === 'en' ? 'on' : ''}" data-act="setlang" data-l="en">English</button><button class="lp ${S.lang === 'ur' ? 'on' : ''}" data-act="setlang" data-l="ur">اردو</button></div>` : ''}
@@ -237,7 +237,7 @@ function authView() {
   <div class="stage auth">
     <div class="hero">${heroArt()}
       <div class="stage-top"><span class="brandmark">${uiIcon('star', 14, 2)} ${t('app')}</span>${langToggle()}</div>
-      <div class="hero-in"><div class="arabic gold dur">${duroodWords()}</div><p class="tagl">${t('tagline')}</p>${liveLine()}</div>
+      <div class="hero-in"><div class="arabic gold dur" dir="rtl" lang="ar">${duroodWords()}</div><p class="tagl">${t('tagline')}</p>${liveLine()}</div>
     </div>
   <div class="wrap sheet">
     ${tabs ? `<div class="seg">
