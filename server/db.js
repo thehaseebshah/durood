@@ -492,5 +492,37 @@ addCol('murabbi_links', 'murabbi_ok', 'INTEGER NOT NULL DEFAULT 0');      // tha
                               // the member's own name for their caravan; shares one namespace with usernames
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_caravan_name ON users(caravan_name COLLATE NOCASE) WHERE caravan_name IS NOT NULL');
 
+// ---- caravans: a group a member creates and names, joined by invitation or request (one each) ---------------------------------
+// Names share one namespace with usernames (index.js: handleTaken). The referral tree (Qabila) is separate and unchanged.
+db.exec(`
+CREATE TABLE IF NOT EXISTS caravans (
+  id             INTEGER PRIMARY KEY,
+  name           TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  owner_id       INTEGER NOT NULL REFERENCES users(id),
+  created_at     INTEGER NOT NULL,
+  streak_awarded INTEGER NOT NULL DEFAULT 0,   -- highest caravan-streak badge already given to the members (7, 30)
+  total_awarded  INTEGER NOT NULL DEFAULT 0    -- highest caravan-total badge already given (10000, 100000, 1000000)
+);
+CREATE TABLE IF NOT EXISTS caravan_members (
+  user_id    INTEGER PRIMARY KEY REFERENCES users(id),   -- one caravan per member
+  caravan_id INTEGER NOT NULL REFERENCES caravans(id),
+  joined_at  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS caravan_members_caravan ON caravan_members(caravan_id, joined_at);
+CREATE TABLE IF NOT EXISTS caravan_invites (
+  caravan_id INTEGER NOT NULL REFERENCES caravans(id),
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  kind       TEXT NOT NULL CHECK (kind IN ('invite','request')),   -- the owner asked the member, or the member asked the caravan
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (caravan_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS caravan_invites_user ON caravan_invites(user_id, kind);
+`);
+// the old per-member caravan name is replaced by real caravans; free those names
+if (db.prepare("SELECT value FROM settings WHERE key = 'caravan_v2'").get()?.value !== '1') {
+  db.exec("UPDATE users SET caravan_name = NULL WHERE caravan_name IS NOT NULL");
+  db.exec("INSERT OR REPLACE INTO settings (key, value) VALUES ('caravan_v2', '1')");
+}
+
 export const getSetting = (key, fallback = null) => db.prepare('SELECT value FROM settings WHERE key = ?').get(key)?.value ?? fallback;
 export const setSetting = (key, value) => db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, String(value));

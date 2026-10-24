@@ -193,8 +193,7 @@ const photo = (id) => `/photos/${id}/${photoSig(id)}`;
 export const FEED_PAGE = 20;
 
 /**
- * Newest first, five kinds of item: announcements, sunnah photos, lecture comments, reflections, milestones of the member's own caravan
- * (themselves, the people they invited, and the person who invited them) and each crore of the challenge. Paged by time.
+ * Newest first, five kinds of item: announcements, sunnah photos, lecture comments, reflections, milestones of the member's own caravan and each crore of the challenge. Paged by time.
  */
 export function feed(userId, before = Date.now() + 1) {
   const cutoff = Number(before) || Date.now() + 1;
@@ -229,8 +228,8 @@ export function feed(userId, before = Date.now() + 1) {
   }
   for (const e of all(`SELECT e.id, e.user_id, e.ref, e.created_at, u.username FROM feed_events e JOIN users u ON u.id = e.user_id
       WHERE e.kind = 'badge' AND e.created_at < ? AND u.deleted_at IS NULL
-        AND (e.user_id = ? OR e.user_id IN (SELECT id FROM users WHERE referrer_id = ?) OR e.user_id = (SELECT referrer_id FROM users WHERE id = ?))
-      ORDER BY e.created_at DESC LIMIT ?`, cutoff, userId, userId, userId, FEED_PAGE + 1)) {
+        AND (e.user_id = ? OR e.user_id IN (SELECT cm.user_id FROM caravan_members cm WHERE cm.caravan_id = (SELECT x.caravan_id FROM caravan_members x WHERE x.user_id = ?)))
+      ORDER BY e.created_at DESC LIMIT ?`, cutoff, userId, userId, FEED_PAGE + 1)) {
     items.push({ type: 'milestone', id: e.id, at: e.created_at, username: e.username, code: e.ref, mine: e.user_id === userId });
   }
   for (const c of all("SELECT key, value FROM settings WHERE key GLOB 'ch_m_[0-9]*'")) {

@@ -73,14 +73,25 @@ test('reflections can be reported and hidden, and restored by an admin', async (
   assert.ok((await feed(rs[0])).items.some((i) => i.type === 'reflection' && i.id === id), 'back after restore');
 });
 
+// a caravan with these members: the owner creates it and invites, each member accepts
+async function caravanOf(owner, name, members) {
+  assert.ok((await api('POST', '/api/caravan', { token: owner.token, body: { name } })).id);
+  for (const m of members) {
+    await api('POST', '/api/caravan/invite', { token: owner.token, body: { username: m.me.username } });
+    const v = await api('GET', '/api/caravan', { token: m.token });
+    assert.equal((await api('POST', `/api/caravan/invitations/${v.invitations[0].id}`, { token: m.token, body: { accept: true } })).ok, true);
+  }
+}
+
 test('the feed shows announcements, caravan milestones to the right people only, and each crore to everyone', async () => {
   const root = await signup('fd_root');
   const kid = await signup('fd_kid', 'fd_root');
   const stranger = await signup('fd_stranger');
+  await caravanOf(root, 'fd_caravan', [kid]);
   await log(kid, 1000);                                             // d1k badge
   const msIn = async (u) => (await feed(u)).items.filter((i) => i.type === 'milestone' && i.username === 'fd_kid' && i.code === 'd1k');
   assert.equal((await msIn(kid)).length, 1, 'the member sees their own milestone');
-  assert.equal((await msIn(root)).length, 1, 'the person who invited them sees it');
+  assert.equal((await msIn(root)).length, 1, 'the others in their caravan see it');
   assert.equal((await msIn(stranger)).length, 0, 'someone outside the caravan does not');
   await api('POST', '/api/admin/news', { headers: admin, body: { title_en: 'Welcome to the feed', body_en: 'Hello' } });
   assert.ok((await feed(stranger)).items.some((i) => i.type === 'announcement' && i.titleEn === 'Welcome to the feed'));
@@ -119,42 +130,49 @@ test('lectures belong to a week: this week shows, other weeks do not, any date i
   assert.ok((await api('GET', '/api/admin/lectures', { headers: admin })).lectures.some((l) => l.week_start === weekStart(next)));
 });
 
-test('three rankings: people, caravans (people I invited myself) and referral trees (everyone under me)', async () => {
+test('rankings: people, caravans (named groups) and Qabila (everyone under me in the invite tree)', async () => {
   const root = await signup('rk_root');
   const kid = await signup('rk_kid', 'rk_root');
   const grand = await signup('rk_grand', 'rk_kid');
-  await log(root, 100); await log(kid, 200); await log(grand, 400);
-  const score = async (type, user = 'rk_root', q = '&period=week') => (await api('GET', `/api/leaderboard?type=${type}${q}`, { token: root.token })).rows.find((r) => r.username === user)?.score;
+  const friend = await signup('rk_friend');
+  await caravanOf(root, 'rk_caravan', [friend]);                    // the caravan is a different group from the invite tree
+  await log(root, 100); await log(kid, 200); await log(grand, 400); await log(friend, 50);
+  const rows = async (type, q = '&period=week') => (await api('GET', `/api/leaderboard?type=${type}${q}`, { token: root.token })).rows;
+  const score = async (type, user = 'rk_root', q) => (await rows(type, q)).find((r) => r.username === user)?.score;
   assert.equal(await score('users'), 100);
-  assert.equal(await score('caravans'), 300, 'caravan = me and the people I invited: 100 + 200');
-  assert.equal(await score('trees'), 700, 'referral tree = everyone under me: 100 + 200 + 400');
+  assert.equal(await score('trees'), 700, 'Qabila = everyone under me in the invite tree: 100 + 200 + 400');
   assert.equal(await score('teams'), 700, 'the old name still means the tree');
-  assert.equal(await score('caravans', 'rk_root', '&period=all'), 300);
   assert.equal(await score('trees', 'rk_root', '&period=all'), 700);
-  assert.equal(await score('caravans', 'rk_kid'), 600, "the kid's caravan: 200 + 400");
-  assert.equal(await score('caravans', 'rk_root', '&metric=average'), 150, 'average per active member of the caravan (2 active)');
   assert.equal(await score('trees', 'rk_root', '&metric=average'), 233, '700 / 3');
+  const cv = await rows('caravans');
+  assert.equal(cv.find((r) => r.name === 'rk_caravan').score, 150, 'the caravan is root + friend, not the invite tree: 100 + 50');
+  assert.equal(cv.find((r) => r.name === 'rk_caravan').me, true);
+  assert.equal(cv.find((r) => r.name === 'rk_caravan').members, 2);
+  assert.equal((await rows('caravans', '&period=all')).find((r) => r.name === 'rk_caravan').score, 150);
+  assert.equal((await rows('caravans', '&metric=average')).find((r) => r.name === 'rk_caravan').score, 75, 'average per active member: 150 / 2');
   const t = await api('GET', '/api/team', { token: root.token });
-  assert.equal(t.caravan.members, 1);
-  assert.equal(t.caravan.down, 200);
-  assert.equal(t.caravan.week, 300);
   assert.equal(t.total, 700);
+  assert.equal(t.direct.length, 1);
+  assert.ok(!('caravan' in t) && !('karwan' in t), 'the invite tree no longer carries caravan numbers');
 });
 
-test('caravan milestones count only the people I invited; tree milestones count everyone under me', async () => {
+test('caravan badges follow the named group; Qabila badges follow the invite tree', async () => {
   const root = await signup('ms_root');
   const kid = await signup('ms_kid', 'ms_root');
   const grand = await signup('ms_grand', 'ms_kid');
-  await log(kid, 4000); await log(grand, 8000);                     // tree under root: 12,000; caravan (kid only): 4,000
+  const pal = await signup('ms_pal');
+  await caravanOf(root, 'ms_caravan', [pal]);
+  await log(root, 200); await log(kid, 4000); await log(grand, 8000);   // tree under root: 12,000; caravan (root + pal): 200
   let me = await api('GET', '/api/me', { token: root.token });
-  assert.ok(me.badges.includes('caravan10k'), 'the referral tree passed 10,000');
+  assert.ok(me.badges.includes('caravan10k'), 'the referral tree (Qabila) passed 10,000');
   assert.ok(!me.badges.includes('group10k'), 'the caravan has not');
-  assert.equal(me.caravan.down, 4000);
-  await log(kid, 6000);                                              // kid now 10,000
+  assert.equal((await api('GET', '/api/caravan', { token: root.token })).caravan.total, 200);
+  await log(pal, 10_000);                                               // the caravan: 10,200
   me = await api('GET', '/api/me', { token: root.token });
-  assert.ok(me.badges.includes('group10k'), 'the caravan passed 10,000');
+  assert.ok(me.badges.includes('group10k'), 'the caravan passed 10,000, and every active member shares it');
+  assert.ok((await api('GET', '/api/me', { token: pal.token })).badges.includes('group10k'));
+  assert.ok(!(await api('GET', '/api/me', { token: kid.token })).badges.includes('group10k'), 'someone outside the caravan does not');
   const msgs = (await feed(root)).items.filter((i) => i.type === 'milestone' && i.username === 'ms_root').map((i) => i.code);
   assert.ok(msgs.includes('group10k') && msgs.includes('caravan10k'));
-  assert.ok(!me.badges.includes('verifier10') && me.badges.every((b) => /^[a-z0-9_]+$/.test(b)));
   assert.deepEqual(audit().problems, []);
 });

@@ -78,7 +78,7 @@ const views = {
   },
   async exports() {
     return `<h3>Exports</h3><p class="muted">CSV files of totals as reported by members. Deleted members stay in totals. Open in Excel or Google Sheets.</p>
-      <div class="inline"><button class="chip solid" data-a="exp" data-k="cities">Totals by city</button><button class="chip solid" data-a="exp" data-k="caravans">Totals by caravan</button><button class="chip solid" data-a="exp" data-k="weeks">Totals by week</button></div>`;
+      <div class="inline"><button class="chip solid" data-a="exp" data-k="cities">Totals by city</button><button class="chip solid" data-a="exp" data-k="caravans">Totals by caravan</button><button class="chip solid" data-a="exp" data-k="qabilas">Totals by Qabila (invite tree)</button><button class="chip solid" data-a="exp" data-k="weeks">Totals by week</button></div>`;
   },
   async invites() {
     const { invites, publicCode } = await api('GET', '/invites');

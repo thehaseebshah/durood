@@ -80,9 +80,9 @@ const BADGES = {
   league_diamond: (s) => s.league >= 3,
   city_podium: (s) => s.cityPodiums >= 1,
   city_champion: (s) => s.cityWins >= 1,
-  group10k: (s) => s.groupDown >= 10_000,
-  group100k: (s) => s.groupDown >= 100_000,
-  group1m: (s) => s.groupDown >= 1_000_000,
+  group10k: (s) => s.caravanTotal >= 10_000 && s.total >= CFG.referralMin,        // the named caravan's total, for members who recite themselves
+  group100k: (s) => s.caravanTotal >= 100_000 && s.total >= CFG.referralMin,
+  group1m: (s) => s.caravanTotal >= 1_000_000 && s.total >= CFG.referralMin,
   caravan10k: (s) => s.downline >= 10_000,
   caravan100k: (s) => s.downline >= 100_000,
   caravan1m: (s) => s.downline >= 1_000_000,
@@ -108,10 +108,10 @@ const run = (sql, ...a) => db.prepare(sql).run(...a);
 function stats(userId) {
   const u = one('SELECT total, best_streak, team_total, league, tree_active FROM users WHERE id = ?', userId);
   const count = (kind) => one('SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = ?', userId, kind).n;
-  // collective rewards count only what the people you invited recited, never your own durood a second time.
-  // groupDown = your caravan (the people you invited yourself); downline = your whole referral tree. Durood on hold is left out of both.
-  const groupDown = one('SELECT COALESCE(SUM(total), 0) n FROM users WHERE referrer_id = ? AND held = 0', userId).n;
-  return { ...u, treeActive: u.tree_active, groupDown, downline: u.team_total - u.total, referrals: count('referral'), lectures: count('lecture'), sunnahs: count('sunnah'), circle: count('circle') > 0 };
+  // caravanTotal = everyone in the member's named caravan; downline = the whole referral tree (Qabila). Durood on hold is left out of both.
+  const caravanTotal = one(`SELECT COALESCE(SUM(u.total), 0) n FROM caravan_members me JOIN caravan_members cm ON cm.caravan_id = me.caravan_id JOIN users u ON u.id = cm.user_id
+                           WHERE me.user_id = ? AND u.held = 0 AND u.deleted_at IS NULL AND u.suspended = 0`, userId).n;
+  return { ...u, treeActive: u.tree_active, caravanTotal, downline: u.team_total - u.total, referrals: count('referral'), lectures: count('lecture'), sunnahs: count('sunnah'), circle: count('circle') > 0 };
 }
 
 const bumpDay = (day, delta) => run('INSERT INTO day_totals (day, total) VALUES (?, ?) ON CONFLICT(day) DO UPDATE SET total = total + excluded.total', day, delta);
@@ -122,7 +122,7 @@ export function rebuildDayTotals() {
 }
 
 /** Side effects that must not run inside a write transaction (push messages) hook in here. */
-export const hooks = { milestone: null, badge: null, inTx: null };
+export const hooks = { milestone: null, badge: null, inTx: null, beforeDelete: null, profileExtra: null };
 
 /** Gives a badge once, with its one-time points, a feed line for the member's caravan and (for group badges) a push. Returns true when it was new. */
 export function award(userId, code, fresh = []) {
@@ -437,7 +437,8 @@ export function history(userId) {
 /** Anonymises an account. The durood stays in every total; the person's name, phone and email are erased. */
 export function anonymiseUser(userId, passHash) {
   tx(() => {
-    run(`UPDATE users SET caravan_name = NULL, username = ?, email = ?, phone = ?, pass = ?, city = '', deleted_at = ?, hidden_from_ranks = 1, suspended = 0
+    hooks.beforeDelete?.(userId); // leave the caravan (the owner role passes on) and drop open invitations
+    run(`UPDATE users SET username = ?, email = ?, phone = ?, pass = ?, city = '', deleted_at = ?, hidden_from_ranks = 1, suspended = 0
          WHERE id = ?`, `member_${userId}`, `deleted-${userId}@deleted.invalid`, `deleted-${userId}`, passHash, Date.now(), userId);
     run('DELETE FROM tokens WHERE user_id = ?', userId);
     // everything personal goes with the name: push devices, written text, and all Al-Burhan links, reports and assignments
@@ -658,7 +659,7 @@ export function getMe(userId) {
   const gapDays = u.last_day ? dayNum(day) - dayNum(u.last_day) : null;
   const streakAlive = gapDays === 0 || gapDays === 1 || (gapDays === 2 && u.shields > 0); // a shield bridges one missed day
   return {
-    id: u.id, username: u.username, caravanName: u.caravan_name, email: u.email, phone: u.phone, lang: u.lang, city: u.city, cityId: u.city_id, country: u.country, needsCity: !u.city_id,
+    id: u.id, username: u.username, email: u.email, phone: u.phone, lang: u.lang, city: u.city, cityId: u.city_id, country: u.country, needsCity: !u.city_id,
     dailyGoal: u.daily_goal, hiddenFromRanks: !!u.hidden_from_ranks, emailVerified: !!u.email_verified_at,
     invites: inviteStatus(userId),
     total: u.total, today, week,
@@ -666,20 +667,20 @@ export function getMe(userId) {
     ...levelFor(u.xp),
     badges: all('SELECT code FROM badges WHERE user_id = ? ORDER BY earned_at', userId).map((b) => b.code).filter((c) => BADGE_CODES.includes(c)),
     quests: questState(u).map(({ key, info, ...q }) => q),
-    // team = the whole referral tree; caravan = the people this member invited themselves
+    // team = the whole referral tree (Qabila); the caravan summary is added by the route (caravan.js)
     team: { members: team.members, direct, total: u.team_total },
-    caravan: { members: direct, down: one('SELECT COALESCE(SUM(total), 0) n FROM users WHERE referrer_id = ? AND held = 0', userId).n },
     sunnah: { posted: one("SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = 'sunnah'", userId).n },
     pub: publicStats(),
     circleUrl: CFG.circleUrl, reminderTime: u.reminder_time, special: specialToday(), league: u.league,
     unreadNews: one('SELECT COUNT(*) n FROM announcements WHERE created_at > ?', u.news_seen_at).n,
+    ...(hooks.profileExtra?.(userId) || { caravan: null, caravanInvites: 0, caravanRequests: 0 }), // caravan summary (caravan.js)
   };
 }
 
 // Boards are the same for everyone except the "this is you" marker, so the rows are computed once and shared for a short time.
 // Admin actions (hide, suspend, clear a flag) show up on boards within PUBLIC_CACHE_MS (default 30 s).
 const boardCache = new Map();
-function cachedBoard(key, compute) {
+export function cachedBoard(key, compute) {
   const ttl = Number(process.env.PUBLIC_CACHE_MS ?? 30_000);
   const k = `${key}|${dayOf()}`, hit = boardCache.get(k);
   if (ttl > 0 && hit && Date.now() - hit.at < ttl) return hit.rows;
@@ -687,17 +688,14 @@ function cachedBoard(key, compute) {
   if (ttl > 0) { if (boardCache.size > 60) boardCache.clear(); boardCache.set(k, { at: Date.now(), rows }); }
   return rows;
 }
-const withMe = (rows, me) => rows.map((r, i) => ({ rank: i + 1, ...r, me: r.username === me }));
-const VISIBLE = 'u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL';
+export const withMe = (rows, me) => rows.map((r, i) => ({ rank: i + 1, ...r, me: r.username === me }));
+export const VISIBLE = 'u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL';
 
 /**
- * Three kinds of ranking: people (type 'users'), caravans (the people a member invited themselves) and referral trees (everyone
- * under a member, at any depth; internally "qabila", type 'trees').
+Two kinds of ranking here: people (type 'users') and referral trees (everyone under a member, at any depth: the Qabila, type 'trees').
+ * Caravans are named groups and are ranked in caravan.js.
  */
-const scopeDepth = (scope) => (scope === 'caravan' ? 1 : CFG.teamMaxDepth);
-const membersOf = (scope) => (scope === 'caravan'
-  ? '(SELECT COUNT(*) FROM users x WHERE x.referrer_id = u.id)'
-  : `(SELECT COUNT(*) FROM ancestors x WHERE x.ancestor_id = u.id AND x.depth > 0 AND x.depth <= ${CFG.teamMaxDepth})`);
+const membersOf = () => `(SELECT COUNT(*) FROM ancestors x WHERE x.ancestor_id = u.id AND x.depth > 0 AND x.depth <= ${CFG.teamMaxDepth})`;
 
 export function leaderboard(userId, type, period) {
   if (type === 'teams') type = 'trees';
@@ -706,21 +704,14 @@ export function leaderboard(userId, type, period) {
   const chFrom = ch.start || '9999-12-31', chTo = ch.start ? dayStr(dayNum(ch.start) + ch.days - 1) : '0000-01-01';
   const me = one('SELECT username FROM users WHERE id = ?', userId).username;
   const rows = cachedBoard(`${type}:${period}`, () => {
-    if (type === 'trees' || type === 'caravans') {
-      const scope = type === 'caravans' ? 'caravan' : 'tree';
+    if (type === 'trees') {
       // add up each member's days first (one row per member), then spread those totals up the tree: far fewer rows than joining every day
       const from = period === 'week' ? wk : chFrom, to = period === 'week' ? '9999-12-31' : chTo;
-      let base;
-      if (period !== 'all') {
-        base = `WITH w AS (SELECT d.user_id, SUM(d.count) s FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 WHERE d.day >= ? AND d.day <= ? GROUP BY d.user_id)
-           SELECT a.ancestor_id id, SUM(w.s) score FROM w JOIN ancestors a ON a.user_id = w.user_id AND a.depth <= ${scopeDepth(scope)} GROUP BY a.ancestor_id`;
-      } else if (scope === 'tree') {
-        base = 'SELECT id, team_total score FROM users';
-      } else {
-        base = `SELECT u.id id, (CASE WHEN u.held = 0 THEN u.total ELSE 0 END) + COALESCE(c.s, 0) score FROM users u
-                JOIN (SELECT referrer_id id, SUM(CASE WHEN held = 0 THEN total ELSE 0 END) s FROM users WHERE referrer_id IS NOT NULL GROUP BY referrer_id) c ON c.id = u.id`;
-      }
-      return all(`SELECT u.username, u.caravan_name cn, u.city, t.score, ${membersOf(scope)} members
+      const base = period !== 'all'
+        ? `WITH w AS (SELECT d.user_id, SUM(d.count) s FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 WHERE d.day >= ? AND d.day <= ? GROUP BY d.user_id)
+           SELECT a.ancestor_id id, SUM(w.s) score FROM w JOIN ancestors a ON a.user_id = w.user_id AND a.depth <= ${CFG.teamMaxDepth} GROUP BY a.ancestor_id`
+        : 'SELECT id, team_total score FROM users';
+      return all(`SELECT u.username, u.city, t.score, ${membersOf()} members
                   FROM (${base}) t JOIN users u ON u.id = t.id
                   WHERE ${VISIBLE} AND t.score > 0 AND EXISTS (SELECT 1 FROM users c WHERE c.referrer_id = u.id)
                   ORDER BY t.score DESC LIMIT 50`, ...(period === 'all' ? [] : [from, to]));
@@ -737,24 +728,23 @@ export function leaderboard(userId, type, period) {
 
 /**
  * Group boards by metric. 'average' = this week's durood per active member (active = recited on any day this week, the group
- * owner included); 'growth' = this week's total minus last week's. scope 'caravan' counts the owner and the people they invited
- * themselves, 'tree' everyone under them. Same visibility rules as the total board; only groups with at least one invitee appear.
+ * owner included); 'growth' = this week's total minus last week's. Counts everyone under the owner (the Qabila). Same visibility rules as the total board; only groups with at least one invitee appear.
  */
-export function caravanBoard(userId, metric, scope = 'tree') {
+export function qabilaBoard(userId, metric) {
   const wk = weekStart(), prev = dayStr(dayNum(wk) - 7);
   const me = one('SELECT username FROM users WHERE id = ?', userId).username;
-  const rows = cachedBoard(`${scope}:${metric}`, () => {
+  const rows = cachedBoard(`tree:${metric}`, () => {
     const raw = all(`WITH w AS (
         SELECT d.user_id, SUM(CASE WHEN d.day >= ? THEN d.count ELSE 0 END) wk, SUM(CASE WHEN d.day < ? THEN d.count ELSE 0 END) last,
                MAX(CASE WHEN d.day >= ? AND d.count > 0 THEN 1 ELSE 0 END) active
         FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 WHERE d.day >= ? GROUP BY d.user_id),
       t AS (SELECT a.ancestor_id id, SUM(w.wk) week, SUM(w.last) last, SUM(w.active) active
-            FROM w JOIN ancestors a ON a.user_id = w.user_id AND a.depth <= ${scopeDepth(scope)} GROUP BY a.ancestor_id)
-      SELECT u.username, u.caravan_name cn, u.city, t.week, t.last, t.active, ${membersOf(scope)} members
+            FROM w JOIN ancestors a ON a.user_id = w.user_id AND a.depth <= ${CFG.teamMaxDepth} GROUP BY a.ancestor_id)
+      SELECT u.username, u.city, t.week, t.last, t.active, ${membersOf()} members
       FROM t JOIN users u ON u.id = t.id
       WHERE ${VISIBLE} AND EXISTS (SELECT 1 FROM users c WHERE c.referrer_id = u.id)`, wk, wk, wk, prev);
     return raw.map((r) => ({
-      username: r.username, caravanName: r.cn, city: r.city, members: r.members, active: r.active,
+      username: r.username, city: r.city, members: r.members, active: r.active,
       score: metric === 'growth' ? r.week - r.last : r.active ? Math.round(r.week / r.active) : 0,
     })).filter((r) => (metric === 'growth' ? r.score !== 0 : r.score > 0))
       .sort((x, y) => y.score - x.score || x.username.localeCompare(y.username)).slice(0, 50);
@@ -764,7 +754,7 @@ export function caravanBoard(userId, metric, scope = 'tree') {
 
 export function teamView(userId) {
   const wk = weekStart();
-  const direct = all(`SELECT u.username, u.caravan_name cn, u.city, u.total, u.team_total, u.created_day,
+  const direct = all(`SELECT u.username, u.city, u.total, u.team_total, u.created_day,
         COALESCE((SELECT SUM(count) FROM daily d WHERE d.user_id = u.id AND d.day >= ?), 0) week,
         (SELECT COUNT(*) FROM ancestors a WHERE a.ancestor_id = u.id AND a.depth > 0) members
       FROM users u WHERE u.referrer_id = ? ORDER BY u.team_total DESC LIMIT 200`, wk, userId);
@@ -773,25 +763,18 @@ export function teamView(userId) {
   const byDepth = all(`SELECT depth, COUNT(*) n FROM ancestors WHERE ancestor_id = ? AND depth > 0 GROUP BY depth ORDER BY depth LIMIT 20`, userId);
   const total = one('SELECT team_total FROM users WHERE id = ?', userId).team_total;
   // the people above this member, nearest first; they already see this member's name, city and counts
-  const upline = all(`SELECT u.username, u.caravan_name cn, u.city, u.team_total, a.depth,
+  const upline = all(`SELECT u.username, u.city, u.team_total, a.depth,
         (SELECT COUNT(*) FROM ancestors x WHERE x.ancestor_id = u.id AND x.depth > 0) members
       FROM ancestors a JOIN users u ON u.id = a.ancestor_id
       WHERE a.user_id = ? AND a.depth > 0 AND u.deleted_at IS NULL ORDER BY a.depth LIMIT 20`, userId)
-    .map((u) => ({ username: u.username, caravanName: u.cn, city: u.city, team: u.team_total, members: u.members, depth: u.depth }));
+    .map((u) => ({ username: u.username, city: u.city, team: u.team_total, members: u.members, depth: u.depth }));
   const active = one(`SELECT COUNT(DISTINCT d.user_id) n FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 JOIN ancestors a ON a.user_id = d.user_id
                       WHERE a.ancestor_id = ? AND a.depth > 0 AND a.depth <= ? AND d.day >= ? AND d.count > 0`, userId, CFG.teamMaxDepth, wk).n;
-  // the caravan: this member and the people they invited themselves (durood on hold left out, as everywhere)
-  const cw = one(`SELECT COALESCE(SUM(d.count), 0) n FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0
-                  WHERE d.day >= ? AND (d.user_id = ? OR d.user_id IN (SELECT id FROM users WHERE referrer_id = ?))`, wk, userId, userId).n;
-  const cdown = one('SELECT COALESCE(SUM(total), 0) n FROM users WHERE referrer_id = ? AND held = 0', userId).n;
-  const cactive = one(`SELECT COUNT(DISTINCT d.user_id) n FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0
-                       WHERE d.day >= ? AND d.count > 0 AND d.user_id IN (SELECT id FROM users WHERE referrer_id = ?)`, wk, userId).n;
   return {
-    total, week, byDepth, upline, active, name: one('SELECT caravan_name n FROM users WHERE id = ?', userId).n,
-    caravan: { members: direct.length, down: cdown, week: cw, active: cactive },
+    total, week, byDepth, upline, active,
     // there is no opt-out: inviters see their invitees' name, city and counts
     direct: direct.map((d) => ({
-      username: d.username, caravanName: d.cn, city: d.city, joined: d.created_day, members: d.members,
+      username: d.username, city: d.city, joined: d.created_day, members: d.members,
       total: d.total, week: d.week, team: d.team_total,
     })),
   };

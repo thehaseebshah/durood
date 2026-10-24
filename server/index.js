@@ -6,6 +6,8 @@ import crypto from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { db, tx, getSetting } from './db.js';
 import * as burhan from './burhan.js';
+import * as caravanApi from './caravan.js';
+import { USERNAME, isReserved, handleTaken as handleTakenBy } from './handles.js';
 import { HttpError, hashPassword, checkPassword, signToken, verifyToken, rateLimit, lockedOut, recordFailure, clientIp, sameSecret } from './auth.js';
 import { auditAsync } from './audit.js';
 import * as access from './access.js';
@@ -15,7 +17,7 @@ import * as news from './news.js';
 import * as feedApi from './feed.js';
 import * as geo from './geo.js';
 import * as compete from './compete.js';
-import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, quizPassed, publicQuiz, parseQuestions, claimCircle, getMe, weekStart, setSpecialDay, deleteSpecialDay, listSpecialDays, leaderboard, caravanBoard, teamView, publicStats } from './game.js';
+import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, quizPassed, publicQuiz, parseQuestions, claimCircle, getMe, weekStart, setSpecialDay, deleteSpecialDay, listSpecialDays, leaderboard, qabilaBoard, teamView, publicStats } from './game.js';
 
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -23,11 +25,7 @@ const run = (sql, ...a) => db.prepare(sql).run(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
 
 // ---- validation -----------------------------------------------------------
-const RESERVED = new Set(['admin', 'root', 'support', 'durood', 'qafila', 'quest', 'seerah', 'seerat', 'api', 'null', 'undefined']);
-const isReserved = (u) => RESERVED.has(u.toLowerCase()) || /^member_\d+$/i.test(u) || /^\d+$/.test(u); // all digits could be taken for a phone number at login; // member_<id> is what deleted accounts become
-const USERNAME = /^[a-z0-9_]{3,20}$/i;
-// usernames and caravan names share one namespace: a name is free only when no profile and no caravan uses it
-const handleTaken = (name, exceptId = 0) => !!one('SELECT 1 FROM users WHERE (username = ? OR caravan_name = ? COLLATE NOCASE) AND id != ?', name, name, exceptId);
+// usernames and caravan names share one namespace (handles.js)
 const CITY_LOCK_MS = 14 * 86400e3;
 const EMAIL_RE = /^[^\s@]{1,64}@[^\s@.]+(\.[^\s@.]+)+$/;
 const EMAIL = { test: (e) => typeof e === 'string' && e.length <= 254 && EMAIL_RE.test(e) }; // length first: no regex work on huge input
@@ -95,27 +93,29 @@ route('GET', '/api/username-check', { auth: false }, ({ query, ip }) => {
   rateLimit(`uc:${ip}`, 120, 60e3);
   const u = String(query.get('u') || '');
   if (!USERNAME.test(u) || isReserved(u)) return { ok: false, reason: 'bad_username' };
-  return { ok: !handleTaken(u) };
+  return { ok: !handleTakenBy(u) };
 });
 
-// free for this member: nobody else uses it, and it is not their own username (their own current caravan name is fine)
-const nameFreeFor = (userId, n) => !handleTaken(n, userId) && !one('SELECT 1 FROM users WHERE id = ? AND username = ?', userId, n);
-route('GET', '/api/caravan-name-check', ({ user, query }) => {
+// ---- caravans: a named group, joined by invitation or request (caravan.js) ----------------------------------------------------
+route('GET', '/api/caravan', ({ user }) => caravanApi.view(user));
+route('POST', '/api/caravan', ({ user, body }) => { rateLimit(`cvc:${user}`, 20, 3600e3); return { ...caravanApi.create(user, body.name), view: caravanApi.view(user), me: getMe(user) }; });
+route('PUT', '/api/caravan/name', ({ user, body }) => { rateLimit(`cvn:${user}`, 10, 3600e3); caravanApi.rename(user, body.name); return { view: caravanApi.view(user) }; });
+route('GET', '/api/caravan/name-check', ({ user, query }) => {
   const n = String(query.get('u') || '').trim();
   if (!USERNAME.test(n) || isReserved(n)) return { ok: false, reason: 'bad_caravan_name' };
-  return { ok: nameFreeFor(user, n) };
+  const mine = one('SELECT c.id FROM caravan_members cm JOIN caravans c ON c.id = cm.caravan_id WHERE cm.user_id = ?', user);
+  return { ok: !handleTakenBy(n, { exceptUserId: 0, exceptCaravanId: mine?.id ?? 0 }) };
 });
-route('PUT', '/api/caravan/name', ({ user, body }) => {
-  rateLimit(`cname:${user}`, 10, 3600e3);
-  const n = String(body.name ?? '').trim();
-  if (!n) { run('UPDATE users SET caravan_name = NULL WHERE id = ?', user); return { me: getMe(user) }; }
-  if (!USERNAME.test(n) || isReserved(n)) throw new HttpError(400, 'bad_caravan_name');
-  tx(() => {
-    if (!nameFreeFor(user, n)) throw new HttpError(409, 'caravan_name_taken');
-    run('UPDATE users SET caravan_name = ? WHERE id = ?', n, user);
-  });
-  return { me: getMe(user) };
-});
+route('POST', '/api/caravan/invite', ({ user, body }) => { rateLimit(`cvi:${user}`, 60, 3600e3); return { ...caravanApi.invite(user, body.username), view: caravanApi.view(user) }; });
+route('POST', '/api/caravan/join', ({ user, body }) => { rateLimit(`cvj:${user}`, 20, 3600e3); return { ...caravanApi.requestJoin(user, body.name), view: caravanApi.view(user), me: getMe(user) }; });
+route('POST', '/api/caravan/invitations/:id', ({ user, params, body }) => { const r = caravanApi.answerInvitation(user, Number(params.id), body.accept === true); return { ...r, view: caravanApi.view(user), me: getMe(user) }; });
+route('POST', '/api/caravan/requests/:username', ({ user, params, body }) => ({ ...caravanApi.answerRequest(user, params.username, body.accept === true), view: caravanApi.view(user) }));
+route('POST', '/api/caravan/cancel', ({ user, body }) => ({ ...caravanApi.cancelPending(user, { username: body.username, caravanId: body.caravanId }), view: caravanApi.view(user) }));
+route('POST', '/api/caravan/leave', ({ user }) => ({ ...caravanApi.leave(user), view: caravanApi.view(user), me: getMe(user) }));
+route('POST', '/api/caravan/remove', ({ user, body }) => ({ ...caravanApi.removeByOwner(user, body.username), view: caravanApi.view(user) }));
+route('GET', '/api/caravan/search', ({ user, query }) => { rateLimit(`cvs:${user}`, 60, 60e3); return { usernames: caravanApi.searchInvitees(user, query.get('q')), caravans: caravanApi.searchCaravans(query.get('q')) }; });
+route('GET', '/api/admin/caravans', { auth: false, admin: true }, () => ({ caravans: caravanApi.adminList() }));
+route('DELETE', '/api/admin/caravans/:id', { auth: false, admin: true }, ({ params }) => caravanApi.adminDelete(Number(params.id)));
 
 // ---- Al-Burhan edition: murabbi, masul, mamulaat, tasks and routines (404 in the public edition) ----------------------------------
 const B = (fn) => (ctx) => { burhan.guard(); return fn(ctx); };
@@ -180,7 +180,7 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
     // resolve again inside the transaction so a code can't be used past its limit by two people at once
     let r = null;
     if (String(inviteRaw || '').trim()) r = access.resolveInvite(inviteRaw);
-    if (handleTaken(username)) throw new HttpError(409, 'username_taken');
+    if (handleTakenBy(username)) throw new HttpError(409, 'username_taken');
     if (one('SELECT 1 FROM users WHERE email = ?', email)) throw new HttpError(409, 'email_taken');
     if (one('SELECT 1 FROM users WHERE phone = ?', phone)) throw new HttpError(409, 'phone_taken');
     if (r) access.consumeInvite(r);
@@ -338,13 +338,14 @@ route('GET', '/api/leaderboard', ({ user, query }) => {
   const period = p === 'all' ? 'all' : p === 'challenge' ? 'challenge' : 'week';
   const metric = query.get('metric');
   if (t === 'cities') return compete.cityBoard(user, metric === 'average' || metric === 'growth' ? metric : 'total');
-  if (type !== 'users' && (metric === 'average' || metric === 'growth')) return caravanBoard(user, metric, type === 'caravans' ? 'caravan' : 'tree');
+  if (type === 'caravans') return caravanApi.board(user, period, metric === 'average' || metric === 'growth' ? metric : 'total');
+  if (type === 'trees' && (metric === 'average' || metric === 'growth')) return qabilaBoard(user, metric);
   return leaderboard(user, type, period);
 });
 
 route('GET', '/api/challenge', ({ user }) => ({ summary: challengeSummary(), series: challengeSeries() }));
 route('GET', '/api/league', ({ user }) => { compete.ensureWeekClosed(); return compete.leagueView(user); });
-route('GET', '/api/team', ({ user }) => ({ ...teamView(user), karwan: compete.karwanStatus(user) }));
+route('GET', '/api/team', ({ user }) => teamView(user));
 
 route('GET', '/api/lectures', ({ user }) => ({ lectures: feedApi.lectureList(user), circleUrl: CFG.circleUrl, circleXp: CFG.circleXp }));
 route('POST', '/api/lectures/:id/quiz', ({ user, params, body }) => {

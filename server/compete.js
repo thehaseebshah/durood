@@ -136,33 +136,10 @@ export function ensureWeekClosed() {
   return last;
 }
 
-// ---- the caravan streak ------------------------------------------------------------------------------------------------------
-/**
- * A caravan (the owner and the people they invited, at least 3 people) keeps a streak for every day that half or more of its
- * members recited. Today does not break the streak until it is over. Durood on hold does not count, for or against.
- */
-export function karwanStatus(ownerId, today = dayOf()) {
-  const members = all(`SELECT id, username, created_day FROM users WHERE (id = ? OR referrer_id = ?) AND deleted_at IS NULL AND suspended = 0 AND held = 0`, ownerId, ownerId);
-  if (members.length < 3) return { active: false, size: members.length, streak: 0, today: 0, missing: [] };
-  const from = dayStr(dayNum(today) - 60);
-  const byDay = new Map();
-  for (const r of all(`SELECT user_id, day FROM daily WHERE user_id IN (${members.map(() => '?').join(',')}) AND day >= ? AND count > 0`, ...members.map((m) => m.id), from)) {
-    if (!byDay.has(r.day)) byDay.set(r.day, new Set());
-    byDay.get(r.day).add(r.user_id);
-  }
-  const met = (d) => { const size = members.filter((m) => m.created_day <= d).length; return size >= 3 && (byDay.get(d)?.size || 0) * 2 >= size; };
-  let streak = 0, d = today;
-  if (met(d)) streak = 1;
-  for (let i = 1; i <= 60; i++) { d = dayStr(dayNum(today) - i); if (!met(d)) break; streak += 1; }
-  const did = byDay.get(today) || new Set();
-  return { active: true, size: members.length, streak, today: did.size, missing: members.filter((m) => !did.has(m.id)).map((m) => m.username).slice(0, 8) };
-}
-
 // runs inside the transaction that records durood
 hooks.inTx = (userId, referrerId, fresh) => {
   joinLeague(userId);
-  for (const owner of new Set([referrerId, userId].filter(Boolean))) {
-    const ks = karwanStatus(owner);
-    if (ks.active) evalBadges(owner, fresh, { karwanStreak: ks.streak });
-  }
+  caravanHooks.afterLog?.(userId, fresh); // the caravan's shared milestones (caravan.js)
 };
+/** caravan.js registers itself here (it imports compete's neighbours, so a direct import would be circular). */
+export const caravanHooks = { afterLog: null };

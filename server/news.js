@@ -177,7 +177,11 @@ export function exportCsv(kind) {
     return toCsv(['city', 'country', 'members', 'durood_total'], all(`SELECT COALESCE(NULLIF(city, ''), '(none)') c, country, COUNT(*) m, SUM(total) t FROM users GROUP BY COALESCE(city_id, city), c, country ORDER BY t DESC`).map((r) => [r.c, r.country, r.m, r.t]));
   }
   if (kind === 'caravans') {
-    return toCsv(['caravan_owner', 'city', 'members_below', 'caravan_total'], all(`SELECT u.username, u.city, (SELECT COUNT(*) FROM ancestors a WHERE a.ancestor_id = u.id AND a.depth > 0) m, u.team_total t
+    return toCsv(['caravan', 'owner', 'members', 'durood_total'], all(`SELECT c.name, o.username owner, COUNT(cm.user_id) m, COALESCE(SUM(CASE WHEN u.held = 0 THEN u.total ELSE 0 END), 0) t
+      FROM caravans c JOIN users o ON o.id = c.owner_id JOIN caravan_members cm ON cm.caravan_id = c.id JOIN users u ON u.id = cm.user_id AND u.deleted_at IS NULL GROUP BY c.id ORDER BY t DESC`).map((r) => [r.name, r.owner, r.m, r.t]));
+  }
+  if (kind === 'qabilas') {
+    return toCsv(['qabila_root', 'city', 'members_below', 'qabila_total'], all(`SELECT u.username, u.city, (SELECT COUNT(*) FROM ancestors a WHERE a.ancestor_id = u.id AND a.depth > 0) m, u.team_total t
       FROM users u WHERE u.referrer_id IS NULL AND u.deleted_at IS NULL AND EXISTS (SELECT 1 FROM users c WHERE c.referrer_id = u.id) ORDER BY t DESC`).map((r) => [r.username, r.city, r.m, r.t]));
   }
   if (kind === 'weeks') {
