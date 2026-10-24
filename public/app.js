@@ -14,7 +14,7 @@ if (urlInvite) ls.set('ref', urlInvite.trim());
 const S = {
   token: ls.get('token'),
   me: null,
-  lang: ls.get('lang') || 'ur',
+  lang: ls.get('lang') || (/^ur/i.test(navigator.language || '') ? 'ur' : 'en'), // the phone's own language decides the first screen
   tab: 'home',
   authMode: params.get('reset') ? 'reset' : urlInvite ? 'register' : 'login',
   resetToken: params.get('reset') || '',
@@ -103,9 +103,11 @@ function logout(render = true) {
 }
 
 // ---- reward feedback --------------------------------------------------------
+const gainedSince = (before) => Math.max(0, (S.me.xp || 0) - (before || 0));
 function celebrate(res) {
   const bits = [];
-  if (res.xpGained) bits.push(t('gained'));
+  if (res.added) bits.push(t('saved_n')(fmt(res.added)));
+  if (res.xpGained) bits.push(t('points_gained')(fmt(res.xpGained)));
   if (res.levelUp) bits.push(t('level_up')(res.levelUp));
   for (const b of res.newBadges || []) bits.push(`${t('new_badge')} ${t('badge')[b][0]}`);
   if (bits.length) toast(bits.join(' · '), (res.newBadges || [])[0]);
@@ -155,7 +157,7 @@ const liveLine = () => {
 const SLIDE_ART = [
   `<svg viewBox="0 0 120 120" class="slide-art"><path d="${STAR_PATH}" transform="translate(10 10) scale(1)" fill="none" stroke="#f0cf86" stroke-width="1.4"/><text x="60" y="68" text-anchor="middle" font-size="26" fill="#f0cf86" font-family="Noto Naskh Arabic, serif">ﷺ</text></svg>`,
   `<svg viewBox="0 0 120 120" class="slide-art"><g fill="none" stroke="#f0cf86" stroke-width="1.4"><rect x="22" y="62" width="76" height="34" rx="3"/><path d="M34 62V44M60 62V28M86 62V50"/></g>
-    <g fill="#8fe0d2"><circle cx="34" cy="40" r="5"/><circle cx="60" cy="24" r="6"/><circle cx="86" cy="46" r="5"/></g><text x="60" y="84" text-anchor="middle" font-size="16" fill="#f0cf86" font-weight="800" font-family="Inter, sans-serif">+1</text></svg>`,
+    <g fill="#8fe0d2"><circle cx="34" cy="40" r="5"/><circle cx="60" cy="24" r="6"/><circle cx="86" cy="46" r="5"/></g><text direction="ltr" x="60" y="84" text-anchor="middle" font-size="16" fill="#f0cf86" font-weight="800" font-family="Inter, sans-serif">+1</text></svg>`,
   `<svg viewBox="0 0 120 120" class="slide-art"><g stroke="#f0cf86" stroke-width="1.4" fill="none"><path d="M60 30L30 62M60 30L90 62M30 62L16 92M30 62L44 92M90 62L76 92M90 62L104 92"/></g>
     <g fill="#8fe0d2"><circle cx="60" cy="28" r="9"/></g><g fill="#f0cf86"><circle cx="30" cy="62" r="6"/><circle cx="90" cy="62" r="6"/></g><g fill="#0b0b0b" stroke="#f0cf86" stroke-width="1.2"><circle cx="16" cy="92" r="4.5"/><circle cx="44" cy="92" r="4.5"/><circle cx="76" cy="92" r="4.5"/><circle cx="104" cy="92" r="4.5"/></g></svg>`,
 ];
@@ -170,14 +172,14 @@ function introView() {
       <h2>${titles[i]}</h2>
       <p>${texts[i]}</p>
       ${i === 0 ? `<div class="langpick"><button class="lp ${S.lang === 'en' ? 'on' : ''}" data-act="setlang" data-l="en">English</button><button class="lp ${S.lang === 'ur' ? 'on' : ''}" data-act="setlang" data-l="ur">اردو</button></div>` : ''}
-      <button class="cta" data-act="intronext"><span>${last ? t('start') : t('next')}</span><b>→</b></button>
+      <button class="cta" data-act="intronext"><span>${last ? t('start') : t('next')}</span><b class="ar">→</b></button>
     </div></div>`;
 }
 
 // ---- the city picker (search as you type) and the phone country --------------------------------------------------------
-const cityPicker = (label, initial = '') => `<label>${label}</label>
-  <div class="cityfield"><input type="text" data-city autocomplete="off" placeholder="${t('city_ph')}" value="${esc(initial)}">
-  <input type="hidden" name="cityId" value=""><ul class="suggest" hidden></ul></div><div class="hint">${t('city_hint')}</div>`;
+const cityPicker = (label, initial = '') => `<label for="city-input">${label}</label>
+  <div class="cityfield"><input id="city-input" type="text" data-city role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="city-list" autocomplete="off" placeholder="${t('city_ph')}" value="${esc(initial)}">
+  <input type="hidden" name="cityId" value=""><ul id="city-list" class="suggest" role="listbox" hidden></ul></div><div class="hint">${t('city_hint')}</div>`;
 const countryOptions = () => (S.geo?.countries || [{ cc: 'PK', name: 'Pakistan', dial: '92' }])
   .map((c) => `<option value="${c.cc}" ${c.cc === (S.geo?.country || 'PK') ? 'selected' : ''}>${esc(c.name)} (+${c.dial})</option>`).join('');
 async function loadGeo() {
@@ -188,52 +190,52 @@ async function loadGeo() {
 function authView() {
   const mode = S.authMode;
   const tabs = mode === 'login' || mode === 'register';
-  const err = S.error ? `<div class="err">${esc(S.error)}</div>` : '';
-  const field = (label, name, type = 'text', extra = '') => `<label>${label}</label><input type="${type}" name="${name}" ${extra}>`;
+  const err = S.error ? `<div class="err" role="alert">${esc(S.error)}</div>` : '';
+  const field = (label, name, type = 'text', extra = '') => `<label for="f-${name}">${label}</label><input id="f-${name}" type="${type}" name="${name}" ${extra}>`;
   let body = '';
   if (mode === 'login') {
-    body = `<form class="sec" data-form="login" autocomplete="on">${err}
+    body = `<form novalidate class="sec" data-form="login" autocomplete="on">${err}
       ${field(t('id_label'), 'id', 'text', 'autocapitalize="none" autocomplete="username" required dir="ltr"')}
       ${field(t('password'), 'password', 'password', 'autocomplete="current-password" required dir="ltr"')}
-      <button class="blk" type="submit"><span>${t('login')}</span><b>→</b></button>
+      <button class="blk" type="submit"><span>${t('login')}</span><b class="ar">→</b></button>
       <p class="linkrow"><button type="button" class="linkbtn" data-act="mode" data-mode="forgot">${t('forgot')}</button></p></form>`;
   } else if (mode === 'register') {
-    body = `<form class="sec" data-form="register" autocomplete="on">${err}
-      <label>${t('invite_code')}</label>
-      <input type="text" name="invite" value="${esc(S.ref)}" autocapitalize="characters" autocomplete="off" required data-check="invite" dir="ltr">
+    body = `<form novalidate class="sec" data-form="register" autocomplete="on">${err}
+      <label for="f-invite">${t('invite_code')}</label>
+      <input id="f-invite" type="text" name="invite" value="${esc(S.ref)}" autocapitalize="characters" autocomplete="off" required data-check="invite" dir="ltr">
       <div class="hint" id="rcheck">${S.refName ? `${t('invited_by')} <b>${esc(S.refName)}</b> ✓` : t('invite_hint')}</div>
       <p class="linkrow">${t('no_code')} <button type="button" class="linkbtn" data-act="mode" data-mode="waitlist">${t('request_access')}</button></p>
-      <label>${t('username')}</label>
-      <input type="text" name="username" data-check="username" autocapitalize="none" autocomplete="username" maxlength="20" required dir="ltr">
+      <label for="f-username">${t('username')}</label>
+      <input id="f-username" type="text" name="username" data-check="username" autocapitalize="none" autocomplete="username" maxlength="20" required dir="ltr">
       <div class="hint" id="ucheck">${t('username_hint')}</div>
       ${field(t('email'), 'email', 'email', 'autocomplete="email" required dir="ltr"')}
-      <label>${t('phone')}</label>
-      <div class="phonerow"><select name="phoneCountry" aria-label="${esc(t('country'))}">${countryOptions()}</select><input type="tel" name="phone" autocomplete="tel-national" required dir="ltr" placeholder="300 1234567"></div>
+      <label for="f-phone">${t('phone')}</label>
+      <div class="phonerow"><select name="phoneCountry" aria-label="${esc(t('country'))}">${countryOptions()}</select><input id="f-phone" type="tel" name="phone" autocomplete="tel-national" required dir="ltr" placeholder="300 1234567"></div>
       <div class="hint">${t('phone_hint')}</div>
       ${cityPicker(t('city'))}
       ${field(t('password'), 'password', 'password', 'autocomplete="new-password" minlength="6" required dir="ltr"')}
-      <button class="blk" type="submit"><span>${t('register')}</span><b>→</b></button></form>`;
+      <button class="blk" type="submit"><span>${t('register')}</span><b class="ar">→</b></button></form>`;
   } else if (mode === 'waitlist') {
     body = `<div class="sec"><h3 class="in">${t('request_access')}</h3>${S.wait
       ? `<p>${t('wait_done')}</p>`
-      : `<p class="muted">${t('waitlist_text')}</p><form data-form="waitlist" class="plain">${err}
+      : `<p class="muted">${t('waitlist_text')}</p><form novalidate data-form="waitlist" class="plain">${err}
         ${field(t('name'), 'name', 'text', 'required maxlength="80"')}
         ${field(t('phone'), 'phone', 'tel', 'required dir="ltr"')}
         ${field(t('email'), 'email', 'email', 'dir="ltr"')}
         ${field(t('city'), 'city', 'text', 'maxlength="40"')}
-        <button class="blk" type="submit"><span>${t('send_request')}</span><b>→</b></button></form>`}
+        <button class="blk" type="submit"><span>${t('send_request')}</span><b class="ar">→</b></button></form>`}
       <p class="linkrow"><button type="button" class="linkbtn" data-act="mode" data-mode="login">${t('back_login')}</button></p></div>`;
   } else if (mode === 'forgot') {
     body = `<div class="sec"><h3 class="in">${t('forgot')}</h3>${S.forgot
       ? `<p>${t('forgot_done')}</p>`
-      : `<p class="muted">${t('forgot_text')}</p><form data-form="forgot" class="plain">${err}
+      : `<p class="muted">${t('forgot_text')}</p><form novalidate data-form="forgot" class="plain">${err}
         ${field(t('email'), 'email', 'email', 'required autocomplete="email" dir="ltr"')}
-        <button class="blk" type="submit"><span>${t('send_link')}</span><b>→</b></button></form>`}
+        <button class="blk" type="submit"><span>${t('send_link')}</span><b class="ar">→</b></button></form>`}
       <p class="linkrow"><button type="button" class="linkbtn" data-act="mode" data-mode="login">${t('back_login')}</button></p></div>`;
   } else if (mode === 'reset') {
-    body = `<div class="sec"><h3 class="in">${t('reset_title')}</h3><form data-form="reset" class="plain">${err}
+    body = `<div class="sec"><h3 class="in">${t('reset_title')}</h3><form novalidate data-form="reset" class="plain">${err}
       ${field(t('new_password'), 'password', 'password', 'required minlength="6" autocomplete="new-password" dir="ltr"')}
-      <button class="blk" type="submit"><span>${t('save')}</span><b>→</b></button></form></div>`;
+      <button class="blk" type="submit"><span>${t('save')}</span><b class="ar">→</b></button></form></div>`;
   }
   return `
   <div class="stage auth">
@@ -253,16 +255,17 @@ function authView() {
 }
 
 function cityModal() {
-  return `<div class="modal"><div class="box"><form data-form="citysave"><h3 class="in">${t('city_needed_title')}</h3><p class="muted">${t('city_needed_text')}</p>${cityPicker(t('city'))}
-    <button class="blk" type="submit"><span>${t('save')}</span><b>→</b></button></form></div></div>`;
+  return `<div class="modal"><div class="box"><form novalidate data-form="citysave"><h3 class="in">${t('city_needed_title')}</h3><p class="muted">${t('city_needed_text')}</p>${cityPicker(t('city'))}
+    <button class="blk" type="submit"><span>${t('save')}</span><b class="ar">→</b></button></form></div></div>`;
 }
 
 function shell() {
   const tabs = ['home', 'feed', 'rank', 'caravan', 'me'];
   return `
-  <div class="hd"><span>${t('app')}</span><span class="row"><span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button></span></div>
-  <div class="wrap tab-${S.tab}">${view()}</div>
-  <nav class="tabs"><div class="brand">${t('app')}</div>${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}</nav>
+  <a class="skip" href="#main">${t('skip_to')}</a>
+  <header class="hd"><span>${t('app')}</span><span class="row"><span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button></span></header>
+  <main id="main" tabindex="-1" class="wrap tab-${S.tab}"><h1 class="sr">${t('nav_' + S.tab)}</h1>${view()}</main>
+  <nav class="tabs" aria-label="${esc(t('app'))}"><div class="brand">${t('app')}</div>${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" ${S.tab === k ? 'aria-current="page"' : ''} data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}</nav>
   ${S.player ? playerModal() : ''}
   ${S.bhDetail ? detailModal() : ''}
   ${S.celebrate ? celebrateModal() : ''}
@@ -289,8 +292,9 @@ function home() {
   <div class="live">${uiIcon('feed', 13, 2)} ${t('live_today')(fmt(m.pub.today || 0), fmt(m.pub.membersToday || 0))}</div>
   <div class="numbox">
     <label for="manual">${t('enter_total')}</label>
-    <div class="row"><input type="number" id="manual" inputmode="numeric" min="1" placeholder="${t('count_ph')}" dir="ltr"><button class="blk addbtn" data-act="manual"><span>${t('add')}</span><b>→</b></button></div>
+    <div class="row"><input type="number" id="manual" inputmode="numeric" min="1" placeholder="${t('count_ph')}" dir="ltr"><button class="blk addbtn" data-act="manual"><span>${t('add')}</span><b class="ar">→</b></button></div>
     <div class="quick presets">${[100, 500, 1000].map((n) => `<button class="chip" data-act="fill" data-n="${n}">${N('+' + fmt(n))}</button>`).join('')}</div>
+    <div class="hint">${t('quick_hint')}</div>
   </div>
 
   <button class="linkbtn tapopen" data-act="taptoggle">${uiIcon('tap', 16, 1.9)} ${t('tap_open')} ${S.tapOpen || S.pending ? '−' : '+'}</button>
@@ -300,7 +304,7 @@ function home() {
       <span><b id="pend">${fmt(S.pending)}</b> ${t('pending')}</span>
       <span class="quick"><button class="chip" data-act="preset">${t('reset')}</button></span>
     </div>
-    <button class="blk go" data-act="submitp" id="submitp" ${S.pending ? '' : 'disabled'}><span>${t('submit_pending')}</span><b>→</b></button>
+    <button class="blk go" data-act="submitp" id="submitp" ${S.pending ? '' : 'disabled'}><span>${t('submit_pending')}</span><b class="ar">→</b></button>
   </div>` : ''}
 
   ${challengeCard(m)}
@@ -308,21 +312,21 @@ function home() {
   <div class="stats">
     <div><b>${fmt(m.week)}</b><span>${t('week')}</span></div>
     <div><b>${fmt(m.total)}</b><span>${t('total')}</span></div>
-    <div><b>${m.level}</b><span>${esc(title)}</span></div>
+    <div><b>${m.level}</b><span>${t('level')} · ${esc(title)}</span></div>
   </div>
   </div><div class="col">
   ${burhanToday()}
   <div class="lvl"><div class="row between"><span>${uiIcon('bolt', 14, 1.9)} ${t('level')} ${m.level} · ${esc(title)}</span><span title="${esc(t('shield_hint'))}">${uiIcon('shield', 14, 1.9)} ${m.shields}</span></div>${bar(m.pct)}</div>
 
   ${pushPromptDue() ? `<div class="circlecard push"><b>${t('push_card_title')}</b><p>${t('push_card_text')}</p>
-    <div class="row"><button class="blk fill1" data-act="pushon"><span>${t('push_enable')}</span><b>→</b></button><button class="chip" data-act="pushno">${t('push_later')}</button></div></div>` : ''}
+    <div class="row"><button class="blk fill1" data-act="pushon"><span>${t('push_enable')}</span><b class="ar">→</b></button><button class="chip" data-act="pushno">${t('push_later')}</button></div></div>` : ''}
   <button class="rowlink" data-act="goleague"><span>${uiIcon('bolt', 14, 2)} ${t('league_title')}</span><b>${t('tier_' + TIER_KEYS[m.league || 0])}</b></button>
 
-  <div class="circlecard">
+  ${m.circleUrl ? `<div class="circlecard">
     <b>${t('circle_title')}</b>
     <p>${t('circle_text')}</p>
-    ${m.circleUrl ? `<a class="blk fill1" href="${esc(m.circleUrl)}" target="_blank" rel="noopener"><span>${t('circle_open')}</span><b>↗</b></a>` : `<p class="muted">${t('circle_none')}</p>`}
-  </div>
+    <a class="blk fill1" href="${esc(m.circleUrl)}" target="_blank" rel="noopener"><span>${t('circle_open')}</span><b class="ar">↗</b></a>
+  </div>` : ''}
 
   <h3>${t('durood_quests')}</h3>
   ${m.quests.filter((q) => q.group === 'durood').map((q) => quest(q)).join('')}
@@ -403,7 +407,7 @@ function celebrateModal() {
     <div class="cnum ${c.big.length > 6 ? 'long' : ''}">${esc(c.big)}</div>
     <div class="ctitle">${esc(c.title)}</div>
     <p>${esc(c.text)}</p>
-    <div class="row"><button class="blk fill1" data-act="shareCard"><span class="lab">${uiIcon('share', 20, 1.8)} ${t('share')}</span><b>→</b></button><button class="chip" data-act="celebrateX">${t('close')}</button></div>
+    <div class="row"><button class="blk fill1" data-act="shareCard"><span class="lab">${uiIcon('share', 20, 1.8)} ${t('share')}</span><b class="ar">→</b></button><button class="chip" data-act="celebrateX">${t('close')}</button></div>
   </div></div>`;
 }
 
@@ -486,9 +490,10 @@ function sunnahCard(d) {
   const sn = d.sunnah, mine = d.mine, r = d.rules;
   if (!sn) return `<div class="fcard"><h3>${t('sunnah_title')}</h3><p class="muted">${t('no_sunnah')}</p></div>`;
   let photoPart;
-  if (mine) photoPart = `<div class="row between"><b>${t('your_post')}</b>${statusTag(mine.status)}</div>${mine.photoUrl ? `<img class="shot" src="${esc(mine.photoUrl)}" alt="">` : `<p class="muted">${t('photo_gone')}</p>`}`;
-  else if (S.draft) photoPart = `<b>${t('photo_preview')}</b><img class="shot" src="${esc(S.draft)}" alt="">
-      <div class="row"><button class="blk" style="flex:1" data-act="postit" data-kind="sunnah"><span>${t('post_it')}</span><b>→</b></button><button class="chip" data-act="draftx">${t('cancel')}</button></div>`;
+  if (mine) photoPart = `<div class="row between"><b>${t('your_post')}</b>${statusTag(mine.status)}</div>${mine.photoUrl ? `<img class="shot thumb" src="${esc(mine.photoUrl)}" alt="">` : `<p class="muted">${t('photo_gone')}</p>`}`;
+  else if (S.draft) photoPart = `<b>${t('photo_preview')}</b>
+      <div class="row"><button class="blk" style="flex:1" data-act="postit" data-kind="sunnah"><span>${t('post_it')}</span><b class="ar">→</b></button><button class="chip" data-act="draftx">${t('cancel')}</button></div>
+      <img class="shot preview" src="${esc(S.draft)}" alt="">`;
   else photoPart = `<label class="blk upload"><span class="lab">${uiIcon('camera', 24, 1.8)} ${t('take_photo')}</span><b>+</b><input type="file" accept="image/*" capture="environment" data-photo="sunnah" hidden></label>`;
   const tick = d.ticked
     ? `<div class="q d"><span class="bx"></span><span class="t">${t('tick_done')}</span></div>`
@@ -503,7 +508,7 @@ function reflectionCard(r) {
   const prompt = r.prompt ? pick(r.prompt.textEn, r.prompt.textUr) : t('reflect_default');
   const body = r.mine
     ? `<div class="reflbody" dir="auto">${esc(r.mine.body)}</div><div class="muted">${uiIcon('heart', 14, 2)} ${fmt(r.mine.likes)}</div>`
-    : `<textarea id="refl" maxlength="${r.max}" rows="3" placeholder="${t('reflect_ph')}" dir="auto">${esc(S.reflDraft || '')}</textarea>
+    : `<textarea id="refl" aria-label="${esc(t('reflect_title'))}" maxlength="${r.max}" rows="3" placeholder="${t('reflect_ph')}" dir="auto">${esc(S.reflDraft || '')}</textarea>
        <div class="row between"><small class="muted">${t('reflect_rules')}</small><button class="chip solid" data-act="reflect">${t('reflect_post')}</button></div>`;
   return `<div class="fcard"><h3>${uiIcon('pen', 14, 2)} ${t('reflect_title')}</h3><div class="head">${esc(prompt)}</div>${body}</div>`;
 }
@@ -511,7 +516,7 @@ function reflectionCard(r) {
 function lectureCard(x) {
   let talk = '';
   if (x.myComment) talk = `<div class="reflbody" dir="auto">${esc(x.myComment.body)}</div><div class="muted">${uiIcon('heart', 14, 2)} ${fmt(x.myComment.likes)}</div>`;
-  else if (x.canComment) talk = `<textarea data-cbox="${x.id}" maxlength="${x.commentMax}" rows="2" placeholder="${t('comment_ph')}" dir="auto">${esc((S.cDraft || {})[x.id] || '')}</textarea>
+  else if (x.canComment) talk = `<textarea aria-label="${esc(t('comment_title'))}" data-cbox="${x.id}" maxlength="${x.commentMax}" rows="2" placeholder="${t('comment_ph')}" dir="auto">${esc((S.cDraft || {})[x.id] || '')}</textarea>
       <div class="row between"><small class="muted">${t('comment_rules')}</small><button class="chip solid" data-act="comment" data-id="${x.id}">${t('reflect_post')}</button></div>`;
   else talk = `<small class="muted">${t(x.quiz && x.quiz.length ? 'comment_locked' : 'comment_locked_watch')}</small>`;
   return `<div class="fcard"><h3>${uiIcon('play', 14, 2)} ${t('lecture_week')}</h3>
@@ -519,7 +524,7 @@ function lectureCard(x) {
       <span class="t">${esc(pick(x.titleEn, x.titleUr))}<small>${esc(x.speaker)}</small></span>
       <button class="chip ${x.done ? '' : 'solid'}" data-act="watch" data-id="${x.id}">${x.done ? t('watched') : `${uiIcon('play', 13, 2)} ${t('watch')}`}</button>
     </div>
-    <div class="spacer"></div><b>${t('comment_title')}</b>${talk}</div>`;
+    <div class="spacer"></div><b>${t('comment_title')}</b><div class="ctalk">${talk}</div></div>`;
 }
 
 // replies: short, one level, opened under the item they belong to
@@ -529,20 +534,20 @@ function threadHtml(it) {
   const th = (S.threads || {})[threadKey(it)];
   if (!th) return '';
   const list = (th.list || []).map((r) => `<div class="reply"><div class="fwho"><b>${esc(r.username)}</b>${r.city ? ` <small>${esc(r.city)}</small>` : ''}<small class="when">${ago(r.at)}</small>
-      ${r.mine ? '' : `<button class="chip" data-act="rreport" data-id="${r.id}" data-key="${threadKey(it)}" title="${esc(t('report_ask'))}">${uiIcon('flag', 12, 2)}</button>`}</div>
+      ${r.mine ? '' : `<button class="chip" data-act="rreport" data-id="${r.id}" data-key="${threadKey(it)}" aria-label="${esc(t('report_label'))}" title="${esc(t('report_ask'))}">${uiIcon('flag', 12, 2)}</button>`}</div>
       <div class="reflbody" dir="auto">${esc(r.body)}</div></div>`).join('');
   const mineN = (th.list || []).filter((r) => r.mine).length;
   const form = mineN >= 3 ? `<small class="muted">${t('reply_limit_note')}</small>`
-    : `<div class="row"><input type="text" data-rbox="${threadKey(it)}" maxlength="140" placeholder="${esc(t('reply_ph'))}" dir="auto" value="${esc(th.draft || '')}"><button class="chip solid" data-act="reply" data-key="${threadKey(it)}">${t('reply_send')}</button></div>`;
+    : `<div class="row"><input type="text" aria-label="${esc(t('reply_btn'))}" data-rbox="${threadKey(it)}" maxlength="140" placeholder="${esc(t('reply_ph'))}" dir="auto" value="${esc(th.draft || '')}"><button class="chip solid" data-act="reply" data-key="${threadKey(it)}">${t('reply_send')}</button></div>`;
   return `<div class="thread">${th.loading ? '<small class="muted">…</small>' : list}${form}</div>`;
 }
 
 function feedItem(it) {
   const who = (name, city) => `<div class="fwho"><b>${esc(name)}</b>${city ? ` <small>${esc(city)}</small>` : ''}<small class="when">${ago(it.at)}</small></div>`;
   const rk = replyKind(it);
-  const acts = `<div class="facts"><button class="chip like ${it.liked ? 'on' : ''}" data-act="like" data-kind="${rk}" data-id="${it.id}" ${it.mine || it.liked ? 'disabled' : ''}>${uiIcon('heart', 14, 2)} ${fmt(it.likes)}</button>
-    <button class="chip" data-act="thread" data-kind="${rk}" data-id="${it.id}">${uiIcon('pen', 14, 2)} ${it.replies ? fmt(it.replies) : t('reply_btn')}</button>
-    ${it.mine ? '' : `<button class="chip" data-act="report" data-kind="${rk}" data-id="${it.id}" title="${esc(t('report_ask'))}">${uiIcon('flag', 14, 2)}</button>`}</div>${threadHtml(it)}`;
+  const acts = `<div class="facts"><button class="chip like ${it.liked ? 'on' : ''}" data-act="like" data-kind="${rk}" data-id="${it.id}" aria-label="${esc(t('like_label'))}" aria-pressed="${it.liked ? 'true' : 'false'}" ${it.mine || it.liked ? 'disabled' : ''}>${uiIcon('heart', 14, 2)} ${fmt(it.likes)}</button>
+    <button class="chip" data-act="thread" data-kind="${rk}" data-id="${it.id}" aria-label="${esc(t('reply_btn'))}" aria-expanded="${(S.threads || {})[threadKey(it)] ? 'true' : 'false'}">${uiIcon('chat', 14, 2)} ${it.replies ? fmt(it.replies) : t('reply_btn')}</button>
+    ${it.mine ? '' : `<button class="chip" data-act="report" data-kind="${rk}" data-id="${it.id}" aria-label="${esc(t('report_label'))}" title="${esc(t('report_ask'))}">${uiIcon('flag', 14, 2)}</button>`}</div>${threadHtml(it)}`;
   if (it.type === 'announcement') {
     return `<div class="fitem ann ${it.at > (S.feedSeen || Infinity) ? 'unread' : ''}"><div class="flabel">${uiIcon('feed', 12, 2)} ${t('ann_label')}<small class="when">${ago(it.at)}</small></div>
       <b>${esc(pick(it.titleEn, it.titleUr))}</b>${it.bodyEn || it.bodyUr ? `<p>${esc(pick(it.bodyEn, it.bodyUr))}</p>` : ''}</div>`;
@@ -573,6 +578,13 @@ function feedItem(it) {
   return '';
 }
 
+// news first, and only the latest few milestones unless asked: they were most of the page
+function feedList(items) {
+  const news = items.filter((i) => i.type === 'announcement'), rest = items.filter((i) => i.type !== 'announcement');
+  let ms = 0, hidden = 0;
+  const shown = rest.filter((i) => { if (i.type !== 'milestone' || S.allMs) return true; if (++ms <= 4) return true; hidden++; return false; });
+  return [...news, ...shown].map(feedItem).join('') + (hidden ? `<button class="chip more" data-act="allms">${t('show_milestones')(hidden)}</button>` : '');
+}
 function feedView() {
   const f = S.feed;
   if (!f) return '<p class="muted center">…</p>';
@@ -583,7 +595,7 @@ function feedView() {
     ${reflectionCard(f.reflection)}
   </div><div class="col">
     <h3 class="first-d">${t('stream_title')}</h3>
-    <div class="stream">${f.items.length ? f.items.map(feedItem).join('') : `<p class="muted center">${t('feed_empty')}</p>`}</div>
+    <div class="stream">${f.items.length ? feedList(f.items) : `<p class="muted center">${t('feed_empty')}</p>`}</div>
     ${f.next ? `<button class="chip more" data-act="more">${t('more')}</button>` : ''}
   </div></div>`;
 }
@@ -640,13 +652,22 @@ function caravan() {
   const next = CARAVAN_MILESTONES.find((x) => x > m.caravan.down) || CARAVAN_MILESTONES.at(-1);
   const prev = CARAVAN_MILESTONES.filter((x) => x <= m.caravan.down).at(-1) || 0;
   return `<div class="cols"><div class="col">
-  <h3 class="first-d">${t('caravan_title')}</h3>
+  <h3 class="first-d">${t('your_code')}</h3>
+  <div class="code">${esc(m.username)}</div>
+  <div class="muted" style="margin-top:12px">${t('your_link')}</div>
+  <div class="link">${esc(link)}</div>
+  <div class="invleft"><b>${m.invites.left}</b> <span>${t('invites_left')} · ${N(`${m.invites.used} / ${m.invites.cap}`)}</span><small>${t('invites_next')(m.invites.nextAt)}</small></div>
+  <div class="row" style="margin-top:12px"><button class="blk wa fill1" data-act="wa"><span class="lab">${uiIcon('share', 22, 1.8)} ${t('share_wa')}</span><b class="ar">→</b></button><button class="chip" data-act="copy" data-text="${esc(link)}">${t('copy')}</button></div>
+  <p class="note">${t('cq_def')}</p>
+  ${burhanCaravan()}
+  <h3>${t('caravan_title')}</h3>
   <p class="muted">${t('caravan_sub')}</p>
-  <form class="cname" data-form="cname"><label for="cname">${m.caravanName ? t('cname_yours') : t('cname_title')}</label>
+  <form novalidate class="cname" data-form="cname"><label for="cname">${m.caravanName ? t('cname_yours') : t('cname_title')}</label>
     <div class="row"><input id="cname" name="name" type="text" maxlength="20" autocomplete="off" autocapitalize="off" dir="ltr" placeholder="${esc(t('cname_ph'))}" value="${esc(m.caravanName || '')}"><button class="chip solid" type="submit">${t('save')}</button></div>
     <div class="hint" id="cnamecheck">${t('cname_hint')}</div></form>
   <div class="stats"><div><b>${fmt(m.caravan.members)}</b><span>${t('c_members')}</span></div><div><b>${fmt(own)}</b><span>${t('c_total')}</span></div><div><b>${tm ? fmt(tm.caravan.week) : '…'}</b><span>${t('c_week')}</span></div></div>
   <div class="lvl"><div class="row between"><span>${t('next_milestone')}</span><b>${fmt(next)}</b></div>${bar(next === prev ? 100 : ((m.caravan.down - prev) / (next - prev)) * 100)}</div>
+  </div><div class="col">
   ${!tm ? '' : tm.karwan.active ? `<div class="karwan"><b>${uiIcon('flame', 16, 1.8)} ${t('karwan_streak')(tm.karwan.streak)}</b>
       <div>${t('karwan_today')(fmt(tm.karwan.today), fmt(tm.karwan.size))}</div>
       ${tm.karwan.missing.length ? `<div class="muted">${t('karwan_missing')} ${tm.karwan.missing.map((n) => `<span class="chipname">${esc(n)}</span>`).join(' ')}</div>` : ''}</div>`
@@ -655,14 +676,6 @@ function caravan() {
   <h3>${t('direct_list')} (${fmt(m.team.direct)})</h3>
   ${!tm ? '…' : tm.direct.length ? `<ul class="lb">${tm.direct.map((d) => `
     <li><span class="name">${esc(d.caravanName || d.username)}<small>${d.caravanName ? `${esc(d.username)} · ` : ''}${d.city ? `${esc(d.city)} · ` : ''}${fmt(d.total)} · ${t('this_week')} ${fmt(d.week)}</small></span><span class="score">${fmt(d.total)}</span></li>`).join('')}</ul>` : `<p class="muted">${t('none_yet')}</p>`}
-  ${burhanCaravan()}
-  </div><div class="col">
-  <h3 class="first-d">${t('your_code')}</h3>
-  <div class="code">${esc(m.username)}</div>
-  <div class="muted" style="margin-top:12px">${t('your_link')}</div>
-  <div class="link">${esc(link)}</div>
-  <div class="invleft"><b>${m.invites.left}</b> <span>${t('invites_left')} · ${N(`${m.invites.used} / ${m.invites.cap}`)}</span><small>${t('invites_next')(m.invites.nextAt)}</small></div>
-  <div class="row" style="margin-top:12px"><button class="blk wa fill1" data-act="wa"><span class="lab">${uiIcon('share', 22, 1.8)} ${t('share_wa')}</span><b>→</b></button><button class="chip" data-act="copy" data-text="${esc(link)}">${t('copy')}</button></div>
   ${uplineBlock(tm)}
   </div></div>`;
 }
@@ -673,7 +686,7 @@ function historyBlock() {
   const time = (at) => new Date(at).toLocaleTimeString(S.lang === 'ur' ? 'en-GB' : 'en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Karachi' });
   if (!h.days.length) return `<p class="note first">${t('hist_empty')}</p>`;
   return h.days.map((d) => `
-    <div class="hday"><span>${d.day === h.today ? t('today') : d.day === h.yesterday ? t('yesterday') : esc(d.day)}</span><b>${fmt(d.total)}</b></div>
+    <div class="hday"><span>${d.day === h.today ? t('today') : d.day === h.yesterday ? t('yesterday') : N(esc(d.day))}</span><b>${fmt(d.total)}</b></div>
     ${d.entries.map((e) => `
       <div class="hrow ${S.editing === e.id ? 'ed' : ''}">
         <span class="hc">${fmt(e.count)}</span>
@@ -699,7 +712,11 @@ function me() {
   <div class="muted" dir="ltr">${esc(m.email)} · ${esc(m.phone)}</div>
   ${m.hiddenFromRanks ? `<div class="flagnote">${t('flagged')}</div>` : ''}
   ${m.emailVerified ? '' : `<div class="notice">${t('email_unconfirmed')} <button class="linkbtn" data-act="resend">${t('resend')}</button></div>`}
+  <div class="row wrapx padx shortcuts"><button class="chip" data-act="setlang" data-l="${S.lang === 'ur' ? 'en' : 'ur'}">${S.lang === 'ur' ? 'English' : 'اردو'}</button><a class="chip" href="#settings">${t('settings')}</a><button class="chip" data-act="logout">${t('logout')}</button></div>
   <div class="stats"><div><b>${m.level}</b><span>${t('level')}</span></div><div><b>${fmt(m.total)}</b><span>${t('total')}</span></div><div><b>${m.bestStreak}</b><span>${t('best_streak')}</span></div></div>
+  <h3>${t('points_title')}</h3>
+  <div class="lvl"><div class="row between"><span>${t('level')} ${m.level} · ${esc(t('titles')[Math.min(m.level - 1, 9)])}</span><b>${N(`${fmt(m.xp)} / ${fmt(m.next)}`)}</b></div>${bar(m.pct)}</div>
+  <ul class="how">${t('points_list').map((x) => `<li>${x}</li>`).join('')}</ul>
 
   ${burhanMe()}
   <h3>${t('tree_title')}</h3>
@@ -714,17 +731,19 @@ function me() {
   ${BADGE_FAMILIES.map(([fam, list]) => `<h3>${t('badges')} · ${t('fam_' + fam)}</h3>
   <div class="badges">${list.slice().sort((x, y) => m.badges.includes(y) - m.badges.includes(x)).map((c) => { const got = m.badges.includes(c); return `<div class="badge ${got ? 'got' : ''}" title="${esc(t('badge')[c][1])}">${badgeSvg(c, got)}<b>${esc(t('badge')[c][0])}</b><span>${esc(t('badge')[c][1])}</span></div>`; }).join('')}</div>`).join('')}
 
-  <h3>${t('settings')}</h3>
-  <form data-form="settings">
-    <label>${t('daily_goal')}</label>
-    <input type="number" name="dailyGoal" min="1" max="100000" value="${m.dailyGoal}" dir="ltr">
+  <h3 id="settings">${t('settings')}</h3>
+  <form novalidate data-form="settings">
+    <label for="s-goal">${t('daily_goal')}</label>
+    <input id="s-goal" type="number" name="dailyGoal" min="1" max="100000" value="${m.dailyGoal}" dir="ltr">
     ${cityPicker(t('city'), m.city)}
-    <label>${t('reminder_time')}</label>
-    <input type="time" name="reminderTime" value="${esc(m.reminderTime || '')}" dir="ltr">
+    <label for="s-time">${t('reminder_time')}</label>
+    <input id="s-time" type="time" name="reminderTime" value="${esc(m.reminderTime || '')}" dir="ltr">
     <div class="hint">${t('reminder_hint')}</div>
-    <label>${t('email')} <span class="tag ${m.emailVerified ? 'verified' : ''}">${m.emailVerified ? t('email_ok') : '!'}</span></label>
-    <input type="email" name="email" value="${esc(m.email)}" dir="ltr" required>
-    <button class="blk" type="submit"><span>${t('save')}</span><b>→</b></button>
+    <label for="s-email">${t('email')} <span class="tag ${m.emailVerified ? 'verified' : ''}">${m.emailVerified ? t('email_ok') : '!'}</span></label>
+    <input id="s-email" type="email" name="email" value="${esc(m.email)}" dir="ltr" required>
+    <label for="s-pw">${t('pw_for_email')}</label>
+    <input id="s-pw" type="password" name="password" autocomplete="current-password" dir="ltr">
+    <button class="blk" type="submit"><span>${t('save')}</span><b class="ar">→</b></button>
   </form>
   <h3>${t('appearance')}</h3>
   <label class="padx">${t('language')}</label>
@@ -738,10 +757,10 @@ function me() {
   <button class="linkbtn padx" data-act="logoutall" style="margin-top:8px">${t('logout_all')}</button>
 
   <h3>${t('delete_title')}</h3>
-  <form data-form="delete">
+  <form novalidate data-form="delete">
     <p class="muted">${t('delete_text')}</p>
-    <label>${t('password')}</label>
-    <input type="password" name="password" autocomplete="current-password" required dir="ltr">
+    <label for="d-pw">${t('password')}</label>
+    <input id="d-pw" type="password" name="password" autocomplete="current-password" required dir="ltr">
     <button class="blk out danger" type="submit"><span>${t('delete_btn')}</span></button>
   </form>
   ${footerLinks()}`;
@@ -790,18 +809,18 @@ const wdName = (d) => t('weekdays')[d];
 const mamulaatBars = (m) => !m ? '' : `<div class="mam"><div class="row between"><b>${t('mam_title')}</b><span class="muted">${m.average == null ? '' : t('mam_avg')(m.average)}</span></div>
   <div class="bars" aria-label="${esc(t('mam_title'))}">${m.series.map((x) => `<i title="${esc(x.day)}${x.percent == null ? '' : ` · ${x.percent}%`}" class="${x.percent == null ? 'none' : ''}" style="height:${x.percent == null ? 6 : Math.max(6, x.percent)}%"></i>`).join('')}</div>
   <div class="muted">${m.today == null ? t('mam_none_today') : t('mam_today')(m.today)}</div></div>`;
-const asgLabel = (a) => a.kind === 'routine' ? t('every')(wdName(a.weekday)) : a.dueDay ? t('due')(esc(a.dueDay)) : t('task_word');
+const asgLabel = (a) => a.kind === 'routine' ? t('every')(wdName(a.weekday)) : a.dueDay ? t('due')(N(esc(a.dueDay))) : t('task_word');
 
 function assignRow(a, mode) { // mode: 'mine' (razakar ticks) or 'masul' (masul can end)
   const state = a.kind === 'routine'
     ? (a.dueToday || !a.last4.due ? '' : `<small class="muted">${t('routine_stats')(a.last4.done, a.last4.due)}</small>`)
-    : (a.done ? `<small class="ok">${t('done_on')(esc(a.doneOn))}</small>` : a.overdue ? `<small class="bad">${t('overdue')}</small>` : '');
+    : (a.done ? `<small class="ok">${t('done_on')(N(esc(a.doneOn)))}</small>` : a.overdue ? `<small class="bad">${t('overdue')}</small>` : '');
   const tickable = mode === 'mine' && (a.kind === 'routine' ? a.dueToday : true);
   const done = a.kind === 'routine' ? a.doneToday : a.done;
   return `<div class="q ${done ? 'd' : ''}"><span class="bx"></span>
     <span class="t">${esc(a.title)}<small>${asgLabel(a)}</small>${state}</span>
     ${tickable ? `<button class="chip ${done ? '' : 'solid'}" data-act="atick" data-id="${a.id}" data-done="${done ? 0 : 1}">${done ? t('undo') : t('mark_done')}</button>` : ''}
-    ${mode === 'masul' ? `<button class="chip" data-act="endassign" data-id="${a.id}" title="${esc(t('end_assign'))}">✕</button>` : ''}</div>`;
+    ${mode === 'masul' ? `<button class="chip" data-act="endassign" data-id="${a.id}" aria-label="${esc(t('end_assign'))}" title="${esc(t('end_assign'))}">✕</button>` : ''}</div>`;
 }
 
 function burhanToday() {
@@ -825,29 +844,37 @@ function burhanMe() {
   const b = S.bh;
   if (!b) return '';
   const mu = b.murabbi;
-  const murabbiBox = !mu
-    ? `<p class="muted">${t('murabbi_text')}</p><button class="blk" data-act="bhactivate"><span>${t('murabbi_find')}</span><b>→</b></button>`
-    : mu.waiting
-      ? `<div class="notice">${t('murabbi_waiting')(esc(mu.name || '—'))}</div><div class="row"><button class="chip solid" data-act="bhactivate">${t('check_again')}</button><button class="chip" data-act="bhunlink">${t('unlink')}</button></div>`
-      : `<div class="row between"><span>${t('murabbi_word')}: <b>${esc(mu.username)}</b></span><button class="chip" data-act="bhunlink">${t('unlink')}</button></div>`;
+  const err = S.bhError ? `<div class="notice" role="alert">${esc(S.bhError)}</div>` : '';
+  let murabbiBox;
+  if (!mu) murabbiBox = `${err}<p class="muted">${t('murabbi_text')}</p><button class="blk" data-act="bhactivate"><span>${t('murabbi_find')}</span><b class="ar">→</b></button>`;
+  else if (mu.stage === 'waiting') murabbiBox = `<div class="notice">${t('murabbi_waiting')(esc(mu.name || '—'))}</div><div class="row"><button class="chip solid" data-act="bhactivate">${t('check_again')}</button><button class="chip" data-act="bhunlink">${t('unlink')}</button></div>`;
+  else if (mu.stage === 'confirm') murabbiBox = `<div class="circlecard"><b>${t('murabbi_is_it')}</b>
+      <p><b>${esc(mu.username)}</b>${mu.city ? ` · ${esc(mu.city)}` : ''}<br><small class="muted">${t('murabbi_listed_as')(esc(mu.name || '—'))}</small></p>
+      <p class="muted">${t('murabbi_sees')}</p>
+      <div class="row"><button class="blk fill1" data-act="bhconfirm"><span>${t('yes_mine')}</span><b class="ar">→</b></button><button class="chip" data-act="bhunlink">${t('not_mine')}</button></div></div>`;
+  else if (mu.stage === 'pending') murabbiBox = `<div class="notice">${t('murabbi_pending')(esc(mu.username))}</div><div class="row"><button class="chip" data-act="bhunlink">${t('unlink')}</button></div>`;
+  else murabbiBox = `<div class="row between"><span>${t('murabbi_word')}: <b>${esc(mu.username)}</b></span><button class="chip" data-act="bhunlink">${t('unlink')}</button></div>`;
+  const pick = S.masulPick;
   const masulBox = b.masul
     ? `<div class="row between"><span>${t('masul_word')}: <b>${esc(b.masul.username)}</b></span><button class="chip" data-act="bhmasulclear">${t('unlink')}</button></div>`
-    : `<p class="muted">${t('masul_text')}</p><div class="row"><input id="masulq" type="text" autocomplete="off" autocapitalize="off" dir="ltr" placeholder="${esc(t('masul_ph'))}"></div><div id="masulres" class="chips"></div>`;
+    : pick ? `<div class="circlecard"><b>${t('masul_add_q')(esc(pick))}</b><p class="muted">${t('masul_sees')}</p>
+        <div class="row"><button class="blk fill1" data-act="bhmasulyes"><span>${t('yes_add')}</span><b class="ar">→</b></button><button class="chip" data-act="bhmasulno">${t('cancel')}</button></div></div>`
+    : `<p class="muted">${t('masul_text')}</p><div class="row"><input id="masulq" type="text" aria-label="${esc(t('masul_ph'))}" autocomplete="off" autocapitalize="off" dir="ltr" placeholder="${esc(t('masul_ph'))}"></div><div id="masulres" class="chips"></div>`;
   return `<h3>${t('bh_title')}</h3>
   <div class="padx bh">
-    <b>${t('murabbi_word')}</b>${murabbiBox}
-    ${mu && !mu.waiting ? mamulaatBars(b.mamulaat) : ''}
+    ${whoSees()}
+    <div class="spacer"></div><b>${t('murabbi_word')}</b>${murabbiBox}
+    ${mu?.stage === 'active' ? mamulaatBars(b.mamulaat) : ''}
     <div class="spacer"></div><b>${t('masul_word')}</b>${masulBox}
     ${b.assignments.length ? `<div class="spacer"></div><b>${t('assigned_title')}</b>${b.assignments.map((a) => assignRow(a, 'mine')).join('')}` : ''}
-    <div class="spacer"></div>${whoSees()}
   </div>`;
 }
 
 function burhanCaravan() {
   const b = S.bh;
-  if (!b || (!b.roles.saaliks && !b.roles.razakars)) return '';
-  const sa = S.bhLists?.saaliks, ra = S.bhLists?.razakars;
-  return `${b.roles.saaliks ? `<h3>${t('saaliks_title')} (${b.roles.saaliks})</h3>
+  if (!b || (!b.roles.saaliks && !b.roles.razakars && !b.roles.requests)) return '';
+  const sa = S.bhLists?.saaliks, ra = S.bhLists?.razakars, rq = S.bhLists?.requests || [];
+  return `${rq.length ? `<h3>${t('requests_title')} (${rq.length})</h3>${rq.map((r) => `<div class="circlecard"><b>${esc(r.username)}</b>${r.city ? ` · ${esc(r.city)}` : ''}<p class="muted">${t('request_text')}</p><div class="row"><button class="blk fill1" data-act="bhaccept" data-u="${esc(r.username)}"><span>${t('accept')}</span><b class="ar">→</b></button><button class="chip" data-act="bhdecline" data-u="${esc(r.username)}">${t('decline')}</button></div></div>`).join('')}` : ''}${b.roles.saaliks ? `<h3>${t('saaliks_title')} (${b.roles.saaliks})</h3>
     ${!sa ? '…' : `<ul class="lb">${sa.map((x) => `<li><button class="rowbtn" data-act="opensaalik" data-u="${esc(x.username)}"><span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('durood_week')(fmt(x.duroodWeek))}${x.mamulaatToday == null ? '' : ` · ${t('mam_short')} ${x.mamulaatToday}%`}</small></span><span class="score">${fmt(x.duroodToday)}</span></button></li>`).join('')}</ul>`}` : ''}
   ${b.roles.razakars ? `<h3>${t('razakars_title')} (${b.roles.razakars})</h3>
     ${!ra ? '…' : `<ul class="lb">${ra.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}"><span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${x.routinePercent}%`}</small></span><span class="score">${fmt(x.duroodWeek)}</span></button></li>`).join('')}</ul>`}` : ''}`;
@@ -867,7 +894,7 @@ function detailModal() {
   if (d.type === 'saalik') {
     const p = r.profile;
     return `<div class="modal"><div class="box wide">${head}
-      <p class="muted" dir="ltr">${esc(p.phone)} · ${esc(p.email)}<br>${esc(p.city || '')}${p.country ? ` · ${esc(p.country)}` : ''} · ${t('joined')} ${esc(p.joined)}</p>
+      <p class="muted" dir="ltr">${esc(p.phone)} · ${esc(p.email)}<br>${esc(p.city || '')}${p.country ? ` · ${esc(p.country)}` : ''} · ${t('joined')} ${N(esc(p.joined))}</p>
       ${progressGrid(r.progress)}
       <div class="stats"><div><b>${fmt(r.extra.caravan)}</b><span>${t('c_members')}</span></div><div><b>${fmt(r.extra.qabila)}</b><span>${t('rk_trees')}</span></div><div><b>${fmt(r.extra.badges)}</b><span>${t('badges_word')}</span></div></div>
       ${mamulaatBars(r.mamulaat)}${r.mamulaat.stale ? `<small class="muted">${t('mam_stale')}</small>` : ''}
@@ -876,17 +903,17 @@ function detailModal() {
   }
   const f = S.assignForm || { kind: 'task' };
   return `<div class="modal"><div class="box wide">${head}
-    <p class="muted">${esc(r.city || '')} · ${t('joined')} ${esc(r.joined)}</p>
+    <p class="muted">${esc(r.city || '')} · ${t('joined')} ${N(esc(r.joined))}</p>
     ${progressGrid(r.progress)}
     <b>${t('assigned_view')}</b>
-    ${r.assignments.length ? r.assignments.map((a) => assignRow(a, 'masul')).join('') : `<p class="muted">${t('none_yet')}</p>`}
-    <form data-form="assign" class="assign"><b>${t('assign_new')}</b>
+    ${r.assignments.length ? r.assignments.map((a) => assignRow(a, 'masul')).join('') : `<p class="muted">${t('none_assigned')}</p>`}
+    <form novalidate data-form="assign" class="assign"><b>${t('assign_new')}</b>
       <div class="seg thin"><button type="button" class="${f.kind === 'task' ? 'on' : ''}" data-act="assignkind" data-k="task">${t('task_word')}</button><button type="button" class="${f.kind === 'routine' ? 'on' : ''}" data-act="assignkind" data-k="routine">${t('routine_word')}</button></div>
-      <input type="text" name="title" maxlength="80" required placeholder="${esc(t('assign_ph'))}" dir="auto">
+      <input type="text" name="title" maxlength="80" aria-label="${esc(t('assign_ph'))}" placeholder="${esc(t('assign_ph'))}" dir="auto">
       ${f.kind === 'routine'
-        ? `<label>${t('weekday_word')}</label><select name="weekday">${t('weekdays').map((n, i) => `<option value="${i}" ${i === 5 ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`
-        : `<label>${t('due_optional')}</label><input type="date" name="dueDay" dir="ltr">`}
-      <button class="blk" type="submit"><span>${t('assign_btn')}</span><b>→</b></button></form>
+        ? `<label for="a-wd">${t('weekday_word')}</label><select id="a-wd" name="weekday">${t('weekdays').map((n, i) => `<option value="${i}" ${i === 5 ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`
+        : `<label for="a-due">${t('due_optional')}</label><input id="a-due" type="date" name="dueDay" dir="ltr">`}
+      <button class="blk" type="submit"><span>${t('assign_btn')}</span><b class="ar">→</b></button></form>
   </div></div>`;
 }
 
@@ -897,12 +924,77 @@ async function loadLive() {
   liveAt = Date.now();
   try { S.live = await api('/public'); if (!S.me) draw(); } catch { /* the welcome screen works without it */ }
 }
+// Every redraw rebuilds the page. So what the person typed, and where their cursor was, is carried over by name.
+const fieldKey = (el) => `${el.closest('form')?.dataset.form || ''}|${el.name || el.id || (el.hasAttribute('data-city') ? 'city' : '') || el.dataset.cbox || el.dataset.rbox || ''}`;
+const FIELDS = 'input[name]:not([type=file]):not([type=hidden]), textarea, input[data-city], input[data-cbox], input[data-rbox], #cname, #masulq, select[name]';
+function snapshotFields() {
+  const snap = new Map();
+  app.querySelectorAll(FIELDS).forEach((el) => { const k = fieldKey(el); if (k.endsWith('|')) return; snap.set(k, el.type === 'radio' || el.type === 'checkbox' ? el.checked : el.value); });
+  app.querySelectorAll('input[name=cityId]').forEach((el) => snap.set(fieldKey(el) + '#id', el.value));
+  const a = document.activeElement;
+  return { snap, focus: a && app.contains(a) && a.matches(FIELDS) ? fieldKey(a) : null };
+}
+function restoreFields({ snap, focus }) {
+  let focusEl = null;
+  app.querySelectorAll(FIELDS).forEach((el) => {
+    const k = fieldKey(el);
+    if (!snap.has(k) || el.type === 'radio' || el.type === 'checkbox') return;
+    if (!el.value) el.value = snap.get(k);
+    if (k === focus) focusEl = el;
+  });
+  app.querySelectorAll('input[name=cityId]').forEach((el) => { const v = snap.get(fieldKey(el) + '#id'); if (v && !el.value) el.value = v; });
+  if (focusEl) { focusEl.focus(); try { focusEl.setSelectionRange(focusEl.value.length, focusEl.value.length); } catch { /* not a text field */ } }
+}
+
+// dialogs: named, focus moves in and returns, Tab stays inside, Escape closes, the page behind does not scroll
+let opener = null;
+function enhanceModal() {
+  const m = app.querySelector('.modal');
+  document.body.classList.toggle('modal-open', !!m);
+  if (!m) {
+    if (opener) { const o = opener; opener = null; (document.querySelector(o) || $('#main'))?.focus?.(); }
+    return;
+  }
+  const box = m.querySelector('.box');
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  if (!box.hasAttribute('aria-label')) box.setAttribute('aria-label', (box.querySelector('h3, .ctitle, b')?.textContent || t('app')).trim());
+  if (!m.contains(document.activeElement)) {
+    const a = document.activeElement;
+    if (!opener && a && a.dataset?.act) opener = `[data-act="${a.dataset.act}"]${a.dataset.id ? `[data-id="${a.dataset.id}"]` : ''}`;
+    box.setAttribute('tabindex', '-1');
+    (box.querySelector('textarea, input, button, [href]') || box).focus();
+  }
+}
+document.addEventListener('keydown', (ev) => {
+  const m = app.querySelector('.modal');
+  if (!m) return;
+  if (ev.key === 'Escape') { m.querySelector('[data-act=pclose],[data-act=celebrateX],[data-act=closedetail]')?.click(); return; }
+  if (ev.key !== 'Tab') return;
+  const f = [...m.querySelectorAll('button:not([disabled]), [href], input:not([disabled]):not([type=hidden]), select, textarea, [tabindex]:not([tabindex="-1"])')].filter((e) => e.offsetParent !== null);
+  if (!f.length) return;
+  const first = f[0], last = f.at(-1);
+  if (!m.contains(document.activeElement)) { ev.preventDefault(); first.focus(); }
+  else if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+  else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+});
+
+function offlineView() {
+  return `<div class="stage"><div class="hero-in" style="padding-top:18vh"><div class="arabic gold" dir="rtl" lang="ar">${esc(t('durood'))}</div>
+    <h2 style="margin:16px 0 6px">${t('offline_title')}</h2><p class="tagl" style="max-width:34ch;margin-inline:auto">${t('offline_text')}</p>
+    <button class="cta" style="margin:20px auto 0;max-width:260px" data-act="retry"><span>${t('retry')}</span><b class="ar">→</b></button></div></div>`;
+}
+
 function draw() {
   applyLang();
   if (!S.me) loadLive();
   if (S.me) checkCelebrate();
+  const keep = snapshotFields();
   document.body.classList.toggle('in-app', !!S.me);
-  app.innerHTML = S.me ? shell() : S.intro !== null ? introView() : authView();
+  document.title = S.me ? `${t('nav_' + S.tab)} · ${t('app')}` : t('app');
+  app.innerHTML = S.me ? shell() : S.offline ? offlineView() : S.intro !== null ? introView() : authView();
+  restoreFields(keep);
+  enhanceModal();
 }
 
 const boardUrl = (b) => (b.type === 'users' ? `/leaderboard?type=users&period=${b.period}`
@@ -914,7 +1006,7 @@ async function enterTab(tab) {
   draw();
   try {
     if (tab === 'rank') { S.board.data = null; draw(); S.board.data = await api(boardUrl(S.board)); }
-    if (inBurhan() && ['home', 'me', 'caravan'].includes(tab)) { loadBurhan().then(async () => { if (tab === 'caravan' && S.bh && (S.bh.roles.saaliks || S.bh.roles.razakars)) { S.bhLists = { saaliks: S.bh.roles.saaliks ? (await api('/burhan/saaliks')).saaliks : [], razakars: S.bh.roles.razakars ? (await api('/burhan/razakars')).razakars : [] }; if (S.tab === 'caravan') draw(); } }); }
+    if (inBurhan() && ['home', 'me', 'caravan'].includes(tab)) { loadBurhan().then(async () => { if (tab === 'caravan' && S.bh && (S.bh.roles.saaliks || S.bh.roles.razakars || S.bh.roles.requests)) { S.bhLists = { saaliks: S.bh.roles.saaliks ? (await api('/burhan/saaliks')).saaliks : [], razakars: S.bh.roles.razakars ? (await api('/burhan/razakars')).razakars : [], requests: S.bh.roles.requests ? (await api('/burhan/requests')).requests : [] }; if (S.tab === 'caravan') draw(); } }); }
     if (tab === 'caravan') { S.team = await api('/team'); }
     if (tab === 'me') { [S.history, S.team] = await Promise.all([api('/history'), api('/team')]); }
     if (tab === 'feed') {
@@ -1003,6 +1095,12 @@ app.addEventListener('click', async (ev) => {
     try { const r = await api('/sessions/revoke', 'POST'); S.token = r.token; ls.set('token', r.token); toast(t('logout_all_done')); } catch (e) { toast(errText(e)); }
     return;
   }
+  if (act === 'retry') {
+    el.disabled = true;
+    try { await refreshMe(); S.offline = false; initBurhan(); } catch (e) { if (e.message !== 'network') S.offline = false; }
+    return draw();
+  }
+  if (act === 'allms') { S.allMs = true; return draw(); }
   if (act === 'celebrateX') { S.celebrate = null; return draw(); }
   if (act === 'shareCard') { el.disabled = true; await shareCard(); el.disabled = false; return; }
 
@@ -1038,7 +1136,7 @@ app.addEventListener('click', async (ev) => {
     const field = el.closest('.cityfield');
     field.querySelector('input[name=cityId]').value = el.dataset.id;
     field.querySelector('[data-city]').value = el.dataset.label;
-    el.parentElement.hidden = true;
+    el.parentElement.hidden = true; field.querySelector('[data-city]').setAttribute('aria-expanded', 'false'); field.querySelector('[data-city]').focus();
     return;
   }
   if (act === 'news') return enterTab('feed');
@@ -1067,14 +1165,16 @@ app.addEventListener('click', async (ev) => {
 
   if (act === 'draftx') { S.draft = null; S.draftKind = null; return draw(); }
   if (act === 'tick') {
-    try { const r = await api('/sunnah/tick', 'POST'); S.me = r.me; S.feed.today = { ...S.feed.today, ...r, me: undefined }; toast(r.xpGained ? t('tick_thanks') : ''); } catch (e) { toast(errText(e)); }
+    try { const r = await api('/sunnah/tick', 'POST'); S.me = r.me; S.feed.today = { ...S.feed.today, ...r, me: undefined }; toast(r.xpGained ? `${t('tick_thanks')} · ${t('points_gained')(fmt(r.xpGained))}` : t('tick_thanks')); } catch (e) { toast(errText(e)); }
     return draw();
   }
   if (act === 'postit') {
     el.disabled = true; el.textContent = t('posting');
     try {
+      const before = S.me.xp;
       const r = await api('/sunnah/post', 'POST', { image: S.draft });
       S.draft = null; S.draftKind = null; S.me = r.me;
+      toast(`${t('photo_posted')} · ${t('points_gained')(fmt(gainedSince(before)))}`);
       return enterTab('feed');
     } catch (e) { toast(errText(e)); if (e.message === 'bad_image' || e.message === 'duplicate_image') S.draft = null; return draw(); }
   }
@@ -1083,19 +1183,36 @@ app.addEventListener('click', async (ev) => {
     S.reflDraft = text;
     el.disabled = true;
     try {
+      const before = S.me.xp;
       const r = await api('/reflections', 'POST', { text });
       S.me = r.me; S.reflDraft = '';
+      toast(`${t('reflect_posted')} · ${t('points_gained')(fmt(gainedSince(before)))}`);
       return enterTab('feed');
     } catch (e) { toast(errText(e)); el.disabled = false; }
     return;
   }
   if (act === 'bhactivate') {
-    el.disabled = true;
-    try { await api('/burhan/murabbi', 'POST'); await loadBurhan(); } catch (e) { toast(errText(e)); el.disabled = false; }
+    el.disabled = true; S.bhError = '';
+    try { await api('/burhan/murabbi', 'POST'); await loadBurhan(); } catch (e) { S.bhError = errText(e); draw(); }
+    return;
+  }
+  if (act === 'bhconfirm') { try { await api('/burhan/murabbi/confirm', 'POST'); await loadBurhan(); toast(t('saved')); } catch (e) { toast(errText(e)); } return; }
+  if (act === 'bhaccept' || act === 'bhdecline') {
+    try {
+      await api(`/burhan/requests/${encodeURIComponent(el.dataset.u)}`, 'POST', { accept: act === 'bhaccept' });
+      await loadBurhan();
+      S.bhLists = { ...S.bhLists, requests: (await api('/burhan/requests')).requests, saaliks: (await api('/burhan/saaliks')).saaliks };
+      toast(t('saved')); draw();
+    } catch (e) { toast(errText(e)); }
+    return;
+  }
+  if (act === 'bhmasulpick') { S.masulPick = el.dataset.u; return draw(); }
+  if (act === 'bhmasulno') { S.masulPick = null; return draw(); }
+  if (act === 'bhmasulyes') {
+    try { await api('/burhan/masul', 'PUT', { username: S.masulPick }); S.masulPick = null; await loadBurhan(); toast(t('saved')); } catch (e) { toast(errText(e)); }
     return;
   }
   if (act === 'bhunlink') { if (!confirm(t('unlink_ask'))) return; try { await api('/burhan/murabbi', 'DELETE'); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
-  if (act === 'bhmasulpick') { try { await api('/burhan/masul', 'PUT', { username: el.dataset.u }); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
   if (act === 'bhmasulclear') { if (!confirm(t('unlink_ask'))) return; try { await api('/burhan/masul', 'DELETE'); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
   if (act === 'atick') {
     try { await api(`/assignments/${el.dataset.id}/tick`, 'POST', { done: el.dataset.done === '1' }); await loadBurhan(); } catch (e) { toast(errText(e)); }
@@ -1124,6 +1241,7 @@ app.addEventListener('click', async (ev) => {
     try {
       const r = await api(`/lectures/${el.dataset.id}/comment`, 'POST', { text: box.value });
       S.me = r.me; S.feed.lectures = r.lectures; S.cDraft[el.dataset.id] = '';
+      toast(`${t('comment_posted')}${r.xp ? ` · ${t('points_gained')(fmt(r.xp))}` : ''}`);
       S.feed = { ...S.feed, ...(await api('/feed')) };
     } catch (e) { toast(errText(e)); el.disabled = false; return; }
     return draw();
@@ -1145,7 +1263,7 @@ app.addEventListener('click', async (ev) => {
       const r = await api('/replies', 'POST', { kind, id: Number(id), text: box.value });
       S.me = r.me; S.threads[key] = { list: r.replies };
       const it = S.feed.items.find((x) => threadKey(x) === key); if (it) it.replies = r.replies.length;
-      if (r.xp) toast(`+${r.xp} XP`);
+      toast(r.xp ? t('points_gained')(fmt(r.xp)) + ' · ' + t('reply_posted') : t('reply_posted'));
     } catch (e) { toast(errText(e)); el.disabled = false; return; }
     return draw();
   }
@@ -1270,7 +1388,7 @@ app.addEventListener('submit', async (ev) => {
       setSession(r.token, r.me); toast(t('reset_done'));
       draw();
     } else if (kind === 'settings') {
-      S.me = await api('/me', 'PATCH', { dailyGoal: Number(f.dailyGoal), ...(f.cityId ? { cityId: Number(f.cityId) } : {}), email: f.email, reminderTime: f.reminderTime || '' });
+      S.me = await api('/me', 'PATCH', { dailyGoal: Number(f.dailyGoal), ...(f.cityId ? { cityId: Number(f.cityId) } : {}), email: f.email, ...(f.password ? { password: f.password } : {}), reminderTime: f.reminderTime || '' });
       toast(t('saved'));
       draw();
     } else if (kind === 'citysave') {
@@ -1321,6 +1439,17 @@ app.addEventListener('change', async (ev) => {
   try { S.draft = await toJpegDataUrl(el.files[0]); S.draftKind = el.dataset.photo; draw(); } catch (e) { toast(I18N[S.lang].err.bad_image); }
 });
 
+// the suggestion list works from the keyboard: arrows move, Enter picks, Escape closes
+app.addEventListener('keydown', (ev) => {
+  const box = ev.target.closest('[data-city]'), opt = ev.target.closest('li[role=option]');
+  if (box && ev.key === 'ArrowDown') { box.closest('.cityfield').querySelector('li[role=option]')?.focus(); ev.preventDefault(); }
+  if (opt) {
+    if (ev.key === 'ArrowDown') { opt.nextElementSibling?.focus(); ev.preventDefault(); }
+    else if (ev.key === 'ArrowUp') { (opt.previousElementSibling || opt.closest('.cityfield').querySelector('[data-city]')).focus(); ev.preventDefault(); }
+    else if (ev.key === 'Enter' || ev.key === ' ') { opt.click(); ev.preventDefault(); }
+    else if (ev.key === 'Escape') { opt.parentElement.hidden = true; opt.closest('.cityfield').querySelector('[data-city]').focus(); }
+  }
+});
 let cityTimer;
 app.addEventListener('input', (ev) => {
   const box = ev.target.closest('[data-city]');
@@ -1334,8 +1463,8 @@ app.addEventListener('input', (ev) => {
     const cc = document.querySelector('select[name=phoneCountry]')?.value || S.me?.country || S.geo?.country || '';
     try {
       const { cities } = await api(`/cities?q=${encodeURIComponent(q)}&cc=${cc}`);
-      list.innerHTML = cities.length ? cities.map((c) => `<li data-act="pickcity" data-id="${c.id}" data-label="${esc(c.label)}">${esc(c.label)}</li>`).join('') : `<li class="none">${t('city_none')}</li>`;
-      list.hidden = false;
+      list.innerHTML = cities.length ? cities.map((c) => `<li role="option" tabindex="-1" data-act="pickcity" data-id="${c.id}" data-label="${esc(c.label)}">${esc(c.label)}</li>`).join('') : `<li class="none" role="presentation">${t('city_none')}</li>`;
+      list.hidden = false; box.setAttribute('aria-expanded', 'true');
     } catch { /* offline: try again */ }
   }, 220);
 });
@@ -1392,12 +1521,13 @@ app.addEventListener('input', (ev) => {
 });
 
 // ---- boot -----------------------------------------------------------------------
+window.addEventListener('online', () => { if (S.offline) refreshMe().then(() => { S.offline = false; draw(); initBurhan(); }).catch(() => {}); });
 async function boot() {
   applyLang();
   if (S.ref) api(`/invite-check?code=${encodeURIComponent(S.ref)}`).then((r) => { if (r.valid && r.from) { S.refName = r.from; if (!S.me) draw(); } }).catch(() => {});
   if (S.resetToken) logout(false); // a reset link always starts from signed-out
   if (S.token) {
-    try { await refreshMe(); } catch { /* offline keeps login screen unless token is bad */ }
+    try { await refreshMe(); } catch (e) { if (e.message === 'network') S.offline = true; /* a bad token logs out inside api(); a lost connection keeps the session and says so */ }
   }
   draw();
   initBurhan();

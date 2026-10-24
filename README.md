@@ -72,12 +72,12 @@ curl -X POST $URL/api/admin/lectures -H "x-admin-key: $ADMIN_KEY" -H 'content-ty
 
 ## What's in the MVP
 
-- **Accounts:** username (unique, case-insensitive; doubles as the referral code), email, WhatsApp number (Pakistani `03xx…` normalised to `+92…`), password. Login by username, email or phone.
-- **Daily durood:** tap-counter or type a number. Pakistan-time days (UTC+5). Anti-cheat caps: 50,000 per day (10,000 in a member's first week). A day above 20,000 is flagged and that member's durood is held out of the public, challenge and caravan totals until an admin clears it.
-- **Priorities:** durood first (counter, quests, milestones, ranks, caravan); sunnah is a secondary quest and seerah a small bonus, both in the *Bonus* tab with deliberately small rewards. Full table in `docs/DESIGN.md`.
+- **Accounts:** username (unique, case-insensitive; doubles as the invite code), email, WhatsApp number (any country, normalised to `+<code>…`), password. Login by username, email or phone. Usernames and caravan names share one namespace and can never look like a phone number.
+- **Daily durood:** tap-counter or type a number. Pakistan-time days (UTC+5). Anti-cheat caps: 50,000 per day (10,000 in a member's first week). A day above 20,000, or above 5,000 for an account under two weeks old, is flagged and that member's durood is held out of the public, challenge and caravan totals until an admin clears it.
+- **Priorities:** durood stays the main earner; Sunnah, the weekly lecture, reflections and replies pay small, balanced amounts (docs/SPEC.md section 18).
 - **RPG layer:** XP (1 per durood + milestone and quest bonuses), levels with a "Musafir → Muqarrab" title ladder, daily streaks with *streak shields* (one earned per 7-day streak, auto-saves a missed day), daily/weekly quests, 18 badges.
-- **Network layer:** unlimited-depth referral tree stored as a closure table. A person's *caravan* = themselves + everyone below them. Caravan totals, weekly caravan leaderboard, caravan milestone badges and XP (10K → 10M, counting only what invitees recited), invite via WhatsApp share.
-- **Referral reward is delayed:** the referrer gets XP only once the invitee recites their first durood (blocks fake sign-ups).
+- **Network layer:** unlimited-depth referral tree stored as a closure table. A member's *caravan* is themselves plus the people they invited directly; their *Qabila* is everyone under them at every depth. Both have totals, boards and badges.
+- **Referral reward is delayed:** the inviter gets 500 points only once the invitee has recited 100 durood in all (blocks fake sign-ups), and the weekly invite quest counts only such invitees.
 - **Leaderboards:** weekly / all-time, individuals / caravans. Public; there is no opt-out. Flagged members are hidden until reviewed.
 - **Feed, likes, reflections:** see docs/SPEC.md section 15. Seerat Circle link on Home; one featured lecture a week with a quiz; sunnah photos; comments on the lecture (after its quiz) and short replies; a daily written reflection; likes earn the poster points; reports hide content.
 - **National meter:** total durood across everyone vs a target.
@@ -88,16 +88,13 @@ Swiss/International typographic style with one accent colour (green): heavy tabu
 
 **White / dark choice:** a sun/moon button in the header switches modes. The choice is saved in the browser; until someone chooses, the app follows the phone's light/dark setting. Both modes share every rule in `public/style.css` and differ only in the colour tokens at the top. **Icons** (`public/icons.js`): Monoline (thin currentColor line pictograms) for UI items such as the tab bar, header, buttons and headings; Offset Duotone (outlined tile, hard offset shadow, green wash, tier squares) for the 23 reward badges. Both are inline SVG using the colour tokens, so white and dark modes just work. Durood leads each screen; sunnah and seerah sit in the *Bonus* tab. Screenshots of every screen in white and dark, English and Urdu, are in `docs/ui/`.
 
-## Daily sunnah with photo verification
+## Daily sunnah and photos
 
-- An admin schedules one sunnah per day (`POST /api/admin/sunnahs`, single object or `{"sunnahs":[…]}` for bulk; fields `day` (YYYY-MM-DD, Pakistan time), `title_en`, `title_ur`, `desc_en`, `desc_ur`, `source`). **Content is deliberately not bundled** — supply texts and references that your scholars have checked.
-- Members photograph the sunnah (camera or gallery), preview it, and post — one post per sunnah. The browser re-encodes to JPEG; the server also strips all metadata (EXIF/GPS, comments), validates the file, and rejects a photo whose bytes were already used.
-- Other members review it in the **Verify others** feed: *confirm* or *doesn't look right*, or *report* for inappropriate content. Reviewers do not see current votes or the poster's name; least-reviewed posts are shown first so everything gets looked at.
-- **Rules (see `CFG` in `server/game.js`):** 3 distinct confirmations verify a post; 3 rejections reject it. On verification the poster gets +60 XP, and each reviewer *who voted with the final outcome* gets +5 XP (careless clicking earns nothing). You can't review your own post, vote twice, or exceed 30 reviews a day. Posts that don't reach a decision within 72 h expire with no payout. 3 reports hide a post pending admin review (`POST /api/admin/posts/:id` with `{"action":"restore"|"remove"}`; `GET /api/admin/reported`).
-- Extras: daily quests (post the sunnah, review 3), badges (Sunnah Keeper/Seven/Thirty, Trusted Reviewer, Pillar of Trust).
-- The audit (`npm run audit`) also checks that vote counts, post statuses and every sunnah/reviewer payout follow from the votes table.
-- Photos are stored in `UPLOAD_DIR` (default `data/uploads`) and served only through unguessable per-photo URLs that logged-in members receive; back this folder up with the database.
-- **Honest limit:** peer review confirms a photo *looks* like the sunnah, not that it was done sincerely or by that person. Treat verified counts as "peer-verified".
+- An admin schedules one sunnah per day (`POST /api/admin/sunnahs`, single object or `{"sunnahs":[…]}` for bulk; fields `day` (YYYY-MM-DD, Pakistan time), `title_en`, `title_ur`, `desc_en`, `desc_ur`, `source`).
+- A member ticks "I did today's sunnah" (20 points) and can post one photo of it (40 more). The browser shrinks and re-encodes the photo hard (about 100 KB); the server rejects anything over 200 KB or 1,280 px, checks it is a JPEG and removes camera metadata segments.
+- There is no review queue. Members are trusted, and likes and reports are the check: three reports from different members hide a photo until an admin restores it. See docs/SPEC.md sections 15, 17 and 18.
+- Photos live in `UPLOAD_DIR` and are shown only through per-photo signed links. They are deleted after `PHOTO_KEEP_DAYS` (14) once hidden or old; the record and the points stay. Deleting an account removes its photos at once.
+- **Honest limit:** nothing proves a photo shows the sunnah done sincerely or by that person. Treat the counts as "reported by members".
 
 ## Accuracy guarantees
 
@@ -112,4 +109,6 @@ Swiss/International typographic style with one accent colour (green): heavy tabu
 - **WhatsApp/email numbers are not verified yet.** Phone and email are collected and unique-checked only. Real OTP needs the WhatsApp Business API or an SMS provider (cost). Add before large-scale launch.
 - **Counts are self-reported.** Caps limit abuse; add admin review / flagging for outliers.
 - **Scale:** SQLite (WAL) comfortably serves a few thousand active users on one small server. For 50k+ active, move to Postgres (the SQL is plain), put the token-bucket limiter in Redis and cache leaderboards. See `docs/DESIGN.md`.
-- Admin UI, push reminders (fajr/isha), seasonal events (Ramadan, Rabi ul Awwal) and Seerat Circle-level boards are not built yet.
+- Seasonal events and Seerat Circle-level boards are not built yet. The admin page, push reminders, special days and the Al-Burhan edition exist (docs/SPEC.md sections 12, 16, 19).
+- **Scale limits found by review (not yet changed):** the nine ranking boards are recomputed from the daily table (about 2 to 3 seconds each when cold at 50,000 members, 30 second cache), the caravan streak check grows with how many people one member invited, and logging runs about 200 SQL statements. All are fine for thousands of members; a weekly-totals table and a background refresh are the next step before tens of thousands.
+- **Phone numbers are not verified.** For the Al-Burhan edition this is why a murabbi link needs the salik to confirm the person shown and that person to accept (docs/SPEC.md section 19). Add a one-time code before opening sign-up widely.

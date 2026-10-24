@@ -53,7 +53,7 @@ fly secrets set MAIL_PROVIDER=resend RESEND_API_KEY=... MAIL_FROM="Seerah Quest 
 3. Three intro screens, language choice; log durood by typing, presets, tapping; edit an entry in Me → History.
 4. Invite a second tester with your username as the code; they log; check Caravan boards, "caravans above you", the invite counter.
 5. Reminders: turn them on (Home card after a 2-day streak, or Me), set a reminder a few minutes ahead, lock the phone; post News with the notification ticked. **Push delivery has never run on a real device, so this is the most important test.**
-6. Sunnah: tick, post a photo, have two others confirm on the feed; video + quiz + comment; a reply (add a lecture, see README); Circle card.
+6. Sunnah: tick, post a photo, post it (40 points) and check the toast says so; video + quiz + comment; a reply (add a lecture, see README); Circle card.
 7. Flag path: new members are capped at 10,000 a day, so to reach the 20,000 flag line during QA run `fly secrets set MAX_DAILY_NEW=50000` (remove it before launch with `fly secrets unset MAX_DAILY_NEW`). Log 25,000 on one test account, watch the Home challenge number drop to "pending" and the inviter's caravan total drop, then clear it in the admin page's Flagged totals and watch both return.
 8. Admin: audit button (must be clean), exports, suspend and unsuspend a member, account deletion (photos disappear).
 9. Forgot password with the link from `fly logs`.
@@ -82,3 +82,21 @@ About $2 to 4 a month: one shared-cpu-1x machine at 256 MB (about $2) plus a 1 G
 Flow: work lands on `dev` and is deployed to the dev app and QA'd (`fly deploy`). When QA passes, `dev` is merged into `prod` and deployed to production (`fly deploy -c fly.prod.toml`). Never deploy untested work to prod and never copy a dev database to prod.
 
 Prod differs from dev: its own `ADMIN_KEY` and `AUTH_SECRET`; a real mail provider (`MAIL_PROVIDER`, no `ALLOW_CONSOLE_MAIL`); no QA overrides such as `MAX_DAILY_NEW`; a larger volume (3 GB or more); the real `PUBLIC_FOUNDERS_CODE`; set `VAPID_SUBJECT` to a monitored address; and check the Challenge tab's start date before announcing.
+
+
+## Settings that matter (added after the review)
+
+- `PUBLIC_URL` is required in production: password-reset and confirmation links are built from it. `fly.toml` and `fly.prod.toml` set it.
+- `EDITION=internal` (Al-Burhan) or `public`. With `internal`, also set `MAMULAAT_API_URL` and, as a secret, `MAMULAAT_API_KEY` (see docs/BURHAN-API.md). Without them the murabbi screens say the Mamulaat app is not reachable.
+- The machine has a swap file and Node is started with `--max-old-space-size=160`, so the nightly audit cannot take the whole 256 MB.
+
+## Backup and restore
+
+Backups are written to `BACKUP_DIR` (3 kept, daily). They sit on the same volume, so **copy them off the machine regularly** (for example `fly ssh sftp get`). Photos are not in them (`UPLOAD_DIR` is separate), and neither is `AUTH_SECRET`: keep that secret safe or every member is logged out after a restore.
+
+To restore: stop the app, then replace the database **and remove its write-ahead files**, or a stale log is replayed over the restored copy:
+
+    rm -f /data/durood.db-wal /data/durood.db-shm
+    cp /data/backups/seerah-quest-<stamp>.db /data/durood.db
+
+Start the app and run `npm run audit`: it must report no problems.

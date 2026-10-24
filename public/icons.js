@@ -24,6 +24,7 @@ const G = {
   feed: '<rect fill="FILL" x="4" y="4" width="16" height="6"/><path fill="none" d="M4 14h16M4 18h10"/>',
   heart: '<path fill="FILL" d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
   flag: '<path fill="none" d="M6 21V4"/><path fill="FILL" d="M6 5h11l-2.5 3.5L17 12H6z"/>',
+  chat: '<path fill="none" d="M4 5h16v11H9l-5 4z"/>',
   pen: '<path fill="FILL" d="M4 20l1-4L16 5l3 3L8 19z"/><path fill="none" d="M14 7l3 3"/>',
 };
 const glyph = (name, fill) => G[name].replaceAll('FILL', fill);

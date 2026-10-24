@@ -241,3 +241,15 @@ Durood stays the main earner (1 XP per durood, plus its quests). Everything else
 **Setup.** `MAMULAAT_API_URL`, `MAMULAAT_API_KEY` (keep the key a Fly secret), optional `MAMULAAT_TTL_MS`.
 
 **Future public release.** Deploy with `EDITION=public`. Durood, Sunnah, Seerah, caravans, rankings, feed and the welcome screens stay. Nothing in the Al-Burhan tables is read or written. Keep new Al-Burhan features behind `burhan.guard()`.
+
+## 20. Changes after the adversarial review
+
+**Al-Burhan links are two-sided.** Phone numbers are unverified, so a number alone never shares anything. Murabbi: the Mamulaat app names a number; the salik is shown the account found for it (username, city, the name listed) and must confirm; that person must then accept. Only then do reports flow. If the Mamulaat app later names someone else, the link drops back to the confirm step and the old murabbi loses access at once. A murabbi who has no account yet waits; when that number registers, the salik is asked to confirm the account that appeared. Masul: a masul can have at most 200 razakars.
+
+**Economy.** Durood quests need at least 100 a day whatever the personal goal. Editing a day down takes back the day's and week's quest points that no longer hold. The inviter's 500 points and the weekly invite quest need the invitee to have 100 durood in all. A new account (under 14 days) with 5,000 or more in a day is held for a look; a cleared flag is raised again only for a day half as big again. A city can be changed once every 14 days. Weeks missed by downtime are closed (up to four), and the week is closed before the first durood of a new one.
+
+**Accounts.** Changing the email needs the current password (3 tries a day). Login failures are counted per account, whether the person types a username, email or phone, and only failures count. Deleting an account removes its push devices, written text, Al-Burhan links, assignments, mamulaat numbers and views.
+
+**Operations.** The audit reads one snapshot and no longer holds every row in memory; startup no longer scans the ledger (index on `events(kind, ref)`, posts migration runs once); backups are written under a temporary name, refused when the disk is too full, and only 3 are kept (copy them off the machine); the server drains on SIGTERM; static files are gzip-compressed with ETags; fonts are bundled, so no third-party font request is made; the `fly` configs set `PUBLIC_URL` (reset links need it) and a swap file.
+
+**Interface.** Dialogs trap focus and close with Escape; every form field has a label and errors are announced; typed text survives a language switch or a failed submit; touch targets are at least 44px; Urdu dates, arrows and the city search hint were fixed; every earn action says what it paid; a "Points and levels" card on Me explains the economy; the Caravan tab opens with the invite card; the app says so when offline instead of showing the login.
