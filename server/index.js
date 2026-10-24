@@ -11,7 +11,9 @@ import { sendMail, resetEmail, confirmEmail, inviteEmail, baseUrl } from './mail
 import * as sunnah from './sunnah.js';
 import * as news from './news.js';
 import * as feedApi from './feed.js';
-import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, quizPassed, publicQuiz, parseQuestions, claimCircle, getMe, weekStart, leaderboard, caravanBoard, teamView, publicStats } from './game.js';
+import * as geo from './geo.js';
+import * as compete from './compete.js';
+import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, quizPassed, publicQuiz, parseQuestions, claimCircle, getMe, weekStart, setSpecialDay, deleteSpecialDay, listSpecialDays, leaderboard, caravanBoard, teamView, publicStats } from './game.js';
 
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -23,12 +25,19 @@ const isReserved = (u) => RESERVED.has(u.toLowerCase()) || /^member_\d+$/i.test(
 const USERNAME = /^[a-z0-9_]{3,20}$/i;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-export function normalizePhone(raw) {
-  let p = String(raw || '').replace(/[\s\-()]/g, '');
-  if (/^03\d{9}$/.test(p)) p = '+92' + p.slice(1);
-  else if (/^92\d{10}$/.test(p)) p = '+' + p;
-  else if (/^0092/.test(p)) p = '+' + p.slice(2);
-  return /^\+\d{8,15}$/.test(p) ? p : null;
+/**
+ * Any international number. `cc` (a country code like "GB") lets a member type their national number: the country's calling
+ * code is put in front and a leading 0 dropped. Pakistani 03xx numbers keep working without a country.
+ */
+export function normalizePhone(raw, cc) {
+  let p = String(raw || '').replace(/[\s\-().]/g, '');
+  if (p.startsWith('00')) p = '+' + p.slice(2);
+  if (!p.startsWith('+')) {
+    if (/^03\d{9}$/.test(p)) p = '+92' + p.slice(1);
+    else if (/^92\d{10}$/.test(p)) p = '+' + p;
+    else if (cc && geo.dialOf(cc) && /^\d{4,14}$/.test(p)) p = `+${geo.dialOf(cc)}${p.replace(/^0+/, '')}`;
+  }
+  return /^\+[1-9]\d{7,14}$/.test(p) && geo.knownDialCode(p) ? p : null;
 }
 
 // ---- routing --------------------------------------------------------------
@@ -57,6 +66,17 @@ function useToken(raw, kind) {
 
 const tokenFor = (id) => signToken(id, one('SELECT token_ver v FROM users WHERE id = ?', id).v);
 const lang = (v) => (v === 'en' ? 'en' : 'ur');
+
+// where the sign-up form starts: the country from the visitor's IP, else the browser's time zone, else Pakistan
+route('GET', '/api/geo', { auth: false }, ({ query, ip }) => {
+  rateLimit(`geo:${ip}`, 60, 60e3);
+  const cc = geo.detectCountry({ ip, tz: String(query.get('tz') || '').slice(0, 60) });
+  return { country: cc, dial: geo.dialOf(cc), countries: geo.COUNTRIES };
+});
+route('GET', '/api/cities', { auth: false }, ({ query, ip }) => {
+  rateLimit(`cities:${ip}`, 240, 60e3);
+  return { cities: geo.searchCities(query.get('q'), query.get('cc')) };
+});
 
 route('GET', '/api/username-check', { auth: false }, ({ query, ip }) => {
   rateLimit(`uc:${ip}`, 120, 60e3);
@@ -93,12 +113,14 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
   rateLimit(`reg:${ip}`, Number(process.env.REG_LIMIT_PER_HOUR) || 30, 3600e3);
   const username = String(body.username || '').trim();
   const email = String(body.email || '').trim().toLowerCase();
-  const phone = normalizePhone(body.phone);
+  const phone = normalizePhone(body.phone, body.phoneCountry);
   const password = String(body.password || '');
   if (!USERNAME.test(username) || isReserved(username)) throw new HttpError(400, 'bad_username');
   if (!EMAIL.test(email)) throw new HttpError(400, 'bad_email');
   if (!phone) throw new HttpError(400, 'bad_phone');
   if (password.length < 6 || password.length > 128) throw new HttpError(400, 'bad_password');
+  const place = geo.cityById(body.cityId);          // the city is required: it decides which city board the member's durood counts for
+  if (!place) throw new HttpError(400, 'city_required');
 
   const inviteRaw = body.invite ?? body.referral;
   if (access.INVITE_ONLY() && !String(inviteRaw || '').trim()) throw new HttpError(400, 'invite_required');
@@ -112,9 +134,9 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
     if (one('SELECT 1 FROM users WHERE phone = ?', phone)) throw new HttpError(409, 'phone_taken');
     if (r) access.consumeInvite(r);
     const referrerId = r?.kind === 'member' ? r.referrerId : null;
-    const res = run(`INSERT INTO users (username, email, phone, pass, lang, city, referrer_id, created_day, created_at, invited_via, invite_code)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-      username, email, phone, pass, lang(body.lang), String(body.city || '').trim().slice(0, 40), referrerId, dayOf(), Date.now(),
+    const res = run(`INSERT INTO users (username, email, phone, pass, lang, city, city_id, country, referrer_id, created_day, created_at, invited_via, invite_code)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      username, email, phone, pass, lang(body.lang), place.name, place.id, place.cc, referrerId, dayOf(), Date.now(),
       r ? r.kind : 'open', r?.invite ? r.code : (r?.kind === 'public' ? r.code : null));
     const uid = Number(res.lastInsertRowid);
     startChallengeIfNeeded(); // day 1 of the challenge is the day the first member joins
@@ -158,7 +180,11 @@ route('PATCH', '/api/me', ({ user, body }) => {
     }
   }
   if (body.reminderTime !== undefined) news.setReminder(user, body.reminderTime);
-  if (body.city !== undefined) run('UPDATE users SET city = ? WHERE id = ?', String(body.city).trim().slice(0, 40), user);
+  if (body.cityId !== undefined) {
+    const place = geo.cityById(body.cityId);
+    if (!place) throw new HttpError(400, 'city_required');
+    run('UPDATE users SET city = ?, city_id = ?, country = ? WHERE id = ?', place.name, place.id, place.cc, user);
+  }
   if (body.dailyGoal !== undefined) {
     const g = Number(body.dailyGoal);
     if (!Number.isInteger(g) || g < 1 || g > 100_000) throw new HttpError(400, 'bad_count');
@@ -235,12 +261,14 @@ route('GET', '/api/leaderboard', ({ user, query }) => {
   const p = query.get('period');
   const period = p === 'all' ? 'all' : p === 'challenge' ? 'challenge' : 'week';
   const metric = query.get('metric');
+  if (t === 'cities') return compete.cityBoard(user, metric === 'average' || metric === 'growth' ? metric : 'total');
   if (type !== 'users' && (metric === 'average' || metric === 'growth')) return caravanBoard(user, metric, type === 'caravans' ? 'caravan' : 'tree');
   return leaderboard(user, type, period);
 });
 
 route('GET', '/api/challenge', ({ user }) => ({ summary: challengeSummary(), series: challengeSeries() }));
-route('GET', '/api/team', ({ user }) => teamView(user));
+route('GET', '/api/league', ({ user }) => { compete.ensureWeekClosed(); return compete.leagueView(user); });
+route('GET', '/api/team', ({ user }) => ({ ...teamView(user), karwan: compete.karwanStatus(user) }));
 
 route('GET', '/api/lectures', ({ user }) => ({ lectures: feedApi.lectureList(user), circleUrl: CFG.circleUrl, circleXp: CFG.circleXp, classXp: CFG.classXp }));
 route('POST', '/api/lectures/:id/quiz', ({ user, params, body }) => {
@@ -332,6 +360,9 @@ route('GET', '/api/admin/news', adm, () => ({ items: db.prepare('SELECT * FROM a
 route('POST', '/api/admin/news', adm, ({ body }) => news.postNews(body));
 route('DELETE', '/api/admin/news/:id', adm, ({ params }) => news.deleteNews(Number(params.id)));
 route('GET', '/api/admin/export', adm, ({ query }) => ({ csv: news.exportCsv(query.get('kind')) }));
+route('GET', '/api/admin/special-days', adm, () => ({ days: listSpecialDays() }));
+route('POST', '/api/admin/special-days', adm, ({ body }) => setSpecialDay(body));
+route('DELETE', '/api/admin/special-days/:day', adm, ({ params }) => deleteSpecialDay(params.day));
 route('GET', '/api/admin/audit', { auth: false, admin: true }, () => auditAsync());
 route('GET', '/api/admin/status', adm, () => ({ lastAudit: getSetting('last_audit') ? JSON.parse(getSetting('last_audit')) : null, lastBackup: Number(getSetting('last_backup_at', '0')) || null }));
 route('POST', '/api/admin/lectures', { auth: false, admin: true }, ({ body }) => {
@@ -472,6 +503,7 @@ export function createServer() {
   return server;
 }
 
+geo.ensureCities();
 if (process.env.PUBLIC_FOUNDERS_CODE && !getSetting('public_code')) access.setPublicCode({ code: process.env.PUBLIC_FOUNDERS_CODE, enabled: true });
 
 // Refuse to start a production server that would silently fail members: no way to send reset emails, or a guessable admin key.

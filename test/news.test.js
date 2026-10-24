@@ -33,7 +33,7 @@ async function api(method, path, { token, body, headers } = {}) {
 const admin = { 'x-admin-key': 'test-admin' };
 const signup = async (username, invite = 'TESTFOUND') => {
   n += 1;
-  return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0304${String(5000000 + n)}`, password: 'secret1', invite } });
+  return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0304${String(5000000 + n)}`, password: 'secret1', cityId: 1172451, invite } });
 };
 // a real browser-style subscription so the encryption has valid keys
 const fakeSub = (endpoint) => {
@@ -101,12 +101,12 @@ test('dead subscriptions are removed; joining a caravan and announcements push',
 
 test('exports are CSV, formula-safe, and admin only', async () => {
   const a = await signup('exp_a');
-  await api('PATCH', '/api/me', { token: a.token, body: { city: '=cmd|calc' } });
+  db.prepare("UPDATE users SET city = '=cmd|calc' WHERE username = 'exp_a'").run(); // a name that starts like a spreadsheet formula
   await api('POST', '/api/log', { token: a.token, body: { count: 77, rid: crypto.randomUUID() } });
   assert.equal((await api('GET', '/api/admin/export?kind=cities')).status, 403);
   const res = await fetch(`${base}/api/admin/export?kind=cities`, { headers: admin });
   const { csv } = await res.json();
-  assert.ok(csv.startsWith('city,members,durood_total'));
+  assert.ok(csv.startsWith('city,country,members,durood_total'));
   assert.ok(csv.includes("\"'=cmd|calc\"") || csv.includes("'=cmd|calc"));
   assert.ok(!/^=cmd/m.test(csv));
   for (const k of ['caravans', 'weeks']) assert.ok((await (await fetch(`${base}/api/admin/export?kind=${k}`, { headers: admin })).json()).csv.includes('\n'));

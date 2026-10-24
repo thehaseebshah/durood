@@ -10,6 +10,8 @@ export const CFG = {
   referralXp: 500,           // paid to the referrer when the invitee logs their first durood
   // Durood is the primary activity (1 XP per durood plus the milestone/quest bonuses below). Sunnah and seerah
   // rewards are deliberately small so they can never outweigh reciting.
+  specialXp: 150,            // the bonus quest on a special day (every Friday, and days the admin marks)
+  cityMinActive: 5,          // a city appears on the city boards only with this many members who recited this week
   circleXp: 300,             // one-time, for registering with a Seerat Circle
   sunnahTickXp: 20,          // "I did today's sunnah"
   sunnahXp: 40,              // added when the photo is verified, so a verified day is worth 3x the tick (60)
@@ -28,7 +30,7 @@ CFG.maxSingle = CFG.maxDaily; // one submission can never exceed the daily ceili
 const PK = 5 * 3600e3;
 export const dayOf = (ts = Date.now()) => new Date(ts + PK).toISOString().slice(0, 10);
 export const dayNum = (d) => Math.floor(Date.parse(d + 'T00:00:00Z') / 86400e3);
-const dayStr = (n) => new Date(n * 86400e3).toISOString().slice(0, 10);
+export const dayStr = (n) => new Date(n * 86400e3).toISOString().slice(0, 10);
 export const weekStart = (d = dayOf()) => {
   const dow = (new Date(d + 'T00:00:00Z').getUTCDay() + 6) % 7; // Monday = 0
   return dayStr(dayNum(d) - dow);
@@ -61,6 +63,16 @@ const BADGES = {
   sunnah1: (s) => s.sunnahs >= 1,
   sunnah7: (s) => s.sunnahs >= 7,
   sunnah30: (s) => s.sunnahs >= 30,
+  karwan7: (s) => s.karwanStreak >= 7,
+  karwan30: (s) => s.karwanStreak >= 30,
+  qabila10: (s) => s.treeActive >= 10,
+  qabila50: (s) => s.treeActive >= 50,
+  qabila250: (s) => s.treeActive >= 250,
+  league_silver: (s) => s.league >= 1,
+  league_gold: (s) => s.league >= 2,
+  league_diamond: (s) => s.league >= 3,
+  city_podium: (s) => s.cityPodiums >= 1,
+  city_champion: (s) => s.cityWins >= 1,
   group10k: (s) => s.groupDown >= 10_000,
   group100k: (s) => s.groupDown >= 100_000,
   group1m: (s) => s.groupDown >= 1_000_000,
@@ -74,23 +86,25 @@ const MILESTONE_XP = {
   d1k: 100, d10k: 500, d100k: 2_500, d1m: 10_000,
   streak7: 100, streak30: 500, streak100: 2_000,
   group10k: 300, group100k: 1_500, group1m: 6_000,
+  karwan7: 150, karwan30: 600, qabila10: 200, qabila50: 800, qabila250: 3_000,
+  league_silver: 150, league_gold: 300, league_diamond: 600, city_podium: 200, city_champion: 500,
   caravan10k: 500, caravan100k: 2_500, caravan1m: 10_000, caravan10m: 50_000, // the whole referral tree (internally: qabila)
 };
 export const BADGE_CODES = Object.keys(BADGES);
 // badges announced to a member's caravan in the feed (the personal and group milestones, not the small ones)
-const FEED_BADGES = new Set(['d1k', 'd10k', 'd100k', 'd1m', 'streak7', 'streak30', 'streak100', 'recruit1', 'recruit5', 'recruit25', 'group10k', 'group100k', 'group1m', 'caravan10k', 'caravan100k', 'caravan1m', 'caravan10m']);
+const FEED_BADGES = new Set(['d1k', 'd10k', 'd100k', 'd1m', 'streak7', 'streak30', 'streak100', 'recruit1', 'recruit5', 'recruit25', 'group10k', 'group100k', 'group1m', 'karwan7', 'karwan30', 'qabila10', 'qabila50', 'qabila250', 'league_silver', 'league_gold', 'league_diamond', 'city_podium', 'city_champion', 'caravan10k', 'caravan100k', 'caravan1m', 'caravan10m']);
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
 const run = (sql, ...a) => db.prepare(sql).run(...a);
 
 function stats(userId) {
-  const u = one('SELECT total, best_streak, team_total FROM users WHERE id = ?', userId);
+  const u = one('SELECT total, best_streak, team_total, league, tree_active FROM users WHERE id = ?', userId);
   const count = (kind) => one('SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = ?', userId, kind).n;
   // collective rewards count only what the people you invited recited, never your own durood a second time.
   // groupDown = your caravan (the people you invited yourself); downline = your whole referral tree. Durood on hold is left out of both.
   const groupDown = one('SELECT COALESCE(SUM(total), 0) n FROM users WHERE referrer_id = ? AND held = 0', userId).n;
-  return { ...u, groupDown, downline: u.team_total - u.total, referrals: count('referral'), lectures: count('lecture'), sunnahs: count('sunnah'), circle: count('circle') > 0 };
+  return { ...u, treeActive: u.tree_active, groupDown, downline: u.team_total - u.total, referrals: count('referral'), lectures: count('lecture'), sunnahs: count('sunnah'), circle: count('circle') > 0 };
 }
 
 const bumpDay = (day, delta) => run('INSERT INTO day_totals (day, total) VALUES (?, ?) ON CONFLICT(day) DO UPDATE SET total = total + excluded.total', day, delta);
@@ -101,18 +115,22 @@ export function rebuildDayTotals() {
 }
 
 /** Side effects that must not run inside a write transaction (push messages) hook in here. */
-export const hooks = { milestone: null, badge: null };
+export const hooks = { milestone: null, badge: null, inTx: null };
 
-export function evalBadges(userId, fresh) {
-  const s = stats(userId);
-  for (const [code, test] of Object.entries(BADGES)) {
-    if (test(s) && run('INSERT OR IGNORE INTO badges (user_id, code, earned_at) VALUES (?,?,?)', userId, code, Date.now()).changes) {
-      fresh.push({ userId, code });
-      if (MILESTONE_XP[code]) grant(userId, 'milestone', code, MILESTONE_XP[code]);
-      if (code.startsWith('caravan') || code.startsWith('group')) hooks.badge?.(userId, code);
-      if (FEED_BADGES.has(code)) run('INSERT OR IGNORE INTO feed_events (user_id, kind, ref, created_at) VALUES (?,?,?,?)', userId, 'badge', code, Date.now());
-    }
-  }
+/** Gives a badge once, with its one-time points, a feed line for the member's caravan and (for group badges) a push. Returns true when it was new. */
+export function award(userId, code, fresh = []) {
+  if (!run('INSERT OR IGNORE INTO badges (user_id, code, earned_at) VALUES (?,?,?)', userId, code, Date.now()).changes) return false;
+  fresh.push({ userId, code });
+  if (MILESTONE_XP[code]) grant(userId, 'milestone', code, MILESTONE_XP[code]);
+  if (code.startsWith('caravan') || code.startsWith('group')) hooks.badge?.(userId, code);
+  if (FEED_BADGES.has(code)) run('INSERT OR IGNORE INTO feed_events (user_id, kind, ref, created_at) VALUES (?,?,?,?)', userId, 'badge', code, Date.now());
+  return true;
+}
+
+/** `extra` carries numbers that are expensive to work out for everyone (the caravan streak, city podiums). */
+export function evalBadges(userId, fresh, extra = {}) {
+  const s = { ...stats(userId), ...extra };
+  for (const [code, test] of Object.entries(BADGES)) if (test(s)) award(userId, code, fresh);
 }
 
 export function grant(userId, kind, ref, xp) {
@@ -120,6 +138,22 @@ export function grant(userId, kind, ref, xp) {
   if (r.changes) run('UPDATE users SET xp = xp + ? WHERE id = ?', xp, userId);
   return r.changes > 0;
 }
+
+// ---- special days: Fridays automatically, other days (Ramadan, Rabi ul Awwal...) added by the admin ----------------------------
+export function specialToday(day = dayOf()) {
+  const row = one('SELECT * FROM special_days WHERE day = ?', day);
+  if (row) return { day, nameEn: row.name_en, nameUr: row.name_ur };
+  if (new Date(`${day}T00:00:00Z`).getUTCDay() === 5) return { day, nameEn: 'Jumu‘ah', nameUr: 'جمعہ' };
+  return null;
+}
+export function setSpecialDay({ day, name_en, name_ur }) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(day)) || !String(name_en || '').trim()) throw new HttpError(400, 'bad_special');
+  run(`INSERT INTO special_days (day, name_en, name_ur) VALUES (?,?,?) ON CONFLICT(day) DO UPDATE SET name_en = excluded.name_en, name_ur = excluded.name_ur`,
+    day, String(name_en).trim().slice(0, 60), String(name_ur || '').trim().slice(0, 60));
+  return { ok: true };
+}
+export const deleteSpecialDay = (day) => { run('DELETE FROM special_days WHERE day = ?', String(day)); return { ok: true }; };
+export const listSpecialDays = () => all('SELECT * FROM special_days ORDER BY day DESC LIMIT 60');
 
 // ---- quests ---------------------------------------------------------------
 function questState(u) {
@@ -143,6 +177,7 @@ function questState(u) {
     q('weekgoal', 'durood', 'week', 300, weekSum, u.daily_goal * 7),
     q('days5', 'durood', 'week', 200, daysWeek, 5),
     q('invite', 'durood', 'week', 250, invitedWeek, 1),
+    ...(specialToday(day) ? [q('special', 'durood', 'day', CFG.specialXp, today, u.daily_goal)] : []),
     q('sunnah', 'bonus', 'day', CFG.sunnahTickXp, tickedToday, 1, true),
     q('reflect', 'bonus', 'day', CFG.reflectXp, reflectedToday, 1),
     q('lecture', 'bonus', 'day', 30, lecturesToday, 1),
@@ -197,6 +232,8 @@ export function logDurood(userId, count, rid) {
     }
     evaluateFlags(userId, day);
 
+    // the first durood a member ever reports: it counts them as an active person in every tree above them
+    if (u.total === 0) run('UPDATE users SET tree_active = tree_active + 1 WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth > 0)', userId);
     // referrer is paid only once the invitee actually recites - blocks fake sign-ups
     if (u.total === 0 && u.referrer_id && grant(u.referrer_id, 'referral', userId, CFG.referralXp)) {
       settleQuests(u.referrer_id);
@@ -206,6 +243,7 @@ export function logDurood(userId, count, rid) {
     settleQuests(userId);
     evalBadges(userId, fresh);
     for (const a of all('SELECT ancestor_id id FROM ancestors WHERE user_id = ? AND depth > 0', userId)) evalBadges(a.id, fresh);
+    hooks.inTx?.(userId, u.referrer_id, fresh); // weekly league, caravan streak
   });
 
   if (!duplicate) recordChallenge();
@@ -554,7 +592,8 @@ let natCache = { at: 0, v: null };
 export function publicStats() {
   if (Date.now() - natCache.at > Number(process.env.PUBLIC_CACHE_MS ?? 15_000)) {
     const r = one('SELECT COALESCE(SUM(CASE WHEN held = 0 THEN total END),0) total, COALESCE(SUM(CASE WHEN held = 1 THEN total END),0) pending, SUM(deleted_at IS NULL) members FROM users');
-    natCache = { at: Date.now(), v: { total: r.total, pending: r.pending, members: r.members, asOf: Date.now(), challenge: challengeSummary() } };
+    const live = { today: one('SELECT COALESCE((SELECT total FROM day_totals WHERE day = ?), 0) n', dayOf()).n, membersToday: one('SELECT COUNT(*) n FROM daily d JOIN users u ON u.id = d.user_id AND u.held = 0 WHERE d.day = ? AND d.count > 0', dayOf()).n };
+    natCache = { at: Date.now(), v: { total: r.total, pending: r.pending, members: r.members, ...live, asOf: Date.now(), challenge: challengeSummary() } };
   }
   return { ...natCache.v, target: CFG.nationalTarget, circleUrl: CFG.circleUrl };
 }
@@ -568,7 +607,7 @@ export function getMe(userId) {
   const direct = one('SELECT COUNT(*) n FROM users WHERE referrer_id = ?', userId).n;
   const streakAlive = u.last_day === day || (u.last_day && dayNum(day) - dayNum(u.last_day) === 1);
   return {
-    id: u.id, username: u.username, email: u.email, phone: u.phone, lang: u.lang, city: u.city,
+    id: u.id, username: u.username, email: u.email, phone: u.phone, lang: u.lang, city: u.city, cityId: u.city_id, country: u.country, needsCity: !u.city_id,
     dailyGoal: u.daily_goal, hiddenFromRanks: !!u.hidden_from_ranks, emailVerified: !!u.email_verified_at,
     invites: inviteStatus(userId),
     total: u.total, today, week,
@@ -581,7 +620,7 @@ export function getMe(userId) {
     caravan: { members: direct, down: one('SELECT COALESCE(SUM(total), 0) n FROM users WHERE referrer_id = ? AND held = 0', userId).n },
     sunnah: { posted: one("SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = 'sunnah'", userId).n },
     pub: publicStats(),
-    circleUrl: CFG.circleUrl, reminderTime: u.reminder_time,
+    circleUrl: CFG.circleUrl, reminderTime: u.reminder_time, special: specialToday(), league: u.league,
     unreadNews: one('SELECT COUNT(*) n FROM announcements WHERE created_at > ?', u.news_seen_at).n,
   };
 }
@@ -709,3 +748,11 @@ export function teamView(userId) {
 
 // first start after an upgrade: build the per-day public totals once
 if (!one('SELECT 1 FROM day_totals LIMIT 1') && one('SELECT 1 FROM daily LIMIT 1')) tx(() => rebuildDayTotals());
+
+// first start after an upgrade: count the active people under every member once
+if (getSetting('tree_active_v') !== '1') {
+  tx(() => {
+    db.exec(`UPDATE users SET tree_active = (SELECT COUNT(*) FROM ancestors a JOIN users u ON u.id = a.user_id WHERE a.ancestor_id = users.id AND a.depth > 0 AND u.total > 0)`);
+    setSetting('tree_active_v', '1');
+  });
+}

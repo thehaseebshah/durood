@@ -36,7 +36,7 @@ const A = { 'x-admin-key': 'test-admin' };
 const admin = (m, p, body) => api(m, '/api/admin' + p, { headers: A, body });
 const signup = (username, invite = 'TESTFOUND', extra = {}) => {
   n += 1;
-  return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0302${String(3000000 + n)}`, password: 'secret1', invite, ...extra } });
+  return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0302${String(3000000 + n)}`, password: 'secret1', cityId: 1172451, invite, ...extra } });
 };
 const shift = (day, d) => new Date(Date.parse(day + 'T00:00:00Z') + d * 86400e3).toISOString().slice(0, 10);
 const uid = (u) => db.prepare('SELECT id FROM users WHERE username = ?').get(u).id;

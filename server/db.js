@@ -138,6 +138,44 @@ CREATE TABLE IF NOT EXISTS lecture_quiz (
   PRIMARY KEY (user_id, lecture_id)
 ) WITHOUT ROWID;
 
+-- places of 5,000+ people (GeoNames, CC BY 4.0), loaded on first start; members must pick one
+CREATE TABLE IF NOT EXISTS cities (
+  id     INTEGER PRIMARY KEY,
+  name   TEXT NOT NULL,
+  ascii  TEXT NOT NULL COLLATE NOCASE,
+  cc     TEXT NOT NULL,
+  region TEXT NOT NULL DEFAULT '',
+  pop    INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS cities_ascii ON cities(ascii COLLATE NOCASE, pop DESC);
+
+-- weekly leagues: members who recite in a week are put in a group of up to 30 at their tier; at the week's end the top move up and
+-- the bottom move down. Cities: the three best cities of each closed week.
+CREATE TABLE IF NOT EXISTS league_members (
+  week    TEXT NOT NULL,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  tier    INTEGER NOT NULL,
+  grp     INTEGER NOT NULL,
+  rank    INTEGER,
+  result  TEXT,
+  PRIMARY KEY (week, user_id)
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS league_group ON league_members(week, tier, grp);
+CREATE TABLE IF NOT EXISTS city_weeks (
+  week      TEXT NOT NULL,
+  rank      INTEGER NOT NULL,
+  city_id   INTEGER NOT NULL,
+  score     INTEGER NOT NULL,
+  closed_at INTEGER NOT NULL,
+  PRIMARY KEY (week, rank)
+) WITHOUT ROWID;
+-- days with an extra reason to recite (Fridays are automatic); the admin adds Ramadan, Rabi ul Awwal and so on
+CREATE TABLE IF NOT EXISTS special_days (
+  day     TEXT PRIMARY KEY,
+  name_en TEXT NOT NULL,
+  name_ur TEXT NOT NULL DEFAULT ''
+) WITHOUT ROWID;
+
 -- the feed: likes (one per member per item, never taken back, so the points they earn stay exact), a short written reflection per
 -- member per day, the question of the day, reports on either kind of content, and milestone events shown to a member's caravan
 CREATE TABLE IF NOT EXISTS likes (
@@ -352,6 +390,11 @@ addCol('users', 'token_ver', 'INTEGER NOT NULL DEFAULT 0');       // bumped to s
 addCol('posts', 'purged_at', 'INTEGER');                          // photo file deleted (retention or account deletion)
 addCol('posts', 'likes', 'INTEGER NOT NULL DEFAULT 0');
 addCol('lectures', 'week_start', 'TEXT');                          // the Monday of the week this lecture is featured
+addCol('users', 'city_id', 'INTEGER');                              // the place the member chose (cities.id); required for new members
+addCol('users', 'country', "TEXT NOT NULL DEFAULT ''");           // country code of that place
+db.exec('CREATE INDEX IF NOT EXISTS users_city ON users(city_id)');
+addCol('users', 'league', 'INTEGER NOT NULL DEFAULT 0');           // 0 Bronze, 1 Silver, 2 Gold, 3 Diamond
+addCol('users', 'tree_active', 'INTEGER NOT NULL DEFAULT 0');     // people under this member (any depth) who have recited at least once
 addCol('users', 'reminder_time', "TEXT NOT NULL DEFAULT ''");       // 'HH:MM' Pakistan time, '' = no daily reminder
 addCol('users', 'news_seen_at', 'INTEGER NOT NULL DEFAULT 0');
 

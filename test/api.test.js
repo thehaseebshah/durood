@@ -35,7 +35,7 @@ let n = 0;
 const signup = (username, referral) => {
   n += 1;
   return api('POST', '/api/register', {
-    body: { username, email: `${username}@x.pk`, phone: `0300${String(1000000 + n)}`, password: 'secret1', lang: 'en', invite: referral || 'TESTFOUND' },
+    body: { username, email: `${username}@x.pk`, phone: `0300${String(1000000 + n)}`, password: 'secret1', cityId: 1172451, lang: 'en', invite: referral || 'TESTFOUND' },
   });
 };
 

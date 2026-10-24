@@ -1,6 +1,7 @@
 import { db, tx } from './db.js';
 import { HttpError, photoSig } from './auth.js';
 import { CFG, dayOf, weekStart, grant, settleQuests, publicQuiz, quizPassed } from './game.js';
+import { cityPodium } from './compete.js';
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
@@ -155,6 +156,7 @@ export function feed(userId, before = Date.now() + 1) {
     const at = Number(c.value), k = Number(c.key.slice(5));
     if (at < cutoff) items.push({ type: 'crore', id: k, at, k });
   }
+  for (const c of cityPodium()) if (c.at < cutoff) items.push({ type: 'city', id: `${c.week}:${c.rank}`, at: c.at, rank: c.rank, label: c.label, score: c.score });
   items.sort((a, b) => b.at - a.at || (a.type < b.type ? -1 : 1));
   const page = items.slice(0, FEED_PAGE);
   return { items: page, next: items.length > FEED_PAGE ? page.at(-1).at : null };

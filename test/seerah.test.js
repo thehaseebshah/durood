@@ -32,7 +32,7 @@ async function api(method, path, { token, body, headers } = {}) {
 const admin = { 'x-admin-key': 'test-admin' };
 const signup = async (username) => {
   n += 1;
-  return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0302${String(3000000 + n)}`, password: 'secret1', invite: 'TESTFOUND' } });
+  return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0302${String(3000000 + n)}`, password: 'secret1', cityId: 1172451, invite: 'TESTFOUND' } });
 };
 const xp = async (u) => (await api('GET', '/api/me', { token: u.token })).xp;
 function fakeJpeg() {

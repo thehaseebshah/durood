@@ -28,7 +28,7 @@ async function api(method, path, { token, body, headers } = {}) {
 const admin = { 'x-admin-key': 'test-admin' };
 const signup = (username, invite = 'TESTFOUND') => {
   n += 1;
-  return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0306${String(7000000 + n)}`, password: 'secret1', invite } });
+  return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0306${String(7000000 + n)}`, password: 'secret1', cityId: 1172451, invite } });
 };
 const log = (u, count) => api('POST', '/api/log', { token: u.token, body: { count, rid: crypto.randomUUID() } });
 const xp = async (u) => (await api('GET', '/api/me', { token: u.token })).xp;

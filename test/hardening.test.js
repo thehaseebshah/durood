@@ -37,7 +37,7 @@ async function api(method, p, { token, body, headers } = {}) {
 const adm = { 'x-admin-key': process.env.ADMIN_KEY };
 const signup = (username, invite = 'TESTFOUND', headers) => {
   n += 1;
-  return api('POST', '/api/register', { headers, body: { username, email: `${username}@x.pk`, phone: `0305${String(6000000 + n)}`, password: 'secret1', invite } });
+  return api('POST', '/api/register', { headers, body: { username, email: `${username}@x.pk`, phone: `0305${String(6000000 + n)}`, password: 'secret1', cityId: 1172451, invite } });
 };
 const log = (u, count) => api('POST', '/api/log', { token: u.token, body: { count, rid: crypto.randomUUID() } });
 const age = (username, days = 30) => db.prepare('UPDATE users SET created_day = ? WHERE username = ?').run(new Date(Date.now() + 5 * 3600e3 - days * 86400e3).toISOString().slice(0, 10), username);

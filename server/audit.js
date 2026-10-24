@@ -19,7 +19,8 @@ export function audit({ fix = false } = {}) {
       COALESCE((SELECT SUM(count) FROM entries e WHERE e.user_id = u.id), 0) l_total,
       COALESCE((SELECT SUM(e.count) FROM entries e JOIN users hu ON hu.id = e.user_id AND hu.held = 0 JOIN ancestors a ON a.user_id = e.user_id
                 WHERE a.ancestor_id = u.id AND a.depth <= ?), 0) l_team,
-      u.held,
+      u.held, u.tree_active,
+      (SELECT COUNT(*) FROM ancestors a2 JOIN users d2 ON d2.id = a2.user_id WHERE a2.ancestor_id = u.id AND a2.depth > 0 AND d2.total > 0) l_tree_active,
       EXISTS(SELECT 1 FROM flags f WHERE f.user_id = u.id AND f.status IN ('open','confirmed') AND f.reason != 'manual') should_hold,
       COALESCE((SELECT SUM(xp) FROM events ev WHERE ev.user_id = u.id), 0) ev_xp
     FROM users u`, CFG.teamMaxDepth);
@@ -27,6 +28,7 @@ export function audit({ fix = false } = {}) {
     if (u.total !== u.l_total) note('user_total', { user: u.username, stored: u.total, ledger: u.l_total });
     if (!!u.held !== !!u.should_hold) note('held', { user: u.username, held: u.held, shouldHold: u.should_hold });
     if (u.team_total !== u.l_team) note('team_total', { user: u.username, stored: u.team_total, ledger: u.l_team });
+    if (u.tree_active !== u.l_tree_active) note('tree_active', { user: u.username, stored: u.tree_active, ledger: u.l_tree_active });
     if (u.xp !== u.l_total + u.ev_xp) note('xp', { user: u.username, stored: u.xp, ledger: u.l_total + u.ev_xp });
   }
 
@@ -85,6 +87,7 @@ export function audit({ fix = false } = {}) {
       db.prepare(`UPDATE users SET team_total = COALESCE((SELECT SUM(e.count) FROM entries e JOIN users hu ON hu.id = e.user_id AND hu.held = 0 JOIN ancestors a ON a.user_id = e.user_id
                   WHERE a.ancestor_id = users.id AND a.depth <= ?), 0)`).run(CFG.teamMaxDepth);
       rebuildDayTotals();
+      db.exec(`UPDATE users SET tree_active = (SELECT COUNT(*) FROM ancestors a JOIN users u ON u.id = a.user_id WHERE a.ancestor_id = users.id AND a.depth > 0 AND u.total > 0)`);
       db.exec(`UPDATE users SET xp = total + COALESCE((SELECT SUM(xp) FROM events ev WHERE ev.user_id = users.id), 0)`);
     });
   }

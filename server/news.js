@@ -5,6 +5,7 @@ import { sendPush, vapidPublicKey } from './push.js';
 import { purgeOldPhotos } from './sunnah.js';
 import { backupIfDue } from './backup.js';
 import { auditAsync } from './audit.js';
+import { ensureWeekClosed } from './compete.js';
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
@@ -151,6 +152,7 @@ export function startScheduler() {
   const housekeeping = () => {
     try { purgeOldPhotos(); } catch (e) { console.error('photo purge', e); }
     try { backupIfDue(); } catch (e) { console.error('backup', e); }
+    try { ensureWeekClosed(); } catch (e) { console.error('week close', e); }
     nightlyAudit().catch((e) => console.error('audit', e));
   };
   const h = setInterval(housekeeping, 3600e3);
@@ -171,7 +173,7 @@ const toCsv = (head, rows) => [head, ...rows].map((r) => r.map(csvCell).join(','
 /** Totals as reported. Deleted members stay in the totals (their durood stays on the record) under a blank city. */
 export function exportCsv(kind) {
   if (kind === 'cities') {
-    return toCsv(['city', 'members', 'durood_total'], all(`SELECT COALESCE(NULLIF(city, ''), '(none)') c, COUNT(*) m, SUM(total) t FROM users GROUP BY c ORDER BY t DESC`).map((r) => [r.c, r.m, r.t]));
+    return toCsv(['city', 'country', 'members', 'durood_total'], all(`SELECT COALESCE(NULLIF(city, ''), '(none)') c, country, COUNT(*) m, SUM(total) t FROM users GROUP BY COALESCE(city_id, city), c, country ORDER BY t DESC`).map((r) => [r.c, r.country, r.m, r.t]));
   }
   if (kind === 'caravans') {
     return toCsv(['caravan_owner', 'city', 'members_below', 'caravan_total'], all(`SELECT u.username, u.city, (SELECT COUNT(*) FROM ancestors a WHERE a.ancestor_id = u.id AND a.depth > 0) m, u.team_total t
