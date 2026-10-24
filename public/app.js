@@ -206,7 +206,7 @@ function authView() {
 function shell() {
   const tabs = ['home', 'rank', 'caravan', 'bonus', 'me'];
   return `
-  <div class="hd"><span>${t('app')}</span><span class="row"><span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button>${langToggle()}</span></div>
+  <div class="hd"><span>${t('app')}</span><span class="row"><span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button></span></div>
   <div class="wrap tab-${S.tab}">${view()}</div>
   <nav class="tabs"><div class="brand">${t('app')}</div>${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}</nav>
   ${S.player ? playerModal() : ''}
@@ -609,10 +609,16 @@ function me() {
     <input type="email" name="email" value="${esc(m.email)}" dir="ltr" required>
     <button class="blk" type="submit"><span>${t('save')}</span><b>→</b></button>
   </form>
+  <h3>${t('appearance')}</h3>
+  <label class="padx">${t('language')}</label>
+  <div class="seg"><button class="${S.lang === 'en' ? 'on' : ''}" data-act="setlang" data-l="en">English</button><button class="${S.lang === 'ur' ? 'on' : ''}" data-act="setlang" data-l="ur">اردو</button></div>
+  <label class="padx">${t('display')}</label>
+  <div class="seg"><button class="${isDark() ? '' : 'on'}" data-act="setmode" data-m="light">${t('mode_light')}</button><button class="${isDark() ? 'on' : ''}" data-act="setmode" data-m="dark">${t('mode_dark_name')}</button></div>
+
   ${pushSupported() ? `<div class="hint" style="margin-top:12px;padding-inline:20px">${Notification.permission === 'granted' ? t('push_on') : Notification.permission === 'denied' ? t('push_denied') : t('push_off')}</div>
   <div class="row" style="padding-inline:20px">${Notification.permission === 'granted' ? `<button class="chip" data-act="pushoff">${t('push_disable')}</button>` : Notification.permission === 'denied' ? '' : `<button class="chip solid" data-act="pushon">${t('push_enable')}</button>`}</div>` : `<div class="hint" style="margin-top:12px">${t('push_unsupported')}</div>`}
   <button class="blk out" data-act="logout" style="margin-top:12px"><span>${t('logout')}</span></button>
-  <button class="linkbtn" data-act="logoutall" style="margin-top:8px">${t('logout_all')}</button>
+  <button class="linkbtn padx" data-act="logoutall" style="margin-top:8px">${t('logout_all')}</button>
 
   <h3>${t('delete_title')}</h3>
   <form data-form="delete">
@@ -774,7 +780,12 @@ app.addEventListener('click', async (ev) => {
     }
     return draw();
   }
-  if (act === 'setlang') { S.lang = el.dataset.l; ls.set('lang', S.lang); return draw(); }
+  if (act === 'setlang') {
+    S.lang = el.dataset.l; ls.set('lang', S.lang);
+    if (S.me) { S.me.lang = S.lang; api('/me', 'PATCH', { lang: S.lang }).catch(() => {}); }
+    return draw();
+  }
+  if (act === 'setmode') { document.documentElement.setAttribute('data-mode', el.dataset.m); ls.set('mode', el.dataset.m); return draw(); }
   if (act === 'intronext') { if (S.intro >= 2) { S.intro = null; ls.set('intro', '1'); } else S.intro += 1; return draw(); }
   if (act === 'introskip') { S.intro = null; ls.set('intro', '1'); return draw(); }
   if (act === 'news') return enterTab('news');

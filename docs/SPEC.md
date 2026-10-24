@@ -149,3 +149,8 @@ Home: number box first (type a total, presets +100/+500/+1,000 fill the field, A
 - **Data safety:** nightly `VACUUM INTO` backups (`BACKUP_DIR`), photo files deleted 14 days after review and at once on account deletion (the post record, votes and payouts stay), the scheduler never overlaps itself.
 - **Production guard:** with `NODE_ENV=production` the server refuses to start without a real mail provider, a 24+ character admin key and `AUTH_SECRET`.
 - **Not done (and why):** phone verification needs an SMS provider; the performance fixes (running challenge total, cached boards, off-peak audit) are the next batch, needed before about 5,000 members.
+
+## 14. Wording and placement (from QA feedback)
+- The fifth tab is **Seerah** (it was labelled "Bonus", an internal word nobody uses). It holds today's Sunnah, the weekly class, the Seerat Circle and lectures. On Home the section is "Sunnah and Seerah".
+- **Language and display (white/dark) live in Me**, under "Language and display". The header keeps only the streak and the news bell. The sign-in and intro screens keep their own language switch because there is no account yet.
+- **No design notes in the app's wording.** Statements such as "durood always comes first" are decisions about how the app works, not copy for members. Review all new text for this before it ships.
