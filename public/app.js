@@ -468,7 +468,7 @@ function home() {
 
   return `${notices}
   <section class="counterbox">${counter()}
-  ${liveToday ? `<div class="live">${uiIcon('feed', 13, 2)} ${t('live_today')(fmt(liveToday), fmt(liveMembers))}</div>` : ''}
+  ${liveToday ? `<div class="live">${uiIcon('feed', 13, 2)} ${t('live_today')(fmt(liveToday), membersN(liveMembers))}</div>` : ''}
   ${logBox()}</section>
   ${startCard(m)}
   ${fold('quests', t('grp_quests'), N(`${quests.filter((q) => q.done).length} / ${quests.length}`),
@@ -481,7 +481,7 @@ function home() {
 
 // keep the big number and its bar in step with taps without redrawing the screen
 // the headline numeral shrinks with the number of characters so large counts never clip
-const bigClass = (n) => { const c = fmt(n).length; return c <= 3 ? '' : c <= 5 ? 'l5' : c === 6 ? 'l6' : 'l7'; };
+const bigClass = (n) => { const c = fmt(n).length; return c <= 3 ? '' : c <= 5 ? 'l5' : c === 6 ? 'l6' : c === 7 ? 'l7' : 'l9'; }; // l9: 8+ characters (e.g. 5,000,000) still fit a 320px phone
 function liveHome() {
   const m = S.me, live = m.today + S.pending;
   if (!$('#big')) return;
@@ -1017,7 +1017,7 @@ function settings() {
   </form>
 `, false)}
   <button class="blk out" data-act="logout" style="margin-top:12px"><span>${t('logout')}</span></button>
-  <button class="linkbtn padx" data-act="logoutall" style="margin-top:8px">${t('logout_all')}</button>
+  <button class="linkbtn signoutall" data-act="logoutall">${t('logout_all')}</button>
 
   ${fold('sdel', t('delete_title'), '', `  <form novalidate data-form="delete">
     <p class="muted">${t('delete_text')}</p>

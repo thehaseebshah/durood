@@ -991,7 +991,7 @@ html[data-mode=dark] .streaknudge { background: #2f2508; color: #ffcf6b; } html[
 /* touch areas of at least 44px where the visible control is smaller (avatars in lists, small links); segments a touch taller */
 .avbtn { position: relative; }
 .avbtn::after { content: ""; position: absolute; inset: -6px; }
-.startcard .linkbtn, .linkbtn.padx { padding: 10px 6px; margin: -10px -6px; }
+.startcard .linkbtn { padding: 10px 6px; margin: -10px -6px; }
 .seg button { min-height: 40px; }
 .pdetails summary { padding: 10px 0; }
 /* the floating + never sits on the last row: pages that show it keep room under their content */
@@ -1105,3 +1105,5 @@ html[data-mode=dark] .tab-settings .notice { background: #2f2508; color: #ffd98a
 .phonerow select { border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); min-height: 46px; }
 body.in-app main .phonerow select { background: var(--cell); border-color: transparent; }
 @media (min-width: 1024px) { body.in-app .hd .burger { margin-inline-start: 0; } }
+.signoutall { display: block; margin: 8px 20px 0; padding: 10px 0; min-height: 44px; } /* a full-height tap target that stays inside the screen */
+.big.l9, .counterbox .big.l9 { font-size: min(4.6rem, 15vw); letter-spacing: -.03em; }
