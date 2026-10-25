@@ -58,7 +58,7 @@ const U = (n, u) => `${N(fmt(n))}${unit(u)}`;
 const membersN = (n) => `${fmt(n)} ${t(n === 1 ? 'member1' : 'members')}`;
 // an empty list says so kindly: a soft icon and one line, centred
 const empty = (icon, text) => `<div class="empty"><span class="eico">${uiIcon(icon, 22, 1.8)}</span><p>${text}</p></div>`;
-const cell = (v, label, u) => `<div><b>${fmt(v)}</b><span>${label}${u ? ` ${unit(u)}` : ''}</span></div>`;
+const cell = (v, label, u) => `<div><b>${typeof v === 'string' ? v : fmt(v)}</b><span>${label}${u ? ` ${unit(u)}` : ''}</span></div>`;
 const $ = (s) => document.querySelector(s);
 const app = $('#app');
 
@@ -322,7 +322,7 @@ function cityModal() {
 }
 
 // ---- the frame: a sidebar (a drawer on phones, like Todoist), the bottom bar and the + button ---------------------------------------
-const NAV_GLYPH = { home: 'home', feed: 'feed', rank: 'bars', caravan: 'caravan', qabila: 'nodes', tasks: 'check', people: 'chain', progress: 'me', settings: 'pen', browse: 'me' };
+const NAV_GLYPH = { home: 'home', feed: 'feed', rank: 'bars', caravan: 'caravan', qabila: 'nodes', tasks: 'check', people: 'chain', progress: 'me', settings: 'gear', browse: 'me' };
 const navIcon = (k, size = 22) => uiIcon(NAV_GLYPH[k] || 'star', size, 1.7);
 const openQuests = () => (S.me.quests || []).filter((q) => !q.info && !q.done).length;
 function sideItem(k, count = 0, dot = false) {
@@ -346,16 +346,17 @@ function sidebar() {
 }
 function shell() {
   const tabs = ['home', 'feed', 'rank'];
-  const fab = !['settings', 'home', 'qabila', 'caravan', 'people'].includes(S.tab); // pages with their own main button (invite, join) keep it clear
+  // quick add sits in the top bar (iOS keeps add actions there, never floating over a list); pages with their own main action leave it out
+  const fab = !['settings', 'home', 'qabila', 'caravan', 'people'].includes(S.tab);
+  const addLabel = esc(t(S.tab === 'tasks' ? 'own_new' : 'add_durood'));
   return `
   <a class="skip" href="#main">${t('skip_to')}</a>
   ${sidebar()}
   <header class="hd"><span class="row"><button class="pill icon burger" data-act="drawer" aria-label="${esc(t(S.sideHidden ? 'side_show' : 'side_hide'))}" title="${esc(t(S.sideHidden ? 'side_show' : 'side_hide'))}" aria-controls="side">${uiIcon('sidebar', 18, 1.9)}</button><span class="ptitle">${t('nav_' + S.tab)}</span></span>
-    <span class="row"><span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button></span></header>
-  <main id="main" tabindex="-1" class="wrap tab-${S.tab}${fab ? ' fabpad' : ''}${Date.now() - (S.enterAt || 0) < 900 ? ' enter' : ''}"><h1 class="sr">${t('nav_' + S.tab)}</h1><div class="ltitle" aria-hidden="true">${t('nav_' + S.tab)}</div>${S.offlineMode || outbox().length ? `<div class="offbar" role="status">${uiIcon('refresh', 14, 2)} ${S.offlineMode ? t('offline_bar') : ''} ${outbox().length ? t('outbox_n')(fmt(outbox().reduce((n, x) => n + x.count, 0))) : ''}</div>` : ''}${view()}</main>
+    <span class="row">${fab ? `<button class="pill icon hadd" data-act="addsheet" aria-label="${addLabel}" title="${addLabel}">${uiIcon('plus', 20, 2.4)}</button>` : ''}<span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button></span></header>
+  <main id="main" tabindex="-1" class="wrap tab-${S.tab}${Date.now() - (S.enterAt || 0) < 900 ? ' enter' : ''}"><h1 class="sr">${t('nav_' + S.tab)}</h1><div class="ltitle" aria-hidden="true">${t('nav_' + S.tab)}</div>${S.offlineMode || outbox().length ? `<div class="offbar" role="status">${uiIcon('refresh', 14, 2)} ${S.offlineMode ? t('offline_bar') : ''} ${outbox().length ? t('outbox_n')(fmt(outbox().reduce((n, x) => n + x.count, 0))) : ''}</div>` : ''}${view()}</main>
   <nav class="tabs" aria-label="${esc(t('app'))}">${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" ${S.tab === k ? 'aria-current="page"' : ''} data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}
     <button class="${['caravan', 'qabila', 'tasks', 'people', 'progress', 'settings'].includes(S.tab) ? 'on' : ''}" data-act="drawer" aria-label="${esc(t('menu'))}">${uiIcon('menu', 22, 1.7)}<em>${t('nav_browse')}</em>${S.me.caravanInvites || S.me.caravanRequests || S.bh?.roles?.requests ? '<i class="pip" aria-hidden="true"></i>' : ''}</button></nav>
-  ${fab ? `<button class="fab" data-act="addsheet" aria-label="${esc(t(S.tab === 'tasks' ? 'own_new' : 'add_durood'))}" title="${esc(t(S.tab === 'tasks' ? 'own_new' : 'add_durood'))}">${uiIcon('plus', 28, 2.4)}</button>` : ''}
   ${S.sheet === 'add' ? addSheet() : ''}
   ${S.sheet === 'resched' ? reschedSheet() : ''}
   ${S.player ? playerModal() : ''}
@@ -504,7 +505,7 @@ function challengeCard(m) {
     const status = gap === 0 && c.dayIndex === 1 ? t('first_day')(human(c.today), human(c.neededToday)) : gap === 0 ? t('on_plan') : gap > 0 ? t('ahead')(human(gap)) : t('behind')(human(gap));
     const proj = c.projectedTotal == null ? t('plan_each_day')(human(c.plannedPerDay))
       : t('projected')(human(c.projectedTotal), Math.round((c.projectedTotal / c.target) * 100), c.days);
-    body = `<div class="cells">${cell(c.neededToday, t('needed_today'), 'durood')}${cell(c.today, t('reported_today'), 'durood')}<div><b>${c.daysLeft}</b><span>${t('days_left')}</span></div></div>
+    body = `<div class="cells">${cell(human(c.neededToday), t('needed_today'), 'durood')}${cell(human(c.today), t('reported_today'), 'durood')}<div><b>${c.daysLeft}</b><span>${t('days_left')}</span></div></div>
       <div class="cstatus ${gap < 0 ? 'behind' : 'ahead'}">${status}</div><div class="cnote">${proj}</div>`;
   } else if (c.state === 'upcoming') {
     body = `<div class="cstatus ahead">${c.startsIn === 1 ? t('starts_tomorrow') : t('starts_in')(c.startsIn)}</div>`;
@@ -1130,7 +1131,7 @@ function reschedSheet() {
   return `<div class="modal sheetm"><div class="box sheetbox" aria-label="${esc(t(a.own ? 'move_date' : 'ask_date'))}">
     <div class="row between"><b class="sheettitle">${t(a.own ? 'move_date' : 'ask_date')}</b><button class="chip" data-act="sheetx">${t('close')}</button></div>
     <p class="padx muted">${esc(a.title)} · ${t('due')(dayWords(a.dueDay))}</p>
-    <div class="reschopts">${opts.map(([k, d]) => `<button class="rowlink" data-act="reschpick" data-day="${d}"><span>${t('rs_' + k)}</span><b>${k === 'today' || k === 'tomorrow' ? new Date(`${d}T00:00:00Z`).toLocaleDateString(S.lang === 'ur' ? 'ur-PK' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }) : dayWords(d)}</b></button>`).join('')}</div>
+    <div class="reschopts">${opts.map(([k, d]) => `<button class="rowlink" data-act="reschpick" data-day="${d}"><span>${t('rs_' + k)}</span><b>${new Date(`${d}T00:00:00Z`).toLocaleDateString(S.lang === 'ur' ? 'ur-PK' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })}</b></button>`).join('')}</div>
     <div class="row padx duerow">${dueInput('resch-day', 'day', pkDay(2))}<button class="chip solid" data-act="reschpick">${t(a.own ? 'save' : 'ask_send')}</button></div>
     <p class="padx hint">${t(a.own ? 'move_warn' : 'ask_warn')}</p>
   </div></div>`;
@@ -1471,7 +1472,7 @@ function afterDraw() {
   fxMem.streak = S.me.streak;
   const fx = S.fx; S.fx = null;
   if (!fx || still) return;
-  const at = ($('#livebar') || $('.fab') || app).getBoundingClientRect();
+  const at = ($('#livebar') || $('.hadd') || app).getBoundingClientRect();
   if (fx.pts) {
     const el = document.createElement('div');
     el.className = 'floatpts'; el.innerHTML = `${N('+' + fmt(fx.pts))}${unit('pts')}`;

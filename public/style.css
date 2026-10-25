@@ -694,7 +694,7 @@ html[data-mode=dark] .u-pts { color: #ffcf6b; background: #2f2508; }
 .unitnote .u { font-size: .9em; margin: 0 .2em 0 0; }
 .invsrc { list-style: none; margin: 8px 20px 4px; padding: 0; }
 .invsrc li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--hair); }
-.invsrc li span { font-size: .9rem; }
+.invsrc li > span { font-size: .9rem; }
 .invsrc li small { display: block; color: var(--soft); font-size: .76rem; margin-top: 2px; }
 .invsrc li b { font-weight: 800; white-space: nowrap; }
 .linkinv { margin: 0 16px 14px; padding: 14px; border: 1px solid var(--sig); border-radius: 12px; background: var(--sig-bg); }
@@ -1069,3 +1069,21 @@ html[data-mode=dark] .tab-settings .notice { background: #2f2508; color: #ffd98a
 .q.d .qxp, .q.d .qxp .u { opacity: 1; color: var(--soft); }
 /* phones: the Browse tab opens the menu, so the header has no second menu button; wide screens: the button shows or hides the pinned sidebar */
 @media (max-width: 1023px) { .hd .burger { display: none; } }
+/* quick add in the top bar: a filled accent circle beside the streak and bell (the sidebar's own Add button covers wide screens) */
+.hd .hadd { background: var(--accent); color: var(--on-accent); }
+@media (min-width: 1024px) { body.in-app .hd .hadd { display: none; } }
+/* list scores: number and unit share one right edge */
+.lb .score { text-align: end; margin-inline-start: auto; }
+.score .u { text-align: end; }
+/* the goal bar's star only appears once there is progress to mark (at 0 it hung off the left end) */
+#livebar .bar > i[style="width:0%"]::after { display: none; }
+/* Settings: the email card has even padding top and bottom */
+.tab-settings .notice { padding: 14px 16px; }
+.tab-settings .notice .linkbtn { margin: 8px 0 0; min-height: 0; }
+/* the invite row: WhatsApp and the small buttons beside it share one height */
+.blk.wa { min-height: 50px; padding-block: 0; border-radius: 14px; }
+.blk.wa + .chip, .blk.wa ~ .chip { min-height: 50px; }
+/* Move deadline: hairline dividers (not doubled) and room above the custom date */
+.reschopts .rowlink { border: 0 !important; border-top: .5px solid var(--line) !important; }
+.reschopts .rowlink:last-child { border-bottom: .5px solid var(--line) !important; }
+.sheetbox .duerow { margin-top: 14px; }

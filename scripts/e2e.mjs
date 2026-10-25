@@ -145,7 +145,7 @@ try {
   {
     const page = await open(host.token);
     await go(page, 'tasks');
-    await page.click('.fab'); await page.waitForTimeout(400);
+    await page.click('.hadd'); await page.waitForTimeout(400);
     ok(await page.evaluate(() => document.activeElement?.name === 'title'), 'the + on Tasks focuses a new task');
     await page.fill('[data-form=owntask] input[name=title]', 'Plan the circle');
     const due = new Date(Date.now() + 5 * 3600e3 + 864e5).toISOString().slice(0, 10);

@@ -398,7 +398,7 @@ The member app, sign-in and admin share one stylesheet; its last section restyle
 
 ## 39. Design review pass (iOS conventions)
 
-- The floating + is hidden on Today (the add box is on the page) and on Caravan, Qabila and My people (their own invite/join buttons come first); pages that show it keep 84px under their content so it never sits on the last row.
+- Quick add is a green + in the top bar (iOS keeps add actions there; a floating button covered list rows mid-scroll). It is left out on Today (the add box is on the page), on Caravan, Qabila and My people (their own invite/join buttons come first), Settings, and on wide screens (the sidebar has Add durood).
 - Units read as quiet coloured words (durood green, points amber, days/people grey), one size, not pills.
 - Compete scope is a scrolling row of chips; only the time/metric switch is a segmented control.
 - The challenge card states its total once ("4,000 of 10 crore durood"); on day one it shows the day's share instead of "Exactly on plan". Any progress shows at least a sliver of bar.
@@ -407,3 +407,4 @@ The member app, sign-in and admin share one stylesheet; its last section restyle
 - Member and profile pop-ups rise from the bottom as sheets on phones; "Remove this" on an assignment is red; stat labels say "Day streak" and "Points" without a repeated unit.
 - Feed actions keep a gap between icon and label, and the first icon lines up with the post text. In a caravan the owner's remove column is kept on every row, so the scores line up.
 - Navigation has one menu control per screen size: on phones the Browse tab opens the menu (no header button); on wide screens the header button is a sidebar icon labelled "Show/Hide sidebar".
+- Second review pass: the challenge tiles use lakh/crore like the rest of the card; list scores and their units share one right edge; Settings says Light/Dark and uses a gear icon; the goal bar's star is hidden at 0; the invite buttons share one height; Move deadline shows every option as a date ("Wed 28 Oct") with hairline dividers.
