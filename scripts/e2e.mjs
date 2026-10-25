@@ -177,15 +177,21 @@ try {
 
   // ---- reflection, a lecture, the daily goal and the language from Settings ------------------------------------------------------
   {
-    await api('POST', '/api/admin/lectures', { youtube_id: 'dQw4w9WgXcQ', title_en: 'E2E lecture', speaker: 'Test', min_seconds: 30 }, null, K);
+    await api('POST', '/api/admin/lectures', { youtube_id: 'dQw4w9WgXcQ', title_en: 'E2E lecture', speaker: 'Test', min_seconds: 30, questions: [{ q_en: 'Where did the Prophet ﷺ migrate to?', options_en: ['Makkah', 'Madinah'], answer: 1 }] }, null, K);
     const page = await open(host.token);
     await page.fill('#refl', 'Patience is light.'); await page.click('[data-act=reflect]'); await page.waitForTimeout(900);
     ok((await api('GET', '/api/feed', null, host.token)).reflection?.mine?.body === 'Patience is light.', 'a reflection is posted');
     await page.reload(); await page.waitForTimeout(1200);
     await page.locator('[data-act=watch]').first().click(); await page.waitForTimeout(900);
     ok(await page.locator('.modal [data-act=pclose]').count() === 1, 'a lecture opens in the player');
-    await page.click('.modal [data-act=pclose]'); await page.waitForTimeout(400);
-    ok(await page.locator('.modal').count() === 0, 'the player closes');
+    await page.waitForTimeout(31500);
+    ok(await page.locator('#pclaim').isDisabled(), 'after watching, the reward still waits for the quiz');
+    await page.locator('input[name=qz0][value="1"]').check(); await page.click('[data-act=quizcheck]'); await page.waitForTimeout(800);
+    ok(!(await page.locator('#pclaim').isDisabled()), 'a passed quiz unlocks the reward');
+    await page.click('#pclaim'); await page.waitForTimeout(900);
+    ok((await api('GET', '/api/me', null, host.token)).quests.find((q) => q.id === 'lecture')?.done === true, 'the lecture reward is claimed');
+    for (let i = 0; i < 3 && await page.locator('.modal').count(); i++) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
+    ok(await page.locator('.modal').count() === 0, 'the player and any celebration close');
     await go(page, 'settings');
     await page.fill('#s-goal', '250'); await page.click('form[data-form=settings] button[type=submit]'); await page.waitForTimeout(900);
     ok((await api('GET', '/api/me', null, host.token)).dailyGoal === 250, 'the daily goal is changed in Settings');

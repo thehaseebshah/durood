@@ -1036,11 +1036,11 @@ function playerModal() {
   return `<div class="modal"><div class="box">
     <iframe src="https://www.youtube-nocookie.com/embed/${esc(x.youtubeId)}?rel=0&playsinline=1" allow="accelerometer; encrypted-media; picture-in-picture" allowfullscreen title="lecture"></iframe>
     <div class="spacer"></div>
-    <div class="muted" id="ptimer">${left ? `${t('watching')} · ${t('min_left')(left)}` : ''}</div>
+    <div class="muted" id="ptimer">${x.done ? `✓ ${t('watched')}` : left ? `${t('watching')} · ${t('min_left')(left)}` : x.quiz?.length && !p.passed && !x.quizPassed ? t('now_quiz') : t('ready_claim')}</div>
     ${bar((p.elapsed / x.minSeconds) * 100).replace('class="bar"', 'class="bar" id="pbar"')}
     ${quizBlock(p, x)}
     <div class="spacer"></div>
-    <div class="row"><button class="blk fill1" id="pclaim" data-act="pclaim" ${left || (x.quiz?.length && !p.passed && !x.quizPassed) ? 'disabled' : ''}><span>${t('can_claim')}</span></button>
+    <div class="row">${x.done ? '' : `<button class="blk fill1" id="pclaim" data-act="pclaim" ${left || (x.quiz?.length && !p.passed && !x.quizPassed) ? 'disabled' : ''}><span>${t('can_claim')}</span></button>`}
     <button class="chip" data-act="pclose">${t('close')}</button></div>
   </div></div>`;
 }
@@ -1992,9 +1992,11 @@ function startPlayerTimer() {
     p.elapsed += 1;
     const left = Math.max(0, p.lecture.minSeconds - p.elapsed);
     const tm = $('#ptimer'), pb = $('#pbar > i'), pc = $('#pclaim');
-    if (tm) tm.textContent = left ? `${t('watching')} · ${t('min_left')(left)}` : '';
+    const quizLeft = !!p.lecture.quiz?.length && !p.passed && !p.lecture.quizPassed; // the reward also needs the quiz passed
+    if (p.lecture.done) return;
+    if (tm) tm.textContent = left ? `${t('watching')} · ${t('min_left')(left)}` : quizLeft ? t('now_quiz') : t('ready_claim');
     if (pb) pb.style.width = `${Math.min(100, (p.elapsed / p.lecture.minSeconds) * 100)}%`;
-    if (pc) pc.disabled = left > 0;
+    if (pc) pc.disabled = left > 0 || quizLeft;
   }, 1000);
 }
 
