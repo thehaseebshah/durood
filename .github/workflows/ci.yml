@@ -13,6 +13,8 @@ jobs:
       - run: npm test
       # malformed input on every API route: no route may answer 5xx
       - run: npm run fuzz
+      # 60 members at once, then the ledger audit must be clean
+      - run: npm run stress
   e2e:
     runs-on: ubuntu-latest
     steps:
