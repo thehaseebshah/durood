@@ -9,7 +9,6 @@
   --star: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20x='5'%20y='5'%20width='14'%20height='14'%20fill='none'%20stroke='%230b0b0b'%20stroke-width='1.5'/%3E%3Crect%20x='5'%20y='5'%20width='14'%20height='14'%20transform='rotate%2845%2012%2012%29'%20fill='none'%20stroke='%230b0b0b'%20stroke-width='1.5'/%3E%3C/svg%3E");
   --star-s: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20x='5'%20y='5'%20width='14'%20height='14'%20fill='%2300a86b'%20stroke='%2300a86b'%20stroke-width='1.5'/%3E%3Crect%20x='5'%20y='5'%20width='14'%20height='14'%20transform='rotate%2845%2012%2012%29'%20fill='%2300a86b'%20stroke='%2300a86b'%20stroke-width='1.5'/%3E%3C/svg%3E");
   --star-d: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20x='5'%20y='5'%20width='14'%20height='14'%20fill='%23ffffff'%20stroke='%2300a86b'%20stroke-width='1.5'/%3E%3Crect%20x='5'%20y='5'%20width='14'%20height='14'%20transform='rotate%2845%2012%2012%29'%20fill='%23ffffff'%20stroke='%2300a86b'%20stroke-width='1.5'/%3E%3C/svg%3E");
-  --lattice: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='40'%20height='40'%20viewBox='0%200%2024%2024'%3E%3Crect%20x='5'%20y='5'%20width='14'%20height='14'%20fill='none'%20stroke='%230b0b0b'%20stroke-opacity='.09'%20stroke-width='.6'/%3E%3Crect%20x='5'%20y='5'%20width='14'%20height='14'%20transform='rotate%2845%2012%2012%29'%20fill='none'%20stroke='%230b0b0b'%20stroke-opacity='.09'%20stroke-width='.6'/%3E%3C/svg%3E");
 }
 html[data-mode=dark] {
   --ink: #f4f1ea; --paper: #0b0b0b; --soft: #92928b; --hair: #2a2a27; --track: #1c1c1a; --cell: #131311;
@@ -20,7 +19,6 @@ html[data-mode=dark] {
   --star: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20x='5'%20y='5'%20width='14'%20height='14'%20fill='none'%20stroke='%23f4f1ea'%20stroke-width='1.5'/%3E%3Crect%20x='5'%20y='5'%20width='14'%20height='14'%20transform='rotate%2845%2012%2012%29'%20fill='none'%20stroke='%23f4f1ea'%20stroke-width='1.5'/%3E%3C/svg%3E");
   --star-s: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20x='5'%20y='5'%20width='14'%20height='14'%20fill='%2322d68f'%20stroke='%2322d68f'%20stroke-width='1.5'/%3E%3Crect%20x='5'%20y='5'%20width='14'%20height='14'%20transform='rotate%2845%2012%2012%29'%20fill='%2322d68f'%20stroke='%2322d68f'%20stroke-width='1.5'/%3E%3C/svg%3E");
   --star-d: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20x='5'%20y='5'%20width='14'%20height='14'%20fill='%230b0b0b'%20stroke='%2322d68f'%20stroke-width='1.5'/%3E%3Crect%20x='5'%20y='5'%20width='14'%20height='14'%20transform='rotate%2845%2012%2012%29'%20fill='%230b0b0b'%20stroke='%2322d68f'%20stroke-width='1.5'/%3E%3C/svg%3E");
-  --lattice: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='40'%20height='40'%20viewBox='0%200%2024%2024'%3E%3Crect%20x='5'%20y='5'%20width='14'%20height='14'%20fill='none'%20stroke='%23f4f1ea'%20stroke-opacity='.09'%20stroke-width='.6'/%3E%3Crect%20x='5'%20y='5'%20width='14'%20height='14'%20transform='rotate%2845%2012%2012%29'%20fill='none'%20stroke='%23f4f1ea'%20stroke-opacity='.09'%20stroke-width='.6'/%3E%3C/svg%3E");
   color-scheme: dark;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -66,9 +64,6 @@ html[lang=ur] .head { letter-spacing: 0; }
 :is(.wrap, .col) > p.muted, :is(.wrap, .col) > .muted, :is(.wrap, .col) > .code, :is(.wrap, .col) > .link, :is(.wrap, .col) > .row, :is(.wrap, .col) > .uname, :is(.wrap, .col) > .lb { margin-inline: 20px; }
 .intro { padding: 22px 20px 6px; } .intro .arabic { font-size: 2rem; } .intro p { color: var(--soft); margin: 6px 0 0; }
 /* Arabic band: faint lattice, a star each side */
-.band { text-align: center; font-size: 1.5rem; padding: 6px 20px; background: var(--lattice) center/40px; border-bottom: 1px solid var(--line); position: relative; }
-.band::before, .band::after { content: ""; position: absolute; top: 50%; width: 16px; height: 16px; margin-top: -8px; background: var(--star-s) center/contain no-repeat; }
-.band::before { inset-inline-start: 20px; } .band::after { inset-inline-end: 20px; }
 
 /* buttons: rectangles only */
 button { font: inherit; cursor: pointer; }
@@ -258,7 +253,6 @@ html[lang=ur] .chead { text-transform: none; letter-spacing: 0; font-size: .9rem
 html[dir=rtl] .ctotal { flex-direction: row-reverse; justify-content: flex-end; }
 .ctotal b { font-size: 2.2rem; font-weight: 800; letter-spacing: -1.5px; font-variant-numeric: tabular-nums; line-height: 1; }
 .ctotal span { color: var(--soft); font-size: .86rem; }
-.chuman { font-size: .86rem; font-weight: 600; margin-top: 2px; }
 .cbar { position: relative; margin-top: 10px; } .cbar .bar { height: 12px; }
 .cbar .pace { position: absolute; top: -4px; bottom: -4px; width: 3px; background: var(--ink); }
 .cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 12px -20px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
@@ -399,7 +393,6 @@ html[lang=ur] .fitem .flabel { text-transform: none; letter-spacing: 0; font-siz
 .fitem.ann.unread { border-inline-start: 4px solid var(--sig); background: var(--sig-bg); }
 .fitem.ms { background: var(--cell); } .fitem.ms.mine { border-inline-start: 4px solid var(--sig); }
 .stream + .more { margin: 12px 20px; }
-@media (min-width: 1024px) { body.in-app .cols > .col + .col .stream .fitem { padding-inline: 24px; } }
 
 /* city picker, phone, compete, league */
 .cityfield { position: relative; }
@@ -558,7 +551,6 @@ html[dir=rtl] .ar { display: inline-block; transform: scaleX(-1); }
 }
 
 .how { margin: 8px 20px 0; padding-inline-start: 18px; color: var(--soft); font-size: .86rem; } .how li { margin: 4px 0; }
-.shortcuts { margin-top: 10px; gap: 8px; } .shortcuts a.chip { text-decoration: none; }
 .suggest li[role=option]:focus { background: var(--tint); outline: 2px solid var(--sig); }
 .reply .fwho { flex-wrap: wrap; }
 
