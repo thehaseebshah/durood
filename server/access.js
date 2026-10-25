@@ -1,6 +1,6 @@
 // Invite-only access: member codes (their username), founder codes, the public founders code, the waitlist.
 import crypto from 'node:crypto';
-import { db, getSetting, setSetting } from './db.js';
+import { db, tx, getSetting, setSetting } from './db.js';
 import { HttpError } from './auth.js';
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -142,6 +142,8 @@ export function searchMembers(q = '') {
   }));
 }
 
+/** Run for each member who is suspended (inside the transaction), e.g. a caravan owner's role passes on. */
+export const suspendHooks = [];
 /** Suspends (or restores) a member, or their whole branch. Durood already reported stays in every total. */
 export function setSuspended(username, suspended, branch = false, includeAdmins = true) {
   const u = one('SELECT id FROM users WHERE username = ?', username);
@@ -149,6 +151,13 @@ export function setSuspended(username, suspended, branch = false, includeAdmins 
   const ids = branch ? all('SELECT user_id id FROM ancestors WHERE ancestor_id = ?', u.id).map((r) => r.id) : [u.id];
   // only an owner's branch suspension reaches members who hold an admin role
   const st = db.prepare(`UPDATE users SET suspended = ? WHERE id = ? AND deleted_at IS NULL${includeAdmins ? '' : ' AND admin_role IS NULL'}`);
-  for (const id of ids) st.run(suspended ? 1 : 0, id);
-  return { ok: true, affected: ids.length };
+  let affected = 0;
+  tx(() => {
+    for (const id of ids) {
+      if (!st.run(suspended ? 1 : 0, id).changes) continue;
+      affected += 1;
+      if (suspended) for (const fn of suspendHooks) fn(id);
+    }
+  });
+  return { ok: true, affected };
 }

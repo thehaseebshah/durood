@@ -149,6 +149,22 @@ test('a deleted account leaves its caravan; the owner role passes on', async () 
   assert.deepEqual((await view(m)).members.map((x) => x.username), ['dl_m']);
 });
 
+test('a suspended owner hands the caravan on and stays a plain member, also after returning; alone, the caravan is left as it is', async () => {
+  const o = await signup('su_o'), m = await signup('su_m');
+  await make(o, 'su_caravan'); await joined(o, m);
+  assert.equal((await api('POST', '/api/admin/members/su_o', { headers: admin, body: { action: 'suspend' } })).ok, true);
+  assert.equal((await view(m)).caravan.ownerName, 'su_m');
+  assert.equal((await view(m)).caravan.owner, true);
+  await api('POST', '/api/admin/members/su_o', { headers: admin, body: { action: 'unsuspend' } });
+  assert.equal((await view(o)).caravan.ownerName, 'su_m');
+  assert.equal((await view(o)).caravan.owner, false);
+  const solo = await signup('su_solo');
+  await make(solo, 'su_solo_caravan');
+  await api('POST', '/api/admin/members/su_solo', { headers: admin, body: { action: 'suspend' } });
+  assert.equal(db.prepare("SELECT u.username FROM caravans c JOIN users u ON u.id = c.owner_id WHERE c.name = 'su_solo_caravan'").get().username, 'su_solo');
+  assert.deepEqual(audit().problems, []);
+});
+
 test('rankings: a caravan appears with two members; totals, average and growth count its members only; the invite tree is separate', async () => {
   const a = await signup('rb_a'), b = await signup('rb_b'), c = await signup('rb_c'), solo = await signup('rb_solo');
   await make(a, 'rb_caravan'); await joined(a, b); await joined(a, c);

@@ -6,6 +6,7 @@ import { avatarUrl } from './auth.js';
 import { CFG, hooks, deleteHooks, award, evalBadges, dayOf, dayNum, dayStr, weekStart, challengeConfig, cachedBoard, person } from './game.js';
 import { validHandle, handleTaken } from './handles.js';
 import { caravanHooks } from './compete.js';
+import { suspendHooks } from './access.js';
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
@@ -163,6 +164,15 @@ deleteHooks.push((userId) => {
   const c = caravanOf(userId);
   if (c) removeMember(c.id, userId);
   run('DELETE FROM caravan_invites WHERE user_id = ?', userId);
+});
+
+// a suspended owner can't look after the caravan: the owner role passes to the longest-standing active member, and the suspended
+// person stays a plain member (so they don't get it back on return). A caravan with nobody else active is left as it is.
+suspendHooks.push((userId) => {
+  const c = one('SELECT id FROM caravans WHERE owner_id = ?', userId);
+  if (!c) return;
+  const next = one(`SELECT cm.user_id FROM caravan_members cm JOIN users u ON u.id = cm.user_id WHERE cm.caravan_id = ? AND ${LIVE} ORDER BY cm.joined_at, cm.user_id LIMIT 1`, c.id);
+  if (next) run('UPDATE caravans SET owner_id = ? WHERE id = ?', next.user_id, c.id);
 });
 
 /** Members who could be invited: not in any caravan, matching the start of what was typed. */

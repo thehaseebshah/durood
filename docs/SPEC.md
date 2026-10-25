@@ -304,4 +304,5 @@ The shared `ADMIN_KEY` still works and acts as an owner. Keep it for emergencies
 - History returns at most the newest 600 entries of the week and is rate-limited. Only one audit runs at a time.
 - The offline cache stores pages under `/` only, so reset and confirm links never stay on the device. Signing out clears unsaved taps and drafts, and stops push notifications on that device.
 - The app's code is read-only for the user it runs as. In production, reset and confirm links are masked in console mail logs.
+- When a caravan owner is suspended, the owner role passes to the longest-standing active member, and the suspended person stays a plain member, also after they return. A caravan with no other active member is left as it is.
 - **Still open:** phone numbers are not verified. Someone who signs up with a salik's number before the salik does can request that salik's murabbi; the murabbi's yes is the only safeguard. The fix is a WhatsApp or SMS one-time code, which needs a messaging provider.
