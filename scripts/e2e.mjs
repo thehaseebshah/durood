@@ -316,6 +316,17 @@ try {
     ok(found.size === 0, `no WCAG A/AA violations on any page, light or dark${found.size ? ': ' + [...found].slice(0, 6).map(([k, w]) => `${w} ${k}`).join('; ') : ''}`);
   }
 
+  // ---- Weight: an English member's Today downloads no Urdu or Arabic font (those load only where they are shown) ----
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
+    const page = await ctx.newPage(); const fonts = [];
+    page.on('response', (r) => { if (r.url().includes('/fonts/')) fonts.push(r.url().split('/').pop()); });
+    await page.goto(B + '/manifest.webmanifest'); await page.evaluate((t) => { localStorage.setItem('token', t); localStorage.setItem('intro', '1'); localStorage.setItem('lang', 'en'); }, host.token); // a page with no text of its own, so only Today's fonts are counted
+    await page.goto(B + '/'); await page.waitForTimeout(1800);
+    ok(!fonts.some((f) => /nastaliq|amiri/.test(f)), `English Today loads only light fonts (${fonts.join(', ')})`);
+    await ctx.close();
+  }
+
   // ---- A phone whose clock is a week fast still shows the server's day (the app corrects by the server's Date header) ----
   {
     const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
