@@ -216,3 +216,19 @@ test('static caching: app code revalidates on every load, fonts are kept a year,
   assert.match(await cc('/fonts/salawat.woff2'), /immutable/);
   assert.equal(await cc('/icons/icon-192.png'), 'public, max-age=86400');
 });
+
+test('static compression: brotli when the browser takes it, gzip otherwise, nothing for fonts; each decodes to the same file', async () => {
+  const http = await import('node:http');
+  const zlib = await import('node:zlib');
+  const get = (p, enc) => new Promise((ok, no) => http.get(base + p, { headers: enc ? { 'accept-encoding': enc } : {} }, (r) => { const b = []; r.on('data', (c) => b.push(c)); r.on('end', () => ok({ h: r.headers, body: Buffer.concat(b) })); }).on('error', no));
+  const plain = await get('/app.js');
+  assert.equal(plain.h['content-encoding'], undefined);
+  const br = await get('/app.js', 'gzip, deflate, br');
+  assert.equal(br.h['content-encoding'], 'br');
+  assert.deepEqual(zlib.brotliDecompressSync(br.body), plain.body);
+  const gz = await get('/app.js', 'gzip');
+  assert.equal(gz.h['content-encoding'], 'gzip');
+  assert.deepEqual(zlib.gunzipSync(gz.body), plain.body);
+  assert.ok(br.body.length < gz.body.length, 'brotli is smaller');
+  assert.equal((await get('/fonts/inter-latin.woff2', 'br')).h['content-encoding'], undefined);
+});

@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import crypto from 'node:crypto';
-import { gzipSync } from 'node:zlib';
+import { gzipSync, brotliCompressSync, constants as zc } from 'node:zlib';
 import { db, tx, getSetting } from './db.js';
 import * as burhan from './burhan.js';
 import * as majlis from './majlis.js';
@@ -768,7 +768,7 @@ async function handleStatic(req, res, url) {
   // link previews (WhatsApp, Facebook) need absolute addresses: the page carries %ORIGIN%, filled in from PUBLIC_URL
   if (ext === '.html' && data.includes('%ORIGIN%')) data = Buffer.from(data.toString().replaceAll('%ORIGIN%', baseUrl()));
   if (ext === '.html') res.setHeader('Content-Security-Policy', csp(data.toString()));
-  // a short entity tag plus gzip for the text assets: the app shell is 195 KB raw and about 54 KB compressed, on mobile data
+  // a short entity tag plus compression for the text assets: the app shell is 195 KB raw and about 54 KB compressed, on mobile data
   const compressible = ['.html', '.js', '.css', '.webmanifest', '.svg', '.json'].includes(ext);
   const etag = `"${crypto.createHash('sha1').update(data).digest('base64url').slice(0, 16)}"`;
   const headers = {
@@ -778,16 +778,24 @@ async function handleStatic(req, res, url) {
     'X-Content-Type-Options': 'nosniff', ETag: etag, Vary: 'Accept-Encoding',
   };
   if (req.headers['if-none-match'] === etag) { res.writeHead(304, headers); return res.end(); }
-  if (compressible && data.length > 1024 && /\bgzip\b/.test(req.headers['accept-encoding'] || '')) {
-    let gz = gzCache.get(etag);
-    if (!gz) { gz = gzipSync(data, { level: 9 }); if (gzCache.size > 64) gzCache.clear(); gzCache.set(etag, gz); }
-    res.writeHead(200, { ...headers, 'Content-Encoding': 'gzip', 'Content-Length': gz.length });
-    return res.end(req.method === 'HEAD' ? undefined : gz);
+  // brotli when the browser takes it (every current one does over HTTPS), about a sixth smaller than gzip; gzip otherwise
+  const accept = req.headers['accept-encoding'] || '';
+  const enc = !compressible || data.length <= 1024 ? null : /\bbr\b/.test(accept) ? 'br' : /\bgzip\b/.test(accept) ? 'gzip' : null;
+  if (enc) {
+    const key = `${enc}${etag}`;
+    let packed = packCache.get(key);
+    if (!packed) {
+      packed = enc === 'br' ? brotliCompressSync(data, { params: { [zc.BROTLI_PARAM_QUALITY]: 11, [zc.BROTLI_PARAM_SIZE_HINT]: data.length } }) : gzipSync(data, { level: 9 });
+      if (packCache.size > 64) packCache.clear();
+      packCache.set(key, packed);
+    }
+    res.writeHead(200, { ...headers, 'Content-Encoding': enc, 'Content-Length': packed.length });
+    return res.end(req.method === 'HEAD' ? undefined : packed);
   }
   res.writeHead(200, headers);
   res.end(req.method === 'HEAD' ? undefined : data);
 }
-const gzCache = new Map();
+const packCache = new Map();
 
 async function handleAvatar(res, url) {
   const m = /^\/avatars\/(\d+)\/(\d+)\/([\w-]+)$/.exec(url.pathname);
