@@ -682,7 +682,7 @@ route('DELETE', '/api/admin/lectures/:id', { auth: false, admin: true }, ({ para
 });
 
 // ---- server ---------------------------------------------------------------
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2' };
 
 async function readBody(req, limit) {
   const chunks = [];
@@ -761,6 +761,8 @@ async function handleStatic(req, res, url) {
     data = await readFile(file);
   }
   const ext = path.extname(file);
+  // link previews (WhatsApp, Facebook) need absolute addresses: the page carries %ORIGIN%, filled in from PUBLIC_URL
+  if (ext === '.html' && data.includes('%ORIGIN%')) data = Buffer.from(data.toString().replaceAll('%ORIGIN%', baseUrl()));
   if (ext === '.html') res.setHeader('Content-Security-Policy', csp(data.toString()));
   // a short entity tag plus gzip for the text assets: the app shell is 195 KB raw and about 54 KB compressed, on mobile data
   const compressible = ['.html', '.js', '.css', '.webmanifest', '.svg', '.json'].includes(ext);
