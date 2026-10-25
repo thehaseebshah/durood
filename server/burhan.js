@@ -51,7 +51,6 @@ const livePerson = (id) => { const u = userRow(id); return u && !u.deleted_at ? 
 // ---- murabbi ---------------------------------------------------------------------------------------------------------
 // Phone numbers are not verified, so a number alone never grants access. A link has three steps: the Mamulaat app names a number, the salik
 // confirms the person found for it, and that person accepts. Reports are shared only when both have said yes.
-const ACTIVE = 'salik_ok = 1 AND murabbi_ok = 1 AND murabbi_id IS NOT NULL';
 /**
  * Asks the Mamulaat app who this member's murabbi is, then finds that person here by WhatsApp number. When the murabbi has no account yet
  * the link waits (and the member is told to ask them to sign up). A different murabbi than before starts again from the salik's confirmation.

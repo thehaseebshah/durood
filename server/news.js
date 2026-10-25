@@ -1,6 +1,6 @@
 import { db, getSetting, setSetting } from './db.js';
 import { HttpError } from './auth.js';
-import { dayOf, dayNum, hooks } from './game.js';
+import { dayNum, hooks } from './game.js';
 import { sendPush, vapidPublicKey } from './push.js';
 import { purgeOldPhotos } from './sunnah.js';
 import { backupIfDue } from './backup.js';

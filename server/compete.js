@@ -2,7 +2,6 @@
 import { db, tx, getSetting, setSetting } from './db.js';
 import { CFG, dayOf, dayNum, dayStr, weekStart, hooks, award, grant, evalBadges, person } from './game.js';
 import { cityLabel } from './geo.js';
-import { HttpError } from './auth.js';
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
