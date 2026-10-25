@@ -966,3 +966,11 @@ html:not([data-mode=dark]) { --soft: #6a6a6f; }
 nav.tabs button.on svg { stroke-width: 2.3; }
 .chip, .seg button, .sitem, .rowlink, nav.tabs button { -webkit-tap-highlight-color: transparent; }
 .chip:active, .seg button:active { transform: scale(.97); }
+/* large titles */
+.ltitle { font-size: 2.05rem; font-weight: 800; letter-spacing: -.6px; line-height: 1.15; padding: 10px 18px 2px; color: var(--ink); }
+html[lang=ur] .ltitle { font-size: 1.9rem; letter-spacing: 0; line-height: 1.8; }
+body.in-app .hd .ptitle { opacity: 0; transform: translateY(4px); transition: opacity .2s, transform .2s; }
+body.in-app.scrolled .hd .ptitle { opacity: 1; transform: none; }
+body.in-app .hd { transition: background .2s, border-color .2s; }
+body.in-app:not(.scrolled) .hd { border-bottom-color: transparent; background: var(--ground); -webkit-backdrop-filter: none; backdrop-filter: none; }
+@media (prefers-reduced-motion: reduce) { body.in-app .hd .ptitle { transition: none; } }
