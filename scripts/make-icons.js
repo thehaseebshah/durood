@@ -4,13 +4,14 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 
 function png(size, maskable) {
   const px = Buffer.alloc(size * size * 4);
-  const c = size / 2, R = size * (maskable ? 0.2 : 0.3);
+  const c = size / 2, R = size * (maskable ? 0.17 : 0.215); // the crescent sits inside the tile with room around it, as app icons do
+  const ox = R * 0.3; // a crescent's weight leans to its outer edge, so it is moved right to look centred
   for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
     const i = (y * size + x) * 4;
     const d = Math.hypot(x - c, y - c) / size;
     let rgb = [11 + d * 30, 107 - d * 40, 74 - d * 20]; // soft radial green
-    const outer = Math.hypot(x - c, y - c) <= R * 1.6;
-    const cut = Math.hypot(x - (c + R * 0.75), y - (c - R * 0.15)) <= R * 1.4;
+    const outer = Math.hypot(x - (c + ox), y - c) <= R * 1.6;
+    const cut = Math.hypot(x - (c + ox + R * 0.75), y - (c - R * 0.15)) <= R * 1.4;
     if (outer && !cut) rgb = [244, 200, 80];
     px.set([...rgb.map(Math.round), 255], i);
   }
