@@ -1095,7 +1095,7 @@ html[data-mode=dark] .tab-settings .notice { background: #2f2508; color: #ffd98a
 /* wide screens: the top bar's buttons line up with the content column, not the window edge */
 @media (min-width: 1024px) {
   body.in-app { --col: min(760px, 100vw - var(--side) - 48px); }
-  body.in-app .hd { padding-inline: calc((100vw - var(--side) - var(--col)) / 2 - 8px); }
+  body.in-app .hd { padding-inline: calc((100vw - var(--side) - var(--col)) / 2 + 14px); } /* + the cards' own 14px inset */
 }
 .cvname + .muted.padx { padding-inline: 0; margin-top: 2px; } /* the owner line sits under the caravan name, same left edge */
 /* Me: the newest badges sit in the Badges row itself (no separate strip that opened the same list) */
@@ -1104,3 +1104,4 @@ html[data-mode=dark] .tab-settings .notice { background: #2f2508; color: #ffd98a
 /* the country picker matches the other fields (it kept the old 2px black frame) */
 .phonerow select { border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); min-height: 46px; }
 body.in-app main .phonerow select { background: var(--cell); border-color: transparent; }
+@media (min-width: 1024px) { body.in-app .hd .burger { margin-inline-start: 0; } }
