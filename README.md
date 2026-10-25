@@ -80,7 +80,7 @@ curl -X POST $URL/api/admin/lectures -H "x-admin-key: $ADMIN_KEY" -H 'content-ty
 - **Two kinds of group:** a *Qabila* is everyone under a member in the invite tree, at every depth (stored as a closure table; it has its own totals, boards and badges). A *caravan* is a group a member creates and names, joined by the owner's invitation (by username) or by asking; one caravan per member, no size limit. Caravan totals, average and growth boards, the caravan streak and the caravan badges (Caravan Week/Month, group milestones) belong to the named group.
 - **Referral reward is delayed:** the inviter gets 500 points only once the invitee has recited 100 durood in all (blocks fake sign-ups), and the weekly invite quest counts only such invitees.
 - **Leaderboards:** weekly / all-time, individuals / caravans / Qabila / cities, plus the weekly league. Public; there is no opt-out. Flagged members are hidden until reviewed.
-- **Feed, likes, reflections:** see docs/SPEC.md section 15. Seerat Circle link on Home; one featured lecture a week with a quiz; sunnah photos; comments on the lecture (after its quiz) and short replies; a daily written reflection; likes earn the poster points; reports hide content.
+- **Feed, likes, reflections:** see docs/SPEC.md section 15. Seerat Circle link on Today (under Sunnah & Seerah); one featured lecture a week with a quiz; sunnah photos; comments on the lecture (after its quiz) and short replies; a daily written reflection; likes earn the poster points; reports hide content.
 - **National meter:** total durood across everyone vs a target.
 
 ## UI style

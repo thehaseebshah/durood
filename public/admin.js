@@ -88,7 +88,7 @@ const views = {
     const gaps = Array.from({ length: 14 }, (_, i) => new Date(Date.parse(today + 'T00:00:00Z') + i * 864e5).toISOString().slice(0, 10)).filter((d) => !sunnahs.some((x) => x.day === d));
     const photoLink = (i) => (i.photoUrl ? `<a href="${esc(i.photoUrl)}" target="_blank" rel="noopener">photo</a>` : '');
     return `${org ? `<h3>Sunnah of the day</h3>
-      <p class="muted">Members see the day's Sunnah on Home and in the Feed, tick it (+20) and can post a photo of it (+40). A day without one shows "not published yet".</p>
+      <p class="muted">Members see the day's Sunnah on Today (under Sunnah &amp; Seerah), tick it (+20) and can post a photo of it (+40). A day without one shows "not published yet".</p>
       ${gaps.length ? `<div class="msg" style="border-color:var(--err)">No Sunnah yet for: ${gaps.map((d) => esc(d)).join(', ')}</div>` : '<p class="muted">Every day of the next two weeks has a Sunnah.</p>'}
       <div class="inline"><div><label>Day</label><input id="sudy" type="date" value="${esc(gaps[0] || today)}"></div><div><label>Source (e.g. Bukhari 5376)</label><input id="susrc" maxlength="120"></div></div>
       <label>Sunnah (English)</label><input id="sutE" maxlength="120"><label>Sunnah (Urdu)</label><input id="sutU" maxlength="120" dir="rtl">
@@ -99,7 +99,7 @@ const views = {
       ${sunnahs.length ? `<table><tr><th>Day</th><th>Sunnah</th><th>Source</th><th></th></tr>${sunnahs.map((x) => `<tr${x.day < today ? ' style="opacity:.6"' : ''}><td>${esc(x.day)}</td><td>${esc(x.title_en)}${x.title_ur ? `<br><span dir="rtl">${esc(x.title_ur)}</span>` : ' <small class="muted">(no Urdu)</small>'}</td><td>${esc(x.source)}</td>
         <td><button class="chip" data-a="sunedit" data-day="${esc(x.day)}">Edit</button> ${x.day >= today ? `<button class="chip" data-a="sundel" data-day="${esc(x.day)}">Remove</button>` : ''}</td></tr>`).join('')}</table>` : '<p class="empty">No Sunnahs scheduled.</p>'}
       <h3>Seerat Circle link</h3>
-      <p class="muted">Members see a card on Home with this link, and can claim +300 points once after they register. Leave it empty to hide the card.</p>
+      <p class="muted">Members see a card with this link on Today, under Sunnah &amp; Seerah, and can claim +300 points once after they register. Leave it empty to hide the card.</p>
       <label>Sign-up link (https://…)</label><input id="ciurl" type="url" maxlength="300" value="${esc(circle.circleUrl || '')}">
       <div class="inline"><button class="chip solid" data-a="circleset">Save link</button></div>
       <h3>Circle teachers</h3>
@@ -168,14 +168,14 @@ const views = {
   async invites() {
     const { invites, publicCode } = await api('GET', '/invites');
     return `<h3>Public founders code</h3>
-      <p class="muted">Anyone with this code can join and starts a new caravan. Switch it off once your launch period ends.</p>
+      <p class="muted">Anyone with this code can join; they start their own Qabila (nobody above them) and can later say who invited them, within 14 days. Switch it off once your launch period ends.</p>
       <div class="inline"><div><div class="code2">${esc(publicCode.code || 'not set')}</div>${publicCode.enabled ? '<span class="pillbox ok">ON</span>' : '<span class="pillbox bad">OFF</span>'}</div>
         <div><label>Sign-ups a day (0 closes it)</label><input id="pubcap" type="number" min="0" value="${publicCode.dailyCap}" style="max-width:110px"><small class="muted">${publicCode.usedToday} used today</small></div><button class="chip" data-a="pubcap">Set limit</button>
         <button class="chip solid" data-a="pub" data-v="${publicCode.enabled ? '0' : '1'}">${publicCode.enabled ? 'Switch off' : 'Switch on'}</button>
         <button class="chip" data-a="pubnew">New random code</button></div>
       <div class="inline"><div><label>Set your own code</label><input id="pubset" placeholder="e.g. QAFILA2026" maxlength="20"></div><button class="chip" data-a="pubset">Set</button></div>
       <h3>Founder codes</h3>
-      <p class="muted">One code per organiser or city lead. Each person who joins with it becomes the root of their own caravan.</p>
+      <p class="muted">One code per organiser or city lead. Each person who joins with it starts their own Qabila (nobody above them).</p>
       <div class="inline"><div><label>Label</label><input id="flabel" placeholder="Lahore lead" maxlength="60"></div><div><label>Max uses (blank = unlimited)</label><input id="fmax" type="number" min="1" inputmode="numeric"></div><button class="chip solid" data-a="fnew">Create code</button></div>
       ${invites.length ? `<table><tr><th>Code</th><th>Label</th><th>Kind</th><th>Used</th><th></th></tr>${invites.map((i) => `<tr>
         <td class="code2">${esc(i.code)}</td><td>${esc(i.label)}</td><td>${esc(i.kind)}</td>
@@ -325,7 +325,7 @@ document.addEventListener('click', (ev) => {
       $('#sutE').focus(); return 'stay';
     },
     sundel: async () => { if (!confirm(`Remove the Sunnah for ${d.day}?`)) return; await api('DELETE', `/sunnahs/${d.day}`); say('Removed.'); },
-    circleset: async () => { const r = await api('POST', '/circle', { url: $('#ciurl').value }); say(r.circleUrl ? 'Circle link saved. Members now see it on Home.' : 'Circle link removed: the card is hidden.'); },
+    circleset: async () => { const r = await api('POST', '/circle', { url: $('#ciurl').value }); say(r.circleUrl ? 'Circle link saved. Members now see it on Today.' : 'Circle link removed: the card is hidden.'); },
     teachyes: async () => { await api('POST', `/circle-teachers/${d.u}`, { action: 'approve' }); say(`${d.u} confirmed as a circle teacher (+1,000 points).`); },
     teachno: async () => { await api('POST', `/circle-teachers/${d.u}`, { action: 'reject' }); say(`${d.u}'s request was turned down. They can ask again.`); },
     mjyes: async () => { const r = await api('POST', `/majalis/${d.id}`, { action: 'approve' }); say(`${r.name} approved.`); },
