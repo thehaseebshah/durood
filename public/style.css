@@ -778,3 +778,4 @@ html[data-mode=dark] .offbar { background: #2f2508; color: #ffcf6b; }
 input[aria-invalid=true], select[aria-invalid=true] { border-color: var(--err) !important; background: var(--err-bg); }
 .late { color: var(--err); font-weight: 700; }
 .dangerrow { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--hair); } .dangerrow .chip { color: var(--err); border-color: var(--err); }
+.alldone { margin: 12px 20px; padding: 12px 14px; border-radius: 12px; background: var(--sig-bg); color: var(--sig-text); font-weight: 700; font-size: .9rem; animation: lift .4s ease-out; }

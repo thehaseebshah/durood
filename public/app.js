@@ -456,7 +456,8 @@ function home() {
   ${liveToday ? `<div class="live">${uiIcon('feed', 13, 2)} ${t('live_today')(fmt(liveToday), fmt(liveMembers))}</div>` : ''}
   ${logBox()}</section>
   ${startCard(m)}
-  ${fold('quests', t('grp_quests'), N(`${quests.filter((q) => q.done).length} / ${quests.length}`), quests.map((q) => quest(q)).join(''))}
+  ${fold('quests', t('grp_quests'), N(`${quests.filter((q) => q.done).length} / ${quests.length}`),
+    `${quests.filter((q) => q.period === 'day').every((q) => q.done) ? `<div class="alldone">${uiIcon('star', 14, 2)} ${t('quests_all_done')}</div>` : ''}${quests.map((q) => quest(q)).join('')}`)}
   ${assigned ? fold('assigned', t('grp_tasks_today'), N(String(S.bh.today.length)), `${assigned}<button class="rowlink" data-act="tab" data-tab="tasks"><span>${t('tasks_all')}</span><b class="ar">→</b></button>`) : ''}
   ${fold('seerah', t('grp_seerah'), seerahMeta, seerah)}
   ${fold('challenge', t('challenge_title'), '', challengeCard(m), false)}
