@@ -21,8 +21,8 @@
     #panel input:not([type=checkbox]):not([type=radio]):not([type=hidden]), #panel textarea, #panel select { width: 100%; box-sizing: border-box; font: inherit; padding: 10px; border: 2px solid var(--ink); border-radius: 0; background: var(--cell); color: var(--ink); }
     #panel textarea { resize: vertical; }
     [hidden] { display: none !important; }
-    .tabs2 { display: flex; border-bottom: 1px solid var(--line); overflow-x: auto; }
-    .tabs2 button { flex: 1; background: none; border: 0; padding: 14px 10px; font-weight: 700; color: var(--soft); border-bottom: 4px solid transparent; white-space: nowrap; }
+    .tabs2 { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+    .tabs2 button { background: none; border: 0; padding: 12px 10px; flex: 1 0 auto; font-weight: 700; color: var(--soft); border-bottom: 4px solid transparent; white-space: nowrap; }
     .tabs2 button.on { color: var(--ink); border-bottom-color: var(--sig); }
     .panel { padding: 0 20px 20px; }
     .panel h3 { margin-inline: -20px; }

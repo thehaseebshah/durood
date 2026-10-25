@@ -151,6 +151,7 @@ test('teaching a Seerat Circle earns more than joining one, once an organiser co
   assert.equal((await api('POST', '/api/circle/teach', { token: u.token, body: {} })).me.circleTeach, 'pending');
   assert.equal((await api('GET', '/api/me', { token: u.token })).xp, before); // nothing until confirmed
   assert.equal((await K('GET', '/circle-teachers')).teachers.find((x) => x.username === 'tc_teacher').status, 'pending');
+  assert.equal((await K('POST', '/circle-teachers/tc_teacher', { approve: true })).error, 'bad_action'); // a malformed decision is refused, not read as a rejection
   await K('POST', '/circle-teachers/tc_teacher', { action: 'reject' });
   assert.equal((await api('GET', '/api/me', { token: u.token })).circleTeach, 'rejected');
   await api('POST', '/api/circle/teach', { token: u.token, body: {} }); // can ask again

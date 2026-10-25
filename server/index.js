@@ -619,7 +619,7 @@ route('POST', '/api/admin/news', adm, ({ body }) => news.postNews(body));
 route('DELETE', '/api/admin/news/:id', adm, ({ params }) => news.deleteNews(Number(params.id)));
 route('GET', '/api/admin/export', adm, ({ query }) => ({ csv: news.exportCsv(query.get('kind')) }));
 route('GET', '/api/admin/circle-teachers', adm, () => ({ teachers: listTeachRequests() }));
-route('POST', '/api/admin/circle-teachers/:username', adm, ({ params, body, admin }) => { const r = decideTeach(params.username, body.action === 'approve'); profile.logAdmin(`teacher-${body.action === 'approve' ? 'approve' : 'reject'}`, params.username, '', admin.actor); return r; });
+route('POST', '/api/admin/circle-teachers/:username', adm, ({ params, body, admin }) => { if (!['approve', 'reject'].includes(body.action)) throw new HttpError(400, 'bad_action'); const r = decideTeach(params.username, body.action === 'approve'); profile.logAdmin(`teacher-${body.action === 'approve' ? 'approve' : 'reject'}`, params.username, '', admin.actor); return r; });
 route('GET', '/api/admin/circle', adm, () => ({ circleUrl: circleUrl(), fromEnv: !getSetting('circle_url', '') && !!CFG.circleUrl }));
 route('POST', '/api/admin/circle', adm, ({ body }) => setCircleUrl(body.url));
 route('GET', '/api/admin/special-days', adm, () => ({ days: listSpecialDays() }));
@@ -627,7 +627,7 @@ route('POST', '/api/admin/special-days', adm, ({ body }) => setSpecialDay(body))
 route('DELETE', '/api/admin/special-days/:day', adm, ({ params }) => deleteSpecialDay(params.day));
 // Al-Burhan oversight: phone numbers are not verified, so a moderator must be able to see who follows whom and break a wrong link
 route('GET', '/api/admin/majalis', { auth: false, admin: true }, () => { burhan.guard(); return { majalis: majlis.adminMajalis() }; });
-route('POST', '/api/admin/majalis/:id', { auth: false, admin: true }, ({ params, body, admin }) => { burhan.guard(); const r = majlis.decideMajlis(params.id, body.action === 'approve'); profile.logAdmin(`majlis-${body.action === 'approve' ? 'approve' : 'reject'}`, r.name, '', admin.actor); return r; });
+route('POST', '/api/admin/majalis/:id', { auth: false, admin: true }, ({ params, body, admin }) => { burhan.guard(); if (!['approve', 'reject'].includes(body.action)) throw new HttpError(400, 'bad_action'); const r = majlis.decideMajlis(params.id, body.action === 'approve'); profile.logAdmin(`majlis-${body.action === 'approve' ? 'approve' : 'reject'}`, r.name, '', admin.actor); return r; });
 route('GET', '/api/admin/burhan-links', { auth: false, admin: true }, () => { burhan.guard(); return burhan.adminLinks(); });
 route('DELETE', '/api/admin/burhan-links/:kind/:username', { auth: false, admin: true }, ({ params, admin }) => {
   burhan.guard();
