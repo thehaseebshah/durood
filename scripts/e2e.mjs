@@ -235,6 +235,30 @@ try {
     await page.close();
   }
 
+  // ---- swipe a task: right completes it, left opens the reschedule sheet ---------------------------------------------------------
+  {
+    const due = new Date(Date.now() + 5 * 3600e3 + 3 * 864e5).toISOString().slice(0, 10);
+    await api('POST', '/api/tasks', { kind: 'task', title: 'Swipe me done', dueDay: due }, host.token);
+    await api('POST', '/api/tasks', { kind: 'task', title: 'Swipe me later', dueDay: due }, host.token);
+    const page = await open(host.token);
+    await go(page, 'tasks');
+    const swipe = async (title, dx) => {
+      const box = await page.locator('.trow', { hasText: title }).first().locator('.tfront').boundingBox();
+      const y = box.y + box.height / 2, x = box.x + box.width / 2;
+      await page.mouse.move(x, y); await page.mouse.down();
+      for (let i = 1; i <= 10; i++) { await page.mouse.move(x + (dx * i) / 10, y); await page.waitForTimeout(16); }
+      await page.mouse.up(); await page.waitForTimeout(1000);
+    };
+    await swipe('Swipe me done', 260);
+    ok((await api('GET', '/api/burhan', null, host.token)).assignments.some((x) => x.title === 'Swipe me done' && x.done), 'swiping right completes a task');
+    await swipe('Swipe me later', -260);
+    ok(await page.locator('[data-act=reschpick]').count() > 0, 'swiping left opens the reschedule sheet');
+    await page.locator('[data-act=reschpick]').first().click(); await page.waitForTimeout(900);
+    const moved = (await api('GET', '/api/burhan', null, host.token)).assignments.find((x) => x.title === 'Swipe me later');
+    ok(moved && moved.dueDay !== due, 'picking a day moves its deadline');
+    await page.close();
+  }
+
   // ---- every page, both languages, dark mode, desktop: renders, no sideways scroll, no errors -----------------------
   for (const [lang, mode, w] of [['en', 'light', 390], ['ur', 'light', 390], ['en', 'dark', 390], ['en', 'light', 1280]]) {
     await api('PATCH', '/api/me', { lang }, host.token);
