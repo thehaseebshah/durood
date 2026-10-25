@@ -438,9 +438,12 @@ addCol('users', 'bio', "TEXT NOT NULL DEFAULT ''");                    // one sh
 addCol('users', 'avatar_v', 'INTEGER NOT NULL DEFAULT 0');             // > 0: the current profile picture's version; <= 0: none (the next upload is abs(v) + 1)
 addCol('users', 'phone_changed_at', 'INTEGER');
 addCol('users', 'avatar_at', 'INTEGER');                               // when the current picture was uploaded
+addCol('users', 'admin_role', 'TEXT');                                 // NULL, or 'owner' | 'moderator' | 'organiser'
+addCol('users', 'admin_since', 'INTEGER');
 db.exec(`CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY, at INTEGER NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '')`);
-addCol('flags', 'day_total', 'INTEGER');
-db.exec('CREATE INDEX IF NOT EXISTS events_kind_ref ON events(kind, ref)'); // payouts are looked up by what they paid for                              // the day's total when the flag was raised                        // a member may change city once a fortnight
+addCol('admin_log', 'actor', "TEXT NOT NULL DEFAULT ''");                 // who did it: a member's username, or 'admin key'
+addCol('flags', 'day_total', 'INTEGER');                               // the day's total when the flag was raised
+db.exec('CREATE INDEX IF NOT EXISTS events_kind_ref ON events(kind, ref)'); // payouts are looked up by what they paid for                        // a member may change city once a fortnight
 // ---- Al-Burhan edition: murabbi / masul links, mamulaat percentages, tasks and routines -------------------------------------
 db.exec(`
 CREATE TABLE IF NOT EXISTS murabbi_links (

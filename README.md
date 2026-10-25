@@ -35,7 +35,7 @@ Environment variables:
 | `PORT` | HTTP port (default 3000) |
 | `DB_PATH` | SQLite file (default `data/durood.db`) |
 | `AUTH_SECRET` | Token signing secret (auto-generated into `data/secret.key` if unset) |
-| `ADMIN_KEY` | Enables the admin API (below). Unset = admin disabled |
+| `ADMIN_KEY` | Shared break-glass owner key for the admin API (below). Admins normally sign in with their own member account and a role (`node scripts/make-admin.mjs <username> owner` makes the first). Unset = key disabled |
 | `CIRCLE_URL` | Seerat Circle sign-up link shown in the Learn tab |
 | `NATIONAL_TARGET` | Goal for the national meter (default 100,000,000) |
 | `TEAM_MAX_DEPTH` | Cap how deep a caravan counts (default unlimited) |

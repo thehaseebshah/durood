@@ -8,6 +8,7 @@ import { db, tx, getSetting } from './db.js';
 import * as burhan from './burhan.js';
 import * as caravanApi from './caravan.js';
 import * as profile from './profile.js';
+import * as admins from './admins.js';
 import { USERNAME, isReserved, handleTaken as handleTakenBy } from './handles.js';
 import { HttpError, hashPassword, checkPassword, signToken, verifyToken, rateLimit, lockedOut, recordFailure, clientIp, sameSecret } from './auth.js';
 import { auditAsync } from './audit.js';
@@ -59,7 +60,7 @@ const route = (method, pattern, opts, handler) => {
   opts = { maxBody: 32_768, ...opts };
   const keys = [];
   const re = new RegExp('^' + pattern.replace(/:(\w+)/g, (_, k) => (keys.push(k), '([^/]+)')) + '$');
-  routes.push({ method, re, keys, auth: opts.auth !== false, admin: !!opts.admin, maxBody: opts.maxBody, handler });
+  routes.push({ method, re, keys, auth: opts.auth !== false, admin: opts.admin ? (admins.ADMIN_PERMS[`${method} ${pattern}`] || 'manage_admins') : null, maxBody: opts.maxBody, handler }); // an admin route nobody listed is owner-only
 };
 
 // single-use links: only a hash is stored, so a database leak can't be turned into working links
@@ -116,8 +117,18 @@ route('POST', '/api/caravan/leave', ({ user }) => ({ ...caravanApi.leave(user), 
 route('POST', '/api/caravan/remove', ({ user, body }) => ({ ...caravanApi.removeByOwner(user, body.username), view: caravanApi.view(user) }));
 route('GET', '/api/caravan/search', ({ user, query }) => { rateLimit(`cvs:${user}`, 60, 60e3); return { usernames: caravanApi.searchInvitees(user, query.get('q')), caravans: caravanApi.searchCaravans(query.get('q')) }; });
 route('GET', '/api/admin/caravans', { auth: false, admin: true }, ({ query }) => ({ caravans: caravanApi.adminList(query.get('q') || '') }));
-route('PUT', '/api/admin/caravans/:id', { auth: false, admin: true }, ({ params, body }) => { const old = one('SELECT name FROM caravans WHERE id = ?', Number(params.id)); const r = caravanApi.adminRename(Number(params.id), body.name); profile.logAdmin('rename-caravan', old?.name, `to ${r.name}`); return r; });
-route('DELETE', '/api/admin/caravans/:id', { auth: false, admin: true }, ({ params }) => { const r = caravanApi.adminDelete(Number(params.id)); profile.logAdmin('delete-caravan', r.name); return { ok: true }; });
+route('PUT', '/api/admin/caravans/:id', { auth: false, admin: true }, ({ params, body, admin }) => { const old = one('SELECT name FROM caravans WHERE id = ?', Number(params.id)); const r = caravanApi.adminRename(Number(params.id), body.name); profile.logAdmin('rename-caravan', old?.name, `to ${r.name}`, admin.actor); return r; });
+route('DELETE', '/api/admin/caravans/:id', { auth: false, admin: true }, ({ params, admin }) => { const r = caravanApi.adminDelete(Number(params.id)); profile.logAdmin('delete-caravan', r.name, '', admin.actor); return { ok: true }; });
+route('POST', '/api/admin/login', { auth: false }, async ({ body, ip }) => {
+  rateLimit(`adminlogin:${ip}`, 30, 600e3);
+  const key = `adminloginfail:${String(body.id || '').toLowerCase().slice(0, 40)}`;
+  if (lockedOut(key, 8)) throw new HttpError(429, 'rate_limited');
+  try { return await admins.adminLogin(body.id, body.password); } catch (e) { if (e.code === 'bad_login') recordFailure(key, 900e3); throw e; }
+});
+route('GET', '/api/admin/me', { auth: false, admin: true }, ({ admin }) => ({ role: admin.role, actor: admin.actor, username: admin.username, can: [...admins.CAN[admin.role]] }));
+route('GET', '/api/admin/admins', { auth: false, admin: true }, () => ({ admins: admins.listAdmins(), roles: admins.ROLES }));
+route('POST', '/api/admin/admins', { auth: false, admin: true }, ({ body, admin }) => { const r = admins.grant(admin, body.username, body.role); profile.logAdmin('grant-admin', body.username, `${r.previous ? `${r.previous} to ` : ''}${body.role}`, admin.actor); return r; });
+route('DELETE', '/api/admin/admins/:username', { auth: false, admin: true }, ({ params, admin }) => { const r = admins.revoke(admin, params.username); profile.logAdmin('revoke-admin', params.username, `was ${r.role}`, admin.actor); return { ok: true }; });
 route('GET', '/api/admin/profiles', { auth: false, admin: true }, ({ query }) => ({ profiles: profile.adminProfiles({ q: query.get('q') || '', filter: query.get('filter') || 'photos' }) }));
 route('GET', '/api/admin/log', { auth: false, admin: true }, () => ({ log: profile.adminLog(60) }));
 
@@ -430,7 +441,7 @@ route('POST', '/api/report', ({ user, body }) => {
 
 route('POST', '/api/admin/sunnahs', { auth: false, admin: true }, ({ body }) => ({ days: sunnah.addSunnahs(body.sunnahs ?? body) }));
 route('GET', '/api/admin/reported', { auth: false, admin: true }, () => ({ items: feedApi.reportedContent() }));
-route('POST', '/api/admin/content/:kind/:id', { auth: false, admin: true }, ({ params, body }) => { const r = feedApi.moderateContent(params.kind, Number(params.id), body.action); profile.logAdmin(`content-${body.action}`, `${params.kind}:${params.id}`); return r; });
+route('POST', '/api/admin/content/:kind/:id', { auth: false, admin: true }, ({ params, body, admin }) => { const r = feedApi.moderateContent(params.kind, Number(params.id), body.action); profile.logAdmin(`content-${body.action}`, `${params.kind}:${params.id}`, '', admin.actor); return r; });
 route('GET', '/api/admin/prompts', { auth: false, admin: true }, () => ({ prompts: feedApi.listPrompts() }));
 route('POST', '/api/admin/prompts', { auth: false, admin: true }, ({ body }) => feedApi.setPrompt(body));
 route('GET', '/api/news', ({ user }) => news.listNews(user));
@@ -452,13 +463,15 @@ route('POST', '/api/admin/waitlist/:id', adm, async ({ params, body }) => {
   return r;
 });
 route('GET', '/api/admin/members', adm, ({ query }) => ({ members: access.searchMembers(query.get('q') || '') }));
-route('POST', '/api/admin/members/:username', adm, ({ params, body }) => {
+route('POST', '/api/admin/members/:username', adm, ({ params, body, admin }) => {
   const a = body.action;
-  if (a === 'suspend' || a === 'unsuspend') { const r = access.setSuspended(params.username, a === 'suspend', !!body.branch); profile.logAdmin(body.branch ? `${a}-branch` : a, params.username); return r; }
-  if (a === 'hide' || a === 'unhide') { const r = setHidden(params.username, a === 'hide'); profile.logAdmin(a, params.username); return r; }
+  if (!admins.can(admin.role, a === 'reset-link' ? 'reset_link' : 'moderate')) throw new HttpError(403, 'not_allowed'); // suspending and clearing profiles are moderation; a reset link is account access
+  if (a === 'suspend' || a === 'unsuspend') { const r = access.setSuspended(params.username, a === 'suspend', !!body.branch); profile.logAdmin(body.branch ? `${a}-branch` : a, params.username, '', admin.actor); return r; }
+  if (a === 'hide' || a === 'unhide') { const r = setHidden(params.username, a === 'hide'); profile.logAdmin(a, params.username, '', admin.actor); return r; }
   if (a === 'reset-link') {
     const u = one('SELECT id FROM users WHERE username = ? AND deleted_at IS NULL', params.username);
     if (!u) throw new HttpError(404, 'not_found');
+    profile.logAdmin('reset-link', params.username, '', admin.actor);
     return { url: `${baseUrl()}/?reset=${makeToken(u.id, 'reset', 3600e3)}` }; // for sending over WhatsApp when email fails
   }
   if (a === 'remove-avatar' || a === 'clear-profile') {
@@ -467,7 +480,7 @@ route('POST', '/api/admin/members/:username', adm, ({ params, body }) => {
     const before = one('SELECT display_name, bio FROM users WHERE id = ?', u.id);
     profile.removeAvatar(u.id);
     if (a === 'clear-profile') run("UPDATE users SET display_name = '', bio = '' WHERE id = ?", u.id); // for an offensive name or line
-    profile.logAdmin(a, params.username, a === 'clear-profile' ? `name "${before.display_name}", bio "${before.bio}"` : 'picture removed');
+    profile.logAdmin(a, params.username, a === 'clear-profile' ? `name "${before.display_name}", bio "${before.bio}"` : 'picture removed', admin.actor);
     return { ok: true };
   }
   throw new HttpError(400, 'bad_action');
@@ -549,11 +562,14 @@ async function handleApi(req, res, url) {
     const allow = (process.env.ADMIN_IP_ALLOWLIST || '').split(',').map((x) => x.trim()).filter(Boolean);
     if (allow.length && !allow.includes(ip)) throw new HttpError(403, 'forbidden');
     if (lockedOut(`adminfail:${ip}`, 10)) throw new HttpError(429, 'rate_limited');
-    const given = req.headers['x-admin-key'];
-    if (!process.env.ADMIN_KEY || typeof given !== 'string' || !sameSecret(given, process.env.ADMIN_KEY)) {
-      recordFailure(`adminfail:${ip}`, 900e3); // 10 wrong keys lock this address out for 15 minutes
-      throw new HttpError(403, 'forbidden');
-    }
+    // an admin is a member with a role (header x-admin-token, from /api/admin/login), or the shared key, which acts as the owner (break-glass)
+    const given = req.headers['x-admin-key'], tok = req.headers['x-admin-token'];
+    let who = null;
+    if (typeof tok === 'string' && tok) who = admins.adminFromToken(tok);
+    else if (process.env.ADMIN_KEY && typeof given === 'string' && sameSecret(given, process.env.ADMIN_KEY)) who = { userId: null, username: null, role: 'owner', actor: 'admin key', isKey: true };
+    if (!who) { recordFailure(`adminfail:${ip}`, 900e3); throw new HttpError(403, 'forbidden'); } // 10 wrong tries lock this address out for 15 minutes
+    if (!admins.can(who.role, route_.admin)) throw new HttpError(403, 'not_allowed');
+    ctx.admin = who;
   }
   if (route_.auth) {
     const t = verifyToken((req.headers.authorization || '').replace(/^Bearer /, ''));

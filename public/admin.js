@@ -1,19 +1,24 @@
-// Admin page: invite codes, waitlist, flags, members. Everything is guarded by the admin key on the server.
+// Admin page. Sign in as a member with a role (owner, moderator, organiser) or with the shared admin key (acts as owner). The server checks every request; hiding tabs here is only a courtesy.
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (n) => Number(n ?? 0).toLocaleString('en-US');
 const human = (n) => { const a = Math.abs(n); return a >= 1e7 ? `${Math.round(a / 1e5) / 100} crore` : a >= 1e5 ? `${Math.round(a / 1e3) / 100} lakh` : fmt(a); };
 const pktToday = () => new Date(Date.now() + 5 * 3600e3).toISOString().slice(0, 10);
 const date = (t) => new Date(t).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Karachi' });
-let KEY = sessionStorage.getItem('adminKey') || '';
+const store = (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch { /* private mode */ } };
+const load = (k) => { try { return sessionStorage.getItem(k) || ''; } catch { return ''; } };
+let KEY = load('adminKey'), TOKEN = load('adminToken'), ME = null, showKey = false;
+const can = (p) => !!ME?.can.includes(p);
 let tab = 'challenge';
 let notice = '';
-const TABS = [['challenge', 'Challenge'], ['invites', 'Invite codes'], ['waitlist', 'Waitlist'], ['flags', 'Flagged totals'], ['members', 'Members'], ['moderation', 'Moderation'], ['news', 'News'], ['feed', 'Feed'], ['exports', 'Exports']];
+const TABS = [['challenge', 'Challenge', 'status'], ['invites', 'Invite codes', 'organise'], ['waitlist', 'Waitlist', 'organise'], ['flags', 'Flagged totals', 'moderate'], ['members', 'Members', 'members'], ['moderation', 'Moderation', 'moderate'], ['news', 'News', 'organise'], ['feed', 'Feed', 'feed'], ['exports', 'Exports', 'organise'], ['admins', 'Admins', 'manage_admins']];
+const tabOk = ([, , p]) => (p === 'feed' ? can('organise') || can('moderate') : can(p));
 
 async function api(method, path, body) {
-  const res = await fetch('/api/admin' + path, { method, headers: { 'content-type': 'application/json', 'x-admin-key': KEY }, body: body ? JSON.stringify(body) : undefined });
+  const res = await fetch('/api/admin' + path, { method, headers: { 'content-type': 'application/json', ...(TOKEN ? { 'x-admin-token': TOKEN } : { 'x-admin-key': KEY }) }, body: body ? JSON.stringify(body) : undefined });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(res.status === 403 ? 'Wrong or missing admin key' : data.error || 'Something went wrong');
+  if (res.status === 403 && data.error === 'forbidden') { if (ME) signOut('Your session ended. Sign in again.'); throw new Error('Not signed in'); }
+  if (!res.ok) throw new Error(data.error === 'not_allowed' ? 'Your role cannot do that' : data.error === 'rate_limited' ? 'Too many tries. Wait a few minutes.' : data.error || 'Something went wrong');
   return data;
 }
 const say = (m) => { notice = m; };
@@ -50,9 +55,10 @@ const views = {
       ${items.length ? `<table><tr><th>When</th><th>Title</th><th></th></tr>${items.map((a) => `<tr><td>${date(a.created_at)}</td><td>${esc(a.title_en)}</td><td><button class="chip" data-a="newsdel" data-id="${a.id}">Delete</button></td></tr>`).join('')}</table>` : '<p class="empty">Nothing posted yet.</p>'}`;
   },
   async feed() {
-    const [{ lectures }, { prompts }, { items }, { days }] = await Promise.all([api('GET', '/lectures'), api('GET', '/prompts'), api('GET', '/reported'), api('GET', '/special-days')]);
+    const org = can('organise'), mod = can('moderate');
+    const [{ lectures }, { prompts }, { items }, { days }] = await Promise.all([org ? api('GET', '/lectures') : { lectures: [] }, org ? api('GET', '/prompts') : { prompts: [] }, mod ? api('GET', '/reported') : { items: [] }, org ? api('GET', '/special-days') : { days: [] }]);
     const photoLink = (i) => (i.photoUrl ? `<a href="${esc(i.photoUrl)}" target="_blank" rel="noopener">photo</a>` : '');
-    return `<h3>Lecture of the week</h3>
+    return `${org ? `<h3>Lecture of the week</h3>
       <p class="muted">Members see the lectures whose week is the current one. Any date in the week works. A quiz is optional: a JSON list like <code>[{"q_en":"Where was the Prophet ﷺ born?","options_en":["Makkah","Madinah"],"answer":0}]</code>.</p>
       <div class="inline"><div><label>YouTube id (11 characters)</label><input id="lyt" maxlength="11"></div><div><label>Week (any date)</label><input id="lwk" type="date" value="${pktToday()}"></div><div><label>Minimum watch (seconds)</label><input id="lmin" type="number" min="30" value="600"></div></div>
       <label>Title (English)</label><input id="ltE" maxlength="120"><label>Title (Urdu, optional)</label><input id="ltU" maxlength="120" dir="rtl"><label>Speaker</label><input id="lsp" maxlength="80">
@@ -70,11 +76,24 @@ const views = {
       <div class="inline"><div><label>Day</label><input id="sday" type="date" value="${pktToday()}"></div></div>
       <label>Name (English)</label><input id="snE" maxlength="60"><label>Name (Urdu, optional)</label><input id="snU" maxlength="60" dir="rtl">
       <div class="inline"><button class="chip solid" data-a="specialset">Save day</button></div>
-      ${days.length ? `<table><tr><th>Day</th><th>Name</th><th></th></tr>${days.slice(0, 15).map((d) => `<tr><td>${esc(d.day)}</td><td>${esc(d.name_en)}</td><td><button class="chip" data-a="specialdel" data-day="${esc(d.day)}">Remove</button></td></tr>`).join('')}</table>` : ''}
-      <h3>Reported or hidden</h3>
+      ${days.length ? `<table><tr><th>Day</th><th>Name</th><th></th></tr>${days.slice(0, 15).map((d) => `<tr><td>${esc(d.day)}</td><td>${esc(d.name_en)}</td><td><button class="chip" data-a="specialdel" data-day="${esc(d.day)}">Remove</button></td></tr>`).join('')}</table>` : ''}` : ''}
+    ${mod ? `<h3>Reported or hidden</h3>
       <p class="muted">Three reports from different members hide a photo or reflection. Restore it, or leave it removed.</p>
       ${items.length ? `<table><tr><th>Kind</th><th>Member</th><th>Content</th><th>Reports</th><th>Status</th><th></th></tr>${items.map((i) => `<tr><td>${esc(i.kind)}</td><td>${esc(i.username)}</td><td>${esc(i.text || '')} ${photoLink(i)}</td><td>${i.reports}</td><td>${esc(i.status)}</td>
-        <td>${i.status === 'removed' ? `<button class="chip solid" data-a="restore2" data-kind="${esc(i.kind)}" data-id="${i.id}">Restore</button>` : `<button class="chip" data-a="remove2" data-kind="${esc(i.kind)}" data-id="${i.id}">Remove</button>`}</td></tr>`).join('')}</table>` : '<p class="empty">Nothing reported.</p>'}`;
+        <td>${i.status === 'removed' ? `<button class="chip solid" data-a="restore2" data-kind="${esc(i.kind)}" data-id="${i.id}">Restore</button>` : `<button class="chip" data-a="remove2" data-kind="${esc(i.kind)}" data-id="${i.id}">Remove</button>`}</td></tr>`).join('')}</table>` : '<p class="empty">Nothing reported.</p>'}` : ''}`;
+  },
+  async admins() {
+    const { admins, roles } = await api('GET', '/admins');
+    const blurb = { owner: 'everything, including who is an admin', moderator: 'pictures, names, caravans, reports, flags, suspensions', organiser: 'invite codes, waitlist, news, lectures, challenge, exports, reset links' };
+    return `<h3>Admins</h3>
+      <p class="muted">An admin is a normal member with a role. They sign in here with their own username and password, and every action is logged under their name. Remove the role and their access ends at once.</p>
+      <table><tr><th>Role</th><th>Can do</th></tr>${roles.map((r) => `<tr><td><b>${r}</b></td><td class="muted">${blurb[r]}</td></tr>`).join('')}</table>
+      <h3>Give a role</h3>
+      <div class="inline"><div><label>Member username</label><input id="adu" type="text" maxlength="20" autocapitalize="off"></div>
+        <div><label>Role</label><select id="adr" style="width:100%;padding:11px 8px;border:2px solid var(--ink);background:var(--bg);color:var(--ink);font:inherit">${roles.map((r) => `<option value="${r}">${r}</option>`).join('')}</select></div><button class="chip solid" data-a="adgrant">Save</button></div>
+      <h3>Current admins</h3>
+      ${admins.length ? `<table><tr><th>Member</th><th>Role</th><th>Since</th><th></th></tr>${admins.map((a) => `<tr><td><b>${esc(a.username)}</b>${a.suspended ? ' <span class="pillbox bad">SUSPENDED</span>' : ''}</td><td>${esc(a.role)}</td><td>${a.since ? date(a.since) : ''}</td>
+        <td>${a.username === ME.username ? '<span class="muted">you</span>' : `<button class="chip" data-a="adrevoke" data-u="${esc(a.username)}">Remove role</button>`}</td></tr>`).join('')}</table>` : '<p class="empty">No admin accounts yet. You are using the shared key.</p>'}`;
   },
   async exports() {
     return `<h3>Exports</h3><p class="muted">CSV files of totals as reported by members. Deleted members stay in totals. Open in Excel or Google Sheets.</p>
@@ -137,7 +156,7 @@ const views = {
         <td>${fmt(c.members)}<br><span class="muted">${esc(c.sample || '')}${c.members > 6 ? ', …' : ''}</span></td>
         <td><button class="chip" data-a="cvrename" data-id="${c.id}" data-n="${esc(c.name)}">Rename</button><button class="chip" data-a="cvdelete" data-id="${c.id}" data-n="${esc(c.name)}">Delete</button></td></tr>`).join('')}</table>` : '<p class="empty">No caravans.</p>'}
       <h3>Recent moderation actions</h3>
-      ${log.length ? `<table><tr><th>When</th><th>Action</th><th>Target</th><th>Detail</th></tr>${log.map((l) => `<tr><td>${date(l.at)}</td><td>${esc(l.action)}</td><td>${esc(l.target)}</td><td class="muted">${esc(l.detail)}</td></tr>`).join('')}</table>` : '<p class="empty">Nothing yet.</p>'}`;
+      ${log.length ? `<table><tr><th>When</th><th>Who</th><th>Action</th><th>Target</th><th>Detail</th></tr>${log.map((l) => `<tr><td>${date(l.at)}</td><td>${esc(l.actor) || '<span class="muted">earlier</span>'}</td><td>${esc(l.action)}</td><td>${esc(l.target)}</td><td class="muted">${esc(l.detail)}</td></tr>`).join('')}</table>` : '<p class="empty">Nothing yet.</p>'}`;
   },
   async members() {
     const q = window.__q || '';
@@ -152,19 +171,33 @@ const views = {
           <button class="chip" data-a="${m.suspended ? 'unsuspend' : 'suspend'}" data-u="${esc(m.username)}">${m.suspended ? 'Unsuspend' : 'Suspend'}</button>
           <button class="chip" data-a="${m.suspended ? 'unsuspendb' : 'suspendb'}" data-u="${esc(m.username)}">${m.suspended ? 'Unsuspend branch' : 'Suspend branch'}</button>
           <button class="chip" data-a="${m.hidden ? 'unhide' : 'hide'}" data-u="${esc(m.username)}">${m.hidden ? 'Unhide' : 'Hide from ranks'}</button>
-          <button class="chip" data-a="resetlink" data-u="${esc(m.username)}">Reset link</button>`}</td></tr>`).join('')}</table>` : '<p class="empty">No members match.</p>'}`;
+          ${can('reset_link') ? `<button class="chip" data-a="resetlink" data-u="${esc(m.username)}">Reset link</button>` : ''}`}</td></tr>`).join('')}</table>` : '<p class="empty">No members match.</p>'}`;
   },
 };
 
+function bar() {
+  $('#bar').innerHTML = ME
+    ? `<span class="msg" style="margin:0;flex:1;word-break:normal">${ME.username ? `Signed in as <b>${esc(ME.username)}</b> · ${esc(ME.role)}` : 'Using the shared admin key (owner)'}</span>${can('audit') ? '<button class="chip" id="auditBtn">Run audit</button>' : ''}<button class="chip" id="out">Sign out</button>`
+    : showKey ? '<input type="password" id="key" placeholder="Admin key" autocomplete="off"><button class="chip solid" id="save">Use key</button><button class="chip" id="back">Back</button>'
+      : '<input id="aid" type="text" placeholder="Username" autocomplete="username" autocapitalize="off"><input type="password" id="apw" placeholder="Password" autocomplete="current-password"><button class="chip solid" id="login">Sign in</button><button class="chip" id="usekey">Use admin key</button>';
+}
+async function enter() { // find out who the server thinks we are
+  try { ME = await api('GET', '/me'); } catch { ME = null; }
+  if (ME && !tabOk(TABS.find(([k]) => k === tab))) tab = TABS.find(tabOk)?.[0] || 'challenge';
+}
+function signOut(msg = '') { TOKEN = ''; KEY = ''; ME = null; store('adminToken', null); store('adminKey', null); notice = msg; showKey = false; render(); }
+
 async function render() {
-  $('#tabs').innerHTML = TABS.map(([k, l]) => `<button class="${k === tab ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('');
-  if (!KEY) { $('#panel').innerHTML = '<p class="empty">Enter the admin key above to begin.</p>'; return; }
+  bar();
+  $('#tabs').innerHTML = ME ? TABS.filter(tabOk).map(([k, l]) => `<button class="${k === tab ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('') : '';
+  if (!ME) { $('#audit').innerHTML = ''; $('#panel').innerHTML = (notice ? `<div class="msg">${esc(notice)}</div>` : '') + '<p class="empty">Sign in with your member username and password. Admin roles are given by the owner.</p>'; notice = ''; return; }
   try { $('#panel').innerHTML = (notice ? `<div class="msg">${esc(notice)}</div>` : '') + (await views[tab]()); }
   catch (e) { $('#panel').innerHTML = `<div class="msg" style="border-color:var(--err)">${esc(e.message)}</div>`; }
   notice = '';
   try {
     const st = await api('GET', '/status');
     const a = st.lastAudit;
+    if (!can('audit') && a && !a.ok) { $('#audit').innerHTML = '<div class="msg" style="border-color:var(--err)">The nightly audit found a problem. Tell the owner.</div>'; return; }
     $('#audit').innerHTML = `<div class="msg" style="${a && !a.ok ? 'border-color:var(--err)' : ''}">Nightly audit: ${a ? `${date(a.at)} · ${a.ok ? 'clean' : `${a.problems} problem(s), run the audit`}` : 'not run yet (runs after 03:00 Pakistan time)'} · Last backup: ${st.lastBackup ? date(st.lastBackup) : 'none yet (set BACKUP_DIR)'}</div>`;
   } catch { /* status is a nicety */ }
 }
@@ -224,22 +257,38 @@ document.addEventListener('click', (ev) => {
     unsuspendb: () => api('POST', `/members/${d.u}`, { action: 'unsuspend', branch: true }).then((r) => say(`${r.affected} members restored.`)),
     hide: () => api('POST', `/members/${d.u}`, { action: 'hide' }),
     unhide: () => api('POST', `/members/${d.u}`, { action: 'unhide' }),
+    adgrant: async () => { const username = $('#adu').value.trim(), role = $('#adr').value; await api('POST', '/admins', { username, role }); say(`${username} is now ${role}.`); },
+    adrevoke: async () => { if (!confirm(`Remove ${d.u}'s admin role? They stay a member.`)) return; await api('DELETE', `/admins/${d.u}`); say('Role removed.'); },
     resetlink: async () => { const r = await api('POST', `/members/${d.u}`, { action: 'reset-link' }); say(`Reset link for ${d.u} (works once, one hour): ${r.url}`); },
   }[d.a];
   if (act) run(act);
 });
 
-$('#save').onclick = () => { KEY = $('#key').value.trim(); sessionStorage.setItem('adminKey', KEY); $('#key').value = ''; render(); };
-$('#auditBtn').onclick = async () => {
-  try {
-    const r = await api('GET', '/audit');
-    $('#audit').innerHTML = `<div class="msg" style="${r.ok ? '' : 'border-color:var(--err)'}">${r.ok ? `Audit clean: ${fmt(r.users)} members, ${fmt(r.ledgerTotal)} durood, every total matches the ledger.` : `Audit found ${r.problems.length} problem(s): ${esc(JSON.stringify(r.problems.slice(0, 3)))}`}</div>`;
-  } catch (e) { $('#audit').innerHTML = `<div class="msg" style="border-color:var(--err)">${esc(e.message)}</div>`; }
-};
+document.addEventListener('click', async (ev) => {
+  const id = ev.target.closest('button')?.id;
+  if (id === 'usekey') { showKey = true; return render(); }
+  if (id === 'back') { showKey = false; return render(); }
+  if (id === 'out') return signOut();
+  if (id === 'save') { KEY = $('#key').value.trim(); TOKEN = ''; store('adminKey', KEY); await enter(); if (!ME) { KEY = ''; store('adminKey', null); notice = 'That key was not accepted.'; } return render(); }
+  if (id === 'login') {
+    try {
+      const r = await fetch('/api/admin/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: $('#aid').value, password: $('#apw').value }) });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error === 'rate_limited' ? 'Too many tries. Wait a few minutes.' : 'Wrong username or password, or this account is not an admin.');
+      TOKEN = data.token; KEY = ''; store('adminToken', TOKEN); store('adminKey', null); await enter();
+    } catch (e) { notice = e.message; }
+    return render();
+  }
+  if (id === 'auditBtn') {
+    try {
+      const r = await api('GET', '/audit');
+      $('#audit').innerHTML = `<div class="msg" style="${r.ok ? '' : 'border-color:var(--err)'}">${r.ok ? `Audit clean: ${fmt(r.users)} members, ${fmt(r.ledgerTotal)} durood, every total matches the ledger.` : `Audit found ${r.problems.length} problem(s): ${esc(JSON.stringify(r.problems.slice(0, 3)))}`}</div>`;
+    } catch (e) { $('#audit').innerHTML = `<div class="msg" style="border-color:var(--err)">${esc(e.message)}</div>`; }
+  }
+});
 $('#mode').onclick = () => {
   const next = document.documentElement.getAttribute('data-mode') === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-mode', next);
   try { localStorage.setItem('mode', next); } catch { /* private mode */ }
 };
-if (KEY) $('#key').placeholder = 'Admin key (saved for this tab)';
-render();
+(async () => { if (TOKEN || KEY) await enter(); render(); })();

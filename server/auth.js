@@ -100,6 +100,22 @@ setInterval(() => {
 }, 60_000).unref();
 
 // unguessable per-photo capability: only logged-in users ever receive these URLs (from the feed / their own history)
+// ---- admin sessions: a separate, short token (8 hours), tied to the member's session version so a password change or a sign-out-everywhere ends it
+const ADMIN_HOURS = 8;
+export function signAdminToken(userId, ver = 0) {
+  const body = `a.${userId}.${Math.floor(Date.now() / 1000) + ADMIN_HOURS * 3600}.${ver}`;
+  return `${body}.${crypto.createHmac('sha256', SECRET).update(body).digest('base64url')}`;
+}
+export function verifyAdminToken(token) {
+  if (typeof token !== 'string') return null;
+  const [kind, id, exp, ver, sig] = token.split('.');
+  if (kind !== 'a' || !id || !exp || ver === undefined || !sig) return null;
+  const want = crypto.createHmac('sha256', SECRET).update(`a.${id}.${exp}.${ver}`).digest('base64url');
+  const x = Buffer.from(sig), y = Buffer.from(want);
+  if (x.length !== y.length || !crypto.timingSafeEqual(x, y) || Number(exp) < Date.now() / 1000) return null;
+  return { id: Number(id), ver: Number(ver) };
+}
+
 /** A profile picture is addressed by member and version, so a new picture is a new, permanently cacheable URL. */
 export const avatarSig = (id, v) => crypto.createHmac('sha256', SECRET).update(`avatar:${id}:${v}`).digest('base64url').slice(0, 24);
 export const avatarUrl = (id, v) => (v > 0 ? `/avatars/${id}/${v}/${avatarSig(id, v)}` : null);

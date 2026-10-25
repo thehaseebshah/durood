@@ -24,6 +24,8 @@ fly secrets set \
 fly deploy
 fly status && fly logs
 ```
+After the first member exists, make yourself the owner so you can sign in by name: `fly ssh console -C "node scripts/make-admin.mjs <username> owner"` (or sign in on /admin.html with the key and use the Admins tab). Keep the key for emergencies only.
+
 Write the generated `ADMIN_KEY` down: `fly secrets list` shows names only. To read it back, set a new one.
 
 Then open `https://<your-app-name>.fly.dev`, and check the deploy:

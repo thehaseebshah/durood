@@ -111,8 +111,8 @@ export function publicProfile(username) {
 
 // ---- moderation (admin) ---------------------------------------------------------------------------------------------------------------
 /** Every moderation action is written down: who or what it touched, and what the admin did. */
-export const logAdmin = (action, target, detail = '') => { run('INSERT INTO admin_log (at, action, target, detail) VALUES (?,?,?,?)', Date.now(), action, String(target).slice(0, 80), String(detail).slice(0, 300)); };
-export const adminLog = (limit = 40) => db.prepare('SELECT at, action, target, detail FROM admin_log ORDER BY id DESC LIMIT ?').all(limit);
+export const logAdmin = (action, target, detail = '', actor = '') => { run('INSERT INTO admin_log (at, action, target, detail, actor) VALUES (?,?,?,?,?)', Date.now(), action, String(target).slice(0, 80), String(detail).slice(0, 300), String(actor).slice(0, 40)); };
+export const adminLog = (limit = 40) => db.prepare('SELECT at, action, target, detail, actor FROM admin_log ORDER BY id DESC LIMIT ?').all(limit);
 
 /** Pictures and names to look at: newest pictures first, or members with a name or line, or a search by username, name, bio or city. */
 export function adminProfiles({ q = '', filter = 'photos' } = {}) {

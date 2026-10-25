@@ -278,3 +278,17 @@ Earlier sections define a caravan as "a member plus the people they invited dire
 ## 23. Admin moderation tab
 
 The admin page has a **Moderation** tab: (1) *Pictures and names*: members with a photo (newest first), with a name or line, or everyone, with a search by username, name, bio or city; each row can have its picture removed or its name and line cleared. (2) *Caravans*: search by caravan or owner name, rename (same name rules and name space) or delete (members stay in the app and leave the caravan). (3) *Recent moderation actions*: a log of picture and profile removals, caravan renames and deletes, hiding or removing feed content, suspending, unsuspending and hiding members, with what was cleared. Failed actions are not logged. The log is `admin_log`; it is not shown to members. API: `GET /api/admin/profiles`, `GET/PUT/DELETE /api/admin/caravans`, `GET /api/admin/log`.
+
+## 24. Admin accounts and roles
+
+An admin is a normal member account with a role in `users.admin_role` (`owner`, `moderator`, `organiser`). They sign in on the admin page with their own username and password (`POST /api/admin/login`, 8-hour session in the `x-admin-token` header). The session ends when their role is removed, their password changes, they are suspended or they delete the account; the role is read from the database on every request. Wrong sign-ins give one answer for "no such admin", "not an admin" and "wrong password", and eight wrong tries per username (or ten wrong tokens or keys per address) lock that out for 15 minutes.
+
+| Role | Can do |
+|---|---|
+| owner | everything: also the audit, the Admins tab (give or remove roles) |
+| moderator | pictures, names, caravans, reported content, flagged totals, suspend/hide members, the moderation log, challenge status |
+| organiser | invite codes, waitlist, news, lectures, questions, special days, challenge settings, exports, member list, reset links |
+
+Each admin route has one permission in `server/admins.js` (`ADMIN_PERMS`); a route not listed there is owner-only. Inside `POST /api/admin/members/:username`, suspend, unsuspend, hide, unhide, remove-avatar and clear-profile need *moderate*; reset-link needs *reset_link*. Admins cannot change or remove their own role, and only the shared key can demote the last owner account. Every logged action records who did it (`admin_log.actor`: a username, `admin key` or `command line`), including role grants and removals and reset links.
+
+The shared `ADMIN_KEY` still works and acts as an owner. Keep it for emergencies: it is not tied to a person, so its actions are logged as "admin key". Make the first owner either with the key (Admins tab, after signing in with it) or `node scripts/make-admin.mjs <username> owner`. Owners can give a role to any active member. API: `POST /api/admin/login`, `GET /api/admin/me`, `GET/POST /api/admin/admins`, `DELETE /api/admin/admins/:username`.
