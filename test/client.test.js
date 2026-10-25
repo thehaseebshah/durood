@@ -76,3 +76,17 @@ test('every error code a member can trigger has a message in both languages', as
   for (const c of codes) if (!adminOrTechnical.has(c)) for (const lang of ['en', 'ur']) if (!I18N[lang].err[c]) missing.push(`${lang}:${c}`);
   assert.deepEqual(missing, []);
 });
+
+test('every error code only an administrator can trigger has a plain message on the admin page (no raw codes like "bad_date")', async () => {
+  const { I18N } = await import('../public/i18n.js');
+  const codes = new Set();
+  for (const f of fs.readdirSync(new URL('../server/', import.meta.url))) {
+    if (!f.endsWith('.js')) continue;
+    for (const m of fs.readFileSync(new URL(`../server/${f}`, import.meta.url), 'utf8').matchAll(/new HttpError\(\d+, '(\w+)'\)/g)) codes.add(m[1]);
+  }
+  const admin = fs.readFileSync(new URL('../public/admin.js', import.meta.url), 'utf8');
+  const adminKeys = new Set([...admin.match(/const ADMIN_ERR = \{([\s\S]*?)\n\};/)[1].matchAll(/(\w+):/g)].map((m) => m[1]));
+  const protocol = new Set(['forbidden', 'bad_path', 'method_not_allowed']); // handled before any message (sign-out) or unreachable from a page
+  const missing = [...codes].filter((c) => !protocol.has(c) && !I18N.en.err[c] && !adminKeys.has(c));
+  assert.deepEqual(missing, []);
+});

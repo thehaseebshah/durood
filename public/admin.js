@@ -31,6 +31,9 @@ const tabOk = ([k, , p]) => (k === 'burhan' ? EDITION === 'internal' && (can('mo
 
 // what an error code means, in words an organiser can act on
 const ADMIN_ERR = {
+  bad_cap: 'Uses must be a whole number from 0 to 100,000.', bad_code: 'Codes are 4 to 20 capital letters or digits.', bad_action: 'That action is not recognised. Reload the page and try again.',
+  bad_prompt: 'A prompt needs a day and English text.', bad_date: 'Pick a valid start date.', bad_days: 'Days must be a whole number from 1 to 365.',
+  bad_target: 'The target must be between 10 lakh and 1,000 crore.', bad_news: 'News needs an English title of up to 120 characters.', bad_export: 'That export is not available. Reload the page and try again.',
   not_allowed: 'Your role cannot do that.', rate_limited: 'Too many tries. Wait a few minutes.', not_found: 'That was not found. It may have been removed already.',
   bad_quiz: 'The quiz is not in the right shape: up to 10 questions, each with q_en, 2 to 5 options_en (options_ur the same number, or none) and the answer number (0 is the first option).',
   bad_lecture: 'Check the YouTube id (11 characters), the English title and the week date.',
