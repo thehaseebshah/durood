@@ -253,3 +253,38 @@ test('a declined or ended murabbi link is explained to the salik; a masul can re
   assert.equal((await api('GET', '/api/burhan', { token: r.token })).masul, null);
   assert.deepEqual(audit().problems, []);
 });
+
+test('members add their own tasks and routines; their masul and murabbi see them, only the member changes them, and they outlive a change of masul', async () => {
+  const me = await signup('ot_me'), ma = await signup('ot_masul'), ma2 = await signup('ot_masul2'), mu = await signup('ot_mur');
+  // alone: a personal list
+  let st = await api('POST', '/api/tasks', { token: me.token, body: { kind: 'task', title: 'Read one page of Seerah' } });
+  assert.equal(st.assignments.length, 1);
+  assert.equal(st.assignments[0].own, true);
+  assert.equal(st.assignments[0].from, null);
+  await api('POST', '/api/tasks', { token: me.token, body: { kind: 'routine', title: 'Visit the masjid', weekday: 5 } });
+  // with a masul: the masul sees them (marked as the member's own) and cannot end them
+  await api('PUT', '/api/burhan/masul', { token: me.token, body: { username: 'ot_masul' } });
+  await api('POST', '/api/assignments', { token: ma.token, body: { razakar: 'ot_me', kind: 'task', title: 'Bring the dates' } });
+  let rep = await api('GET', '/api/burhan/razakars/ot_me', { token: ma.token });
+  assert.deepEqual(rep.assignments.map((a) => [a.title, a.own]).sort(), [['Bring the dates', false], ['Read one page of Seerah', true], ['Visit the masjid', true]]);
+  const ownId = rep.assignments.find((a) => a.own && a.kind === 'task').id;
+  assert.equal((await api('DELETE', `/api/assignments/${ownId}`, { token: ma.token })).status, 404);
+  assert.equal((await api('GET', '/api/burhan/razakars', { token: ma.token })).razakars[0].openTasks, 2);
+  // the member sees who gave what
+  st = await api('GET', '/api/burhan', { token: me.token });
+  assert.equal(st.assignments.find((a) => a.title === 'Bring the dates').from, 'ot_masul');
+  // the murabbi sees all of them
+  murabbis[phoneOf.ot_me] = { name: 'Shaykh', whatsapp: phoneOf.ot_mur.slice(1) };
+  await api('POST', '/api/burhan/murabbi', { token: me.token });
+  await connect(me, mu, 'ot_me');
+  assert.equal((await api('GET', '/api/burhan/saaliks/ot_me', { token: mu.token })).assignments.length, 3);
+  // a new masul: the old masul's task ends, the member's own stay
+  await api('PUT', '/api/burhan/masul', { token: me.token, body: { username: 'ot_masul2' } });
+  st = await api('GET', '/api/burhan', { token: me.token });
+  assert.deepEqual(st.assignments.map((a) => a.title).sort(), ['Read one page of Seerah', 'Visit the masjid']);
+  assert.equal((await api('GET', '/api/burhan/razakars/ot_me', { token: ma2.token })).assignments.length, 2);
+  // the member removes their own
+  assert.equal((await api('DELETE', `/api/assignments/${ownId}`, { token: me.token })).ok, true);
+  assert.equal((await api('GET', '/api/burhan', { token: me.token })).assignments.length, 1);
+  assert.deepEqual(audit().problems, []);
+});

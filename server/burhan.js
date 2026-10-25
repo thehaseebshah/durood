@@ -183,7 +183,7 @@ export function setMasul(userId, username) {
   });
   return masulState(userId);
 }
-const endAll = (razakarId) => run('UPDATE assignments SET ended_at = ? WHERE razakar_id = ? AND ended_at IS NULL', Date.now(), razakarId);
+const endAll = (razakarId) => run('UPDATE assignments SET ended_at = ? WHERE razakar_id = ? AND masul_id != razakar_id AND ended_at IS NULL', Date.now(), razakarId); // the member's own tasks stay
 /** A masul removes a razakar who named them (anyone can name a masul, so the masul must be able to say no). Their open work ends. */
 export function removeRazakar(masulId, username) {
   const r = one('SELECT u.id FROM users u JOIN masul_links l ON l.razakar_id = u.id WHERE u.username = ? AND l.masul_id = ?', String(username), masulId);
@@ -213,9 +213,14 @@ const TITLE_MAX = 80, ACTIVE_MAX = 30;
 const LINK = /(https?:\/\/|www\.)/i;
 const weekdayOf = (day) => new Date(`${day}T00:00:00Z`).getUTCDay();
 
-export function addAssignment(masulId, razakarUsername, { kind, title, weekday, dueDay }) {
+export function addAssignment(masulId, razakarUsername, fields) {
   const r = one('SELECT u.id FROM users u JOIN masul_links l ON l.razakar_id = u.id WHERE u.username = ? AND l.masul_id = ? AND u.deleted_at IS NULL', String(razakarUsername ?? ''), masulId);
   if (!r) throw new HttpError(403, 'not_your_razakar');
+  return insertAssignment(masulId, r.id, fields);
+}
+/** A member's own task or routine: "assigned" by themselves. Their masul and murabbi see it with the rest; only they can change it. */
+export const addOwnAssignment = (userId, fields) => insertAssignment(userId, userId, fields);
+function insertAssignment(byId, forId, { kind, title, weekday, dueDay }) {
   const t = String(title ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!t) throw new HttpError(400, 'empty_text');
   if ([...t].length > TITLE_MAX) throw new HttpError(400, 'text_too_long');
@@ -230,8 +235,8 @@ export function addAssignment(masulId, razakarUsername, { kind, title, weekday, 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(due) || Number.isNaN(Date.parse(`${due}T00:00:00Z`))) throw new HttpError(400, 'bad_day');
   }
   return tx(() => {
-    if (one('SELECT COUNT(*) n FROM assignments WHERE razakar_id = ? AND ended_at IS NULL', r.id).n >= ACTIVE_MAX) throw new HttpError(429, 'too_many_assignments');
-    const res = run('INSERT INTO assignments (masul_id, razakar_id, kind, title, weekday, due_day, created_at) VALUES (?,?,?,?,?,?,?)', masulId, r.id, kind, t, wd, due, Date.now());
+    if (one('SELECT COUNT(*) n FROM assignments WHERE razakar_id = ? AND ended_at IS NULL', forId).n >= ACTIVE_MAX) throw new HttpError(429, 'too_many_assignments');
+    const res = run('INSERT INTO assignments (masul_id, razakar_id, kind, title, weekday, due_day, created_at) VALUES (?,?,?,?,?,?,?)', byId, forId, kind, t, wd, due, Date.now());
     return { id: Number(res.lastInsertRowid) };
   });
 }
@@ -267,7 +272,7 @@ function routineStats(a, today) {
   return { due, done, doneToday: ticks.has(today) };
 }
 function assignmentOut(a, today) {
-  const base = { id: a.id, kind: a.kind, title: a.title };
+  const base = { id: a.id, kind: a.kind, title: a.title, own: a.masul_id === a.razakar_id };
   if (a.kind === 'routine') {
     const st = routineStats(a, today);
     return { ...base, weekday: a.weekday, dueToday: weekdayOf(today) === a.weekday, doneToday: st.doneToday, last4: { due: st.due, done: st.done } };
@@ -278,8 +283,8 @@ function assignmentOut(a, today) {
 /** What a razakar sees: everything their masul has given them that is still active. */
 export function myAssignments(userId) {
   const today = dayOf();
-  const rows = all('SELECT * FROM assignments WHERE razakar_id = ? AND ended_at IS NULL ORDER BY kind DESC, id', userId);
-  return rows.map((a) => assignmentOut(a, today));
+  const rows = all('SELECT a.*, u.username giver FROM assignments a JOIN users u ON u.id = a.masul_id WHERE a.razakar_id = ? AND a.ended_at IS NULL ORDER BY a.kind DESC, a.id', userId);
+  return rows.map((a) => ({ ...assignmentOut(a, today), from: a.masul_id === a.razakar_id ? null : a.giver })); // who gave it, unless it is their own
 }
 
 // ---- the two views people with a role get --------------------------------------------------------------------------------------
@@ -307,13 +312,14 @@ export function razakarReport(masulId, username) {
   if (!r) throw new HttpError(404, 'not_found');
   touchView(masulId, r.id, 'masul');
   const u = livePerson(r.id), today = dayOf();
-  const items = all('SELECT * FROM assignments WHERE razakar_id = ? AND masul_id = ? AND ended_at IS NULL ORDER BY kind DESC, id', r.id, masulId).map((a) => assignmentOut(a, today));
+  // what the masul gave, and what the razakar set themselves (the masul can see but not change those)
+  const items = all('SELECT * FROM assignments WHERE razakar_id = ? AND masul_id IN (?, razakar_id) AND ended_at IS NULL ORDER BY kind DESC, id', r.id, masulId).map((a) => assignmentOut(a, today));
   return { username: u.username, city: u.city, joined: u.created_day, progress: generalProgress(r.id), assignments: items };
 }
 export function razakarList(masulId) {
   const today = dayOf();
   return all(`SELECT u.id, u.username, u.city, u.avatar_v av FROM masul_links l JOIN users u ON u.id = l.razakar_id WHERE l.masul_id = ? AND u.deleted_at IS NULL ORDER BY u.username`, masulId).map((u) => {
-    const items = all('SELECT * FROM assignments WHERE razakar_id = ? AND masul_id = ? AND ended_at IS NULL', u.id, masulId).map((a) => assignmentOut(a, today));
+    const items = all('SELECT * FROM assignments WHERE razakar_id = ? AND masul_id IN (?, razakar_id) AND ended_at IS NULL', u.id, masulId).map((a) => assignmentOut(a, today));
     const tasks = items.filter((i) => i.kind === 'task'), routines = items.filter((i) => i.kind === 'routine');
     const due = routines.reduce((n, i) => n + i.last4.due, 0), done = routines.reduce((n, i) => n + i.last4.done, 0);
     const g = generalProgress(u.id);

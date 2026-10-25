@@ -267,7 +267,7 @@ function cityModal() {
 }
 
 // ---- the frame: a sidebar (a drawer on phones, like Todoist), the bottom bar and the + button ---------------------------------------
-const NAV_GLYPH = { home: 'check', feed: 'feed', rank: 'bars', caravan: 'caravan', qabila: 'nodes', burhan: 'chain', progress: 'bolt', settings: 'me', browse: 'me' };
+const NAV_GLYPH = { home: 'home', feed: 'feed', rank: 'bars', caravan: 'caravan', qabila: 'nodes', tasks: 'check', people: 'chain', progress: 'me', settings: 'pen', browse: 'me' };
 const navIcon = (k, size = 22) => uiIcon(NAV_GLYPH[k] || 'star', size, 1.7);
 const openQuests = () => (S.me.quests || []).filter((q) => !q.info && !q.done).length;
 function sideItem(k, count = 0, dot = false) {
@@ -275,17 +275,17 @@ function sideItem(k, count = 0, dot = false) {
 }
 function sidebar() {
   const m = S.me, title = t('titles')[Math.min(m.level - 1, 9)];
-  const cvCount = (m.caravanInvites || 0) + (m.caravanRequests || 0), bhCount = (S.bh?.roles?.requests || 0) + (S.bh?.today?.length || 0);
+  const cvCount = (m.caravanInvites || 0) + (m.caravanRequests || 0);
+  const dueToday = (S.bh?.today || []).filter((a) => !(a.kind === 'routine' ? a.doneToday : a.done)).length;
   return `<aside class="side ${S.drawer ? 'open' : ''}" aria-label="${esc(t('menu'))}" id="side">
     <div class="sidetop"><button class="sprof" data-act="go" data-tab="progress">${av(m, 40, false)}<span><b>${esc(m.displayName || m.username)}</b><small>${t('level')} ${m.level} · ${esc(title)}</small></span></button>
       <button class="pill icon sclose" data-act="drawerx" aria-label="${esc(t('close'))}">✕</button></div>
     <button class="sadd" data-act="addsheet">${uiIcon('plus', 20, 2.4)}<span>${t('add_durood')}</span></button>
     <div class="sgroup">${sideItem('home', openQuests())}${sideItem('feed', m.unreadNews || 0)}${sideItem('rank')}</div>
     <div class="slabel">${t('grp_groups')}</div>
-    <div class="sgroup">${sideItem('caravan', cvCount)}${sideItem('qabila')}</div>
-    ${inBurhan() ? `<div class="slabel">${t('bh_title')}</div><div class="sgroup">${sideItem('burhan', bhCount)}</div>` : ''}
+    <div class="sgroup">${sideItem('caravan', cvCount)}${sideItem('qabila')}${inBurhan() ? sideItem('people', S.bh?.roles?.requests || 0) : ''}</div>
     <div class="slabel">${t('grp_you')}</div>
-    <div class="sgroup">${sideItem('progress')}${sideItem('settings', 0, !m.emailVerified)}</div>
+    <div class="sgroup">${sideItem('progress', 0, !!(S.bh?.notices || []).length)}${inBurhan() ? sideItem('tasks', dueToday) : ''}${sideItem('settings', 0, !m.emailVerified)}</div>
     <div class="sfoot"><button class="chip" data-act="setlang" data-l="${S.lang === 'ur' ? 'en' : 'ur'}">${S.lang === 'ur' ? 'English' : 'اردو'}</button><button class="chip" data-act="logout">${t('logout')}</button></div>
   </aside>${S.drawer ? `<div class="scrim" data-act="drawerx" aria-hidden="true"></div>` : ''}`;
 }
@@ -299,7 +299,7 @@ function shell() {
     <span class="row"><span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button></span></header>
   <main id="main" tabindex="-1" class="wrap tab-${S.tab}"><h1 class="sr">${t('nav_' + S.tab)}</h1>${view()}</main>
   <nav class="tabs" aria-label="${esc(t('app'))}">${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" ${S.tab === k ? 'aria-current="page"' : ''} data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}
-    <button class="${['caravan', 'qabila', 'burhan', 'progress', 'settings'].includes(S.tab) ? 'on' : ''}" data-act="drawer" aria-label="${esc(t('menu'))}">${uiIcon('menu', 22, 1.7)}<em>${t('nav_browse')}</em>${S.me.caravanInvites || S.me.caravanRequests || S.bh?.roles?.requests ? '<i class="pip" aria-hidden="true"></i>' : ''}</button></nav>
+    <button class="${['caravan', 'qabila', 'tasks', 'people', 'progress', 'settings'].includes(S.tab) ? 'on' : ''}" data-act="drawer" aria-label="${esc(t('menu'))}">${uiIcon('menu', 22, 1.7)}<em>${t('nav_browse')}</em>${S.me.caravanInvites || S.me.caravanRequests || S.bh?.roles?.requests ? '<i class="pip" aria-hidden="true"></i>' : ''}</button></nav>
   ${fab ? `<button class="fab" data-act="addsheet" aria-label="${esc(t('add_durood'))}" title="${esc(t('add_durood'))}">${uiIcon('plus', 28, 2.4)}</button>` : ''}
   ${S.sheet === 'add' ? addSheet() : ''}
   ${S.player ? playerModal() : ''}
@@ -310,7 +310,7 @@ function shell() {
 }
 
 function view() {
-  return ({ home, feed: feedView, rank, caravan, qabila, burhan: burhanPage, progress, settings }[S.tab] || home)();
+  return ({ home, feed: feedView, rank, caravan, qabila, tasks: tasksPage, people: burhanCaravan, progress, settings }[S.tab] || home)();
 }
 
 // a section that folds away, like a Todoist section; what is open is remembered on this device
@@ -362,7 +362,7 @@ function home() {
     m.special ? `<div class="special">${uiIcon('star', 14, 2)} ${t('special_banner')(esc(pick(m.special.nameEn, m.special.nameUr)))}</div>` : '',
     m.caravanInvites ? `<button class="rowlink" data-act="tab" data-tab="caravan"><span>${uiIcon('caravan', 14, 2)} ${t('cv_home_invited')(m.caravanInvites)}</span><b class="ar">→</b></button>` : '',
     m.caravanRequests ? `<button class="rowlink" data-act="tab" data-tab="caravan"><span>${uiIcon('caravan', 14, 2)} ${t('cv_requests_home')(m.caravanRequests)}</span><b class="ar">→</b></button>` : '',
-    S.bh?.roles?.requests ? `<button class="rowlink" data-act="tab" data-tab="burhan"><span>${uiIcon('chain', 14, 2)} ${t('bh_requests_home')(S.bh.roles.requests)}</span><b class="ar">→</b></button>` : '',
+    S.bh?.roles?.requests ? `<button class="rowlink" data-act="tab" data-tab="people"><span>${uiIcon('chain', 14, 2)} ${t('bh_requests_home')(S.bh.roles.requests)}</span><b class="ar">→</b></button>` : '',
     pushPromptDue() ? `<div class="circlecard push"><b>${t('push_card_title')}</b><p>${t('push_card_text')}</p>
       <div class="row"><button class="blk fill1" data-act="pushon"><span>${t('push_enable')}</span><b class="ar">→</b></button><button class="chip" data-act="pushno">${t('push_later')}</button></div></div>` : '',
   ].join('');
@@ -388,7 +388,7 @@ function home() {
   <div class="live">${uiIcon('feed', 13, 2)} ${t('live_today')(fmt(m.pub.today || 0), fmt(m.pub.membersToday || 0))}</div>
   ${logBox()}</section>
   ${fold('seerah', t('grp_seerah'), seerahMeta, seerah)}
-  ${assigned ? fold('assigned', t('assigned_title'), N(String(S.bh.today.length)), assigned) : ''}
+  ${assigned ? fold('assigned', t('grp_tasks_today'), N(String(S.bh.today.length)), `${assigned}<button class="rowlink" data-act="tab" data-tab="tasks"><span>${t('tasks_all')}</span><b class="ar">→</b></button>`) : ''}
   ${fold('quests', t('grp_quests'), N(`${quests.filter((q) => q.done).length} / ${quests.length}`),
     `${m.quests.filter((q) => q.group === 'durood').map((q) => quest(q)).join('')}${m.quests.filter((q) => q.group === 'bonus').map((q) => quest(q, true)).join('')}`)}
   ${fold('challenge', t('challenge_title'), '', challengeCard(m), false)}
@@ -781,12 +781,6 @@ function qabila() {
   ${tm?.upline?.length ? fold('qup', t('upline_title'), '', uplineBlock(tm).replace(/^<h3>.*?<\/h3>/, ''), false) : ''}`;
 }
 
-// ---- Al-Burhan: murabbi and masul, tasks and routines given to you, and (for murabbis and masuls) the people you look after -------------
-function burhanPage() {
-  if (!S.bh) return '<p class="muted center">…</p>';
-  return `${burhanMe()}${burhanCaravan()}`;
-}
-
 function historyBlock() {
   const h = S.history;
   if (!h) return '<p class="muted center">…</p>';
@@ -823,6 +817,7 @@ function progress() {
     <div class="row wrapx"><a class="chip" href="${esc(m.circleUrl)}" target="_blank" rel="noopener">${t('circle_open')} ↗</a>
     ${m.badges.includes('circle') ? `<span class="ok">✓ ${t('circle_done')}</span>` : `<button class="chip" data-act="circle">${t('circle_claim')}</button>`}</div>
     <p class="muted">${t('teach_text')}</p><div class="row wrapx">${teachButton()}</div>`, !m.badges.includes('circle_teacher')) : ''}
+  ${inBurhan() ? fold('guides', t('guides_title'), (S.bh?.notices || []).length ? '•' : '', burhanMe() || '<p class="muted center">…</p>') : ''}
   ${fold('points', t('points_title'), '', `<ul class="how">${t('points_list').map((x) => `<li>${x}</li>`).join('')}</ul>`, false)}
   ${fold('history', t('hist_title'), '', `<p class="note first">${t('hist_hint')}</p>${historyBlock()}`)}
   ${fold('badges', t('badges'), N(`${m.badges.length}`), `${BADGE_FAMILIES.map(([fam, list]) => `<h3>${t('fam_' + fam)}</h3>
@@ -960,17 +955,18 @@ function assignRow(a, mode) { // mode: 'mine' (razakar ticks) or 'masul' (masul 
     : (a.done ? `<small class="ok">${t('done_on')(N(esc(a.doneOn)))}</small>` : a.overdue ? `<small class="bad">${t('overdue')}</small>` : '');
   const tickable = mode === 'mine' && (a.kind === 'routine' ? a.dueToday : true);
   const done = a.kind === 'routine' ? a.doneToday : a.done;
+  const giver = mode === 'mine' ? (a.from ? ` · ${t('from_masul')(esc(a.from))}` : '') : a.own ? ` · ${t('own_tag')}` : '';
   return `<div class="q ${done ? 'd' : ''}"><span class="bx"></span>
-    <span class="t">${esc(a.title)}<small>${asgLabel(a)}</small>${state}</span>
+    <span class="t">${esc(a.title)}<small>${asgLabel(a)}${giver}</small>${state}</span>
     ${tickable ? `<button class="chip ${done ? '' : 'solid'}" data-act="atick" data-id="${a.id}" data-done="${done ? 0 : 1}">${done ? t('undo') : t('mark_done')}</button>` : ''}
-    ${mode === 'masul' ? `<button class="chip" data-act="endassign" data-id="${a.id}" aria-label="${esc(t('end_assign'))}" title="${esc(t('end_assign'))}">✕</button>` : ''}</div>`;
+    ${(mode === 'masul' && !a.own) || (mode === 'mine' && a.own) ? `<button class="chip" data-act="${mode === 'mine' ? 'endown' : 'endassign'}" data-id="${a.id}" aria-label="${esc(t('end_assign'))}" title="${esc(t('end_assign'))}">✕</button>` : ''}</div>`;
 }
 
 function burhanToday() {
   const b = S.bh;
   if (!b || (!b.today.length && !(b.mamulaat && b.mamulaat.today != null))) return '';
   return `${b.today.map((a) => assignRow(a, 'mine')).join('')}
-  ${b.mamulaat && b.mamulaat.today != null ? `<button class="rowlink" data-act="tab" data-tab="burhan"><span>${t('mam_title')}</span><b>${b.mamulaat.today}%</b></button>` : ''}`;
+  ${b.mamulaat && b.mamulaat.today != null ? `<button class="rowlink" data-act="tab" data-tab="progress"><span>${t('mam_title')}</span><b>${b.mamulaat.today}%</b></button>` : ''}`;
 }
 
 function whoSees() {
@@ -1003,25 +999,49 @@ function burhanMe() {
         <div class="row"><button class="blk fill1" data-act="bhmasulyes"><span>${t('yes_add')}</span><b class="ar">→</b></button><button class="chip" data-act="bhmasulno">${t('cancel')}</button></div></div>`
     : `<p class="muted">${t('masul_text')}</p><div class="row"><input id="masulq" type="text" aria-label="${esc(t('masul_ph'))}" autocomplete="off" autocapitalize="off" dir="ltr" placeholder="${esc(t('masul_ph'))}"></div><div id="masulres" class="chips"></div>`;
   const notes = (b.notices || []).map((n) => `<div class="notice row between"><span>${t('bh_n_' + n.kind)(esc(n.byName))}</span><button class="chip" data-act="bhnotice" data-k="${esc(n.kind)}">${t('ok_got_it')}</button></div>`).join('');
-  return `<h3>${t('bh_title')}</h3>
-  <div class="padx bh">
+  return `<div class="padx bh">
     ${notes}
     ${whoSees()}
     <div class="spacer"></div><b>${t('murabbi_word')}</b>${murabbiBox}
     ${mu?.stage === 'active' ? mamulaatBars(b.mamulaat) : ''}
     <div class="spacer"></div><b>${t('masul_word')}</b>${masulBox}
-    ${b.assignments.length ? `<div class="spacer"></div><b>${t('assigned_title')}</b>${b.assignments.map((a) => assignRow(a, 'mine')).join('')}` : ''}
   </div>`;
 }
 
 function burhanCaravan() {
   const b = S.bh;
-  if (!b || (!b.roles.saaliks && !b.roles.razakars && !b.roles.requests)) return '';
-  const sa = S.bhLists?.saaliks, ra = S.bhLists?.razakars, rq = S.bhLists?.requests || [];
-  return `${rq.length ? `<h3>${t('requests_title')} (${rq.length})</h3>${rq.map((r) => `<div class="circlecard"><b>${esc(r.username)}</b>${r.city ? ` · ${esc(r.city)}` : ''}<p class="muted">${t('request_text')}</p><div class="row"><button class="blk fill1" data-act="bhaccept" data-u="${esc(r.username)}"><span>${t('accept')}</span><b class="ar">→</b></button><button class="chip" data-act="bhdecline" data-u="${esc(r.username)}">${t('decline')}</button></div></div>`).join('')}` : ''}${b.roles.saaliks ? `<h3>${t('saaliks_title')} (${b.roles.saaliks})</h3>
-    ${!sa ? '…' : `<ul class="lb">${sa.map((x) => `<li><button class="rowbtn" data-act="opensaalik" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('durood_week')(fmt(x.duroodWeek))}${x.mamulaatToday == null ? '' : ` · ${t('mam_short')} ${x.mamulaatToday}%`}</small></span><span class="score">${fmt(x.duroodToday)}</span></button></li>`).join('')}</ul>`}` : ''}
-  ${b.roles.razakars ? `<h3>${t('razakars_title')} (${b.roles.razakars})</h3>
-    ${!ra ? '…' : `<ul class="lb">${ra.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${x.routinePercent}%`}</small></span><span class="score">${fmt(x.duroodWeek)}</span></button></li>`).join('')}</ul>`}` : ''}`;
+  if (!b) return '<p class="muted center">…</p>';
+  const sa = S.bhLists?.saaliks || [], ra = S.bhLists?.razakars || [], rq = S.bhLists?.requests || [];
+  const loading = !S.bhLists && (b.roles.saaliks || b.roles.razakars || b.roles.requests);
+  if (loading) return '<p class="muted center">…</p>';
+  const reqs = rq.map((r) => `<div class="circlecard"><b>${esc(r.username)}</b>${r.city ? ` · ${esc(r.city)}` : ''}<p class="muted">${t('request_text')}</p><div class="row"><button class="blk fill1" data-act="bhaccept" data-u="${esc(r.username)}"><span>${t('accept')}</span><b class="ar">→</b></button><button class="chip" data-act="bhdecline" data-u="${esc(r.username)}">${t('decline')}</button></div></div>`).join('');
+  const saliks = sa.length ? `<ul class="lb">${sa.map((x) => `<li><button class="rowbtn" data-act="opensaalik" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('durood_week')(fmt(x.duroodWeek))}${x.mamulaatToday == null ? '' : ` · ${t('mam_short')} ${x.mamulaatToday}%`}</small></span><span class="score">${fmt(x.duroodToday)}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('saaliks_none')}</p>`;
+  const razakars = ra.length ? `<ul class="lb">${ra.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${x.routinePercent}%`}</small></span><span class="score">${fmt(x.duroodWeek)}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('razakars_none')}</p>`;
+  return `${rq.length ? fold('preq', t('requests_title'), N(String(rq.length)), reqs) : ''}
+  ${fold('psaliks', t('saaliks_title'), N(String(sa.length)), saliks)}
+  ${fold('prazakars', t('razakars_title'), N(String(ra.length)), razakars)}`;
+}
+
+// ---- Tasks: your own tasks and routines and the ones your masul gives you, like a Todoist list ------------------------------------
+function tasksPage() {
+  const b = S.bh;
+  if (!b) return '<p class="muted center">…</p>';
+  const f = S.ownForm || { kind: 'task' };
+  const list = b.assignments, routines = list.filter((a) => a.kind === 'routine'), tasks = list.filter((a) => a.kind === 'task');
+  const open = tasks.filter((a) => !a.done), done = tasks.filter((a) => a.done);
+  const form = `<form novalidate data-form="owntask" class="assign"><b>${t('own_new')}</b>
+      <div class="seg thin"><button type="button" class="${f.kind === 'task' ? 'on' : ''}" data-act="ownkind" data-k="task">${t('task_word')}</button><button type="button" class="${f.kind === 'routine' ? 'on' : ''}" data-act="ownkind" data-k="routine">${t('routine_word')}</button></div>
+      <input type="text" name="title" maxlength="80" aria-label="${esc(t('own_ph'))}" placeholder="${esc(t('own_ph'))}" dir="auto">
+      ${f.kind === 'routine'
+        ? `<label for="o-wd">${t('weekday_word')}</label><select id="o-wd" name="weekday">${t('weekdays').map((n, i) => `<option value="${i}" ${i === new Date().getDay() ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`
+        : `<label for="o-due">${t('due_optional')}</label><input id="o-due" type="date" name="dueDay" dir="ltr">`}
+      <button class="blk" type="submit"><span>${t('own_add')}</span><b class="ar">→</b></button>
+      <p class="hint">${b.masul || (b.murabbi && b.murabbi.stage === 'active') ? t('own_seen_by') : t('own_private')}</p></form>`;
+  return `${fold('tnew', t('own_new'), '', form, !list.length)}
+  ${fold('ttoday', t('today'), N(String(b.today.length)), b.today.length ? b.today.map((a) => assignRow(a, 'mine')).join('') : `<p class="muted padx">${t('tasks_none_today')}</p>`)}
+  ${fold('ttasks', t('tasks_open'), N(String(open.length)), open.length ? open.map((a) => assignRow(a, 'mine')).join('') : `<p class="muted padx">${t('tasks_none')}</p>`)}
+  ${fold('troutines', t('routines_title'), N(String(routines.length)), routines.length ? routines.map((a) => assignRow(a, 'mine')).join('') : `<p class="muted padx">${t('routines_none')}</p>`)}
+  ${done.length ? fold('tdone', t('tasks_done'), N(String(done.length)), done.map((a) => assignRow(a, 'mine')).join(''), false) : ''}`;
 }
 
 function progressGrid(g) {
@@ -1160,13 +1180,14 @@ async function loadBurhanLists() {
 }
 async function enterTab(tab) {
   if (tab === 'me') tab = 'progress'; // older links
-  if (tab === 'burhan' && !inBurhan()) tab = 'home';
+  if (tab === 'burhan') tab = 'tasks'; // the old Al-Burhan page became Tasks, My people and Me
+  if (['tasks', 'people'].includes(tab) && !inBurhan()) tab = 'home';
   S.tab = tab; S.drawer = false;
   draw();
   window.scrollTo(0, 0);
   try {
     if (tab === 'rank') { S.board.data = null; draw(); S.board.data = await api(boardUrl(S.board)); }
-    if (inBurhan() && ['home', 'burhan'].includes(tab)) loadBurhan().then(async () => { if (tab === 'burhan') { await loadBurhanLists(); if (S.tab === 'burhan') draw(); } });
+    if (inBurhan() && ['home', 'tasks', 'people', 'progress'].includes(tab)) loadBurhan().then(async () => { if (tab === 'people') { await loadBurhanLists(); S.bhLists ||= { saaliks: [], razakars: [], requests: [] }; if (S.tab === 'people') draw(); } });
     if (tab === 'home') { await loadFeed(); return S.tab === 'home' && draw(); }
     if (tab === 'caravan') S.cv = await api('/caravan');
     if (tab === 'qabila') S.team = await api('/team');
@@ -1428,6 +1449,8 @@ app.addEventListener('click', async (ev) => {
   }
   if (act === 'bhnotice') { try { await api(`/burhan/notices/${el.dataset.k}`, 'DELETE'); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
   if (act === 'assignkind') { S.assignForm = { kind: el.dataset.k }; return draw(); }
+  if (act === 'ownkind') { S.ownForm = { kind: el.dataset.k }; return draw(); }
+  if (act === 'endown') { if (!confirm(t('end_own_ask'))) return; try { await api(`/assignments/${el.dataset.id}`, 'DELETE'); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
   if (act === 'endassign') {
     try {
       await api(`/assignments/${el.dataset.id}`, 'DELETE');
@@ -1602,6 +1625,10 @@ app.addEventListener('submit', async (ev) => {
       if (!f.cityId) throw new Error('city_required');
       S.me = await api('/me', 'PATCH', { cityId: Number(f.cityId) });
       toast(t('saved')); draw();
+    } else if (kind === 'owntask') {
+      const k = (S.ownForm || {}).kind || 'task';
+      S.bh = await api('/tasks', 'POST', { kind: k, title: f.title, ...(k === 'routine' ? { weekday: Number(f.weekday) } : f.dueDay ? { dueDay: f.dueDay } : {}) });
+      form.reset(); toast(t('saved')); draw();
     } else if (kind === 'assign') {
       const k = (S.assignForm || {}).kind || 'task';
       await api('/assignments', 'POST', { razakar: S.bhDetail.username, kind: k, title: f.title, ...(k === 'routine' ? { weekday: Number(f.weekday) } : f.dueDay ? { dueDay: f.dueDay } : {}) });
@@ -1629,7 +1656,7 @@ app.addEventListener('submit', async (ev) => {
       logout(false); S.authMode = 'login'; draw(); toast(t('deleted'));
     }
   } catch (e) {
-    if (kind === 'settings' || kind === 'delete' || kind === 'citysave' || kind === 'profile' || kind === 'password' || kind === 'phone' || kind === 'cvcreate' || kind === 'cvrename' || kind === 'assign') { toast(errText(e)); btn.disabled = false; }
+    if (kind === 'settings' || kind === 'delete' || kind === 'citysave' || kind === 'profile' || kind === 'password' || kind === 'phone' || kind === 'cvcreate' || kind === 'cvrename' || kind === 'assign' || kind === 'owntask') { toast(errText(e)); btn.disabled = false; }
     else { S.error = errText(e); draw(); }
   }
 });

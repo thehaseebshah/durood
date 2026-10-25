@@ -336,3 +336,9 @@ The shared `ADMIN_KEY` still works and acts as an owner. Keep it for emergencies
 
 ## 28. Seerat Circle teachers
 Joining a Seerat Circle is self-declared and pays 300 once (badge "Circle Member"). Teaching one pays more: a member taps "I teach a Seerat Circle", an organiser confirms it on the admin page (Feed tab, Circle teachers), and the teacher gets 1,000 points once and the "Circle Teacher" badge. A refused request can be made again; confirming twice pays once. The QA server's circle link is https://albn.org/seerat.
+
+## 29. Tasks, My people, and murabbi and masul under Me (Al-Burhan edition)
+- **Tasks** (menu, under You): Todoist-style folding lists of your tasks and routines: Today (due today), Tasks, Routines, Done. Anyone can add their own task (optional due date) or weekly routine; the ones your masul gives you show "from <masul>". You can remove your own; only your masul can end theirs. Today's page shows "Tasks today" with a link here.
+- Your own tasks and routines are reported like the rest: your masul sees them marked "their own" (and can't change them) and your murabbi sees all of them. A change of masul ends only what the old masul gave; your own stay.
+- **My people** (menu, under Groups): your saliks (as murabbi) and razakars (as masul), each opening their report, plus murabbi requests waiting for you. When empty it explains how people come to appear there.
+- **Me** (was Progress & badges) now also holds the murabbi and masul links, who sees what, and notices about ended links. The old Al-Burhan page is gone; old links lead to Tasks.

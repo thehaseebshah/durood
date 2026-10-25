@@ -177,6 +177,7 @@ route('PUT', '/api/burhan/masul', B(({ user, body }) => { rateLimit(`bms:${user}
 route('DELETE', '/api/burhan/masul', B(({ user }) => burhan.clearMasul(user)));
 route('GET', '/api/burhan/usernames', B(({ user, query }) => { rateLimit(`bu:${user}`, 60, 60e3); return { usernames: burhan.searchUsernames(query.get('q'), user) }; }));
 route('POST', '/api/assignments', B(({ user, body }) => { rateLimit(`as:${user}`, 60, 3600e3); return burhan.addAssignment(user, body.razakar, body); }));
+route('POST', '/api/tasks', B(({ user, body }) => { rateLimit(`as:${user}`, 60, 3600e3); burhan.addOwnAssignment(user, body); return burhan.burhanState(user); })); // your own task or routine
 route('DELETE', '/api/assignments/:id', B(({ user, params }) => burhan.endAssignment(user, Number(params.id))));
 route('POST', '/api/assignments/:id/tick', B(({ user, params, body }) => burhan.tickAssignment(user, Number(params.id), body.done !== false)));
 route('GET', '/api/burhan/saaliks', B(async ({ user }) => { rateLimit(`bsl:${user}`, 120, 3600e3); return { saaliks: await burhan.saalikList(user) }; }));
