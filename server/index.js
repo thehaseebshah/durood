@@ -770,14 +770,15 @@ async function handleStatic(req, res, url) {
   if (ext === '.html') res.setHeader('Content-Security-Policy', csp(data.toString()));
   // a short entity tag plus compression for the text assets: the app shell is 195 KB raw and about 54 KB compressed, on mobile data
   const compressible = ['.html', '.js', '.css', '.webmanifest', '.svg', '.json'].includes(ext);
-  const etag = `"${crypto.createHash('sha1').update(data).digest('base64url').slice(0, 16)}"`;
+  // weak: the gzip and brotli copies share it, which a strong tag would forbid
+  const etag = `W/"${crypto.createHash('sha1').update(data).digest('base64url').slice(0, 16)}"`;
   const headers = {
     'Content-Type': MIME[ext] || 'application/octet-stream',
     // code revalidates every load; fonts never change in place (a new font gets a new name), so phones keep them a year
     'Cache-Control': ['.html', '.js', '.css', '.webmanifest'].includes(ext) ? 'no-cache' : ext === '.woff2' ? 'public, max-age=31536000, immutable' : 'public, max-age=86400',
     'X-Content-Type-Options': 'nosniff', ETag: etag, Vary: 'Accept-Encoding',
   };
-  if (req.headers['if-none-match'] === etag) { res.writeHead(304, headers); return res.end(); }
+  if ((req.headers['if-none-match'] || '').split(/\s*,\s*/).some((v) => v.replace(/^W\//, '') === etag.slice(2))) { res.writeHead(304, headers); return res.end(); }
   // brotli when the browser takes it (every current one does over HTTPS), about a sixth smaller than gzip; gzip otherwise
   const accept = req.headers['accept-encoding'] || '';
   const enc = !compressible || data.length <= 1024 ? null : /\bbr\b/.test(accept) ? 'br' : /\bgzip\b/.test(accept) ? 'gzip' : null;

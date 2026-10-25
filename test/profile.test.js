@@ -232,3 +232,11 @@ test('static compression: brotli when the browser takes it, gzip otherwise, noth
   assert.ok(br.body.length < gz.body.length, 'brotli is smaller');
   assert.equal((await get('/fonts/inter-latin.woff2', 'br')).h['content-encoding'], undefined);
 });
+
+test('a file the browser already has comes back as 304 Not Modified, whichever compressed copy it got and however the tag is quoted', async () => {
+  const first = await api('GET', '/style.css', { raw: true });
+  const tag = first.headers.get('etag');
+  assert.match(tag, /^W\/"/);
+  for (const sent of [tag, tag.slice(2), `"zzz", ${tag}`]) assert.equal((await fetch(base + '/style.css', { headers: { 'if-none-match': sent } })).status, 304, sent);
+  assert.equal((await fetch(base + '/style.css', { headers: { 'if-none-match': 'W/"other"' } })).status, 200);
+});
