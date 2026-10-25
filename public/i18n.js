@@ -66,7 +66,7 @@ export const I18N = {
     tick_btn: 'I did today’s sunnah', tick_done: 'Today’s sunnah ticked', 
     quiz_title: 'Answer to claim', quiz_check: 'Check answers', quiz_passed: 'Quiz passed', quiz_retry: 'Some answers are wrong. Watch again and retry.', quiz_wrong: 'Not quite. Try again.',
     enter_total: 'How many durood did you recite?', tap_open: 'Count by tapping', tick_thanks: 'Recorded. Thank you',
-    cv_average: 'Average', cv_growth: 'Growth', active: 'active',
+    cv_total: 'Total', cv_average: 'Average', cv_growth: 'Growth', active: 'active',
     cv_note_total: 'Durood reported this week.', cv_note_average: 'Durood this week per active member. Active means recited on any day this week.', cv_note_growth: 'This week’s caravan total compared with last week’s.',
     upline_title: 'People above you in your Qabila',
     murabbi_word: 'Murabbi', masul_word: 'Masul', mam_title: 'Mamulaat', mam_avg: (n) => `${n}% average`, mam_none_today: 'No report for today yet.', mam_today: (n) => `Today ${n}%`, mam_short: 'Mamulaat', mam_stale: 'The Mamulaat app could not be reached. These numbers may be old.',

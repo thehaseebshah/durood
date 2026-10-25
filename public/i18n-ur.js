@@ -67,7 +67,7 @@ export const UR = {
     tick_btn: 'میں نے آج کی سنت پر عمل کیا', tick_done: 'آج کی سنت مکمل', 
     quiz_title: 'انعام کے لیے جواب دیں', quiz_check: 'جوابات جانچیں', quiz_passed: 'کوئز مکمل', quiz_retry: 'کچھ جوابات غلط ہیں۔ دوبارہ دیکھیں اور کوشش کریں۔', quiz_wrong: 'درست نہیں۔ دوبارہ کوشش کریں۔',
     enter_total: 'آپ نے کتنا درود پڑھا؟', tap_open: 'انگلی سے گنیں', tick_thanks: 'درج ہو گیا۔ شکریہ',
-    cv_average: 'اوسط', cv_growth: 'اضافہ', active: 'فعال',
+    cv_total: 'کل', cv_average: 'اوسط', cv_growth: 'اضافہ', active: 'فعال',
     cv_note_total: 'اس ہفتے کا رپورٹ کردہ درود۔', cv_note_average: 'اس ہفتے ہر فعال رکن کا اوسط درود۔ فعال یعنی اس ہفتے کسی بھی دن درود پڑھا۔', cv_note_growth: 'اس ہفتے کا کارواں کا کل درود، پچھلے ہفتے کے مقابلے میں۔',
     upline_title: 'آپ کے قبیلے میں آپ سے اوپر کے لوگ',
     murabbi_word: 'مربی', masul_word: 'مسؤل', mam_title: 'معمولات', mam_avg: (n) => `اوسط ${n}%`, mam_none_today: 'آج کی رپورٹ ابھی نہیں آئی۔', mam_today: (n) => `آج ${n}%`, mam_short: 'معمولات', mam_stale: 'معمولات ایپ سے رابطہ نہیں ہو سکا۔ یہ اعداد پرانے ہو سکتے ہیں۔',

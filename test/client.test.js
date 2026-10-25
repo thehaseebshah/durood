@@ -110,3 +110,16 @@ test('the offline cache installs only what every member needs: Urdu text and fon
   for (const f of ['i18n-ur.js', 'nastaliq-ur-400', 'nastaliq-ur-700', 'amiri-durood']) assert.match(onUse, new RegExp(f));
   for (const f of fs.readdirSync(new URL('../public/fonts/', import.meta.url))) assert.ok(shell.includes(f) || onUse.includes(f), `${f} is in neither list, so it never works offline`);
 });
+
+test('keys built from a list of names exist too, e.g. [\'total\', \'average\'].map((x) => t(\'cv_\' + x)) (a cleanup once removed cv_total because no literal t(\'cv_total\') existed)', async () => {
+  const I18N = await loadI18N();
+  const app = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
+  const missing = [];
+  for (const line of app.split('\n')) {
+    for (const m of line.matchAll(/\[((?:\s*'[\w]+'\s*,?)+)\]\.map\(\((\w+)\)\s*=>/g)) {
+      const names = [...m[1].matchAll(/'(\w+)'/g)].map((x) => x[1]);
+      for (const u of line.matchAll(new RegExp(`t\\('(\\w+)' \\+ ${m[2]}\\)`, 'g'))) for (const n of names) for (const lang of ['en', 'ur']) if (I18N[lang][u[1] + n] === undefined) missing.push(`${lang}:${u[1] + n}`);
+    }
+  }
+  assert.deepEqual(missing, []);
+});
