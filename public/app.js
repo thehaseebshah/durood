@@ -1056,7 +1056,16 @@ const mamulaatBars = (m) => !m ? '' : `<div class="mam"><div class="row between"
 const wdList = (a) => a.weekdays || (a.weekday == null ? [] : [a.weekday]);
 // "Every day", "Every Friday", or "Every Sat, Sun" (the week starts on Monday here, as in Pakistan)
 const daysLabel = (days) => days.length === 7 ? t('every_day') : days.length === 1 ? t('every')(wdName(days[0])) : t('every')([1, 2, 3, 4, 5, 6, 0].filter((d) => days.includes(d)).map((d) => t('weekdays_short')[d]).join(', '));
-const asgLabel = (a) => a.kind === 'routine' ? daysLabel(wdList(a)) : a.dueDay ? t('due')(N(esc(a.dueDay))) : t('task_word');
+// a deadline in words: today, tomorrow, a weekday this week, or the date; past ones are marked
+function dayWords(day) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day || '')) return esc(day || '');
+  const diff = Math.round((Date.parse(`${day}T00:00:00Z`) - Date.parse(`${pkDay()}T00:00:00Z`)) / 864e5);
+  const words = diff === 0 ? t('today') : diff === 1 ? t('rs_tomorrow') : diff === -1 ? t('yesterday')
+    : diff > 1 && diff < 7 ? t('weekdays')[new Date(`${day}T00:00:00Z`).getUTCDay()]
+    : new Date(`${day}T00:00:00Z`).toLocaleDateString(S.lang === 'ur' ? 'ur-PK' : 'en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  return diff < 0 ? `<span class="late">${words}</span>` : words;
+}
+const asgLabel = (a) => a.kind === 'routine' ? daysLabel(wdList(a)) : a.dueDay ? t('due')(dayWords(a.dueDay)) : t('task_word');
 // the days a routine falls on: seven buttons (Monday first) and "Every day"
 const dayPicker = (id, picked = [new Date(Date.now() + 5 * 3600e3).getUTCDay()]) => `<fieldset class="daypick" id="${id}"><legend>${t('weekdays_pick')}</legend>
   <div class="chips">${[1, 2, 3, 4, 5, 6, 0].map((d) => `<label class="chip daychip"><input type="checkbox" name="wd" value="${d}" ${picked.includes(d) ? 'checked' : ''}><span>${esc(t('weekdays_short')[d])}</span></label>`).join('')}
@@ -1101,7 +1110,7 @@ function reschedSheet() {
   const opts = [['today', pkDay(0)], ['tomorrow', pkDay(1)], ['in_3_days', pkDay(3)], ['next_week', pkDay(7)]].filter(([, d]) => d !== a.dueDay);
   return `<div class="modal sheetm"><div class="box sheetbox" aria-label="${esc(t(a.own ? 'move_date' : 'ask_date'))}">
     <div class="row between"><b class="sheettitle">${t(a.own ? 'move_date' : 'ask_date')}</b><button class="chip" data-act="sheetx">${t('close')}</button></div>
-    <p class="padx muted">${esc(a.title)} · ${t('due')(N(esc(a.dueDay || '')))}</p>
+    <p class="padx muted">${esc(a.title)} · ${t('due')(dayWords(a.dueDay))}</p>
     <div class="reschopts">${opts.map(([k, d]) => `<button class="rowlink" data-act="reschpick" data-day="${d}"><span>${t('rs_' + k)}</span><b>${N(esc(d))}</b></button>`).join('')}</div>
     <div class="row padx duerow">${dueInput('resch-day', 'day', pkDay(2))}<button class="chip solid" data-act="reschpick">${t(a.own ? 'save' : 'ask_send')}</button></div>
     <p class="padx hint">${t(a.own ? 'move_warn' : 'ask_warn')}</p>
@@ -1317,12 +1326,12 @@ function detailModal() {
   const f = S.assignForm || { kind: 'task' };
   return `<div class="modal"><div class="box wide">${head}
     <p class="muted">${esc(r.city || '')} · ${t('joined')} ${N(esc(r.joined))}</p>
-    <div class="row"><button class="chip" data-act="bhremove" data-u="${esc(d.username)}">${t('remove_razakar')}</button></div>
     ${progressGrid(r.progress)}
     <b>${t('assigned_view')}</b>
     ${r.assignments.length ? r.assignments.map((a) => assignRow(a, 'masul')).join('') : `<p class="muted">${t('none_assigned')}</p>`}
     ${tagEditor(r)}
     ${assignForm('assign', t('assign_new'))}
+    <div class="row dangerrow"><button class="chip" data-act="bhremove" data-u="${esc(d.username)}">${t('remove_razakar')}</button></div>
   </div></div>`;
 }
 

@@ -776,3 +776,5 @@ html[data-mode=dark] .offbar { background: #2f2508; color: #ffcf6b; }
 .shake { animation: shake .4s cubic-bezier(.36, .07, .19, .97); border-color: var(--err) !important; }
 @keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
 input[aria-invalid=true], select[aria-invalid=true] { border-color: var(--err) !important; background: var(--err-bg); }
+.late { color: var(--err); font-weight: 700; }
+.dangerrow { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--hair); } .dangerrow .chip { color: var(--err); border-color: var(--err); }
