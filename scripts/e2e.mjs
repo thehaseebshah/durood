@@ -295,6 +295,23 @@ try {
     await page.close();
   }
   await api('PATCH', '/api/me', { lang: 'en' }, host.token);
+
+  // ---- Admin page: key sign-in, every tab opens, nothing runs off a phone screen -----------------------------------
+  for (const [w, label] of [[1280, 'desktop'], [390, 'phone']]) {
+    const page = await browser.newPage({ viewport: { width: w, height: 860 } });
+    page.on('pageerror', (e) => errors.push('admin: ' + e.message));
+    await page.goto(B + '/admin.html'); await page.waitForTimeout(500);
+    await page.click('#usekey'); await page.fill('#key', process.env.ADMIN_KEY); await page.click('#save'); await page.waitForTimeout(900);
+    const tabs = await page.$$eval('#tabs button', (x) => x.map((e) => e.dataset.tab));
+    ok(tabs.length >= 8, `admin (${label}): signed in with the key, ${tabs.length} tabs`);
+    const wide = [];
+    for (const t of tabs) {
+      await page.click(`#tabs [data-tab=${t}]`); await page.waitForTimeout(400);
+      if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) wide.push(t);
+    }
+    ok(wide.length === 0, `admin (${label}): no tab runs off the screen${wide.length ? ': ' + wide.join(', ') : ''}`);
+    await page.close();
+  }
 } catch (e) {
   failed++; console.error('FAIL (crash)', e);
 } finally {
