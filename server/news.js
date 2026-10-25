@@ -72,6 +72,7 @@ const MSG = {
   joined: (who) => ({ en: ['Someone joined your Qabila', `${who} joined with your code.`], ur: ['آپ کے قبیلے میں کوئی شامل ہوا', `${who} آپ کے کوڈ سے شامل ہوا۔`] }),
   cvInvite: (who, cv) => ({ en: ['A caravan invitation', `${who} invited you to the caravan ${cv}.`], ur: ['کارواں کی دعوت', `${who} نے آپ کو کارواں ${cv} میں مدعو کیا۔`] }),
   cvRequest: (who, cv) => ({ en: ['Someone wants to join your caravan', `${who} asked to join ${cv}.`], ur: ['کوئی آپ کے کارواں میں آنا چاہتا ہے', `${who} نے ${cv} میں شامل ہونے کی درخواست کی۔`] }),
+  dueAsk: (who, task) => ({ en: ['A deadline change was asked', `${who} asks for more time on "${task}".`], ur: ['مدت بدلنے کی درخواست', `${who} نے "${task}" کے لیے مزید وقت مانگا ہے۔`] }),
   cvAccepted: (who, cv) => ({ en: ['You are in the caravan', `${who} accepted you into ${cv}.`], ur: ['آپ کارواں میں شامل ہو گئے', `${who} نے آپ کو ${cv} میں شامل کر لیا۔`] }),
   cvJoined: (who, cv) => ({ en: ['Someone joined your caravan', `${who} joined ${cv}.`], ur: ['آپ کے کارواں میں کوئی شامل ہوا', `${who} ${cv} میں شامل ہو گئے۔`] }),
   crore: (k) => ({ en: [`${k} crore reached`, `Together we have recited ${k} crore durood in the challenge.`], ur: [`${k} کروڑ مکمل`, `سب نے مل کر چیلنج میں ${k} کروڑ درود پڑھ لیا۔`] }),
@@ -169,6 +170,8 @@ export function startScheduler() {
 // ---- event-driven messages --------------------------------------------------------------------------------------
 export const notifyJoined = (referrerId, who) => notify(referrerId, 'joined', who, MSG.joined(who)).catch(() => {});
 /** Caravan events: an invitation reaches the invitee, a request or a new member reaches the owner. Sent after the answer, never awaited. */
+/** A razakar asks their masul to move a deadline. */
+export function notifyDueRequest(masulId, who, task) { setImmediate(() => notify(masulId, 'due_ask', `${who}:${task}:${Date.now()}`, MSG.dueAsk(who, task)).catch(() => {})); }
 export function notifyCaravan(kind, toId, who, caravanName) {
   if (!toId) return;
   const make = { invite: MSG.cvInvite, request: MSG.cvRequest, joined: MSG.cvJoined, accepted: MSG.cvAccepted }[kind];

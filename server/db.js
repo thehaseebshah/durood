@@ -518,6 +518,12 @@ CREATE TABLE IF NOT EXISTS burhan_views (
 `);
 addCol('murabbi_links', 'salik_ok', 'INTEGER NOT NULL DEFAULT 0');       // the salik confirmed the person they were shown
 addCol('murabbi_links', 'murabbi_ok', 'INTEGER NOT NULL DEFAULT 0');      // that person accepted. Nothing is shared until both are 1
+addCol('assignments', 'extensions', 'INTEGER NOT NULL DEFAULT 0');        // times the deadline was pushed later at the doer's wish: each one lowers the points
+db.exec(`CREATE TABLE IF NOT EXISTS due_requests (               -- a razakar asks their masul to move a task's deadline
+  assignment_id INTEGER PRIMARY KEY REFERENCES assignments(id),
+  day           TEXT NOT NULL,
+  created_at    INTEGER NOT NULL
+)`);
                               // the member's own name for their caravan; shares one namespace with usernames
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_caravan_name ON users(caravan_name COLLATE NOCASE) WHERE caravan_name IS NOT NULL');
 

@@ -180,6 +180,14 @@ route('POST', '/api/assignments', B(({ user, body }) => { rateLimit(`as:${user}`
 route('POST', '/api/tasks', B(({ user, body }) => { rateLimit(`as:${user}`, 60, 3600e3); burhan.addOwnAssignment(user, body); return burhan.burhanState(user); })); // your own task or routine
 route('DELETE', '/api/assignments/:id', B(({ user, params }) => burhan.endAssignment(user, Number(params.id))));
 route('POST', '/api/assignments/:id/tick', B(({ user, params, body }) => burhan.tickAssignment(user, Number(params.id), body.done !== false)));
+route('PUT', '/api/assignments/:id/due', B(({ user, params, body }) => burhan.changeDue(user, Number(params.id), body.day)));
+route('POST', '/api/assignments/:id/due-request', B(({ user, params, body }) => {
+  rateLimit(`dr:${user}`, 20, 86400e3);
+  const r = burhan.requestDue(user, Number(params.id), body.day);
+  news.notifyDueRequest(r.masulId, one('SELECT username FROM users WHERE id = ?', user).username, r.title);
+  return { ok: true };
+}));
+route('POST', '/api/assignments/:id/due-answer', B(({ user, params, body }) => burhan.answerDue(user, Number(params.id), body.accept === true)));
 route('GET', '/api/burhan/saaliks', B(async ({ user }) => { rateLimit(`bsl:${user}`, 120, 3600e3); return { saaliks: await burhan.saalikList(user) }; }));
 route('GET', '/api/burhan/saaliks/:username', B(({ user, params }) => { rateLimit(`bsr:${user}`, 120, 3600e3); return burhan.saalikReport(user, params.username); }));
 route('GET', '/api/burhan/razakars', B(({ user }) => ({ razakars: burhan.razakarList(user) })));

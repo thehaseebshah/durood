@@ -342,3 +342,10 @@ Joining a Seerat Circle is self-declared and pays 300 once (badge "Circle Member
 - Your own tasks and routines are reported like the rest: your masul sees them marked "their own" (and can't change them) and your murabbi sees all of them. A change of masul ends only what the old masul gave; your own stay.
 - **My people** (menu, under Groups): your saliks (as murabbi) and razakars (as masul), each opening their report, plus murabbi requests waiting for you. When empty it explains how people come to appear there.
 - **Me** (was Progress & badges) now also holds the murabbi and masul links, who sees what, and notices about ended links. The old Al-Burhan page is gone; old links lead to Tasks.
+
+## 30. Deadlines and points for tasks and routines
+- Every task has a deadline (today or later). Routines are due on their weekday.
+- Points on completion: a task from your masul 30, your own 10; a routine ticked on its day 10 (from your masul) or 5 (your own). Done by the deadline: full points. Late: 60% one day late, 50%, 40%, 30%, 20%, then 10% from six days late. Each time the deadline was pushed later at the doer's wish: 20% less, never below 40%. Points are rounded, at least 1.
+- Daily caps so a list of tiny tasks can't be farmed: 3 of your own and 5 from your masul earn points each day (routines count with tasks). Undoing a tick (same day) takes the points back.
+- Your own task: you move its deadline yourself. A task from your masul: you ask for more time with a date; the masul gets a notification and agrees or keeps the date, and sees the request count on My people. A deadline the masul moves on their own does not lower the points; one moved because the doer asked, or the doer moved, does. Moving a deadline earlier costs nothing. A done task's deadline can't move.
+- Each task shows its deadline, how many days late it is, how often it was moved, and the points it would earn today; a done one shows the points it earned.

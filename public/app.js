@@ -949,17 +949,37 @@ const mamulaatBars = (m) => !m ? '' : `<div class="mam"><div class="row between"
   <div class="muted">${m.today == null ? t('mam_none_today') : t('mam_today')(m.today)}</div></div>`;
 const asgLabel = (a) => a.kind === 'routine' ? t('every')(wdName(a.weekday)) : a.dueDay ? t('due')(N(esc(a.dueDay))) : t('task_word');
 
-function assignRow(a, mode) { // mode: 'mine' (razakar ticks) or 'masul' (masul can end)
-  const state = a.kind === 'routine'
-    ? (a.dueToday || !a.last4.due ? '' : `<small class="muted">${t('routine_stats')(a.last4.done, a.last4.due)}</small>`)
-    : (a.done ? `<small class="ok">${t('done_on')(N(esc(a.doneOn)))}</small>` : a.overdue ? `<small class="bad">${t('overdue')}</small>` : '');
+// a deadline input defaulting to a few days ahead (Pakistan time), never before today
+const pkDay = (plus = 0) => new Date(Date.now() + 5 * 3600e3 + plus * 864e5).toISOString().slice(0, 10);
+const dueInput = (id, name = 'dueDay', value = pkDay(3)) => `<input id="${id}" type="date" name="${name}" min="${pkDay()}" value="${esc(value)}" required dir="ltr">`;
+
+function assignRow(a, mode) { // mode: 'mine' (the doer: ticks, moves or asks), 'masul' (can end and move what they gave), 'view' (murabbi)
+  const isTask = a.kind === 'task';
+  let state;
+  if (!isTask) state = a.dueToday || !a.last4.due ? '' : `<small class="muted">${t('routine_stats')(a.last4.done, a.last4.due)}</small>`;
+  else if (a.done) state = `<small class="ok">${t('done_on')(N(esc(a.doneOn)))}${a.xpEarned != null ? ` · ${t('points_gained')(fmt(a.xpEarned))}` : ''}</small>`;
+  else {
+    const bits = [a.daysLate ? `<span class="bad">${t('days_late')(a.daysLate)}</span>` : '', a.extensions ? t('moved_n')(a.extensions) : '',
+      a.xpNow != null ? (a.xpNow < a.xpFull ? t('pts_now_less')(a.xpNow, a.xpFull) : t('pts_now')(a.xpNow)) : '', a.askedDay && mode !== 'masul' ? t('asked_for')(N(esc(a.askedDay))) : ''].filter(Boolean);
+    state = bits.length ? `<small class="muted">${bits.join(' · ')}</small>` : '';
+  }
   const tickable = mode === 'mine' && (a.kind === 'routine' ? a.dueToday : true);
   const done = a.kind === 'routine' ? a.doneToday : a.done;
   const giver = mode === 'mine' ? (a.from ? ` · ${t('from_masul')(esc(a.from))}` : '') : a.own ? ` · ${t('own_tag')}` : '';
+  // moving a deadline: your own you move; one your masul gave you ask for; the masul moves theirs
+  const canMove = isTask && !a.done && ((mode === 'mine' && a.own) || (mode === 'masul' && !a.own));
+  const canAsk = isTask && !a.done && mode === 'mine' && !a.own && !a.askedDay;
+  const editing = S.dueEdit === a.id;
+  const dueForm = editing ? `<div class="row duerow">${dueInput(`due-${a.id}`, 'day', a.dueDay && a.dueDay >= pkDay() ? a.dueDay : pkDay(1))}
+      <button class="chip solid" data-act="${canMove ? 'duesave' : 'dueask'}" data-id="${a.id}">${t(canMove ? 'save' : 'ask_send')}</button><button class="chip" data-act="duex">${t('cancel')}</button></div>
+      ${mode === 'mine' ? `<small class="muted">${t(canMove ? 'move_warn' : 'ask_warn')}</small>` : ''}` : '';
+  const answer = mode === 'masul' && a.askedDay && !a.done ? `<div class="row duerow"><small>${t('asked_for')(N(esc(a.askedDay)))}</small><button class="chip solid" data-act="dueyes" data-id="${a.id}">${t('agree')}</button><button class="chip" data-act="dueno" data-id="${a.id}">${t('keep_date')}</button></div>` : '';
+  // the tick stays on the right; moving, asking, answering and removing sit on a line of their own under the title
+  const extra = [(canMove || canAsk) && !editing ? `<button class="chip" data-act="dueedit" data-id="${a.id}">${t(canMove ? 'move_date' : 'ask_date')}</button>` : '',
+    (mode === 'masul' && !a.own) || (mode === 'mine' && a.own) ? `<button class="chip" data-act="${mode === 'mine' ? 'endown' : 'endassign'}" data-id="${a.id}">${t('end_assign')}</button>` : ''].join('');
   return `<div class="q ${done ? 'd' : ''}"><span class="bx"></span>
-    <span class="t">${esc(a.title)}<small>${asgLabel(a)}${giver}</small>${state}</span>
-    ${tickable ? `<button class="chip ${done ? '' : 'solid'}" data-act="atick" data-id="${a.id}" data-done="${done ? 0 : 1}">${done ? t('undo') : t('mark_done')}</button>` : ''}
-    ${(mode === 'masul' && !a.own) || (mode === 'mine' && a.own) ? `<button class="chip" data-act="${mode === 'mine' ? 'endown' : 'endassign'}" data-id="${a.id}" aria-label="${esc(t('end_assign'))}" title="${esc(t('end_assign'))}">✕</button>` : ''}</div>`;
+    <span class="t">${esc(a.title)}<small>${asgLabel(a)}${giver}</small>${state}${answer}${dueForm}${extra ? `<span class="qacts">${extra}</span>` : ''}</span>
+    ${tickable ? `<button class="chip ${done ? '' : 'solid'}" data-act="atick" data-id="${a.id}" data-done="${done ? 0 : 1}">${done ? t('undo') : t('mark_done')}</button>` : ''}</div>`;
 }
 
 function burhanToday() {
@@ -1016,7 +1036,7 @@ function burhanCaravan() {
   if (loading) return '<p class="muted center">…</p>';
   const reqs = rq.map((r) => `<div class="circlecard"><b>${esc(r.username)}</b>${r.city ? ` · ${esc(r.city)}` : ''}<p class="muted">${t('request_text')}</p><div class="row"><button class="blk fill1" data-act="bhaccept" data-u="${esc(r.username)}"><span>${t('accept')}</span><b class="ar">→</b></button><button class="chip" data-act="bhdecline" data-u="${esc(r.username)}">${t('decline')}</button></div></div>`).join('');
   const saliks = sa.length ? `<ul class="lb">${sa.map((x) => `<li><button class="rowbtn" data-act="opensaalik" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('durood_week')(fmt(x.duroodWeek))}${x.mamulaatToday == null ? '' : ` · ${t('mam_short')} ${x.mamulaatToday}%`}</small></span><span class="score">${fmt(x.duroodToday)}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('saaliks_none')}</p>`;
-  const razakars = ra.length ? `<ul class="lb">${ra.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${x.routinePercent}%`}</small></span><span class="score">${fmt(x.duroodWeek)}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('razakars_none')}</p>`;
+  const razakars = ra.length ? `<ul class="lb">${ra.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.asks ? ` · <b>${t('asks_n')(x.asks)}</b>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${x.routinePercent}%`}</small></span><span class="score">${fmt(x.duroodWeek)}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('razakars_none')}</p>`;
   return `${rq.length ? fold('preq', t('requests_title'), N(String(rq.length)), reqs) : ''}
   ${fold('psaliks', t('saaliks_title'), N(String(sa.length)), saliks)}
   ${fold('prazakars', t('razakars_title'), N(String(ra.length)), razakars)}`;
@@ -1034,7 +1054,7 @@ function tasksPage() {
       <input type="text" name="title" maxlength="80" aria-label="${esc(t('own_ph'))}" placeholder="${esc(t('own_ph'))}" dir="auto">
       ${f.kind === 'routine'
         ? `<label for="o-wd">${t('weekday_word')}</label><select id="o-wd" name="weekday">${t('weekdays').map((n, i) => `<option value="${i}" ${i === new Date().getDay() ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`
-        : `<label for="o-due">${t('due_optional')}</label><input id="o-due" type="date" name="dueDay" dir="ltr">`}
+        : `<label for="o-due">${t('due_word')}</label>${dueInput('o-due')}`}
       <button class="blk" type="submit"><span>${t('own_add')}</span><b class="ar">→</b></button>
       <p class="hint">${b.masul || (b.murabbi && b.murabbi.stage === 'active') ? t('own_seen_by') : t('own_private')}</p></form>`;
   return `${fold('tnew', t('own_new'), '', form, !list.length)}
@@ -1081,7 +1101,7 @@ function detailModal() {
       <input type="text" name="title" maxlength="80" aria-label="${esc(t('assign_ph'))}" placeholder="${esc(t('assign_ph'))}" dir="auto">
       ${f.kind === 'routine'
         ? `<label for="a-wd">${t('weekday_word')}</label><select id="a-wd" name="weekday">${t('weekdays').map((n, i) => `<option value="${i}" ${i === 5 ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`
-        : `<label for="a-due">${t('due_optional')}</label><input id="a-due" type="date" name="dueDay" dir="ltr">`}
+        : `<label for="a-due">${t('due_word')}</label>${dueInput('a-due')}`}
       <button class="blk" type="submit"><span>${t('assign_btn')}</span><b class="ar">→</b></button></form>
   </div></div>`;
 }
@@ -1427,7 +1447,32 @@ app.addEventListener('click', async (ev) => {
   if (act === 'bhunlink') { if (!confirm(t('unlink_ask'))) return; try { await api('/burhan/murabbi', 'DELETE'); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
   if (act === 'bhmasulclear') { if (!confirm(t('unlink_ask'))) return; try { await api('/burhan/masul', 'DELETE'); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
   if (act === 'atick') {
-    try { await api(`/assignments/${el.dataset.id}/tick`, 'POST', { done: el.dataset.done === '1' }); await loadBurhan(); } catch (e) { toast(errText(e)); }
+    try {
+      const r = await api(`/assignments/${el.dataset.id}/tick`, 'POST', { done: el.dataset.done === '1' });
+      if (r.xpGained) toast(t('points_gained')(fmt(r.xpGained)));
+      await loadBurhan(); await refreshMe(); draw();
+    } catch (e) { toast(errText(e)); }
+    return;
+  }
+  if (act === 'dueedit') { S.dueEdit = Number(el.dataset.id); return draw(); }
+  if (act === 'duex') { S.dueEdit = null; return draw(); }
+  if (act === 'duesave' || act === 'dueask') {
+    const day = $(`#due-${el.dataset.id}`)?.value;
+    try {
+      if (act === 'duesave') await api(`/assignments/${el.dataset.id}/due`, 'PUT', { day });
+      else await api(`/assignments/${el.dataset.id}/due-request`, 'POST', { day });
+      S.dueEdit = null; toast(t(act === 'duesave' ? 'saved' : 'ask_sent'));
+      if (S.bhDetail?.type === 'razakar') S.bhDetail.data = await api(`/burhan/razakars/${encodeURIComponent(S.bhDetail.username)}`);
+      await loadBurhan(); draw();
+    } catch (e) { toast(errText(e)); }
+    return;
+  }
+  if (act === 'dueyes' || act === 'dueno') {
+    try {
+      await api(`/assignments/${el.dataset.id}/due-answer`, 'POST', { accept: act === 'dueyes' });
+      S.bhDetail.data = await api(`/burhan/razakars/${encodeURIComponent(S.bhDetail.username)}`);
+      toast(t('saved')); draw();
+    } catch (e) { toast(errText(e)); }
     return;
   }
   if (act === 'opensaalik' || act === 'openrazakar') {

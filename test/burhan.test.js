@@ -152,8 +152,11 @@ test('masul: sees tasks, routines and general progress but never mamulaat; razak
   const wd = new Date(`${dayOf()}T00:00:00Z`).getUTCDay();
   const routine = await api('POST', '/api/assignments', { token: masul.token, body: { razakar: 'raz_a', kind: 'routine', title: 'Majlis-e-Zikr', weekday: wd } });
   const elsewhere = await api('POST', '/api/assignments', { token: masul.token, body: { razakar: 'raz_a', kind: 'routine', title: 'Other day', weekday: (wd + 3) % 7 } });
-  const task = await api('POST', '/api/assignments', { token: masul.token, body: { razakar: 'raz_a', kind: 'task', title: 'Attend the Seerat Circle on Friday', dueDay: '2020-01-01' } });
-  assert.equal((await api('POST', '/api/assignments', { token: masul.token, body: { razakar: 'raz_a', kind: 'task', title: 'see https://x.com' } })).error, 'no_links');
+  assert.equal((await api('POST', '/api/assignments', { token: masul.token, body: { razakar: 'raz_a', kind: 'task', title: 'No deadline' } })).error, 'due_required');
+  assert.equal((await api('POST', '/api/assignments', { token: masul.token, body: { razakar: 'raz_a', kind: 'task', title: 'Past', dueDay: '2020-01-01' } })).error, 'day_past');
+  const task = await api('POST', '/api/assignments', { token: masul.token, body: { razakar: 'raz_a', kind: 'task', title: 'Attend the Seerat Circle on Friday', dueDay: dayOf() } });
+  db.prepare('UPDATE assignments SET due_day = ? WHERE id = ?').run('2020-01-01', task.id); // long overdue
+  assert.equal((await api('POST', '/api/assignments', { token: masul.token, body: { razakar: 'raz_a', kind: 'task', title: 'see https://x.com', dueDay: dayOf() } })).error, 'no_links');
   assert.equal((await api('POST', '/api/assignments', { token: masul.token, body: { razakar: 'raz_a', kind: 'routine', title: 'x', weekday: 9 } })).error, 'bad_weekday');
   const mine = await api('GET', '/api/burhan', { token: r.token });
   assert.equal(mine.assignments.length, 3);
@@ -241,7 +244,7 @@ test('a declined or ended murabbi link is explained to the salik; a masul can re
   assert.deepEqual((await api('GET', '/api/burhan', { token: s.token })).notices, []);
   // a masul removes a razakar who named them: open work ends, and the razakar is told
   await api('PUT', '/api/burhan/masul', { token: r.token, body: { username: 'ne_mur' } });
-  await api('POST', '/api/assignments', { token: m.token, body: { razakar: 'ne_raz', kind: 'task', title: 'Bring the dates' } });
+  await api('POST', '/api/assignments', { token: m.token, body: { razakar: 'ne_raz', kind: 'task', title: 'Bring the dates', dueDay: dayOf() } });
   assert.equal((await api('DELETE', '/api/burhan/razakars/ne_raz', { token: m.token })).ok, true);
   st = await api('GET', '/api/burhan', { token: r.token });
   assert.equal(st.masul, null);
@@ -257,14 +260,14 @@ test('a declined or ended murabbi link is explained to the salik; a masul can re
 test('members add their own tasks and routines; their masul and murabbi see them, only the member changes them, and they outlive a change of masul', async () => {
   const me = await signup('ot_me'), ma = await signup('ot_masul'), ma2 = await signup('ot_masul2'), mu = await signup('ot_mur');
   // alone: a personal list
-  let st = await api('POST', '/api/tasks', { token: me.token, body: { kind: 'task', title: 'Read one page of Seerah' } });
+  let st = await api('POST', '/api/tasks', { token: me.token, body: { kind: 'task', title: 'Read one page of Seerah', dueDay: dayOf() } });
   assert.equal(st.assignments.length, 1);
   assert.equal(st.assignments[0].own, true);
   assert.equal(st.assignments[0].from, null);
   await api('POST', '/api/tasks', { token: me.token, body: { kind: 'routine', title: 'Visit the masjid', weekday: 5 } });
   // with a masul: the masul sees them (marked as the member's own) and cannot end them
   await api('PUT', '/api/burhan/masul', { token: me.token, body: { username: 'ot_masul' } });
-  await api('POST', '/api/assignments', { token: ma.token, body: { razakar: 'ot_me', kind: 'task', title: 'Bring the dates' } });
+  await api('POST', '/api/assignments', { token: ma.token, body: { razakar: 'ot_me', kind: 'task', title: 'Bring the dates', dueDay: dayOf() } });
   let rep = await api('GET', '/api/burhan/razakars/ot_me', { token: ma.token });
   assert.deepEqual(rep.assignments.map((a) => [a.title, a.own]).sort(), [['Bring the dates', false], ['Read one page of Seerah', true], ['Visit the masjid', true]]);
   const ownId = rep.assignments.find((a) => a.own && a.kind === 'task').id;
@@ -286,5 +289,52 @@ test('members add their own tasks and routines; their masul and murabbi see them
   // the member removes their own
   assert.equal((await api('DELETE', `/api/assignments/${ownId}`, { token: me.token })).ok, true);
   assert.equal((await api('GET', '/api/burhan', { token: me.token })).assignments.length, 1);
+  assert.deepEqual(audit().problems, []);
+});
+
+test('task points: full by the deadline, less each day late, less for every deadline pushed later; capped a day; undo takes them back', async () => {
+  const me = await signup('tp_me'), ma = await signup('tp_masul');
+  const xp = async () => (await api('GET', '/api/me', { token: me.token })).xp;
+  const own = async (title, due = dayOf()) => (await api('POST', '/api/tasks', { token: me.token, body: { kind: 'task', title, dueDay: due } })).assignments.find((a) => a.title === title).id;
+  const tick = async (id, done = true) => api('POST', `/api/assignments/${id}/tick`, { token: me.token, body: { done } });
+  // your own task, on time: 10
+  let x0 = await xp();
+  const a = await own('On time');
+  assert.equal((await tick(a)).xpGained, 10);
+  assert.equal(await xp(), x0 + 10);
+  // undo takes it back
+  await tick(a, false);
+  assert.equal(await xp(), x0);
+  await tick(a);
+  // two days late: 50%
+  const b = await own('Late');
+  db.prepare('UPDATE assignments SET due_day = ? WHERE id = ?').run(dayStr(dayNum(dayOf()) - 2), b);
+  assert.equal((await api('GET', '/api/burhan', { token: me.token })).assignments.find((t) => t.id === b).xpNow, 5);
+  assert.equal((await tick(b)).xpGained, 5);
+  // pushed later once: 80%
+  const c = await own('Moved');
+  assert.equal((await api('PUT', `/api/assignments/${c}/due`, { token: me.token, body: { day: dayStr(dayNum(dayOf()) + 3) } })).ok, true);
+  assert.equal((await tick(c)).xpGained, 8);
+  // three own tasks a day earn points; the fourth does not
+  const d = await own('Fourth');
+  assert.equal((await tick(d)).xpGained, 0);
+  // a task from the masul: 30 on time; the razakar asks for more time, the masul agrees: 80% → 24
+  await api('PUT', '/api/burhan/masul', { token: me.token, body: { username: 'tp_masul' } });
+  const m1 = await api('POST', '/api/assignments', { token: ma.token, body: { razakar: 'tp_me', kind: 'task', title: 'Arrange chairs', dueDay: dayOf() } });
+  assert.equal((await api('PUT', `/api/assignments/${m1.id}/due`, { token: me.token, body: { day: dayStr(dayNum(dayOf()) + 2) } })).error, 'ask_masul');
+  assert.equal((await api('POST', `/api/assignments/${m1.id}/due-request`, { token: me.token, body: { day: dayStr(dayNum(dayOf()) + 2) } })).ok, true);
+  assert.equal((await api('GET', '/api/burhan/razakars', { token: ma.token })).razakars[0].asks, 1);
+  assert.equal((await api('POST', `/api/assignments/${m1.id}/due-answer`, { token: ma.token, body: { accept: true } })).ok, true);
+  const row = (await api('GET', '/api/burhan', { token: me.token })).assignments.find((t) => t.id === m1.id);
+  assert.equal(row.dueDay, dayStr(dayNum(dayOf()) + 2));
+  assert.equal(row.extensions, 1);
+  assert.equal((await tick(m1.id)).xpGained, 24);
+  // the masul moving their own task's deadline (no request) costs nothing
+  const m2 = await api('POST', '/api/assignments', { token: ma.token, body: { razakar: 'tp_me', kind: 'task', title: 'Call the venue', dueDay: dayOf() } });
+  await api('PUT', `/api/assignments/${m2.id}/due`, { token: ma.token, body: { day: dayStr(dayNum(dayOf()) + 5) } });
+  assert.equal((await tick(m2.id)).xpGained, 30);
+  // a done task's deadline can't move; the past isn't a deadline
+  assert.equal((await api('PUT', `/api/assignments/${a}/due`, { token: me.token, body: { day: dayStr(dayNum(dayOf()) + 1) } })).error, 'already_done');
+  assert.equal((await api('PUT', `/api/assignments/${d}/due`, { token: me.token, body: { day: '2020-01-01' } })).error, 'already_done');
   assert.deepEqual(audit().problems, []);
 });

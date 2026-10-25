@@ -126,6 +126,9 @@ html[dir=rtl] .q .bx { margin: 0 20px 0 14px; }
 .q .t { flex: 1; min-width: 0; padding: 13px 0; }
 .q .t em { font-style: normal; font-size: .68rem; border: 1px solid var(--line); color: var(--soft); padding: 0 5px; margin-inline-start: 4px; }
 .q .t small { display: block; color: var(--soft); font-variant-numeric: tabular-nums; }
+.q .qacts, .q .duerow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+.q .duerow input[type=date] { width: auto; flex: 1; min-width: 150px; padding: 8px; }
+.q > .chip { align-self: center; margin-inline-end: 12px; }
 .q .p { display: grid; place-items: center; min-width: 76px; padding: 0 8px; border-inline-start: 1px solid var(--line); background: var(--cell); color: var(--sig-text); font-weight: 700; }
 .q.d .p { background: var(--sig); color: var(--on-sig); }
 .q.dim { opacity: .6; } .q.dim .p { background: transparent; color: var(--soft); }

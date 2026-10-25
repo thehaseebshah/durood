@@ -2,7 +2,7 @@
 // and the tasks and routines a masul gives. Nothing here exists in the public edition (see docs/SPEC.md section 19).
 import { db, tx } from './db.js';
 import { HttpError, avatarUrl } from './auth.js';
-import { dayOf, dayNum, dayStr, weekStart, levelFor, person } from './game.js';
+import { dayOf, dayNum, dayStr, weekStart, levelFor, person, grant } from './game.js';
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
@@ -212,6 +212,85 @@ export const searchUsernames = (q, userId) => {
 const TITLE_MAX = 80, ACTIVE_MAX = 30;
 const LINK = /(https?:\/\/|www\.)/i;
 const weekdayOf = (day) => new Date(`${day}T00:00:00Z`).getUTCDay();
+const checkDay = (raw) => {
+  const d = String(raw ?? '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || Number.isNaN(Date.parse(`${d}T00:00:00Z`))) throw new HttpError(400, 'bad_day');
+  if (d < dayOf()) throw new HttpError(400, 'day_past');
+  if (dayNum(d) - dayNum(dayOf()) > 366) throw new HttpError(400, 'bad_day');
+  return d;
+};
+
+// ---- points for tasks and routines --------------------------------------------------------------------------------------------
+// A task done by its deadline earns its full points. Late, it earns less the longer it waited; each time the deadline was pushed
+// later at the doer's wish, it earns less again: a commitment kept is worth more. Daily caps stop a list of tiny tasks being farmed.
+export const TASK_XP = {
+  masul: 30, own: 10,               // a task your masul gave you / one you set yourself
+  routineMasul: 10, routineOwn: 5,  // a routine ticked on its day
+  late: [0.6, 0.5, 0.4, 0.3, 0.2],  // 1, 2, 3, 4, 5 days late; after that
+  lateFloor: 0.1,
+  extension: 0.2, extensionFloor: 0.4, // each pushed deadline takes 20% off, never below 40%
+  dailyCapOwn: 3, dailyCapMasul: 5,   // tasks a day that earn points (routines count with them)
+};
+/** Points for completing this task (or routine) on `day`, before the daily cap. */
+export function taskPoints(a, day = dayOf()) {
+  const own = a.masul_id === a.razakar_id;
+  if (a.kind === 'routine') return own ? TASK_XP.routineOwn : TASK_XP.routineMasul;
+  const base = own ? TASK_XP.own : TASK_XP.masul;
+  const late = a.due_day && day > a.due_day ? dayNum(day) - dayNum(a.due_day) : 0;
+  const timely = late === 0 ? 1 : (TASK_XP.late[late - 1] ?? TASK_XP.lateFloor);
+  const kept = Math.max(TASK_XP.extensionFloor, 1 - TASK_XP.extension * (a.extensions || 0));
+  return Math.max(1, Math.round(base * timely * kept));
+}
+const pointsToday = (userId, own) => one(`SELECT COUNT(*) n FROM events e JOIN assignments a ON a.id = CAST(substr(e.ref, 1, instr(e.ref || ':', ':') - 1) AS INTEGER)
+  WHERE e.user_id = ? AND e.kind = 'task' AND e.day = ? AND (a.masul_id = a.razakar_id) = ?`, userId, dayOf(), own ? 1 : 0).n;
+function payTask(a, day) {
+  const own = a.masul_id === a.razakar_id;
+  if (pointsToday(a.razakar_id, own) >= (own ? TASK_XP.dailyCapOwn : TASK_XP.dailyCapMasul)) return 0;
+  const xp = taskPoints(a, day);
+  return grant(a.razakar_id, 'task', a.kind === 'routine' ? `${a.id}:${day}` : String(a.id), xp) ? xp : 0;
+}
+function unpayTask(a, day) {
+  const ref = a.kind === 'routine' ? `${a.id}:${day}` : String(a.id);
+  const ev = one("SELECT xp FROM events WHERE user_id = ? AND kind = 'task' AND ref = ?", a.razakar_id, ref);
+  if (!ev) return;
+  run("DELETE FROM events WHERE user_id = ? AND kind = 'task' AND ref = ?", a.razakar_id, ref);
+  run('UPDATE users SET xp = xp - ? WHERE id = ?', ev.xp, a.razakar_id);
+}
+
+/** Moving a deadline. Your own task: you move it. A task from your masul: you ask, and the masul agrees (or moves it themselves).
+ *  Pushing it later at the doer's wish counts against the points; moving it earlier, or the masul's own change, does not. */
+export function changeDue(userId, id, rawDay) {
+  const a = one("SELECT * FROM assignments WHERE id = ? AND kind = 'task' AND ended_at IS NULL", id);
+  if (!a || (a.razakar_id !== userId && a.masul_id !== userId)) throw new HttpError(404, 'not_found');
+  if (one('SELECT 1 FROM assignment_ticks WHERE assignment_id = ?', id)) throw new HttpError(409, 'already_done');
+  const day = checkDay(rawDay);
+  const own = a.masul_id === a.razakar_id;
+  if (!own && userId === a.razakar_id) throw new HttpError(403, 'ask_masul'); // only the masul moves a task they gave
+  tx(() => {
+    const later = !a.due_day || day > a.due_day;
+    run('UPDATE assignments SET due_day = ?, extensions = extensions + ? WHERE id = ?', day, own && later ? 1 : 0, id);
+    run('DELETE FROM due_requests WHERE assignment_id = ?', id);
+  });
+  return { ok: true };
+}
+export function requestDue(userId, id, rawDay) {
+  const a = one("SELECT * FROM assignments WHERE id = ? AND kind = 'task' AND razakar_id = ? AND masul_id != razakar_id AND ended_at IS NULL", id, userId);
+  if (!a) throw new HttpError(404, 'not_found');
+  if (one('SELECT 1 FROM assignment_ticks WHERE assignment_id = ?', id)) throw new HttpError(409, 'already_done');
+  const day = checkDay(rawDay);
+  run('INSERT INTO due_requests (assignment_id, day, created_at) VALUES (?,?,?) ON CONFLICT(assignment_id) DO UPDATE SET day = excluded.day, created_at = excluded.created_at', id, day, Date.now());
+  return { ok: true, masulId: a.masul_id, title: a.title };
+}
+/** The masul agrees (the deadline moves, and pushing it later counts against the points, since the razakar asked) or says no. */
+export function answerDue(masulId, id, accept) {
+  const r = one('SELECT r.day, a.* FROM due_requests r JOIN assignments a ON a.id = r.assignment_id WHERE r.assignment_id = ? AND a.masul_id = ? AND a.ended_at IS NULL', id, masulId);
+  if (!r) throw new HttpError(404, 'not_found');
+  tx(() => {
+    if (accept) run('UPDATE assignments SET due_day = ?, extensions = extensions + ? WHERE id = ?', r.day, !r.due_day || r.day > r.due_day ? 1 : 0, id);
+    run('DELETE FROM due_requests WHERE assignment_id = ?', id);
+  });
+  return { ok: true };
+}
 
 export function addAssignment(masulId, razakarUsername, fields) {
   const r = one('SELECT u.id FROM users u JOIN masul_links l ON l.razakar_id = u.id WHERE u.username = ? AND l.masul_id = ? AND u.deleted_at IS NULL', String(razakarUsername ?? ''), masulId);
@@ -230,9 +309,9 @@ function insertAssignment(byId, forId, { kind, title, weekday, dueDay }) {
   if (kind === 'routine') {
     wd = Number(weekday);
     if (!Number.isInteger(wd) || wd < 0 || wd > 6) throw new HttpError(400, 'bad_weekday');
-  } else if (dueDay) {
-    due = String(dueDay);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(due) || Number.isNaN(Date.parse(`${due}T00:00:00Z`))) throw new HttpError(400, 'bad_day');
+  } else {
+    if (!dueDay) throw new HttpError(400, 'due_required'); // every task has a deadline: a commitment to a day
+    due = checkDay(dueDay);
   }
   return tx(() => {
     if (one('SELECT COUNT(*) n FROM assignments WHERE razakar_id = ? AND ended_at IS NULL', forId).n >= ACTIVE_MAX) throw new HttpError(429, 'too_many_assignments');
@@ -250,13 +329,16 @@ export function tickAssignment(razakarId, id, done = true) {
   if (!a) throw new HttpError(404, 'not_found');
   const today = dayOf();
   if (a.kind === 'routine' && weekdayOf(today) !== a.weekday) throw new HttpError(400, 'not_today');
+  let xp = 0;
   tx(() => {
     if (done) {
       if (a.kind === 'task' && one('SELECT 1 FROM assignment_ticks WHERE assignment_id = ?', id)) return;
-      run('INSERT OR IGNORE INTO assignment_ticks (assignment_id, day, created_at) VALUES (?,?,?)', id, today, Date.now());
-    } else run('DELETE FROM assignment_ticks WHERE assignment_id = ? AND day = ?', id, today); // undo a mistaken tick, same day only
+      if (!run('INSERT OR IGNORE INTO assignment_ticks (assignment_id, day, created_at) VALUES (?,?,?)', id, today, Date.now()).changes) return;
+      run('DELETE FROM due_requests WHERE assignment_id = ?', id);
+      xp = payTask(a, today);
+    } else if (run('DELETE FROM assignment_ticks WHERE assignment_id = ? AND day = ?', id, today).changes) unpayTask(a, today); // undo a mistaken tick, same day only, points and all
   });
-  return { ok: true };
+  return { ok: true, xpGained: xp };
 }
 const ROUTINE_WEEKS = 4;
 /** How many times a routine fell due in the last four weeks (never before it was assigned) and how many were ticked. Today counts only once ticked. */
@@ -278,7 +360,11 @@ function assignmentOut(a, today) {
     return { ...base, weekday: a.weekday, dueToday: weekdayOf(today) === a.weekday, doneToday: st.doneToday, last4: { due: st.due, done: st.done } };
   }
   const t = one('SELECT day FROM assignment_ticks WHERE assignment_id = ? ORDER BY day LIMIT 1', a.id);
-  return { ...base, dueDay: a.due_day, done: !!t, doneOn: t?.day ?? null, overdue: !t && !!a.due_day && a.due_day < today };
+  const earned = t && one("SELECT xp FROM events WHERE user_id = ? AND kind = 'task' AND ref = ?", a.razakar_id, String(a.id));
+  const req = one('SELECT day FROM due_requests WHERE assignment_id = ?', a.id);
+  return { ...base, dueDay: a.due_day, done: !!t, doneOn: t?.day ?? null, overdue: !t && !!a.due_day && a.due_day < today,
+    daysLate: !t && a.due_day && a.due_day < today ? dayNum(today) - dayNum(a.due_day) : 0, extensions: a.extensions || 0,
+    xpNow: t ? null : taskPoints(a, today), xpFull: taskPoints({ ...a, due_day: null, extensions: 0 }, today), xpEarned: earned?.xp ?? null, askedDay: req?.day ?? null };
 }
 /** What a razakar sees: everything their masul has given them that is still active. */
 export function myAssignments(userId) {
@@ -323,7 +409,7 @@ export function razakarList(masulId) {
     const tasks = items.filter((i) => i.kind === 'task'), routines = items.filter((i) => i.kind === 'routine');
     const due = routines.reduce((n, i) => n + i.last4.due, 0), done = routines.reduce((n, i) => n + i.last4.done, 0);
     const g = generalProgress(u.id);
-    return { username: u.username, avatar: avatarUrl(u.id, u.av), city: u.city, openTasks: tasks.filter((t) => !t.done).length, overdue: tasks.filter((t) => t.overdue).length,
+    return { username: u.username, avatar: avatarUrl(u.id, u.av), city: u.city, openTasks: tasks.filter((t) => !t.done).length, overdue: tasks.filter((t) => t.overdue).length, asks: tasks.filter((t) => t.askedDay && !t.own).length,
       routinePercent: due ? Math.round((done / due) * 100) : null, duroodWeek: g.durood.week, streak: g.streak };
   });
 }
