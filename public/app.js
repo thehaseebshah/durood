@@ -51,6 +51,11 @@ function human(n) {
   return fmt(a);
 }
 const N = (x) => `<span class="n">${x}</span>`; // keeps '+50' and '475 / 900' left-to-right inside Urdu text
+// every number carries its unit, so durood recited and points earned are never mistaken for each other
+const UNITS = { durood: 'u_durood', pts: 'u_pts', days: 'u_days', people: 'u_people' };
+const unit = (u) => `<i class="u u-${u}">${t(UNITS[u])}</i>`;
+const U = (n, u) => `${N(fmt(n))}${unit(u)}`;
+const cell = (v, label, u) => `<div><b>${fmt(v)}</b><span>${label}${u ? ` ${unit(u)}` : ''}</span></div>`;
 const $ = (s) => document.querySelector(s);
 const app = $('#app');
 
@@ -376,7 +381,7 @@ function logBox() {
 }
 function counter() {
   const m = S.me, live = m.today + S.pending;
-  return `<div class="sub"><span>${t('today')}</span><span>${t('goal_word')} ${N(fmt(m.dailyGoal))}</span></div>
+  return `<div class="sub"><span>${t('today')}</span><span>${t('goal_word')} ${U(m.dailyGoal, 'durood')}</span></div>
   <div class="big ${bigClass(live)}" id="big">${fmt(live)}</div>
   <div id="livebar">${bar((live / m.dailyGoal) * 100)}</div>`;
 }
@@ -450,7 +455,7 @@ function challengeCard(m) {
   if (!c || c.state === 'waiting') return '';
   const pct = Math.min(100, (c.total / c.target) * 100);
   const head = `<div class="chead"><span>${uiIcon('star', 14, 2)} ${t('challenge_title')}</span><span>${c.state === 'running' || c.state === 'over' ? t('day_of')(c.dayIndex, c.days) : ''}</span></div>`;
-  const tot = `<div class="ctotal"><b>${fmt(c.total)}</b><span>${t('of')} ${N(fmt(c.target))}</span></div><div class="chuman">${human(c.total)} ${t('of')} ${human(c.target)}</div>`;
+  const tot = `<div class="ctotal"><b>${fmt(c.total)}</b><span>${t('of')} ${U(c.target, 'durood')}</span></div><div class="chuman">${human(c.total)} ${t('of')} ${human(c.target)}</div>`;
   const markPct = c.state === 'running' ? ((c.dayIndex - 1) / c.days) * 100 : 0;
   const barEl = `<div class="cbar">${bar(pct)}${c.state === 'running' && markPct > 0 ? `<span class="pace" style="inset-inline-start:${markPct}%" title="plan"></span>` : ''}</div>`;
   let body = '';
@@ -459,7 +464,7 @@ function challengeCard(m) {
     const status = gap === 0 ? t('on_plan') : gap > 0 ? t('ahead')(human(gap)) : t('behind')(human(gap));
     const proj = c.projectedTotal == null ? t('plan_each_day')(human(c.plannedPerDay))
       : t('projected')(human(c.projectedTotal), Math.round((c.projectedTotal / c.target) * 100), c.days);
-    body = `<div class="cells"><div><b>${fmt(c.neededToday)}</b><span>${t('needed_today')}</span></div><div><b>${fmt(c.today)}</b><span>${t('reported_today')}</span></div><div><b>${c.daysLeft}</b><span>${t('days_left')}</span></div></div>
+    body = `<div class="cells">${cell(c.neededToday, t('needed_today'), 'durood')}${cell(c.today, t('reported_today'), 'durood')}<div><b>${c.daysLeft}</b><span>${t('days_left')}</span></div></div>
       <div class="cstatus ${gap < 0 ? 'behind' : 'ahead'}">${status}</div><div class="cnote">${proj}</div>`;
   } else if (c.state === 'upcoming') {
     body = `<div class="cstatus ahead">${c.startsIn === 1 ? t('starts_tomorrow') : t('starts_in')(c.startsIn)}</div>`;
@@ -547,10 +552,12 @@ async function shareCard() {
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
 }
 
+const QUEST_UNIT = { goal: 'durood', weekgoal: 'durood', special: 'durood', days5: 'days', invite: 'people' };
 function quest(q, dim) {
   return `<div class="q ${q.done ? 'd' : ''} ${dim ? 'dim' : ''}">
     <span class="bx"></span>
-    <span class="t">${t('q_' + q.id)} <em>${t(q.period === 'day' ? 'daily' : 'weekly')}</em><small>${N(`${fmt(q.cur)} / ${fmt(q.goal)}`)}</small></span>
+    <span class="t">${t('q_' + q.id)} <em>${t(q.period === 'day' ? 'daily' : 'weekly')}</em><small>${q.goal > 1 ? `${N(`${fmt(q.cur)} / ${fmt(q.goal)}`)}${unit(QUEST_UNIT[q.id] || 'durood')}` : ''}</small></span>
+    <span class="qxp" title="${esc(t('q_reward'))}">${N(`+${fmt(q.xp)}`)}${unit('pts')}</span>
   </div>`;
 }
 
@@ -721,7 +728,7 @@ function leagueView() {
   return `${head}${last}<ul class="lb">${L.rows.map((r) => `
     <li class="${r.me ? 'me' : ''} ${r.up ? 'up' : ''} ${r.down ? 'down' : ''}"><span class="rank">${r.rank}</span>${av(r, 34)}
       <span class="name">${esc(r.username)}${r.me ? ` <em class="tag">${t('you')}</em>` : ''}<small>${r.up ? t('league_up') : r.down ? t('league_down') : esc(r.city || '')}</small></span>
-      <span class="score">${fmt(r.score)}</span></li>`).join('')}</ul><p class="note">${t('league_rules')}</p>`;
+      <span class="score">${U(r.score, 'durood')}</span></li>`).join('')}</ul><p class="note">${t('league_rules')}</p>`;
 }
 
 function rank() {
@@ -730,7 +737,7 @@ function rank() {
   const list = b.type === 'league' ? leagueView() : !rows ? skel() : rows.length ? `<ul class="lb">${rows.map((r) => `
     <li class="${r.me ? 'me' : ''}"><span class="rank">${r.rank}</span>${r.avatar !== undefined ? av(r, 34) : ''}
       <span class="name">${esc(r.name ?? (r.nameUr ? pick(r.username, r.nameUr) : r.username))}${r.me ? ` <em class="tag">${t(b.type === 'caravans' ? 'cv_yours' : 'you')}</em>` : ''}<small>${r.city ? `${esc(r.city)}` : ''}${grp ? `${r.city ? ' · ' : ''}${fmt(r.members)} ${t('members')}${b.metric === 'average' ? ` · ${fmt(r.active)} ${t('active')}` : ''}` : ''}</small></span>
-      <span class="score">${grp && b.metric === 'growth' && r.score > 0 ? '+' : ''}${fmt(r.score)}</span></li>`).join('')}</ul>` : `<p class="muted center">${t(b.type === 'cities' ? 'empty_cities' : 'empty_board')}</p>`;
+      <span class="score">${N(`${grp && b.metric === 'growth' && r.score > 0 ? '+' : ''}${fmt(r.score)}`)}${unit('durood')}</span></li>`).join('')}</ul>` : `<p class="muted center">${t(b.type === 'cities' ? 'empty_cities' : 'empty_board')}</p>`;
   const kinds = [['users', 'rk_people'], ['league', 'rk_league'], ['caravans', 'rk_caravans'], ['trees', 'rk_trees'], ['cities', 'rk_cities'], ...(inBurhan() ? [['majalis', 'rk_majalis']] : [])];
   const note = b.type === 'league' ? '' : grp ? `${t('rk_note_' + b.type)} ${t('cv_note_' + b.metric)}` : (b.period === 'challenge' ? t('challenge_note') : '');
   return `
@@ -752,11 +759,11 @@ function rank() {
 function uplineBlock(tm) {
   if (!tm?.upline?.length) return '';
   return `<h3>${t('upline_title')}</h3>
-  <ul class="lb upline">${tm.upline.map((u) => `<li><span class="name">${esc(u.username)}<small>${u.city ? `${esc(u.city)} · ` : ''}${fmt(u.members)} ${t('members')}</small></span><span class="score">${fmt(u.team)}</span></li>`).join('')}</ul>`;
+  <ul class="lb upline">${tm.upline.map((u) => `<li><span class="name">${esc(u.username)}<small>${u.city ? `${esc(u.city)} · ` : ''}${fmt(u.members)} ${t('members')}</small></span><span class="score">${U(u.team, 'durood')}</span></li>`).join('')}</ul>`;
 }
 
 // ---- caravans: a group you create and name, joined by invitation or by asking ----------------------------------------------------
-const cvRow = (r, extra = '') => `<li>${av(r, 34)}<span class="name">${esc(r.username)}${r.owner ? ` <em class="tag">${t('cv_owner')}</em>` : ''}<small>${r.city ? `${esc(r.city)} · ` : ''}${t('this_week')} ${fmt(r.week)}${r.today ? ` · ${t('cv_today')}` : ''}</small></span><span class="score">${fmt(r.total)}</span>${extra}</li>`;
+const cvRow = (r, extra = '') => `<li>${av(r, 34)}<span class="name">${esc(r.username)}${r.owner ? ` <em class="tag">${t('cv_owner')}</em>` : ''}<small>${r.city ? `${esc(r.city)} · ` : ''}${t('this_week')} ${U(r.week, 'durood')}${r.today ? ` · ${t('cv_today')}` : ''}</small></span><span class="score">${fmt(r.total)}</span>${extra}</li>`;
 function cvJoinOrCreate(cv) {
   return `<h3 class="first-d">${t('caravan_title')}</h3>
   <p class="muted">${t('cv_intro')}</p>
@@ -776,8 +783,8 @@ function cvHome(cv) {
   return `<h3 class="first-d">${t('caravan_title')}</h3>
   <div class="uname cvname">${esc(c.name)}</div>
   <div class="muted padx">${t('cv_owner_is')(esc(c.ownerName))}</div>
-  <div class="stats"><div><b>${fmt(c.members)}</b><span>${t('c_members')}</span></div><div><b>${fmt(c.total)}</b><span>${t('c_total')}</span></div><div><b>${fmt(c.week)}</b><span>${t('c_week')}</span></div></div>
-  <div class="lvl"><div class="row between"><span>${t('next_milestone')}</span><b>${fmt(c.next)}</b></div>${bar(c.next === c.prev ? 100 : ((c.total - c.prev) / (c.next - c.prev)) * 100)}</div>
+  <div class="stats">${cell(c.members, t('c_members'))}${cell(c.total, t('c_total'), 'durood')}${cell(c.week, t('c_week'), 'durood')}</div>
+  <div class="lvl"><div class="row between"><span>${t('next_milestone')}</span><b>${U(c.next, 'durood')}</b></div>${bar(c.next === c.prev ? 100 : ((c.total - c.prev) / (c.next - c.prev)) * 100)}</div>
   ${ks.active ? `<div class="karwan"><b>${uiIcon('flame', 16, 1.8)} ${t('karwan_streak')(ks.streak)}</b>
       <div>${t('karwan_today')(fmt(ks.today), fmt(ks.size))}</div>
       ${ks.missing.length ? `<div class="muted">${t('karwan_missing')} ${ks.missing.map((n) => `<span class="chipname">${esc(n)}</span>`).join(' ')}</div>` : ''}</div>` : `<p class="note">${t('karwan_need')}</p>`}
@@ -800,22 +807,36 @@ function caravan() {
   <button class="rowlink" data-act="tab" data-tab="qabila"><span>${uiIcon('nodes', 14, 2)} ${t('cv_vs_qabila')}</span><b class="ar">→</b></button>`;
 }
 
+// where a member's invites come from, and how to get more: their level (points), people they brought in who recite, and streaks
+function invitesBox(m) {
+  const v = m.invites, f = v.from, row = (label, n, how) => `<li><span>${label}${how ? `<small>${how}</small>` : ''}</span><b>${N(`+${fmt(n)}`)}</b></li>`;
+  return `<div class="invleft"><b>${fmt(v.left)}</b> <span>${t('invites_left')} · ${t('invites_of')(N(`${fmt(v.used)} / ${fmt(v.cap)}`))}</span></div>
+    <ul class="invsrc">
+      ${row(t('inv_start'), f.start)}
+      ${row(t('inv_level')(m.level), f.level, t('inv_level_how')(v.per.level, N(fmt(v.next.levelXp)), v.next.level))}
+      ${row(t('inv_active'), f.active, t('inv_active_how')(v.per.active))}
+      ${row(t('inv_streak'), f.streak, t('inv_streak_how')(v.per.streak, v.next.streak))}
+    </ul>`;
+}
+
 // ---- Qabila: your invite code, the people you brought in, everyone under you, and who is above you ---------------------------------------
 function qabila() {
   const m = S.me, tm = S.team;
   const link = `${location.origin}/?invite=${m.username}`;
   const down = m.team.total - m.total, nx = MILESTONES.find((x) => x > down) || MILESTONES.at(-1), pv = MILESTONES.filter((x) => x <= down).at(-1) || 0;
   return `<p class="note first">${t('tree_sub')}</p>
-  <div class="stats"><div><b>${fmt(m.team.members)}</b><span>${t('tree_people')}</span></div><div><b>${fmt(m.team.total)}</b><span>${t('tree_total')}</span></div><div><b>${tm ? fmt(tm.week) : '…'}</b><span>${t('tree_week')}</span></div></div>
-  <div class="lvl"><div class="row between"><span>${t('tree_next')}</span><b>${fmt(nx)}</b></div>${bar(nx === pv ? 100 : ((down - pv) / (nx - pv)) * 100)}</div>
+  ${m.canLinkInviter ? `<form novalidate class="linkinv" data-form="inviter"><b>${t('who_invited')}</b><p class="muted">${t('who_invited_text')}</p>
+    <div class="row"><input type="text" name="username" required maxlength="30" autocomplete="off" autocapitalize="none" dir="ltr" placeholder="${esc(t('who_invited_ph'))}" aria-label="${esc(t('who_invited'))}"><button class="chip solid" type="submit">${t('who_invited_btn')}</button></div></form>` : ''}
+  <div class="stats">${cell(m.team.members, t('tree_people'))}${cell(m.team.total, t('tree_total'), 'durood')}${tm ? cell(tm.week, t('tree_week'), 'durood') : `<div><b>…</b><span>${t('tree_week')}</span></div>`}</div>
+  <div class="lvl"><div class="row between"><span>${t('tree_next')}</span><b>${U(nx, 'durood')}</b></div>${bar(nx === pv ? 100 : ((down - pv) / (nx - pv)) * 100)}</div>
   ${fold('qcode', t('your_code'), '', `<p class="note first">${t('cq_def')}</p>
     <div class="code">${esc(m.username)}</div>
     <div class="muted" style="margin-top:12px">${t('your_link')}</div>
     <div class="link">${esc(link)}</div>
-    <div class="invleft"><b>${m.invites.left}</b> <span>${t('invites_left')} · ${N(`${m.invites.used} / ${m.invites.cap}`)}</span><small>${t('invites_next')(m.invites.nextAt)}</small></div>
-    <div class="row" style="margin-top:12px"><button class="blk wa fill1" data-act="wa"><span class="lab">${uiIcon('share', 22, 1.8)} ${t('share_wa')}</span><b class="ar">→</b></button><button class="chip" data-act="copy" data-text="${esc(link)}">${t('copy')}</button></div>`)}
+    <div class="row" style="margin-top:12px"><button class="blk wa fill1" data-act="wa"><span class="lab">${uiIcon('share', 22, 1.8)} ${t('share_wa')}</span><b class="ar">→</b></button>${navigator.share ? `<button class="chip" data-act="shareinv">${t('share_other')}</button>` : ''}<button class="chip" data-act="copy" data-text="${esc(link)}">${t('copy')}</button></div>`)}
+  ${fold('qinv', t('invites_title'), N(`${fmt(m.invites.left)}`), invitesBox(m), true)}
   ${fold('qdirect', `${t('direct_list')}`, N(fmt(m.team.direct)), !tm ? '…' : tm.direct.length ? `<ul class="lb">${tm.direct.map((d) => `
-    <li>${av(d, 34)}<span class="name">${esc(d.username)}<small>${d.city ? `${esc(d.city)} · ` : ''}${fmt(d.total)} · ${t('this_week')} ${fmt(d.week)}</small></span><span class="score">${fmt(d.total)}</span></li>`).join('')}</ul>` : `<p class="muted">${t('none_yet')}</p>`)}
+    <li>${av(d, 34)}<span class="name">${esc(d.username)}<small>${d.city ? `${esc(d.city)} · ` : ''}${t('this_week')} ${U(d.week, 'durood')}</small></span><span class="score">${U(d.total, 'durood')}</span></li>`).join('')}</ul>` : `<p class="muted">${t('none_yet')}</p>`)}
   ${tm?.upline?.length ? fold('qup', t('upline_title'), '', uplineBlock(tm).replace(/^<h3>.*?<\/h3>/, ''), false) : ''}`;
 }
 
@@ -825,7 +846,7 @@ function historyBlock() {
   const time = (at) => new Date(at).toLocaleTimeString(S.lang === 'ur' ? 'en-GB' : 'en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Karachi' });
   if (!h.days.length) return `<p class="note first">${t('hist_empty')}</p>`;
   return h.days.map((d) => `
-    <div class="hday"><span>${d.day === h.today ? t('today') : d.day === h.yesterday ? t('yesterday') : N(esc(d.day))}</span><b>${fmt(d.total)}</b></div>
+    <div class="hday"><span>${d.day === h.today ? t('today') : d.day === h.yesterday ? t('yesterday') : N(esc(d.day))}</span><b>${U(d.total, 'durood')}</b></div>
     ${d.entries.map((e) => `
       <div class="hrow ${S.editing === e.id ? 'ed' : ''}">
         <span class="hc">${fmt(e.count)}</span>
@@ -848,8 +869,9 @@ const BADGE_FAMILIES = [
 function progress() {
   const m = S.me, title = t('titles')[Math.min(m.level - 1, 9)];
   return `<div class="myhead small"><div class="mybig">${av(m, 56, false)}</div><div><div class="uname">${esc(m.username)}</div><div class="muted">${t('level')} ${m.level} · ${esc(title)}</div></div></div>
-  <div class="stats"><div><b>${fmt(m.week)}</b><span>${t('week')}</span></div><div><b>${fmt(m.total)}</b><span>${t('total')}</span></div><div><b>${m.bestStreak}</b><span>${t('best_streak')}</span></div></div>
-  <div class="lvl"><div class="row between"><span>${uiIcon('bolt', 14, 1.9)} ${t('level')} ${m.level} · ${esc(title)}</span><b>${N(`${fmt(m.xp)} / ${fmt(m.next)}`)}</b></div>${bar(m.pct)}
+  <div class="stats">${cell(m.week, t('week'), 'durood')}${cell(m.total, t('total'), 'durood')}${cell(m.bestStreak, t('best_streak'), 'days')}</div>
+  <div class="lvl"><div class="row between"><span>${uiIcon('bolt', 14, 1.9)} ${t('level')} ${m.level} · ${esc(title)}</span><b>${N(`${fmt(m.xp)} / ${fmt(m.next)}`)}${unit('pts')}</b></div>${bar(m.pct)}
+    <p class="unitnote">${unit('durood')} ${unit('pts')} ${t('units_note')}</p>
     <div class="row between muted" style="margin-top:6px"><span title="${esc(t('shield_hint'))}">${uiIcon('shield', 14, 1.9)} ${m.shields} ${t('shields_word')}</span><button class="linkbtn" data-act="goleague">${t('league_title')}: ${t('tier_' + TIER_KEYS[m.league || 0])}</button></div></div>
   ${m.circleUrl ? fold('circle', t('circle_title'), m.circleTeach === 'approved' ? t('teach_done') : m.badges.includes('circle') ? '✓' : '', `<p class="muted">${t('circle_text')}</p>
     <div class="row wrapx"><a class="chip" href="${esc(m.circleUrl)}" target="_blank" rel="noopener">${t('circle_open')} ↗</a>
@@ -1142,7 +1164,7 @@ function burhanCaravan() {
   const loading = !S.bhLists && (b.roles.saaliks || b.roles.razakars || b.roles.requests);
   if (loading) return skel();
   const reqs = rq.map((r) => `<div class="circlecard"><b>${esc(r.username)}</b>${r.city ? ` · ${esc(r.city)}` : ''}<p class="muted">${t('request_text')}</p><div class="row"><button class="blk fill1" data-act="bhaccept" data-u="${esc(r.username)}"><span>${t('accept')}</span><b class="ar">→</b></button><button class="chip" data-act="bhdecline" data-u="${esc(r.username)}">${t('decline')}</button></div></div>`).join('');
-  const saliks = sa.length ? `<ul class="lb">${sa.map((x) => `<li><button class="rowbtn" data-act="opensaalik" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('durood_week')(fmt(x.duroodWeek))}${x.mamulaatToday == null ? '' : ` · ${t('mam_short')} ${x.mamulaatToday}%`}</small></span><span class="score">${fmt(x.duroodToday)}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('saaliks_none')}</p>`;
+  const saliks = sa.length ? `<ul class="lb">${sa.map((x) => `<li><button class="rowbtn" data-act="opensaalik" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('durood_week')(fmt(x.duroodWeek))}${x.mamulaatToday == null ? '' : ` · ${t('mam_short')} ${x.mamulaatToday}%`}</small></span><span class="score">${U(x.duroodToday, 'durood')}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('saaliks_none')}</p>`;
   const allTags = S.bhLists?.tags || [], tf = S.teamFilter && allTags.some((x) => x.tag === S.teamFilter) ? S.teamFilter : null;
   const shown = tf ? ra.filter((x) => (x.tags || []).includes(tf)) : ra;
   const chips = allTags.length ? `<div class="chips tagbar"><button class="chip ${tf ? '' : 'solid'}" data-act="teamf" data-tag="">${t('team_all')} ${N(String(ra.length))}</button>${allTags.map((x) => `<button class="chip ${tf === x.tag ? 'solid' : ''}" data-act="teamf" data-tag="${esc(x.tag)}">#${esc(x.tag)} ${N(String(x.n))}</button>`).join('')}</div>` : (ra.length ? `<p class="hint padx">${t('team_hint')}</p>` : '');
@@ -1243,9 +1265,9 @@ function tasksPage() {
 }
 
 function progressGrid(g) {
-  const c = (v, l) => `<div><b>${fmt(v)}</b><span>${l}</span></div>`;
-  return `<div class="stats">${c(g.durood.total, t('total'))}${c(g.durood.today, t('today'))}${c(g.durood.week, t('week'))}</div>
-    <div class="stats">${c(g.streak, t('streak'))}${c(g.xp, 'XP')}${c(g.level, t('level'))}</div>
+  const c = cell;
+  return `<div class="stats">${c(g.durood.total, t('total'), 'durood')}${c(g.durood.today, t('today'), 'durood')}${c(g.durood.week, t('week'), 'durood')}</div>
+    <div class="stats">${c(g.streak, t('streak'))}${c(g.xp, t('xp'), 'pts')}${c(g.level, t('level'))}</div>
     <div class="stats">${c(g.sunnahs, t('sunnah_word'))}${c(g.lectures, t('lectures_word'))}${c(g.reflections, t('reflect_title'))}</div>`;
 }
 
@@ -1555,6 +1577,11 @@ app.addEventListener('click', async (ev) => {
     return enterTab('rank');
   }
   if (act === 'wa') return window.open(`https://wa.me/?text=${encodeURIComponent(t('share_text')(S.me.username, `${location.origin}/?invite=${S.me.username}`))}`, '_blank', 'noopener');
+  if (act === 'shareinv') {
+    const url = `${location.origin}/?invite=${S.me.username}`;
+    try { await navigator.share({ title: 'Seerah Quest', text: t('share_text')(S.me.username, ''), url }); } catch { /* closed */ }
+    return;
+  }
   if (act === 'copy') {
     try { await navigator.clipboard.writeText(el.dataset.text); toast(t('copied')); } catch { prompt('', el.dataset.text); }
     return;
@@ -1879,6 +1906,9 @@ app.addEventListener('submit', async (ev) => {
       const r = await api('/assignments', 'POST', { team: S.teamFilter, kind: k, title: f.title, ...(k === 'routine' ? { weekdays: pickedDays(form) } : { dueDay: f.dueDay }) });
       const rl = await api('/burhan/razakars'); S.bhLists = { ...S.bhLists, razakars: rl.razakars, tags: rl.tags };
       form.reset(); toast(t('team_given')(r.count)); draw();
+    } else if (kind === 'inviter') {
+      const r = await api('/me/inviter', 'POST', { username: f.username });
+      S.me = r.me; S.team = await api('/team'); toast(t('who_invited_done')(r.inviter)); haptic('done'); draw();
     } else if (kind === 'majlisnew') {
       S.majalis = await api('/majalis', 'POST', { name: f.name, nameUr: f.nameUr });
       toast(t('saved')); draw();
@@ -1913,7 +1943,7 @@ app.addEventListener('submit', async (ev) => {
       logout(false); S.authMode = 'login'; draw(); toast(t('deleted'));
     }
   } catch (e) {
-    if (kind === 'settings' || kind === 'delete' || kind === 'citysave' || kind === 'profile' || kind === 'password' || kind === 'phone' || kind === 'cvcreate' || kind === 'cvrename' || kind === 'assign' || kind === 'owntask' || kind === 'majlisnew' || kind === 'teamassign') { toast(errText(e)); btn.disabled = false; }
+    if (kind === 'settings' || kind === 'delete' || kind === 'citysave' || kind === 'profile' || kind === 'password' || kind === 'phone' || kind === 'cvcreate' || kind === 'cvrename' || kind === 'assign' || kind === 'owntask' || kind === 'majlisnew' || kind === 'teamassign' || kind === 'inviter') { toast(errText(e)); btn.disabled = false; }
     else { S.error = errText(e); draw(); }
   }
 });

@@ -106,20 +106,54 @@ test('waitlist: request, admin approves into a single-use code, rejection and re
   assert.equal((await admin('GET', '/waitlist?status=rejected')).requests.length, 1);
 });
 
-test('member invite cap: 10 to start, +10 for each 7-day streak, suspended members cannot invite', async () => {
+test('member invite cap: 10 to start, more for level, active invitees and streaks; suspended members cannot invite', async () => {
   const host = await signup('host_m');
-  assert.deepEqual((await api('GET', '/api/me', { token: host.token })).invites, { cap: 10, used: 0, left: 10, nextAt: 7 });
+  const st = (await api('GET', '/api/me', { token: host.token })).invites;
+  assert.deepEqual([st.cap, st.used, st.left, st.nextAt], [10, 0, 10, 7]);
+  assert.deepEqual(st.from, { start: 10, level: 0, active: 0, streak: 0 });
   for (let i = 0; i < 10; i++) assert.ok((await signup(`kid_${i}`, 'host_m')).token, `invite ${i}`);
   assert.equal((await signup('kid_x', 'host_m')).error, 'invite_full');
   assert.equal((await api('GET', '/api/invite-check?code=host_m')).valid, false);
   db.prepare("UPDATE users SET best_streak = 7 WHERE username = 'host_m'").run();
   const me = await api('GET', '/api/me', { token: host.token });
-  assert.deepEqual(me.invites, { cap: 20, used: 10, left: 10, nextAt: 14 });
+  assert.deepEqual([me.invites.cap, me.invites.used, me.invites.left, me.invites.nextAt], [20, 10, 10, 14]);
   assert.ok((await signup('kid_x', 'host_m')).token);
   db.prepare("UPDATE users SET best_streak = 21 WHERE username = 'host_m'").run();
   assert.equal((await api('GET', '/api/me', { token: host.token })).invites.cap, 40);
+  // points: level 3 (400 points) adds 2 levels x 3
+  db.prepare("UPDATE users SET xp = 400 WHERE username = 'host_m'").run();
+  assert.equal((await api('GET', '/api/me', { token: host.token })).invites.cap, 46);
+  // each invitee who reaches 100 durood adds 2
+  db.prepare("UPDATE users SET total = 100 WHERE username IN ('kid_0', 'kid_1')").run();
+  const g = (await api('GET', '/api/me', { token: host.token })).invites;
+  assert.equal(g.cap, 50); assert.equal(g.from.active, 4);
+  db.prepare("UPDATE users SET xp = 0, total = 0 WHERE username IN ('host_m', 'kid_0', 'kid_1')").run();
   // founder-code and waitlist members never use up anyone's cap
   assert.equal((await api('GET', '/api/me', { token: (await signup('free_m')).token })).invites.used, 0);
+});
+
+test('who invited you: a member who joined with a founder code links to their inviter once, early, and the tree and reward follow', async () => {
+  const grand = await signup('lk_grand'), host = await signup('lk_host', 'lk_grand'), kid = await signup('lk_kid');
+  assert.equal((await api('GET', '/api/me', { token: kid.token })).canLinkInviter, true);
+  await api('POST', '/api/log', { token: kid.token, body: { count: 150 } });
+  assert.equal((await api('POST', '/api/me/inviter', { token: kid.token, body: { username: 'lk_kid' } })).error, 'inviter_unknown');
+  assert.equal((await api('POST', '/api/me/inviter', { token: kid.token, body: { username: 'nobody_here' } })).error, 'inviter_unknown');
+  const r = await api('POST', '/api/me/inviter', { token: kid.token, body: { username: '@lk_host' } });
+  assert.equal(r.inviter, 'lk_host'); assert.equal(r.me.inviter, 'lk_host'); assert.equal(r.me.canLinkInviter, false);
+  const h = await api('GET', '/api/me', { token: host.token });
+  assert.equal(h.team.direct, 1); assert.equal(h.team.total, 150);
+  assert.equal(h.xp, 750); // the referral reward (500) and the weekly invite quest (250), as if the code had been used
+  assert.equal(h.invites.used, 1); assert.equal(h.invites.from.active, 2);
+  assert.equal((await api('GET', '/api/me', { token: grand.token })).team.total, 150); // the whole line above gets the total
+  // only once
+  assert.equal((await api('POST', '/api/me/inviter', { token: kid.token, body: { username: 'lk_grand' } })).error, 'link_closed');
+  // not after 14 days, and not once someone joined through you
+  const late = await signup('lk_late');
+  db.prepare("UPDATE users SET created_at = ? WHERE username = 'lk_late'").run(Date.now() - 15 * 864e5);
+  assert.equal((await api('POST', '/api/me/inviter', { token: late.token, body: { username: 'lk_host' } })).error, 'link_closed');
+  const top = await signup('lk_top'); await signup('lk_under', 'lk_top');
+  assert.equal((await api('POST', '/api/me/inviter', { token: top.token, body: { username: 'lk_host' } })).error, 'link_closed');
+  assert.deepEqual(audit().problems, []);
 });
 
 test('suspending a member, or a whole branch, locks them out but keeps their durood in the totals', async () => {

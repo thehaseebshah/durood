@@ -2,6 +2,8 @@ import { db, tx, getSetting, setSetting } from './db.js';
 import { HttpError, avatarUrl } from './auth.js';
 import { inviteStatus } from './access.js';
 
+export const LINK_DAYS = 14; // a member who joined without a member's code can name who invited them within this many days
+
 // ---- tunables -------------------------------------------------------------
 export const CFG = {
   maxDaily: Number(process.env.MAX_DAILY) || 50_000,          // ceiling per person per day (about 8 hours at 100 a minute)
@@ -171,6 +173,31 @@ export function grant(userId, kind, ref, xp) {
   const r = run('INSERT OR IGNORE INTO events (user_id, kind, ref, day, xp, created_at) VALUES (?,?,?,?,?,?)', userId, kind, String(ref), dayOf(), xp, Date.now());
   if (r.changes) run('UPDATE users SET xp = xp + ? WHERE id = ?', xp, userId);
   return r.changes > 0;
+}
+
+// ---- "Who invited you?": a member who joined through the public or a founder code links up to the person who brought them --------
+/** Whether the member may still name their inviter: no inviter yet, joined in the last LINK_DAYS, and nobody below them yet. */
+export function canLinkInviter(u) {
+  return !u.referrer_id && Date.now() - u.created_at < LINK_DAYS * 864e5 && !one('SELECT 1 FROM users WHERE referrer_id = ?', u.id);
+}
+/** Puts the member under their inviter: the tree, team totals and the referral reward all follow as if they had used that code. */
+export function linkInviter(userId, rawName) {
+  return tx(() => {
+    const u = one('SELECT * FROM users WHERE id = ?', userId);
+    if (!canLinkInviter(u)) throw new HttpError(409, 'link_closed');
+    const r = one('SELECT id, username, suspended, deleted_at FROM users WHERE username = ?', String(rawName ?? '').trim().replace(/^@/, ''));
+    if (!r || r.suspended || r.deleted_at || r.id === u.id) throw new HttpError(404, 'inviter_unknown');
+    if (inviteStatus(r.id).left <= 0) throw new HttpError(409, 'invite_full');
+    run('UPDATE users SET referrer_id = ? WHERE id = ?', r.id, u.id);
+    // nobody is below the member yet (canLinkInviter), so only their own ancestry changes
+    run('INSERT INTO ancestors (user_id, ancestor_id, depth) SELECT ?, ancestor_id, depth + 1 FROM ancestors WHERE user_id = ?', u.id, r.id);
+    if (!u.held && u.total) run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth > 0 AND depth <= ?)', u.total, u.id, CFG.teamMaxDepth);
+    if (u.total > 0) run('UPDATE users SET tree_active = tree_active + 1 WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth > 0)', u.id);
+    const fresh = [];
+    if (u.total >= CFG.referralMin && grant(r.id, 'referral', String(u.id), CFG.referralXp)) settleQuests(r.id);
+    for (const a of all('SELECT ancestor_id id FROM ancestors WHERE user_id = ? AND depth > 0', u.id)) evalBadges(a.id, fresh);
+    return { ok: true, inviter: r.username, inviterId: r.id };
+  });
 }
 
 // ---- special days: Fridays automatically, other days (Ramadan, Rabi ul Awwal...) added by the admin ----------------------------
@@ -754,6 +781,7 @@ export function getMe(userId) {
     // 'decided' once an organiser looked and kept it out ("keep held"), so the member isn't told "being checked" for ever
     flagState: !u.hidden_from_ranks ? null : one("SELECT 1 FROM flags WHERE user_id = ? AND status = 'open'", u.id) ? 'open' : one("SELECT 1 FROM flags WHERE user_id = ? AND status = 'confirmed'", u.id) ? 'decided' : 'open', emailVerified: !!u.email_verified_at,
     invites: inviteStatus(userId),
+    inviter: u.referrer_id ? one('SELECT username FROM users WHERE id = ?', u.referrer_id)?.username ?? null : null, canLinkInviter: canLinkInviter(u),
     total: u.total, today, week,
     streak: streakAlive ? u.streak : 0, bestStreak: u.best_streak, shields: u.shields,
     ...levelFor(u.xp),

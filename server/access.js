@@ -7,7 +7,9 @@ const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
 const run = (sql, ...a) => db.prepare(sql).run(...a);
 
-export const CAP = { start: 10, perStreak: 10, streakDays: 7 };
+// Invites grow four ways, so nobody waits a week for more: what you start with, your level (points), each person you invited
+// who really recites (100 durood, the same bar the referral reward uses), and every 7-day streak you have ever reached.
+export const CAP = { start: 10, perLevel: 3, perActive: 2, activeMin: 100, perStreak: 10, streakDays: 7 };
 export const INVITE_ONLY = () => process.env.INVITE_ONLY !== '0';
 
 // unambiguous alphabet (no 0/O, 1/I/L), shown as XXXX-XXXX
@@ -19,15 +21,24 @@ export function genCode() {
 export const normCode = (c) => String(c || '').toUpperCase().replace(/[\s-]/g, '');
 export const showCode = (c) => (c.length === 8 ? `${c.slice(0, 4)}-${c.slice(4)}` : c);
 
-/** Invites a member may issue: 10 to start, +10 for every completed 7-day streak they have ever reached. */
+const levelOf = (xp) => Math.floor(Math.sqrt(Math.max(0, xp) / 100)) + 1; // the same curve as game.js levelFor (no import: game.js imports this file)
+/** Invites a member may issue, and where they come from. */
+export function inviteSources(userId) {
+  const u = one('SELECT xp, best_streak FROM users WHERE id = ?', userId) ?? { xp: 0, best_streak: 0 };
+  const level = levelOf(u.xp), active = one('SELECT COUNT(*) n FROM users WHERE referrer_id = ? AND total >= ?', userId, CAP.activeMin).n;
+  const weeks = Math.floor(u.best_streak / CAP.streakDays);
+  return { start: CAP.start, level: CAP.perLevel * (level - 1), active: CAP.perActive * active, streak: CAP.perStreak * weeks,
+    next: { level: level + 1, levelXp: 100 * level ** 2, streak: CAP.streakDays * (weeks + 1) } };
+}
 export function inviteCap(userId) {
-  const u = one('SELECT best_streak FROM users WHERE id = ?', userId);
-  return CAP.start + CAP.perStreak * Math.floor((u?.best_streak ?? 0) / CAP.streakDays);
+  const s = inviteSources(userId);
+  return s.start + s.level + s.active + s.streak;
 }
 export const invitesUsed = (userId) => one('SELECT COUNT(*) n FROM users WHERE referrer_id = ?', userId).n;
 export function inviteStatus(userId) {
-  const cap = inviteCap(userId), used = invitesUsed(userId);
-  return { cap, used, left: Math.max(0, cap - used), nextAt: CAP.streakDays * (Math.floor((one('SELECT best_streak FROM users WHERE id = ?', userId)?.best_streak ?? 0) / CAP.streakDays) + 1) };
+  const { next, ...from } = inviteSources(userId);
+  const cap = from.start + from.level + from.active + from.streak, used = invitesUsed(userId);
+  return { cap, used, left: Math.max(0, cap - used), nextAt: next.streak, from, next, per: { level: CAP.perLevel, active: CAP.perActive, streak: CAP.perStreak } };
 }
 
 const pkDay = () => new Date(Date.now() + 5 * 3600e3).toISOString().slice(0, 10); // same Pakistan-time day game.js uses (avoids a circular import)

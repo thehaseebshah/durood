@@ -685,3 +685,25 @@ html[lang=ur] .daypick legend { letter-spacing: 0; text-transform: none; font-si
 .daychip input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
 .daychip:has(input:checked), .daychip:has(input:checked):hover { background: var(--sig); border-color: var(--sig); color: var(--on-sig); }
 .daychip:has(input:focus-visible) { outline: 3px solid var(--sig); outline-offset: 2px; }
+
+/* units: every number says what it counts (durood recited, points earned, days, people) */
+.u { font-style: normal; font-size: .62em; font-weight: 700; letter-spacing: 0; margin-inline-start: .3em; padding: .05em .4em; border-radius: 99px; vertical-align: .15em; white-space: nowrap; }
+.u-durood { color: var(--sig-text); background: var(--sig-bg); }
+.u-pts { color: #8a5a00; background: #fff2d6; }
+html[data-mode=dark] .u-pts { color: #ffcf6b; background: #2f2508; }
+.u-days, .u-people { color: var(--soft); background: var(--cell); }
+.stats span .u { font-size: .9em; vertical-align: 0; }
+.score .u { display: block; margin: 2px 0 0; font-size: .6rem; text-align: center; }
+.q .qxp { align-self: center; flex: none; margin-inline-end: 16px; font-weight: 800; font-size: .9rem; white-space: nowrap; }
+.q.d .qxp { opacity: .45; }
+.unitnote { margin: 8px 0 0; font-size: .74rem; color: var(--soft); line-height: 1.5; }
+.unitnote .u { font-size: .9em; margin: 0 .2em 0 0; }
+.invsrc { list-style: none; margin: 8px 20px 4px; padding: 0; }
+.invsrc li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--hair); }
+.invsrc li span { font-size: .9rem; }
+.invsrc li small { display: block; color: var(--soft); font-size: .76rem; margin-top: 2px; }
+.invsrc li b { font-weight: 800; white-space: nowrap; }
+.linkinv { margin: 0 16px 14px; padding: 14px; border: 1px solid var(--sig); border-radius: 12px; background: var(--sig-bg); }
+.linkinv p { margin: 6px 0 10px; }
+.linkinv .row { gap: 8px; }
+.linkinv input { flex: 1; min-width: 0; }

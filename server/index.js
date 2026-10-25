@@ -20,7 +20,7 @@ import * as news from './news.js';
 import * as feedApi from './feed.js';
 import * as geo from './geo.js';
 import * as compete from './compete.js';
-import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, quizPassed, publicQuiz, parseQuestions, claimCircle, getMe, weekStart, setSpecialDay, deleteSpecialDay, listSpecialDays, circleUrl, setCircleUrl, requestTeach, listTeachRequests, decideTeach, leaderboard, qabilaBoard, teamView, publicStats } from './game.js';
+import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, quizPassed, publicQuiz, parseQuestions, claimCircle, getMe, weekStart, setSpecialDay, deleteSpecialDay, listSpecialDays, circleUrl, setCircleUrl, requestTeach, listTeachRequests, decideTeach, leaderboard, qabilaBoard, teamView, publicStats, linkInviter } from './game.js';
 
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -323,6 +323,14 @@ route('POST', '/api/login', { auth: false }, async ({ body, ip }) => {
 
 route('GET', '/api/public', { auth: false }, () => publicStats());
 route('GET', '/api/me', ({ user }) => getMe(user));
+// "Who invited you?": a member who joined with the public or a founder code names the person who brought them (game.js linkInviter)
+route('POST', '/api/me/inviter', ({ user, body }) => {
+  rateLimit(`inviter:${user}`, 10, 3600e3);
+  const r = linkInviter(user, body.username);
+  const who = one('SELECT username FROM users WHERE id = ?', user).username;
+  setImmediate(() => news.notifyJoined(r.inviterId, who));
+  return { ok: true, inviter: r.inviter, me: getMe(user) };
+});
 
 route('PATCH', '/api/me', async ({ user, body }) => {
   // validate every field first so a bad one cannot leave the others half-applied
