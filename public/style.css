@@ -974,3 +974,4 @@ body.in-app.scrolled .hd .ptitle { opacity: 1; transform: none; }
 body.in-app .hd { transition: background .2s, border-color .2s; }
 body.in-app:not(.scrolled) .hd { border-bottom-color: transparent; background: var(--ground); -webkit-backdrop-filter: none; backdrop-filter: none; }
 @media (prefers-reduced-motion: reduce) { body.in-app .hd .ptitle { transition: none; } }
+.chip { white-space: nowrap; flex-shrink: 0; }
