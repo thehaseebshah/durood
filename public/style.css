@@ -524,3 +524,20 @@ html[dir=rtl] .ar { display: inline-block; transform: scaleX(-1); }
 .cvname { margin-top: 10px; }
 nav.tabs button { position: relative; }
 nav.tabs .pip { position: absolute; top: 6px; inset-inline-end: calc(50% - 20px); width: 10px; height: 10px; border-radius: 50%; background: var(--err); border: 2px solid var(--paper); }
+
+/* people: pictures and initials */
+.av { border-radius: 50%; object-fit: cover; display: inline-block; flex: none; background: var(--track); }
+.av.ini { display: inline-grid; place-items: center; font-weight: 800; color: #fff; background: hsl(var(--h) 45% 38%); line-height: 1; }
+.avbtn { all: unset; cursor: pointer; display: inline-flex; border-radius: 50%; flex: none; }
+.avbtn:focus-visible { outline: 3px solid var(--sig); outline-offset: 2px; }
+.lb li > .av, .lb li > .avbtn, .lb li .rowbtn > .av { margin-inline-end: 10px; }
+.lb li .rowbtn > .av { margin-inline-end: 0; }
+.fwho { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.fwho .when { margin-inline-start: auto; }
+.dn { color: var(--soft); font-weight: 500; }
+.myhead { display: flex; gap: 16px; align-items: center; padding: 16px 20px 0; }
+.myact { display: grid; gap: 6px; justify-items: start; }
+.myact label.chip { cursor: pointer; }
+.pname { font-weight: 700; font-size: 1.1rem; margin-top: 4px; } .pbio { color: var(--soft); margin: 2px 0 0; }
+.profile { text-align: center; } .profile .row.between { text-align: start; }
+.pbig { display: grid; place-items: center; margin: 8px 0; }

@@ -73,6 +73,7 @@ curl -X POST $URL/api/admin/lectures -H "x-admin-key: $ADMIN_KEY" -H 'content-ty
 ## What's in the MVP
 
 - **Accounts:** username (unique, case-insensitive; doubles as the invite code), email, WhatsApp number (any country, normalised to `+<code>…`), password. Login by username, email or phone. Usernames and caravan names share one namespace (case-insensitive) and can never look like a phone number.
+- **Profile:** a photo (cropped and squeezed in the browser, rebuilt without metadata on the server, visible to everyone in the app), a display name, a one-line bio, a password change that signs out other devices, and a WhatsApp number change (docs/SPEC.md section 22).
 - **Daily durood:** tap-counter or type a number. Pakistan-time days (UTC+5). Anti-cheat caps: 50,000 per day (10,000 in a member's first week). A day above 20,000, or above 5,000 for an account under two weeks old, is flagged and that member's durood is held out of the public, challenge and caravan totals until an admin clears it.
 - **Priorities:** durood stays the main earner; Sunnah, the weekly lecture, reflections and replies pay small, balanced amounts (docs/SPEC.md section 18).
 - **RPG layer:** XP (1 per durood + milestone and quest bonuses), levels with a "Musafir → Muqarrab" title ladder, daily streaks with *streak shields* (one earned per 7-day streak, auto-saves a missed day), daily/weekly quests, 18 badges.

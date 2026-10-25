@@ -92,7 +92,7 @@ Prod differs from dev: its own `ADMIN_KEY` and `AUTH_SECRET`; a real mail provid
 
 ## Backup and restore
 
-Backups are written to `BACKUP_DIR` (3 kept, daily). They sit on the same volume, so **copy them off the machine regularly** (for example `fly ssh sftp get`). Photos are not in them (`UPLOAD_DIR` is separate), and neither is `AUTH_SECRET`: keep that secret safe or every member is logged out after a restore.
+Backups are written to `BACKUP_DIR` (3 kept, daily). They sit on the same volume, so **copy them off the machine regularly** (for example `fly ssh sftp get`). Photos and profile pictures are not in them (`UPLOAD_DIR` is separate), and neither is `AUTH_SECRET`: keep that secret safe or every member is logged out after a restore.
 
 To restore: stop the app, then replace the database **and remove its write-ahead files**, or a stale log is replayed over the restored copy:
 

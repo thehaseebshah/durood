@@ -95,7 +95,7 @@ function setSession(token, me) {
 }
 
 function logout(render = true) {
-  S.bh = null; S.bhDetail = null; S.bhLists = null;
+  S.bh = null; S.bhDetail = null; S.bhLists = null; S.profile = null;
   S.token = null; S.me = null; ls.del('token');
   S.tab = 'home'; S.team = S.cv = S.learn = S.feed = S.board.data = null;
   if (render) draw();
@@ -267,6 +267,7 @@ function shell() {
   <nav class="tabs" aria-label="${esc(t('app'))}"><div class="brand">${t('app')}</div>${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" ${S.tab === k ? 'aria-current="page"' : ''} data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em>${k === 'caravan' && (S.me.caravanInvites || S.me.caravanRequests) ? '<i class="pip" aria-hidden="true"></i>' : ''}</button>`).join('')}</nav>
   ${S.player ? playerModal() : ''}
   ${S.bhDetail ? detailModal() : ''}
+  ${S.profile ? profileModal() : ''}
   ${S.celebrate ? celebrateModal() : ''}
   ${S.me.needsCity ? cityModal() : ''}`;
 }
@@ -477,6 +478,26 @@ async function disablePush() {
 }
 const pushPromptDue = () => S.me.streak >= 2 && pushSupported() && Notification.permission === 'default' && !ls.get('pushNo');
 
+// ---- people: a picture (or their initial) and a name; tap to see their profile -------------------------------------------------------
+const hueOf = (name) => [...String(name)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+function av(p, size = 36, link = true) {
+  const inner = p.avatar
+    ? `<img class="av" width="${size}" height="${size}" src="${esc(p.avatar)}" alt="" loading="lazy">`
+    : `<span class="av ini" style="width:${size}px;height:${size}px;--h:${hueOf(p.username)};font-size:${Math.round(size * 0.44)}px" aria-hidden="true">${esc([...p.username][0] || '?').toUpperCase()}</span>`;
+  return link ? `<button class="avbtn" data-act="profile" data-u="${esc(p.username)}" aria-label="${esc(t('view_profile')(p.username))}">${inner}</button>` : inner;
+}
+const nameLine = (p) => `<b>${esc(p.username)}</b>${p.displayName ? ` <small class="dn">${esc(p.displayName)}</small>` : ''}`;
+function profileModal() {
+  const d = S.profile, p = d.data;
+  const head = `<div class="row between"><h3 class="in">${esc(d.username)}</h3><button class="chip" data-act="closeprofile">${t('close')}</button></div>`;
+  if (!p) return `<div class="modal"><div class="box">${head}<p class="muted center">…</p></div></div>`;
+  return `<div class="modal"><div class="box profile">${head}
+    <div class="pbig">${av(p, 96, false)}</div>
+    ${p.displayName ? `<div class="pname" dir="auto">${esc(p.displayName)}</div>` : ''}
+    ${p.bio ? `<p class="pbio" dir="auto">${esc(p.bio)}</p>` : ''}
+    <p class="muted center">${p.city ? `${esc(p.city)} · ` : ''}${t('member_since')} ${N(esc(p.joined))}${p.caravan ? ` · ${esc(p.caravan)}` : ''}</p></div></div>`;
+}
+
 // ---- the feed ---------------------------------------------------------------------------------------------------
 const pick = (en, ur) => (S.lang === 'ur' && ur) || en;
 function ago(at) {
@@ -532,7 +553,7 @@ const threadKey = (it) => `${replyKind(it)}:${it.id}`;
 function threadHtml(it) {
   const th = (S.threads || {})[threadKey(it)];
   if (!th) return '';
-  const list = (th.list || []).map((r) => `<div class="reply"><div class="fwho"><b>${esc(r.username)}</b>${r.city ? ` <small>${esc(r.city)}</small>` : ''}<small class="when">${ago(r.at)}</small>
+  const list = (th.list || []).map((r) => `<div class="reply"><div class="fwho">${av(r, 26)}${nameLine(r)}${r.city ? ` <small>${esc(r.city)}</small>` : ''}<small class="when">${ago(r.at)}</small>
       ${r.mine ? '' : `<button class="chip" data-act="rreport" data-id="${r.id}" data-key="${threadKey(it)}" aria-label="${esc(t('report_label'))}" title="${esc(t('report_ask'))}">${uiIcon('flag', 12, 2)}</button>`}</div>
       <div class="reflbody" dir="auto">${esc(r.body)}</div></div>`).join('');
   const mineN = (th.list || []).filter((r) => r.mine).length;
@@ -542,7 +563,7 @@ function threadHtml(it) {
 }
 
 function feedItem(it) {
-  const who = (name, city) => `<div class="fwho"><b>${esc(name)}</b>${city ? ` <small>${esc(city)}</small>` : ''}<small class="when">${ago(it.at)}</small></div>`;
+  const who = () => `<div class="fwho">${av(it, 32)}${nameLine(it)}${it.city ? ` <small>${esc(it.city)}</small>` : ''}<small class="when">${ago(it.at)}</small></div>`;
   const rk = replyKind(it);
   const acts = `<div class="facts"><button class="chip like ${it.liked ? 'on' : ''}" data-act="like" data-kind="${rk}" data-id="${it.id}" aria-label="${esc(t('like_label'))}" aria-pressed="${it.liked ? 'true' : 'false'}" ${it.mine || it.liked ? 'disabled' : ''}>${uiIcon('heart', 14, 2)} ${fmt(it.likes)}</button>
     <button class="chip" data-act="thread" data-kind="${rk}" data-id="${it.id}" aria-label="${esc(t('reply_btn'))}" aria-expanded="${(S.threads || {})[threadKey(it)] ? 'true' : 'false'}">${uiIcon('chat', 14, 2)} ${it.replies ? fmt(it.replies) : t('reply_btn')}</button>
@@ -552,15 +573,15 @@ function feedItem(it) {
       <b>${esc(pick(it.titleEn, it.titleUr))}</b>${it.bodyEn || it.bodyUr ? `<p>${esc(pick(it.bodyEn, it.bodyUr))}</p>` : ''}</div>`;
   }
   if (it.type === 'photo') {
-    return `<div class="fitem"><div class="flabel">${uiIcon('leaf', 12, 2)} ${esc(pick(it.titleEn, it.titleUr))}</div>${who(it.username, it.city)}
+    return `<div class="fitem"><div class="flabel">${uiIcon('leaf', 12, 2)} ${esc(pick(it.titleEn, it.titleUr))}</div>${who()}
       <img class="shot" loading="lazy" src="${esc(it.photoUrl)}" alt="">${acts}</div>`;
   }
   if (it.type === 'reflection') {
-    return `<div class="fitem"><div class="flabel">${uiIcon('pen', 12, 2)} ${t('reflect_title')}</div>${who(it.username, it.city)}
+    return `<div class="fitem"><div class="flabel">${uiIcon('pen', 12, 2)} ${t('reflect_title')}</div>${who()}
       ${it.promptEn ? `<div class="muted fprompt">${esc(pick(it.promptEn, it.promptUr))}</div>` : ''}<div class="reflbody" dir="auto">${esc(it.body)}</div>${acts}</div>`;
   }
   if (it.type === 'comment') {
-    return `<div class="fitem"><div class="flabel">${uiIcon('play', 12, 2)} ${esc(pick(it.lectureEn, it.lectureUr))}</div>${who(it.username, it.city)}
+    return `<div class="fitem"><div class="flabel">${uiIcon('play', 12, 2)} ${esc(pick(it.lectureEn, it.lectureUr))}</div>${who()}
       <div class="reflbody" dir="auto">${esc(it.body)}</div>${acts}</div>`;
   }
   if (it.type === 'milestone') {
@@ -609,7 +630,7 @@ function leagueView() {
   const last = L.last ? `<p class="note">${t('league_last_' + L.last.result)(L.last.rank)}</p>` : '';
   if (!L.joined) return `${head}<p class="muted" style="margin-inline:20px">${t('league_join')(name)}</p>${last}<p class="note">${t('league_rules')}</p>`;
   return `${head}${last}<ul class="lb">${L.rows.map((r) => `
-    <li class="${r.me ? 'me' : ''} ${r.up ? 'up' : ''} ${r.down ? 'down' : ''}"><span class="rank">${r.rank}</span>
+    <li class="${r.me ? 'me' : ''} ${r.up ? 'up' : ''} ${r.down ? 'down' : ''}"><span class="rank">${r.rank}</span>${av(r, 34)}
       <span class="name">${esc(r.username)}${r.me ? ` <em class="tag">${t('you')}</em>` : ''}<small>${r.up ? t('league_up') : r.down ? t('league_down') : esc(r.city || '')}</small></span>
       <span class="score">${fmt(r.score)}</span></li>`).join('')}</ul><p class="note">${t('league_rules')}</p>`;
 }
@@ -618,7 +639,7 @@ function rank() {
   const b = S.board, rows = b.data?.rows;
   const grp = ['caravans', 'trees', 'cities'].includes(b.type);
   const list = b.type === 'league' ? leagueView() : !rows ? '<p class="muted center">…</p>' : rows.length ? `<ul class="lb">${rows.map((r) => `
-    <li class="${r.me ? 'me' : ''}"><span class="rank">${r.rank}</span>
+    <li class="${r.me ? 'me' : ''}"><span class="rank">${r.rank}</span>${r.avatar !== undefined ? av(r, 34) : ''}
       <span class="name">${esc(r.name ?? r.username)}${r.me ? ` <em class="tag">${t(b.type === 'caravans' ? 'cv_yours' : 'you')}</em>` : ''}<small>${r.city ? `${esc(r.city)}` : ''}${grp ? `${r.city ? ' · ' : ''}${fmt(r.members)} ${t('members')}${b.metric === 'average' ? ` · ${fmt(r.active)} ${t('active')}` : ''}` : ''}</small></span>
       <span class="score">${grp && b.metric === 'growth' && r.score > 0 ? '+' : ''}${fmt(r.score)}</span></li>`).join('')}</ul>` : `<p class="muted center">${t(b.type === 'cities' ? 'empty_cities' : 'empty_board')}</p>`;
   const kinds = [['users', 'rk_people'], ['league', 'rk_league'], ['caravans', 'rk_caravans'], ['trees', 'rk_trees'], ['cities', 'rk_cities']];
@@ -645,7 +666,7 @@ function uplineBlock(tm) {
 }
 
 // ---- caravans: a group you create and name, joined by invitation or by asking ----------------------------------------------------
-const cvRow = (r, extra = '') => `<li><span class="name">${esc(r.username)}${r.owner ? ` <em class="tag">${t('cv_owner')}</em>` : ''}<small>${r.city ? `${esc(r.city)} · ` : ''}${t('this_week')} ${fmt(r.week)}${r.today ? ` · ${t('cv_today')}` : ''}</small></span><span class="score">${fmt(r.total)}</span>${extra}</li>`;
+const cvRow = (r, extra = '') => `<li>${av(r, 34)}<span class="name">${esc(r.username)}${r.owner ? ` <em class="tag">${t('cv_owner')}</em>` : ''}<small>${r.city ? `${esc(r.city)} · ` : ''}${t('this_week')} ${fmt(r.week)}${r.today ? ` · ${t('cv_today')}` : ''}</small></span><span class="score">${fmt(r.total)}</span>${extra}</li>`;
 function cvJoinOrCreate(cv) {
   return `<h3 class="first-d">${t('caravan_title')}</h3>
   <p class="muted">${t('cv_intro')}</p>
@@ -700,7 +721,7 @@ function caravan() {
   ${burhanCaravan()}
   <h3>${t('direct_list')} (${fmt(m.team.direct)})</h3>
   ${!tm ? '…' : tm.direct.length ? `<ul class="lb">${tm.direct.map((d) => `
-    <li><span class="name">${esc(d.username)}<small>${d.city ? `${esc(d.city)} · ` : ''}${fmt(d.total)} · ${t('this_week')} ${fmt(d.week)}</small></span><span class="score">${fmt(d.total)}</span></li>`).join('')}</ul>` : `<p class="muted">${t('none_yet')}</p>`}
+    <li>${av(d, 34)}<span class="name">${esc(d.username)}<small>${d.city ? `${esc(d.city)} · ` : ''}${fmt(d.total)} · ${t('this_week')} ${fmt(d.week)}</small></span><span class="score">${fmt(d.total)}</span></li>`).join('')}</ul>` : `<p class="muted">${t('none_yet')}</p>`}
   ${uplineBlock(tm)}
   </div></div>`;
 }
@@ -733,7 +754,13 @@ const BADGE_FAMILIES = [
 function me() {
   const m = S.me;
   return `
+  <div class="myhead"><div class="mybig">${av(m, 84, false)}</div><div class="myact">
+    <label class="chip solid" tabindex="0">${t(m.avatar ? 'change_photo' : 'add_photo')}<input type="file" accept="image/*" data-avatar hidden></label>
+    ${m.avatar ? `<button class="chip" data-act="rmavatar">${t('remove_photo')}</button>` : ''}
+    <small class="muted">${t('photo_hint')}</small></div></div>
   <div class="uname">${esc(m.username)}</div>
+  ${m.displayName ? `<div class="pname padx" dir="auto">${esc(m.displayName)}</div>` : ''}
+  ${m.bio ? `<p class="pbio padx" dir="auto">${esc(m.bio)}</p>` : ''}
   <div class="muted" dir="ltr">${esc(m.email)} · ${esc(m.phone)}</div>
   ${m.hiddenFromRanks ? `<div class="flagnote">${t('flagged')}</div>` : ''}
   ${m.emailVerified ? '' : `<div class="notice">${t('email_unconfirmed')} <button class="linkbtn" data-act="resend">${t('resend')}</button></div>`}
@@ -756,7 +783,16 @@ function me() {
   ${BADGE_FAMILIES.map(([fam, list]) => `<h3>${t('badges')} · ${t('fam_' + fam)}</h3>
   <div class="badges">${list.slice().sort((x, y) => m.badges.includes(y) - m.badges.includes(x)).map((c) => { const got = m.badges.includes(c); return `<div class="badge ${got ? 'got' : ''}" title="${esc(t('badge')[c][1])}">${badgeSvg(c, got)}<b>${esc(t('badge')[c][0])}</b><span>${esc(t('badge')[c][1])}</span></div>`; }).join('')}</div>`).join('')}
 
-  <h3 id="settings">${t('settings')}</h3>
+  <h3 id="settings">${t('profile_title')}</h3>
+  <form novalidate data-form="profile">
+    <label for="p-name">${t('display_name')}</label>
+    <input id="p-name" name="displayName" type="text" maxlength="40" autocomplete="name" dir="auto" value="${esc(m.displayName || '')}" placeholder="${esc(t('display_name_ph'))}">
+    <label for="p-bio">${t('bio')}</label>
+    <input id="p-bio" name="bio" type="text" maxlength="100" dir="auto" value="${esc(m.bio || '')}" placeholder="${esc(t('bio_ph'))}">
+    <div class="hint">${t('profile_hint')}</div>
+    <button class="blk" type="submit"><span>${t('save')}</span><b class="ar">→</b></button>
+  </form>
+  <h3>${t('settings')}</h3>
   <form novalidate data-form="settings">
     <label for="s-goal">${t('daily_goal')}</label>
     <input id="s-goal" type="number" name="dailyGoal" min="1" max="100000" value="${m.dailyGoal}" dir="ltr">
@@ -769,6 +805,21 @@ function me() {
     <label for="s-pw">${t('pw_for_email')}</label>
     <input id="s-pw" type="password" name="password" autocomplete="current-password" dir="ltr">
     <button class="blk" type="submit"><span>${t('save')}</span><b class="ar">→</b></button>
+  </form>
+  <h3>${t('security_title')}</h3>
+  <form novalidate data-form="password">
+    <label for="pw-cur">${t('pw_current')}</label><input id="pw-cur" type="password" name="current" autocomplete="current-password" dir="ltr">
+    <label for="pw-new">${t('pw_new')}</label><input id="pw-new" type="password" name="next" autocomplete="new-password" dir="ltr">
+    <label for="pw-again">${t('pw_again')}</label><input id="pw-again" type="password" name="again" autocomplete="new-password" dir="ltr">
+    <div class="hint">${t('pw_note')}</div>
+    <button class="blk" type="submit"><span>${t('pw_change')}</span><b class="ar">→</b></button>
+  </form>
+  <form novalidate data-form="phone">
+    <label for="ph-new">${t('phone_new')}</label>
+    <div class="phonerow"><select name="phoneCountry" aria-label="${esc(t('country'))}">${countryOptions()}</select><input id="ph-new" type="tel" name="phone" autocomplete="tel-national" dir="ltr" placeholder="300 1234567"></div>
+    <label for="ph-pw">${t('pw_current')}</label><input id="ph-pw" type="password" name="password" autocomplete="current-password" dir="ltr">
+    <div class="hint">${t('phone_note')}</div>
+    <button class="blk out" type="submit"><span>${t('phone_change')}</span></button>
   </form>
   <h3>${t('appearance')}</h3>
   <label class="padx">${t('language')}</label>
@@ -900,9 +951,9 @@ function burhanCaravan() {
   if (!b || (!b.roles.saaliks && !b.roles.razakars && !b.roles.requests)) return '';
   const sa = S.bhLists?.saaliks, ra = S.bhLists?.razakars, rq = S.bhLists?.requests || [];
   return `${rq.length ? `<h3>${t('requests_title')} (${rq.length})</h3>${rq.map((r) => `<div class="circlecard"><b>${esc(r.username)}</b>${r.city ? ` · ${esc(r.city)}` : ''}<p class="muted">${t('request_text')}</p><div class="row"><button class="blk fill1" data-act="bhaccept" data-u="${esc(r.username)}"><span>${t('accept')}</span><b class="ar">→</b></button><button class="chip" data-act="bhdecline" data-u="${esc(r.username)}">${t('decline')}</button></div></div>`).join('')}` : ''}${b.roles.saaliks ? `<h3>${t('saaliks_title')} (${b.roles.saaliks})</h3>
-    ${!sa ? '…' : `<ul class="lb">${sa.map((x) => `<li><button class="rowbtn" data-act="opensaalik" data-u="${esc(x.username)}"><span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('durood_week')(fmt(x.duroodWeek))}${x.mamulaatToday == null ? '' : ` · ${t('mam_short')} ${x.mamulaatToday}%`}</small></span><span class="score">${fmt(x.duroodToday)}</span></button></li>`).join('')}</ul>`}` : ''}
+    ${!sa ? '…' : `<ul class="lb">${sa.map((x) => `<li><button class="rowbtn" data-act="opensaalik" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('durood_week')(fmt(x.duroodWeek))}${x.mamulaatToday == null ? '' : ` · ${t('mam_short')} ${x.mamulaatToday}%`}</small></span><span class="score">${fmt(x.duroodToday)}</span></button></li>`).join('')}</ul>`}` : ''}
   ${b.roles.razakars ? `<h3>${t('razakars_title')} (${b.roles.razakars})</h3>
-    ${!ra ? '…' : `<ul class="lb">${ra.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}"><span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${x.routinePercent}%`}</small></span><span class="score">${fmt(x.duroodWeek)}</span></button></li>`).join('')}</ul>`}` : ''}`;
+    ${!ra ? '…' : `<ul class="lb">${ra.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${x.routinePercent}%`}</small></span><span class="score">${fmt(x.duroodWeek)}</span></button></li>`).join('')}</ul>`}` : ''}`;
 }
 
 function progressGrid(g) {
@@ -994,7 +1045,7 @@ function enhanceModal() {
 document.addEventListener('keydown', (ev) => {
   const m = app.querySelector('.modal');
   if (!m) return;
-  if (ev.key === 'Escape') { m.querySelector('[data-act=pclose],[data-act=celebrateX],[data-act=closedetail]')?.click(); return; }
+  if (ev.key === 'Escape') { m.querySelector('[data-act=pclose],[data-act=celebrateX],[data-act=closedetail],[data-act=closeprofile]')?.click(); return; }
   if (ev.key !== 'Tab') return;
   const f = [...m.querySelectorAll('button:not([disabled]), [href], input:not([disabled]):not([type=hidden]), select, textarea, [tabindex]:not([tabindex="-1"])')].filter((e) => e.offsetParent !== null);
   if (!f.length) return;
@@ -1216,6 +1267,13 @@ app.addEventListener('click', async (ev) => {
     } catch (e) { toast(errText(e)); el.disabled = false; }
     return;
   }
+  if (act === 'profile') {
+    S.profile = { username: el.dataset.u, data: null }; draw();
+    try { S.profile.data = await api(`/members/${encodeURIComponent(el.dataset.u)}`); } catch (e) { S.profile = null; toast(errText(e)); }
+    return draw();
+  }
+  if (act === 'closeprofile') { S.profile = null; return draw(); }
+  if (act === 'rmavatar') { try { S.me = await api('/me/avatar', 'DELETE'); toast(t('saved')); } catch (e) { toast(errText(e)); } return draw(); }
   if (act.startsWith('cv')) {
     const call = async (path, body, after) => { try { const r = await api(path, 'POST', body); if (r.view) S.cv = r.view; if (r.me) S.me = r.me; if (after) after(r); } catch (e) { toast(errText(e)); } draw(); };
     if (act === 'cvall') { S.cvAll = true; return draw(); }
@@ -1438,6 +1496,16 @@ app.addEventListener('submit', async (ev) => {
       S.bhDetail.data = await api(`/burhan/razakars/${encodeURIComponent(S.bhDetail.username)}`);
       S.bhLists = { ...S.bhLists, razakars: (await api('/burhan/razakars')).razakars };
       toast(t('saved')); draw();
+    } else if (kind === 'profile') {
+      S.me = await api('/me/profile', 'PUT', { displayName: f.displayName, bio: f.bio });
+      toast(t('saved')); draw();
+    } else if (kind === 'password') {
+      if (f.next !== f.again) throw new Error('pw_mismatch');
+      const r = await api('/me/password', 'POST', { current: f.current, next: f.next });
+      form.reset(); setSession(r.token, r.me); toast(t('pw_changed')); draw();
+    } else if (kind === 'phone') {
+      S.me = await api('/me/phone', 'POST', { phone: f.phone, cc: f.phoneCountry, password: f.password });
+      form.reset(); toast(t('saved')); draw();
     } else if (kind === 'cvcreate') {
       const r = await api('/caravan', 'POST', { name: f.name });
       S.cv = r.view; S.me = r.me; toast(t('saved')); draw();
@@ -1449,7 +1517,7 @@ app.addEventListener('submit', async (ev) => {
       logout(false); S.authMode = 'login'; draw(); toast(t('deleted'));
     }
   } catch (e) {
-    if (kind === 'settings' || kind === 'delete' || kind === 'citysave' || kind === 'cvcreate' || kind === 'cvrename' || kind === 'assign') { toast(errText(e)); btn.disabled = false; }
+    if (kind === 'settings' || kind === 'delete' || kind === 'citysave' || kind === 'profile' || kind === 'password' || kind === 'phone' || kind === 'cvcreate' || kind === 'cvrename' || kind === 'assign') { toast(errText(e)); btn.disabled = false; }
     else { S.error = errText(e); draw(); }
   }
 });
@@ -1471,7 +1539,23 @@ async function toJpegDataUrl(file) {
   }
   throw new Error('bad_image');
 }
+// a small square picture: centred crop, 192 px, squeezed under 24 KB in the browser (the server checks again and strips metadata)
+async function toAvatarDataUrl(file) {
+  const bmp = await createImageBitmap(file);
+  const side = Math.min(bmp.width, bmp.height);
+  for (const px of [192, 160, 128, 96]) {
+    const c = document.createElement('canvas'); c.width = c.height = px;
+    c.getContext('2d').drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, px, px);
+    for (const q of [0.82, 0.7, 0.58, 0.46]) { const url = c.toDataURL('image/jpeg', q); if (url.length * 0.75 <= 24_000) return url; }
+  }
+  throw new Error('bad_image');
+}
 app.addEventListener('change', async (ev) => {
+  const pic = ev.target.closest('input[data-avatar]');
+  if (pic && pic.files[0]) {
+    try { S.me = await api('/me/avatar', 'POST', { image: await toAvatarDataUrl(pic.files[0]) }); toast(t('saved')); } catch (e) { toast(e.message === 'bad_image' ? I18N[S.lang].err.bad_image : errText(e)); }
+    return draw();
+  }
   const el = ev.target.closest('input[data-photo]');
   if (!el || !el.files[0]) return;
   try { S.draft = await toJpegDataUrl(el.files[0]); S.draftKind = el.dataset.photo; draw(); } catch (e) { toast(I18N[S.lang].err.bad_image); }
