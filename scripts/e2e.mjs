@@ -31,7 +31,7 @@ const browser = await chromium.launch();
 async function open(token, { w = 390, h = 844, lang = 'en', mode = 'light', touch = false } = {}) {
   const page = await browser.newPage({ viewport: { width: w, height: h }, hasTouch: touch, isMobile: touch });
   page.on('pageerror', (e) => errors.push(e.message));
-  page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(m.text()); });
+  page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource|Permissions policy violation/.test(m.text())) errors.push(m.text()); }); // the YouTube embed probes features our policy does not grant
   await page.goto(B + '/');
   await page.evaluate(([t, l, md]) => { if (t) localStorage.setItem('token', t); localStorage.setItem('intro', '1'); localStorage.setItem('lang', l); localStorage.setItem('mode', md); }, [token, lang, mode]);
   await page.goto(B + '/');
@@ -108,6 +108,20 @@ try {
     ok(await page.locator('.ptr').count() === 1, 'pull to refresh shows its spinner');
     await touch('touchEnd', 280); await page.waitForTimeout(1200);
     ok(await page.locator('.ptr').count() === 0, 'pull to refresh finishes');
+    await page.close();
+  }
+
+  // ---- a running streak and nothing yet today: Today nudges -------------------------------------------------------------
+  {
+    const { db } = await import('../server/db.js');
+    const nudge = await register('e2e_nudge');
+    const yesterday = new Date(Date.now() + 5 * 3600e3 - 864e5).toISOString().slice(0, 10);
+    db.prepare("UPDATE users SET streak = 3, last_day = ? WHERE username = 'e2e_nudge'").run(yesterday);
+    const page = await open(nudge.token);
+    ok(await page.locator('.streaknudge').count() === 1, 'a running streak with nothing today shows a nudge');
+    await page.fill('#manual', '10'); await page.click('[data-act=manual]'); await page.waitForTimeout(1500);
+    await page.locator('[data-act=celebrateX]').click().catch(() => {});
+    ok(await page.locator('.streaknudge').count() === 0, 'the nudge goes once today is recited');
     await page.close();
   }
 

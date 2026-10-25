@@ -431,6 +431,8 @@ function home() {
   if (!f && !S.feedLoading) { S.feedLoading = true; loadFeed().catch(() => {}).finally(() => { S.feedLoading = false; if (S.tab === 'home') draw(); }); } // first screen after sign-in
   const notices = [
     m.hiddenFromRanks ? `<div class="flagnote">${t(m.flagState === 'decided' ? 'flagged_decided' : 'flagged')}</div>` : '',
+    // a running streak and nothing yet today: a gentle nudge (stronger in the evening, Pakistan time)
+    m.streak > 0 && !m.today ? `<div class="streaknudge ${new Date(Date.now() + 5 * 3600e3).getUTCHours() >= 18 ? 'late' : ''}">${uiIcon('flame', 16, 2)} ${t(new Date(Date.now() + 5 * 3600e3).getUTCHours() >= 18 ? 'streak_nudge_late' : 'streak_nudge')(m.streak)}</div>` : '',
     m.special ? `<div class="special">${uiIcon('star', 14, 2)} ${t('special_banner')(esc(pick(m.special.nameEn, m.special.nameUr)))}</div>` : '',
     m.caravanInvites ? `<button class="rowlink" data-act="tab" data-tab="caravan"><span>${uiIcon('caravan', 14, 2)} ${t('cv_home_invited')(m.caravanInvites)}</span><b class="ar">→</b></button>` : '',
     m.caravanRequests ? `<button class="rowlink" data-act="tab" data-tab="caravan"><span>${uiIcon('caravan', 14, 2)} ${t('cv_requests_home')(m.caravanRequests)}</span><b class="ar">→</b></button>` : '',

@@ -985,3 +985,6 @@ body.in-app:not(.scrolled) .hd { border-bottom-color: transparent; background: v
 .tab-caravan form.cname, .tab-caravan .padx.bh { background: var(--paper); border-radius: var(--radius); box-shadow: var(--shadow); margin: 6px 14px 4px; padding: 14px 16px 16px; }
 .tab-caravan form.cname label { margin-top: 0; }
 .tab-caravan .circlecard { margin-inline: 14px; }
+.streaknudge { display: flex; gap: 8px; align-items: center; margin: 10px 14px 0; padding: 12px 14px; border-radius: 14px; background: #fff2d6; color: #6b4500; font-weight: 650; font-size: .9rem; animation: lift .4s ease-out; }
+.streaknudge.late { background: #ffe1d6; color: #8a2a00; }
+html[data-mode=dark] .streaknudge { background: #2f2508; color: #ffcf6b; } html[data-mode=dark] .streaknudge.late { background: #3a1608; color: #ffab8a; }
