@@ -32,7 +32,7 @@ html[lang=ur] button, html[lang=ur] input { font-family: inherit; line-height: 1
 @font-face { font-family: 'Noto Nastaliq Urdu'; src: url('/fonts/nastaliq-700.woff2') format('woff2'); font-weight: 600 800; font-display: swap; unicode-range: U+0600-06FF, U+0750-077F, U+200C-200E, U+2010-2011, U+204F, U+25CC, U+FB50-FDFF, U+FE70-FEFF; }
 /* ﷺ only: Latin fonts have no glyph for it, so English text uses a 1.6 KB cut of Amiri holding just that character (fonts/salawat.woff2) */
 @font-face { font-family: 'Salawat'; src: url('/fonts/salawat.woff2') format('woff2'); font-display: swap; unicode-range: U+FDFA; }
-@font-face { font-family: 'Amiri'; src: url('/fonts/amiri-arabic.woff2') format('woff2'); font-display: swap; unicode-range: U+0600-06FF, U+200C-200E, U+2010-2011, U+204F, U+25CC, U+FB50-FDFF, U+FE70-FEFF; }
+@font-face { font-family: 'Amiri'; src: url('/fonts/amiri-durood.woff2') format('woff2'); font-display: swap; unicode-range: U+0600-06FF, U+200C-200E, U+2010-2011, U+204F, U+25CC, U+FB50-FDFF, U+FE70-FEFF; }
 .arabic { font-family: 'Amiri', 'Noto Nastaliq Urdu', serif; line-height: 2.1; }
 a { color: inherit; }
 .wrap { max-width: 560px; margin: 0 auto; border-inline: 1px solid var(--line); min-height: 100vh; }

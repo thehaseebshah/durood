@@ -94,3 +94,10 @@ test('every error code only an administrator can trigger has a plain message on 
   const missing = [...codes].filter((c) => !protocol.has(c) && !I18N.en.err[c] && !adminKeys.has(c));
   assert.deepEqual(missing, []);
 });
+
+test('the Arabic durood only uses letters the cut-down Amiri font holds (else run scripts/make-fonts.sh)', async () => {
+  const I18N = await loadI18N();
+  const held = new Set(fs.readFileSync(new URL('../scripts/fonts/durood-chars.txt', import.meta.url), 'utf8'));
+  const missing = [...new Set([...I18N.en.durood, ...I18N.ur.durood])].filter((c) => c.trim() && !held.has(c));
+  assert.deepEqual(missing, [], 'the durood text changed: add its letters to scripts/fonts/durood-chars.txt and run scripts/make-fonts.sh');
+});
