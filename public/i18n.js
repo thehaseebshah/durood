@@ -120,7 +120,7 @@ export const I18N = {
     ago_now: 'now', ago_m: (n) => `${n}m`, ago_h: (n) => `${n}h`, ago_d: (n) => `${n}d`,
     rk_people: 'People', rk_caravans: 'Caravans', rk_trees: 'Qabila', rk_note_caravans: 'A caravan is a named group of members.', rk_note_trees: 'A Qabila is everyone under a person, at every level.',
     tree_sub: 'Qabila: everyone who joined through you, at every level. Its milestones earn rewards.', tree_people: 'People in your Qabila', tree_total: 'Qabila total', tree_week: 'Qabila this week', tree_next: 'Next Qabila milestone',
-    city_ph: 'Search your city…', city_hint: 'Type at least two letters of the city name in English, then pick from the list. If your town is not listed, pick the nearest bigger one.', city_none: 'No match. Try the nearest bigger town.',
+    city_ph: 'Search your city…', city_hint: 'Type at least two letters of the city name, then pick from the list (Pakistan’s main cities can also be typed in Urdu). If your town is not listed, pick the nearest bigger one.', city_none: 'No match. Try the nearest bigger town.',
     city_needed_title: 'Choose your city', city_needed_text: 'Cities compete with each other. Pick yours so your durood counts for it.', country: 'Country',
     empty_cities: 'No city has enough active members this week yet.', cities_min: (n) => `A city appears once ${n} of its members have recited this week.`, rk_league: 'League', rk_cities: 'Cities', rk_note_cities: 'Cities are ranked by what their members recited this week.',
     tier_bronze: 'Bronze', tier_silver: 'Silver', tier_gold: 'Gold', tier_diamond: 'Diamond',

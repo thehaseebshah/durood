@@ -103,9 +103,20 @@ export const cityLabel = (c) => [c.name, c.region && c.region !== c.name ? c.reg
 export const cityById = (id) => { ensureCities(); const c = one('SELECT * FROM cities WHERE id = ?', Number(id)); return c ? { id: c.id, name: c.name, region: c.region, cc: c.cc, country: countryName(c.cc), label: cityLabel(c) } : null; };
 
 /** Search as you type: places whose name starts with the text, members' own country first, then by population. */
+// Urdu city names (server/data/cities-ur.tsv): typed in Urdu, a city is found by its English name. Arabic and Urdu
+// forms of the same letter are treated alike, and spaces are ignored, so "فیصل آباد" and "فیصلآباد" both match.
+const urKey = (s) => String(s).replace(/[\u064A\u0649]/g, '\u06CC').replace(/\u0643/g, '\u06A9').replace(/\u0647/g, '\u06C1').replace(/[\s\u200C\u200D\u064B-\u0652\u0670]/g, '');
+const UR_CITIES = readFileSync(new URL('cities-ur.tsv', DATA), 'utf8').split('\n').filter((l) => l && !l.startsWith('#')).map((l) => { const [ur, en] = l.split('\t'); return [urKey(ur), en]; });
+const ARABIC_SCRIPT = /[\u0600-\u06FF]/;
 export function searchCities(q, cc = '') {
   ensureCities();
   const text = String(q || '').trim().replace(/[%_\\]/g, '').slice(0, 40);
   if (text.length < 2) return [];
+  if (ARABIC_SCRIPT.test(text)) {
+    const k = urKey(text);
+    const seen = new Set(), out = [];
+    for (const [ur, en] of UR_CITIES) if (ur.startsWith(k)) for (const c of searchCities(en, 'PK')) if (c.cc === 'PK' && !seen.has(c.id)) { seen.add(c.id); out.push(c); }
+    return out.slice(0, 12);
+  }
   return all(`SELECT * FROM cities WHERE ascii LIKE ? ORDER BY (cc = ?) DESC, pop DESC LIMIT 12`, `${text}%`, String(cc || '')).map((c) => ({ id: c.id, name: c.name, region: c.region, cc: c.cc, country: countryName(c.cc), label: cityLabel(c) }));
 }

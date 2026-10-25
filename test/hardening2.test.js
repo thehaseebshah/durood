@@ -125,3 +125,16 @@ test('phone numbers typed in Urdu (۰-۹) or Arabic (٠-٩) digits work for sign
   assert.ok(login.token, 'logs in with the same number in Arabic digits');
   assert.equal((await api('POST', '/api/register', { body: { username: 'udigits2', email: 'udigits2@x.pk', phone: '03078881234', password: 'secret1', cityId: 1172451, invite: 'TESTFOUND' } })).error, 'account_exists', 'the same number in Western digits is the same number');
 });
+
+test('cities can be searched in Urdu (Arabic-keyboard letters and spaces do not matter), and every Urdu name finds a Pakistani city', async () => {
+  const q = async (s) => (await api('GET', `/api/cities?q=${encodeURIComponent(s)}&cc=PK`)).cities.map((c) => c.name);
+  assert.deepEqual(await q('لاہور'), ['Lahore']);
+  assert.ok((await q('كراچي')).includes('Karachi'), 'Arabic kaf and ya');
+  assert.deepEqual(await q('فیصلآباد'), ['Faisalabad'], 'without the space');
+  assert.ok((await q('ڈیرہ')).length >= 2, 'a start of a name lists every match');
+  const fs = await import('node:fs');
+  const lines = fs.readFileSync(new URL('../server/data/cities-ur.tsv', import.meta.url), 'utf8').split('\n').filter((l) => l && !l.startsWith('#'));
+  const none = [];
+  for (const l of lines) { const ur = l.split('\t')[0]; if (!(await q(ur)).length) none.push(ur); }
+  assert.deepEqual(none, [], 'every Urdu name in cities-ur.tsv finds a city');
+});
