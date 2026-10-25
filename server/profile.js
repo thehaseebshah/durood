@@ -1,0 +1,110 @@
+// Profile: display name, a one-line bio, a profile picture, a password change and a change of WhatsApp number.
+import { mkdirSync, writeFileSync, renameSync, unlinkSync, readFileSync, existsSync } from 'node:fs';
+import path from 'node:path';
+import { db, tx } from './db.js';
+import { HttpError, avatarUrl, avatarSig, hashPassword, checkPassword } from './auth.js';
+import { deleteHooks } from './game.js';
+import { cleanJpeg, UPLOAD_DIR } from './sunnah.js';
+import { LINK } from './feed.js';
+
+const one = (sql, ...a) => db.prepare(sql).get(...a);
+const run = (sql, ...a) => db.prepare(sql).run(...a);
+
+const AVATAR_DIR = path.join(UPLOAD_DIR, 'avatars');
+mkdirSync(AVATAR_DIR, { recursive: true });
+export const NAME_MAX = 40, BIO_MAX = 100, AVATAR_MAX_BYTES = 60_000;
+const avatarPath = (id, v) => path.join(AVATAR_DIR, `${id}-${v}.jpg`);
+const rm = (f) => { try { unlinkSync(f); } catch { /* already gone */ } };
+
+/** Plain one-line text: control characters out, spaces squeezed, no links. Empty is allowed (it clears the field). */
+function plain(raw, max, min = 0) {
+  const t = String(raw ?? '').replace(/[\u0000-\u001f\u007f‎‏‪-‮]/g, ' ').replace(/\s+/g, ' ').trim();
+  const len = [...t].length;
+  if (len && len < min) throw new HttpError(400, 'text_too_short');
+  if (len > max) throw new HttpError(400, 'text_too_long');
+  if (LINK.test(t)) throw new HttpError(400, 'no_links');
+  return t;
+}
+
+export function updateProfile(userId, { displayName, bio }) {
+  const name = displayName === undefined ? undefined : plain(displayName, NAME_MAX, 2);
+  const b = bio === undefined ? undefined : plain(bio, BIO_MAX);
+  if (name !== undefined) run('UPDATE users SET display_name = ? WHERE id = ?', name, userId);
+  if (b !== undefined) run('UPDATE users SET bio = ? WHERE id = ?', b, userId);
+  return { ok: true };
+}
+
+// ---- the picture ------------------------------------------------------------------------------------------------------------------
+/** The browser sends a small square JPEG (about 20 KB). Metadata is stripped and the file is rebuilt; a new upload is a new version. */
+export function setAvatar(userId, imageB64) {
+  const raw = String(imageB64 ?? '').replace(/^data:image\/jpeg;base64,/, '');
+  if (!raw || raw.length > Math.ceil(AVATAR_MAX_BYTES * 4 / 3) + 8 || !/^[A-Za-z0-9+/]+=*$/.test(raw)) throw new HttpError(400, 'bad_image');
+  const { data } = cleanJpeg(Buffer.from(raw, 'base64'), { maxBytes: AVATAR_MAX_BYTES, minDim: 64, maxDim: 512 });
+  return tx(() => {
+    const cur = one('SELECT avatar_v v FROM users WHERE id = ?', userId).v;
+    const v = Math.abs(cur) + 1;
+    const f = avatarPath(userId, v), tmp = `${f}.tmp`;
+    writeFileSync(tmp, data, { mode: 0o600 });
+    renameSync(tmp, f);
+    run('UPDATE users SET avatar_v = ? WHERE id = ?', v, userId);
+    if (cur > 0) rm(avatarPath(userId, cur));
+    return { avatar: avatarUrl(userId, v) };
+  });
+}
+export function removeAvatar(userId) {
+  const cur = one('SELECT avatar_v v FROM users WHERE id = ?', userId).v;
+  if (cur > 0) { run('UPDATE users SET avatar_v = ? WHERE id = ?', -cur, userId); rm(avatarPath(userId, cur)); }
+  return { ok: true };
+}
+/** The file for a signed picture address, or null. Only the member's current picture is served. */
+export function avatarFile(id, v, sig) {
+  if (!Number.isInteger(id) || !Number.isInteger(v) || sig !== avatarSig(id, v)) return null;
+  const u = one('SELECT avatar_v, deleted_at, suspended FROM users WHERE id = ?', id);
+  if (!u || u.avatar_v !== v || u.deleted_at || u.suspended) return null;
+  const f = avatarPath(id, v);
+  return existsSync(f) ? f : null;
+}
+export const readAvatar = (f) => readFileSync(f);
+deleteHooks.push((userId) => { const v = one('SELECT avatar_v v FROM users WHERE id = ?', userId)?.v; if (v > 0) rm(avatarPath(userId, v)); });
+
+// ---- password and phone -------------------------------------------------------------------------------------------------------------
+/**
+ * Changes the password after checking the current one. Every other device is signed out (the token version moves on); the caller
+ * gets a fresh session for this one. Password-reset links that were still open stop working.
+ */
+export async function changePassword(userId, current, next) {
+  const u = one('SELECT pass FROM users WHERE id = ?', userId);
+  if (!(await checkPassword(String(current ?? ''), u.pass))) throw new HttpError(403, 'wrong_password');
+  const pw = String(next ?? '');
+  if (pw.length < 6 || pw.length > 128) throw new HttpError(400, 'bad_password');
+  if (pw === String(current)) throw new HttpError(400, 'same_password');
+  const hash = await hashPassword(pw);
+  tx(() => {
+    run('UPDATE users SET pass = ?, token_ver = token_ver + 1 WHERE id = ?', hash, userId);
+    run("UPDATE tokens SET used_at = ? WHERE user_id = ? AND kind = 'reset' AND used_at IS NULL", Date.now(), userId);
+  });
+  return { ok: true };
+}
+
+/** Writes a new, already-normalised number. The old Mamulaat match no longer applies, so this member's murabbi link and numbers start over. */
+export function setPhone(userId, phone) {
+  return tx(() => {
+    const cur = one('SELECT phone FROM users WHERE id = ?', userId).phone;
+    if (cur === phone) throw new HttpError(400, 'no_change');
+    if (one('SELECT 1 FROM users WHERE phone = ? AND id != ?', phone, userId)) throw new HttpError(409, 'phone_taken');
+    run('UPDATE users SET phone = ?, phone_changed_at = ? WHERE id = ?', phone, Date.now(), userId);
+    run('DELETE FROM murabbi_links WHERE user_id = ?', userId);
+    run('DELETE FROM mamulaat_days WHERE user_id = ?', userId);
+    run('DELETE FROM mamulaat_sync WHERE user_id = ?', userId);
+    run("DELETE FROM burhan_views WHERE subject_id = ? AND kind = 'murabbi'", userId);
+    return { ok: true };
+  });
+}
+
+// ---- what anyone in the app may see ---------------------------------------------------------------------------------------------------
+export function publicProfile(username) {
+  const u = one(`SELECT id, username, display_name, bio, avatar_v, city, created_day, xp, streak, last_day FROM users WHERE username = ? AND deleted_at IS NULL AND suspended = 0`, String(username ?? ''));
+  if (!u) throw new HttpError(404, 'not_found');
+  const cv = one('SELECT c.name FROM caravan_members cm JOIN caravans c ON c.id = cm.caravan_id WHERE cm.user_id = ?', u.id);
+  return { username: u.username, displayName: u.display_name, bio: u.bio, avatar: avatarUrl(u.id, u.avatar_v), city: u.city, joined: u.created_day, caravan: cv?.name ?? null };
+}

@@ -1,5 +1,5 @@
 import { db, tx, getSetting, setSetting } from './db.js';
-import { HttpError } from './auth.js';
+import { HttpError, avatarUrl } from './auth.js';
 import { inviteStatus } from './access.js';
 
 // ---- tunables -------------------------------------------------------------
@@ -122,7 +122,9 @@ export function rebuildDayTotals() {
 }
 
 /** Side effects that must not run inside a write transaction (push messages) hook in here. */
-export const hooks = { milestone: null, badge: null, inTx: null, beforeDelete: null, profileExtra: null };
+export const hooks = { milestone: null, badge: null, inTx: null, profileExtra: null };
+/** Functions that run first when an account is deleted (leave the caravan, remove the profile picture...). */
+export const deleteHooks = [];
 
 /** Gives a badge once, with its one-time points, a feed line for the member's caravan and (for group badges) a push. Returns true when it was new. */
 export function award(userId, code, fresh = []) {
@@ -437,8 +439,8 @@ export function history(userId) {
 /** Anonymises an account. The durood stays in every total; the person's name, phone and email are erased. */
 export function anonymiseUser(userId, passHash) {
   tx(() => {
-    hooks.beforeDelete?.(userId); // leave the caravan (the owner role passes on) and drop open invitations
-    run(`UPDATE users SET username = ?, email = ?, phone = ?, pass = ?, city = '', deleted_at = ?, hidden_from_ranks = 1, suspended = 0
+    for (const fn of deleteHooks) fn(userId); // leave the caravan, remove the profile picture, ...
+    run(`UPDATE users SET display_name = '', bio = '', avatar_v = -ABS(avatar_v), username = ?, email = ?, phone = ?, pass = ?, city = '', deleted_at = ?, hidden_from_ranks = 1, suspended = 0
          WHERE id = ?`, `member_${userId}`, `deleted-${userId}@deleted.invalid`, `deleted-${userId}`, passHash, Date.now(), userId);
     run('DELETE FROM tokens WHERE user_id = ?', userId);
     // everything personal goes with the name: push devices, written text, and all Al-Burhan links, reports and assignments
@@ -659,7 +661,7 @@ export function getMe(userId) {
   const gapDays = u.last_day ? dayNum(day) - dayNum(u.last_day) : null;
   const streakAlive = gapDays === 0 || gapDays === 1 || (gapDays === 2 && u.shields > 0); // a shield bridges one missed day
   return {
-    id: u.id, username: u.username, email: u.email, phone: u.phone, lang: u.lang, city: u.city, cityId: u.city_id, country: u.country, needsCity: !u.city_id,
+    id: u.id, username: u.username, displayName: u.display_name, bio: u.bio, avatar: avatarUrl(u.id, u.avatar_v), email: u.email, phone: u.phone, lang: u.lang, city: u.city, cityId: u.city_id, country: u.country, needsCity: !u.city_id,
     dailyGoal: u.daily_goal, hiddenFromRanks: !!u.hidden_from_ranks, emailVerified: !!u.email_verified_at,
     invites: inviteStatus(userId),
     total: u.total, today, week,
@@ -689,6 +691,8 @@ export function cachedBoard(key, compute) {
   return rows;
 }
 export const withMe = (rows, me) => rows.map((r, i) => ({ rank: i + 1, ...r, me: r.username === me }));
+/** Turns the picture and name columns of a row (uid, av, dn) into what the client shows. */
+export const person = ({ uid, av, dn, ...r }) => ({ ...r, avatar: avatarUrl(uid, av), displayName: dn || '' });
 export const VISIBLE = 'u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL';
 
 /**
@@ -718,10 +722,10 @@ export function leaderboard(userId, type, period) {
     }
     if (period === 'week' || period === 'challenge') {
       const [from, to] = period === 'week' ? [wk, '9999-12-31'] : [chFrom, chTo];
-      return all(`SELECT u.username, u.city, SUM(d.count) score FROM daily d JOIN users u ON u.id = d.user_id
-                  WHERE d.day >= ? AND d.day <= ? AND ${VISIBLE} GROUP BY u.id ORDER BY score DESC LIMIT 50`, from, to);
+      return all(`SELECT u.username, u.city, u.id uid, u.avatar_v av, u.display_name dn, SUM(d.count) score FROM daily d JOIN users u ON u.id = d.user_id
+                  WHERE d.day >= ? AND d.day <= ? AND ${VISIBLE} GROUP BY u.id ORDER BY score DESC LIMIT 50`, from, to).map(person);
     }
-    return all(`SELECT username, city, total score FROM users u WHERE ${VISIBLE} AND total > 0 ORDER BY total DESC LIMIT 50`);
+    return all(`SELECT username, city, id uid, avatar_v av, display_name dn, total score FROM users u WHERE ${VISIBLE} AND total > 0 ORDER BY total DESC LIMIT 50`).map(person);
   });
   return { rows: withMe(rows, me), weekStart: wk };
 }
@@ -754,7 +758,7 @@ export function qabilaBoard(userId, metric) {
 
 export function teamView(userId) {
   const wk = weekStart();
-  const direct = all(`SELECT u.username, u.city, u.total, u.team_total, u.created_day,
+  const direct = all(`SELECT u.username, u.city, u.id uid, u.avatar_v av, u.display_name dn, u.total, u.team_total, u.created_day,
         COALESCE((SELECT SUM(count) FROM daily d WHERE d.user_id = u.id AND d.day >= ?), 0) week,
         (SELECT COUNT(*) FROM ancestors a WHERE a.ancestor_id = u.id AND a.depth > 0) members
       FROM users u WHERE u.referrer_id = ? ORDER BY u.team_total DESC LIMIT 200`, wk, userId);
@@ -774,7 +778,7 @@ export function teamView(userId) {
     total, week, byDepth, upline, active,
     // there is no opt-out: inviters see their invitees' name, city and counts
     direct: direct.map((d) => ({
-      username: d.username, city: d.city, joined: d.created_day, members: d.members,
+      username: d.username, displayName: d.dn, avatar: avatarUrl(d.uid, d.av), city: d.city, joined: d.created_day, members: d.members,
       total: d.total, week: d.week, team: d.team_total,
     })),
   };

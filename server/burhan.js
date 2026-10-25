@@ -1,8 +1,8 @@
 // Al-Burhan edition: murabbi (mentor of a salik), masul (manager of a razakar), mamulaat percentages from the Mamulaat app,
 // and the tasks and routines a masul gives. Nothing here exists in the public edition (see docs/SPEC.md section 19).
 import { db, tx } from './db.js';
-import { HttpError } from './auth.js';
-import { dayOf, dayNum, dayStr, weekStart, levelFor } from './game.js';
+import { HttpError, avatarUrl } from './auth.js';
+import { dayOf, dayNum, dayStr, weekStart, levelFor, person } from './game.js';
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
@@ -108,8 +108,8 @@ export async function refreshMurabbi(userId) {
   try { await activateMurabbi(userId); } catch (e) { if (e.code === 'no_murabbi_set') unlinkMurabbi(userId); }
 }
 /** The murabbi's side: who is waiting for their yes, and the yes or no itself. A "no" removes the request. */
-export const murabbiRequests = (murabbiId) => all(`SELECT u.username, u.city FROM murabbi_links l JOIN users u ON u.id = l.user_id
-  WHERE l.murabbi_id = ? AND l.salik_ok = 1 AND l.murabbi_ok = 0 AND u.deleted_at IS NULL ORDER BY l.created_at`, murabbiId);
+export const murabbiRequests = (murabbiId) => all(`SELECT u.id uid, u.avatar_v av, u.username, u.city FROM murabbi_links l JOIN users u ON u.id = l.user_id
+  WHERE l.murabbi_id = ? AND l.salik_ok = 1 AND l.murabbi_ok = 0 AND u.deleted_at IS NULL ORDER BY l.created_at`, murabbiId).map(person);
 export function answerRequest(murabbiId, username, accept) {
   const s = one(`SELECT u.id FROM users u JOIN murabbi_links l ON l.user_id = u.id WHERE u.username = ? AND l.murabbi_id = ? AND l.salik_ok = 1 AND l.murabbi_ok = 0`, String(username), murabbiId);
   if (!s) throw new HttpError(404, 'not_found');
@@ -288,12 +288,12 @@ export function razakarReport(masulId, username) {
 }
 export function razakarList(masulId) {
   const today = dayOf();
-  return all(`SELECT u.id, u.username, u.city FROM masul_links l JOIN users u ON u.id = l.razakar_id WHERE l.masul_id = ? AND u.deleted_at IS NULL ORDER BY u.username`, masulId).map((u) => {
+  return all(`SELECT u.id, u.username, u.city, u.avatar_v av FROM masul_links l JOIN users u ON u.id = l.razakar_id WHERE l.masul_id = ? AND u.deleted_at IS NULL ORDER BY u.username`, masulId).map((u) => {
     const items = all('SELECT * FROM assignments WHERE razakar_id = ? AND masul_id = ? AND ended_at IS NULL', u.id, masulId).map((a) => assignmentOut(a, today));
     const tasks = items.filter((i) => i.kind === 'task'), routines = items.filter((i) => i.kind === 'routine');
     const due = routines.reduce((n, i) => n + i.last4.due, 0), done = routines.reduce((n, i) => n + i.last4.done, 0);
     const g = generalProgress(u.id);
-    return { username: u.username, city: u.city, openTasks: tasks.filter((t) => !t.done).length, overdue: tasks.filter((t) => t.overdue).length,
+    return { username: u.username, avatar: avatarUrl(u.id, u.av), city: u.city, openTasks: tasks.filter((t) => !t.done).length, overdue: tasks.filter((t) => t.overdue).length,
       routinePercent: due ? Math.round((done / due) * 100) : null, duroodWeek: g.durood.week, streak: g.streak };
   });
 }
@@ -317,9 +317,9 @@ export async function saalikReport(murabbiId, username) {
     progress: g, extra, mamulaat: { ...mamulaatSeries(s.id), stale: sync.stale }, masul: masul?.username ?? null, assignments: items };
 }
 export function saalikList(murabbiId) {
-  return all(`SELECT u.id, u.username, u.city FROM murabbi_links l JOIN users u ON u.id = l.user_id WHERE l.murabbi_id = ? AND l.salik_ok = 1 AND l.murabbi_ok = 1 AND u.deleted_at IS NULL ORDER BY u.username`, murabbiId).map((u) => {
+  return all(`SELECT u.id, u.username, u.city, u.avatar_v av FROM murabbi_links l JOIN users u ON u.id = l.user_id WHERE l.murabbi_id = ? AND l.salik_ok = 1 AND l.murabbi_ok = 1 AND u.deleted_at IS NULL ORDER BY u.username`, murabbiId).map((u) => {
     const g = generalProgress(u.id), m = mamulaatSeries(u.id);
-    return { username: u.username, city: u.city, duroodToday: g.durood.today, duroodWeek: g.durood.week, streak: g.streak, mamulaatToday: m.today, mamulaatAverage: m.average };
+    return { username: u.username, avatar: avatarUrl(u.id, u.av), city: u.city, duroodToday: g.durood.today, duroodWeek: g.durood.week, streak: g.streak, mamulaatToday: m.today, mamulaatAverage: m.average };
   });
 }
 

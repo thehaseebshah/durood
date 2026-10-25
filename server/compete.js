@@ -1,6 +1,6 @@
 // Competition beyond the personal board: cities, weekly leagues, the caravan streak, and the weekly close that decides them.
 import { db, tx, getSetting, setSetting } from './db.js';
-import { CFG, dayOf, dayNum, dayStr, weekStart, hooks, award, grant, evalBadges } from './game.js';
+import { CFG, dayOf, dayNum, dayStr, weekStart, hooks, award, grant, evalBadges, person } from './game.js';
 import { cityLabel } from './geo.js';
 import { HttpError } from './auth.js';
 
@@ -62,11 +62,11 @@ export function joinLeague(userId, week = weekStart()) {
   run('INSERT INTO league_members (week, user_id, tier, grp) VALUES (?,?,?,?)', week, userId, tier, grp);
 }
 
-const groupRows = (week, tier, grp) => all(`SELECT lm.user_id id, u.username, u.city,
+const groupRows = (week, tier, grp) => all(`SELECT lm.user_id id, u.username, u.city, u.id uid, u.avatar_v av, u.display_name dn,
     COALESCE((SELECT SUM(d.count) FROM daily d WHERE d.user_id = lm.user_id AND d.day >= ? AND d.day <= ?), 0) score
   FROM league_members lm JOIN users u ON u.id = lm.user_id
   WHERE lm.week = ? AND lm.tier = ? AND lm.grp = ? AND ${VISIBLE}
-  ORDER BY score DESC, u.username`, week, weekEnd(week), week, tier, grp).map((r, i) => ({ ...r, rank: i + 1 }));
+  ORDER BY score DESC, u.username`, week, weekEnd(week), week, tier, grp).map((r, i) => ({ ...person(r), id: r.id, rank: i + 1 }));
 const zone = (n) => Math.min(5, Math.floor(n / 3));        // how many move up, and how many move down
 
 /** The member's league this week (their group's standings), and what happened to them last week. */
@@ -77,7 +77,7 @@ export function leagueView(userId) {
   if (mine) {
     const rows = groupRows(week, mine.tier, mine.grp);
     const k = zone(rows.length);
-    out.rows = rows.map((r) => ({ rank: r.rank, username: r.username, city: r.city, score: r.score, me: r.id === userId, up: mine.tier < TIERS - 1 && r.rank <= k && r.score > 0, down: mine.tier > 0 && r.rank > rows.length - k }));
+    out.rows = rows.map((r) => ({ rank: r.rank, username: r.username, avatar: r.avatar, displayName: r.displayName, city: r.city, score: r.score, me: r.id === userId, up: mine.tier < TIERS - 1 && r.rank <= k && r.score > 0, down: mine.tier > 0 && r.rank > rows.length - k }));
   }
   const last = one('SELECT * FROM league_members WHERE week = ? AND user_id = ?', prevWeek(week), userId);
   if (last?.result) out.last = { result: last.result, rank: last.rank, tier: last.tier };

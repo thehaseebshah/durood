@@ -7,6 +7,7 @@ import { gzipSync } from 'node:zlib';
 import { db, tx, getSetting } from './db.js';
 import * as burhan from './burhan.js';
 import * as caravanApi from './caravan.js';
+import * as profile from './profile.js';
 import { USERNAME, isReserved, handleTaken as handleTakenBy } from './handles.js';
 import { HttpError, hashPassword, checkPassword, signToken, verifyToken, rateLimit, lockedOut, recordFailure, clientIp, sameSecret } from './auth.js';
 import { auditAsync } from './audit.js';
@@ -268,6 +269,30 @@ route('PATCH', '/api/me', async ({ user, body }) => {
   return getMe(user);
 });
 
+// ---- profile: picture, name, bio, password, phone ----------------------------------------------------------------------------------
+route('PUT', '/api/me/profile', ({ user, body }) => { rateLimit(`prof:${user}`, 30, 3600e3); profile.updateProfile(user, body); return getMe(user); });
+route('POST', '/api/me/avatar', { maxBody: 120_000 }, ({ user, body }) => { rateLimit(`avatar:${user}`, 10, 3600e3); profile.setAvatar(user, body.image); return getMe(user); });
+route('DELETE', '/api/me/avatar', ({ user }) => { profile.removeAvatar(user); return getMe(user); });
+route('POST', '/api/me/password', async ({ user, body }) => {
+  const key = `pwfail:${user}`;
+  if (lockedOut(key, 5)) throw new HttpError(429, 'rate_limited');                                  // five wrong current passwords lock this for a while
+  try { await profile.changePassword(user, body.current, body.next); } catch (e) { if (e.code === 'wrong_password') recordFailure(key, 900e3); throw e; }
+  return { token: tokenFor(user), me: getMe(user) };                                                // this device stays signed in; all others are signed out
+});
+route('POST', '/api/me/phone', async ({ user, body }) => {
+  if (lockedOut(`phonechg:${user}`, 3)) throw new HttpError(429, 'rate_limited');                 // three changes a day; only real changes count
+  const cur = one('SELECT pass FROM users WHERE id = ?', user);
+  const key = `pwfail:${user}`;
+  if (lockedOut(key, 5)) throw new HttpError(429, 'rate_limited');
+  if (!(await checkPassword(String(body.password || ''), cur.pass))) { recordFailure(key, 900e3); throw new HttpError(403, 'wrong_password'); }
+  const phone = normalizePhone(body.phone, String(body.cc || '').toUpperCase().slice(0, 2));
+  if (!phone) throw new HttpError(400, 'bad_phone');
+  profile.setPhone(user, phone);
+  recordFailure(`phonechg:${user}`, 86400e3);
+  return getMe(user);
+});
+route('GET', '/api/members/:username', ({ user, params }) => { rateLimit(`prof-view:${user}`, 120, 60e3); return profile.publicProfile(params.username); });
+
 route('POST', '/api/log', ({ user, body }) => {
   rateLimit(`log:${user}`, 60, 60e3);
   compete.ensureWeekClosed(); // the first durood of a new week must find last week's promotions already made
@@ -433,6 +458,13 @@ route('POST', '/api/admin/members/:username', adm, ({ params, body }) => {
     if (!u) throw new HttpError(404, 'not_found');
     return { url: `${baseUrl()}/?reset=${makeToken(u.id, 'reset', 3600e3)}` }; // for sending over WhatsApp when email fails
   }
+  if (a === 'remove-avatar' || a === 'clear-profile') {
+    const u = one('SELECT id FROM users WHERE username = ? AND deleted_at IS NULL', params.username);
+    if (!u) throw new HttpError(404, 'not_found');
+    profile.removeAvatar(u.id);
+    if (a === 'clear-profile') run("UPDATE users SET display_name = '', bio = '' WHERE id = ?", u.id); // for an offensive name or line
+    return { ok: true };
+  }
   throw new HttpError(400, 'bad_action');
 });
 route('GET', '/api/admin/flags', adm, ({ query }) => ({ flags: listFlags(query.get('status') || 'open') }));
@@ -579,6 +611,14 @@ async function handleStatic(req, res, url) {
 }
 const gzCache = new Map();
 
+async function handleAvatar(res, url) {
+  const m = /^\/avatars\/(\d+)\/(\d+)\/([\w-]+)$/.exec(url.pathname);
+  const file = m && profile.avatarFile(Number(m[1]), Number(m[2]), m[3]);
+  if (!file) throw new HttpError(404, 'not_found');
+  res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' }); // the address changes with every new picture
+  res.end(await readFile(file));
+}
+
 async function handlePhoto(res, url) {
   const m = /^\/photos\/(\d+)\/([\w-]+)$/.exec(url.pathname);
   const file = m && sunnah.photoFile(Number(m[1]), m[2]);
@@ -600,6 +640,7 @@ export function createServer() {
       if (url.pathname === '/healthz') { one('SELECT 1'); res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"ok":true}'); }
       else if (url.pathname.startsWith('/api/')) await handleApi(req, res, url);
       else if (url.pathname.startsWith('/photos/') && req.method === 'GET') await handlePhoto(res, url);
+      else if (url.pathname.startsWith('/avatars/') && req.method === 'GET') await handleAvatar(res, url);
       else if (req.method === 'GET' || req.method === 'HEAD') await handleStatic(req, res, url);
       else throw new HttpError(405, 'method_not_allowed');
     } catch (e) {

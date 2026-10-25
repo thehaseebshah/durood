@@ -100,4 +100,7 @@ setInterval(() => {
 }, 60_000).unref();
 
 // unguessable per-photo capability: only logged-in users ever receive these URLs (from the feed / their own history)
+/** A profile picture is addressed by member and version, so a new picture is a new, permanently cacheable URL. */
+export const avatarSig = (id, v) => crypto.createHmac('sha256', SECRET).update(`avatar:${id}:${v}`).digest('base64url').slice(0, 24);
+export const avatarUrl = (id, v) => (v > 0 ? `/avatars/${id}/${v}/${avatarSig(id, v)}` : null);
 export const photoSig = (postId) => crypto.createHmac('sha256', SECRET).update(`photo:${postId}`).digest('base64url').slice(0, 24);

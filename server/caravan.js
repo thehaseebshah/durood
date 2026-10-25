@@ -2,7 +2,8 @@
 // One caravan per member, no size limit. The referral tree ("Qabila") is separate (game.js) and untouched by any of this.
 import { db, tx } from './db.js';
 import { HttpError } from './auth.js';
-import { CFG, hooks, award, evalBadges, dayOf, dayNum, dayStr, weekStart, challengeConfig, cachedBoard } from './game.js';
+import { avatarUrl } from './auth.js';
+import { CFG, hooks, deleteHooks, award, evalBadges, dayOf, dayNum, dayStr, weekStart, challengeConfig, cachedBoard, person } from './game.js';
 import { validHandle, handleTaken } from './handles.js';
 import { caravanHooks } from './compete.js';
 
@@ -158,11 +159,11 @@ export function removeByOwner(ownerId, username) {
   });
 }
 // an account that is deleted leaves its caravan first (the owner role passes on)
-hooks.beforeDelete = (userId) => {
+deleteHooks.push((userId) => {
   const c = caravanOf(userId);
   if (c) removeMember(c.id, userId);
   run('DELETE FROM caravan_invites WHERE user_id = ?', userId);
-};
+});
 
 /** Members who could be invited: not in any caravan, matching the start of what was typed. */
 export function searchInvitees(userId, q) {
@@ -241,7 +242,7 @@ export function view(userId) {
     return { caravan: null, invitations, requests };
   }
   const wk = weekStart(), today = dayOf();
-  const members = all(`SELECT u.username, u.city, u.total, u.held, cm.joined_at,
+  const members = all(`SELECT u.id uid, u.username, u.city, u.total, u.held, u.avatar_v av, u.display_name dn, cm.joined_at,
         COALESCE((SELECT SUM(d.count) FROM daily d WHERE d.user_id = u.id AND d.day >= ?), 0) week,
         EXISTS(SELECT 1 FROM daily d WHERE d.user_id = u.id AND d.day = ? AND d.count > 0) today
       FROM caravan_members cm JOIN users u ON u.id = cm.user_id WHERE cm.caravan_id = ? AND ${LIVE}
@@ -254,10 +255,10 @@ export function view(userId) {
     caravan: { id: c.id, name: c.name, owner, ownerName: one('SELECT username FROM users WHERE id = ?', c.owner_id).username, members: agg.members, total: agg.total, week: wagg.week, active: wagg.active,
       next: MILESTONES.find((x) => x > agg.total) || MILESTONES.at(-1), prev: MILESTONES.filter((x) => x <= agg.total).at(-1) || 0 },
     streak: streakStatus(c.id),
-    members: members.map((m) => ({ username: m.username, city: m.city, total: m.total, week: m.week, today: !!m.today, owner: false, joinedAt: m.joined_at })),
+    members: members.map((m) => ({ username: m.username, displayName: m.dn, avatar: avatarUrl(m.uid, m.av), city: m.city, total: m.total, week: m.week, today: !!m.today, owner: false, joinedAt: m.joined_at })),
   };
   for (const m of out.members) m.owner = m.username === out.caravan.ownerName;
-  if (owner) out.pending = all(`SELECT u.username, u.city, ci.kind, ci.created_at at FROM caravan_invites ci JOIN users u ON u.id = ci.user_id WHERE ci.caravan_id = ? AND ${LIVE} ORDER BY ci.created_at DESC LIMIT 100`, c.id);
+  if (owner) out.pending = all(`SELECT u.id uid, u.avatar_v av, u.username, u.city, ci.kind, ci.created_at at FROM caravan_invites ci JOIN users u ON u.id = ci.user_id WHERE ci.caravan_id = ? AND ${LIVE} ORDER BY ci.created_at DESC LIMIT 100`, c.id).map(person);
   return out;
 }
 /** Small summary for the profile: which caravan, and how many invitations are waiting. */

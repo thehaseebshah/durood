@@ -433,6 +433,10 @@ addCol('users', 'reminder_time', "TEXT NOT NULL DEFAULT ''");       // 'HH:MM' P
 addCol('users', 'news_seen_at', 'INTEGER NOT NULL DEFAULT 0');
 addCol('users', 'caravan_name', 'TEXT');
 addCol('users', 'city_changed_at', 'INTEGER');
+addCol('users', 'display_name', "TEXT NOT NULL DEFAULT ''");           // a real name shown beside the username (not unique)
+addCol('users', 'bio', "TEXT NOT NULL DEFAULT ''");                    // one short line
+addCol('users', 'avatar_v', 'INTEGER NOT NULL DEFAULT 0');             // > 0: the current profile picture's version; <= 0: none (the next upload is abs(v) + 1)
+addCol('users', 'phone_changed_at', 'INTEGER');
 addCol('flags', 'day_total', 'INTEGER');
 db.exec('CREATE INDEX IF NOT EXISTS events_kind_ref ON events(kind, ref)'); // payouts are looked up by what they paid for                              // the day's total when the flag was raised                        // a member may change city once a fortnight
 // ---- Al-Burhan edition: murabbi / masul links, mamulaat percentages, tasks and routines -------------------------------------

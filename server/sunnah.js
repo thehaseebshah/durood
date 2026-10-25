@@ -17,14 +17,17 @@ mkdirSync(UPLOAD_DIR, { recursive: true });
 const MAX_IMAGE = 200_000;      // the app squeezes photos to about 100 KB before upload; this is the most the server will take
 
 /**
- * Validates a JPEG and rebuilds it without metadata (EXIF/GPS, comments, ICC, thumbnails).
- * Returns { data, width, height }. Throws bad_image for anything that is not a plain baseline/progressive JPEG.
+ * Validates a JPEG and rebuilds it from only what an image needs: quantisation and Huffman tables, the frame header, restart interval
+ * and the scan data. Camera metadata (EXIF/GPS), comments, ICC profiles, thumbnails, application and unknown segments are dropped, and
+ * anything after the final end-of-image marker is cut. Returns { data, width, height }. Throws bad_image for anything that is not a plain
+ * baseline or progressive JPEG within the size limits.
  */
-export function cleanJpeg(buf) {
+export function cleanJpeg(buf, { maxBytes = MAX_IMAGE, minDim = 200, maxDim = 1280 } = {}) {
   const bad = () => new HttpError(400, 'bad_image');
-  if (buf.length < 1000 || buf.length > MAX_IMAGE || buf[0] !== 0xff || buf[1] !== 0xd8) throw bad();
-  const out = [buf.subarray(0, 2)];
-  let i = 2, width = 0, height = 0;
+  if (buf.length < 600 || buf.length > maxBytes || buf[0] !== 0xff || buf[1] !== 0xd8) throw bad();
+  const KEEP = new Set([0xc0, 0xc1, 0xc2, 0xc4, 0xdb, 0xdd]); // SOF0-2, DHT, DQT, DRI
+  const out = [Buffer.from([0xff, 0xd8])];
+  let i = 2, width = 0, height = 0, scanAt = -1;
   while (i + 4 <= buf.length) {
     if (buf[i] !== 0xff) throw bad();
     const m = buf[i + 1];
@@ -32,17 +35,16 @@ export function cleanJpeg(buf) {
     const len = buf.readUInt16BE(i + 2);
     if (len < 2 || i + 2 + len > buf.length) throw bad();
     if (m === 0xc0 || m === 0xc1 || m === 0xc2) { height = buf.readUInt16BE(i + 5); width = buf.readUInt16BE(i + 7); }
-    const strip = (m >= 0xe1 && m <= 0xed) || m === 0xef || m === 0xfe;
-    if (m === 0xda) { // start of scan: everything after is image data up to EOI
-      out.push(buf.subarray(i));
-      break;
-    }
-    if (!strip) out.push(buf.subarray(i, i + 2 + len));
+    if (m === 0xda) { scanAt = i; break; }          // start of scan: everything after is image data up to the final EOI
+    if (KEEP.has(m)) out.push(buf.subarray(i, i + 2 + len));
     i += 2 + len;
   }
+  if (scanAt < 0) throw bad();
+  const end = buf.lastIndexOf(Buffer.from([0xff, 0xd9]));
+  if (end <= scanAt) throw bad();
+  out.push(buf.subarray(scanAt, end + 2));          // the scan(s), cut at the last EOI so nothing can ride behind the image
   const data = Buffer.concat(out);
-  if (data[data.length - 2] !== 0xff || data[data.length - 1] !== 0xd9) throw bad();
-  if (!width || !height || width < 200 || height < 200 || width > 1280 || height > 1280) throw bad();
+  if (!width || !height || width < minDim || height < minDim || width > maxDim || height > maxDim) throw bad();
   return { data, width, height };
 }
 
