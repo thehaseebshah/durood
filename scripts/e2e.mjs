@@ -132,6 +132,42 @@ try {
     await page.close();
   }
 
+  // ---- caravan: create, invite by username, accept -------------------------------------------------------------------
+  {
+    const page = await open(host.token);
+    await go(page, 'caravan');
+    await page.fill('#cv-new', 'e2e_cv'); await page.click('form[data-form=cvcreate] button[type=submit]'); await page.waitForTimeout(900);
+    ok((await api('GET', '/api/caravan', null, host.token)).caravan?.name === 'e2e_cv', 'a caravan is created');
+    await page.fill('#cvinvq', 'e2e_ki'); await page.waitForTimeout(900);
+    await page.locator('[data-act=cvinvite][data-u=e2e_kid]').click(); await page.waitForTimeout(700);
+    await page.close();
+    const kp = await open(kid.token);
+    await go(kp, 'caravan');
+    await kp.locator('[data-act=cvaccept]').first().click(); await kp.waitForTimeout(900);
+    ok((await api('GET', '/api/caravan', null, host.token)).caravan?.members === 2, 'the invitee accepts and the caravan has two members');
+    await kp.close();
+  }
+
+  // ---- masul and razakar: a task given from My people is done on the razakar's Tasks page --------------------------------
+  {
+    await api('PUT', '/api/burhan/masul', { username: 'e2e_host' }, kid.token);
+    const page = await open(host.token);
+    await go(page, 'people');
+    await page.locator('[data-act=openrazakar][data-u=e2e_kid]').click(); await page.waitForTimeout(900);
+    const due = new Date(Date.now() + 5 * 3600e3 + 2 * 864e5).toISOString().slice(0, 10);
+    await page.fill('form[data-form=assign] input[name=title]', 'Bring the banner');
+    await page.fill('form[data-form=assign] input[type=date]', due);
+    await page.click('form[data-form=assign] button[type=submit]'); await page.waitForTimeout(900);
+    ok((await api('GET', '/api/burhan', null, kid.token)).assignments.some((x) => x.title === 'Bring the banner'), 'the masul gives the razakar a task');
+    await page.close();
+    const kp = await open(kid.token);
+    await go(kp, 'tasks');
+    await kp.locator('.trow', { hasText: 'Bring the banner' }).first().locator('.tcheck').click(); await kp.waitForTimeout(1200);
+    const rep = await api('GET', '/api/burhan/razakars/e2e_kid', null, host.token);
+    ok(JSON.stringify(rep).includes('Bring the banner') && rep.assignments?.some?.((x) => x.title === 'Bring the banner' && x.done), 'the razakar completes it and the masul sees it done');
+    await kp.close();
+  }
+
   // ---- no signal: durood is kept on the phone and sent once back online; the app opens offline on the last numbers --------------
   {
     const off = await register('e2e_offline');
