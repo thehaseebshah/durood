@@ -11,6 +11,8 @@ Requires Node 22.13+ (uses built-in `node:sqlite`; **no npm dependencies**).
 ```bash
 npm start            # http://localhost:3000
 npm test             # API tests (in-memory DB)
+npm run fuzz         # malformed input on every API route; no route may answer 5xx
+npm run e2e          # browser test of the whole app (needs Playwright with Chromium)
 ```
 
 ### The 40-day challenge
