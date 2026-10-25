@@ -898,7 +898,7 @@ function progress() {
   <div class="lvl"><div class="row between"><span>${uiIcon('bolt', 14, 1.9)} ${t('level')} ${m.level} · ${esc(title)}</span><b>${N(`${fmt(m.xp)} / ${fmt(m.next)}`)}${unit('pts')}</b></div>${bar(m.pct)}
     <p class="unitnote">${unit('durood')} ${unit('pts')} ${t('units_note')}</p>
     <div class="row between muted" style="margin-top:6px"><span title="${esc(t('shield_hint'))}">${uiIcon('shield', 14, 1.9)} ${m.shields} ${t('shields_word')}</span><button class="linkbtn" data-act="goleague">${t('league_title')}: ${t('tier_' + TIER_KEYS[m.league || 0])}</button></div></div>
-  ${m.badges.length ? `<button class="earned" data-act="fold" data-k="badges" aria-label="${esc(t('badges'))}">${m.badges.slice(-8).reverse().map((c) => `<span title="${esc(t('badge')[c][0])}">${badgeSvg(c, true)}</span>`).join('')}${m.badges.length > 8 ? `<b>+${m.badges.length - 8}</b>` : ''}</button>` : ''}
+  ${m.badges.length ? `<button class="earned" data-act="fold" data-k="badges" aria-label="${esc(t('badges'))}">${m.badges.slice(-6).reverse().map((c) => `<span title="${esc(t('badge')[c][0])}">${badgeSvg(c, true)}</span>`).join('')}${m.badges.length > 6 ? `<b>+${m.badges.length - 6}</b>` : ''}</button>` : ''}
   ${fold('badges', t('badges'), N(`${m.badges.length} / ${BADGE_FAMILIES.reduce((n, [, l]) => n + l.length, 0)}`), `${BADGE_FAMILIES.map(([fam, list]) => `<h3>${t('fam_' + fam)}</h3>
   <div class="badges">${list.slice().sort((x, y) => m.badges.includes(y) - m.badges.includes(x)).map((c) => { const got = m.badges.includes(c); return `<div class="badge ${got ? 'got' : ''}" title="${esc(t('badge')[c][1])}">${badgeSvg(c, got)}<b>${esc(t('badge')[c][0])}</b><span>${esc(t('badge')[c][1])}</span></div>`; }).join('')}</div>`).join('')}`, false)}
   ${fold('history', t('hist_title'), '', `<p class="note first">${t('hist_hint')}</p>${historyBlock()}`, false)}
@@ -1579,7 +1579,7 @@ app.addEventListener('click', async (ev) => {
     }
   }
   if (act === 'resend') { try { const r = await api('/email/resend', 'POST'); toast(t(r.sent === false ? 'email_off' : 'email_sent')); } catch (e) { toast(errText(e)); } return; }
-  if (act === 'tab' || act === 'go') return enterTab(el.dataset.tab);
+  if (act === 'tab' || act === 'go') { haptic('tap'); return enterTab(el.dataset.tab); }
   if (act === 'drawer') {
     if (matchMedia('(min-width: 1024px)').matches) { S.sideHidden = !S.sideHidden; ls.set('side', S.sideHidden ? '0' : '1'); return draw(); } // wide screens: show or hide the sidebar
     S.drawer = !S.drawer; draw(); if (S.drawer) $('#side .sitem.on, #side .sitem')?.focus(); return;
@@ -1595,7 +1595,7 @@ app.addEventListener('click', async (ev) => {
     S.sheet = 'add'; draw(); $('#manual')?.focus(); return;
   }
   if (act === 'sheetx') { S.sheet = null; return draw(); }
-  if (act === 'fold') { const k = el.dataset.k; S.folds[k] = el.getAttribute('aria-expanded') !== 'true'; ls.set('folds', JSON.stringify(S.folds)); return draw(); }
+  if (act === 'fold') { haptic('tap'); const k = el.dataset.k; S.folds[k] = el.getAttribute('aria-expanded') !== 'true'; ls.set('folds', JSON.stringify(S.folds)); return draw(); }
   if (act === 'logout') return logout(true, true);
   if (act === 'logoutall') {
     if (!confirm(t('logout_all_ask'))) return;
@@ -1874,6 +1874,7 @@ app.addEventListener('click', async (ev) => {
     return;
   }
   if (act === 'like') {
+    haptic('light');
     el.disabled = true;
     try {
       const r = await api('/like', 'POST', { kind: el.dataset.kind, id: Number(el.dataset.id) });
