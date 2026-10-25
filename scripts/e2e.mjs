@@ -79,6 +79,20 @@ try {
     ok((await page.locator('#big').textContent()).trim() === '160', 'Enter in the durood box adds it');
     ok(await page.locator('.u-durood').count() > 0 && await page.locator('.u-pts').count() > 0, 'numbers carry durood / pts units');
     ok(!(await overflowX(page)), 'Today has no sideways scroll on a phone');
+    // today's sunnah: tick it, then post a photo (made in the page: a canvas drawn and handed to the file input)
+    await page.click('[data-act=tick]'); await page.waitForTimeout(700);
+    ok((await api('GET', '/api/me', null, host.token)).quests.find((q) => q.id === 'sunnah')?.done === true, 'ticking the sunnah counts');
+    await page.evaluate(async () => {
+      const c = Object.assign(document.createElement('canvas'), { width: 640, height: 480 }), g = c.getContext('2d');
+      for (let i = 0; i < 60; i++) { g.fillStyle = `hsl(${i * 6},70%,${30 + (i % 5) * 10}%)`; g.fillRect((i * 37) % 600, (i * 53) % 440, 80, 60); }
+      const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.9));
+      const input = document.querySelector('input[data-photo]'), dt = new DataTransfer();
+      dt.items.add(new File([blob], 'sunnah.jpg', { type: 'image/jpeg' })); input.files = dt.files; input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await page.waitForTimeout(900);
+    ok(await page.locator('img.shot.preview').count() === 1, 'the photo shows as a preview first');
+    await page.click('[data-act=postit]'); await page.waitForTimeout(1200);
+    ok(await page.locator('img.shot.preview').count() === 0 && (await api('GET', '/api/feed', null, host.token)).today?.mine, 'the sunnah photo is posted');
     // pull to refresh
     const cdp = await page.context().newCDPSession(page);
     const touch = (type, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x: 200, y }] });

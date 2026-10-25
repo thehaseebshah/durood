@@ -805,6 +805,7 @@ export function createServer() {
       res.setHeader('X-Frame-Options', 'DENY');
       res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
       res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
+      res.setHeader('Cross-Origin-Opener-Policy', 'same-origin'); // another site opened from here (or opening us) gets no handle on this window
       if (process.env.FORCE_HSTS === '1' || (process.env.TRUST_PROXY && req.headers['x-forwarded-proto'] === 'https')) res.setHeader('Strict-Transport-Security', 'max-age=15552000');
       const url = new URL(req.url, 'http://x');
       if (url.pathname === '/healthz') { one('SELECT 1'); res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"ok":true}'); }
