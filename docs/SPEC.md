@@ -403,3 +403,6 @@ The member app, sign-in and admin share one stylesheet; its last section restyle
 - Compete scope is a scrolling row of chips; only the time/metric switch is a segmented control.
 - The challenge card states its total once ("4,000 of 10 crore durood"); on day one it shows the day's share instead of "Exactly on plan". Any progress shows at least a sliver of bar.
 - The goal bar lines up with the card's text, the star stays inside the card; the add sheet keeps today's total small so the field comes first; the tap counter's buttons sit inside the card; the streak sits in a pill like the bell; the frosted header is more opaque.
+- Settings: Sounds and Vibration are iOS switches (`role=switch`) in a grouped list; the name under the photo is a heading, and the unconfirmed-email warning is an amber card.
+- Member and profile pop-ups rise from the bottom as sheets on phones; "Remove this" on an assignment is red; stat labels say "Day streak" and "Points" without a repeated unit.
+- Feed actions keep a gap between icon and label, and the first icon lines up with the post text. In a caravan the owner's remove column is kept on every row, so the scores line up.

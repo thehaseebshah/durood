@@ -1034,3 +1034,35 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px
 .tapbox .tap.blk, .tapbox .blk.go { border-radius: 14px; margin: 0; width: 100%; }
 .tapbox .tap.blk { padding: 22px 18px; }
 .tapbox .pendrow { border: 0; } .tapbox .pendrow > span { padding: 4px 0; } .tapbox .pendrow .quick { padding: 0; }
+/* iOS switches for on/off settings, in a grouped list */
+.swlist { margin: 10px 14px; background: var(--paper); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+.swrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 6px 16px; font-weight: 500; }
+.swrow + .swrow { border-top: .5px solid var(--line); }
+.sw { flex: none; width: 51px; height: 31px; border-radius: 99px; border: 0; padding: 0; background: var(--track); position: relative; cursor: pointer; transition: background .2s; }
+.sw i { position: absolute; top: 2px; inset-inline-start: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .22); transition: transform .22s cubic-bezier(.3, .7, .3, 1.2); }
+.sw[aria-checked=true] { background: #34c759; }
+.sw[aria-checked=true] i { transform: translateX(20px); }
+html[dir=rtl] .sw[aria-checked=true] i { transform: translateX(-20px); }
+@media (prefers-reduced-motion: reduce) { .sw, .sw i { transition: none; } }
+/* feed actions: icon and label spaced, the first icon lines up with the post text */
+.facts { margin-inline-start: -10px; gap: 4px; }
+.facts .chip { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; }
+/* caravan owner view: every row keeps the remove column, so the scores line up */
+.lb li > .chip[data-act=cvremove], .lb li > .xslot { flex: none; width: 40px; min-width: 40px; padding: 0; display: inline-grid; place-items: center; }
+/* removing an assignment is destructive: red text, no grey pill weight */
+.chip.endbtn { background: transparent; color: var(--err); box-shadow: inset 0 0 0 1px var(--line); }
+/* stats grids: dividers run the full height and labels never wrap mid-word */
+.stats > div { align-self: stretch; }
+.stats span { overflow-wrap: normal; hyphens: auto; }
+/* phones: member and profile pop-ups rise from the bottom like an iOS sheet */
+@media (max-width: 600px) {
+  .modal.msheet { align-items: end; padding: 0; }
+  .modal.msheet > .box { width: 100%; max-width: none; border-radius: 22px 22px 0 0; max-height: 92vh; padding-bottom: calc(18px + env(safe-area-inset-bottom)); animation: sheetup .32s cubic-bezier(.2, .8, .2, 1); }
+}
+@keyframes sheetup { from { transform: translateY(40px); opacity: .4; } }
+@media (prefers-reduced-motion: reduce) { .modal > .box { animation: none !important; } }
+/* Settings head: the name is a heading, not a second large title; warnings are an amber inset card */
+.tab-settings .uname { font-size: 1.4rem; letter-spacing: -.3px; margin-top: 6px; }
+.tab-settings .notice { margin: 14px 14px 0; padding: 12px 16px; border: 0; border-radius: 12px; background: #fff4d6; color: #5c4300; font-weight: 500; }
+html[data-mode=dark] .tab-settings .notice { background: #2f2508; color: #ffd98a; }
+.tab-settings .notice .linkbtn { display: block; margin-top: 6px; padding: 0; }

@@ -630,8 +630,8 @@ const nameLine = (p) => `<b>${esc(p.username)}</b>${p.displayName ? ` <small cla
 function profileModal() {
   const d = S.profile, p = d.data;
   const head = `<div class="row between"><h3 class="in">${esc(d.username)}</h3><button class="chip" data-act="closeprofile">${t('close')}</button></div>`;
-  if (!p) return `<div class="modal"><div class="box">${head}<p class="muted center">…</p></div></div>`;
-  return `<div class="modal"><div class="box profile">${head}
+  if (!p) return `<div class="modal msheet"><div class="box">${head}<p class="muted center">…</p></div></div>`;
+  return `<div class="modal msheet"><div class="box profile">${head}
     <div class="pbig">${av(p, 96, false)}</div>
     ${p.displayName ? `<div class="pname" dir="auto">${esc(p.displayName)}</div>` : ''}
     ${p.bio ? `<p class="pbio" dir="auto">${esc(p.bio)}</p>` : ''}
@@ -836,7 +836,7 @@ function cvHome(cv) {
       <div>${t('karwan_today')(fmt(ks.today), fmt(ks.size))}</div>
       ${ks.missing.length ? `<div class="muted">${t('karwan_missing')} ${ks.missing.map((n) => `<span class="chipname">${esc(n)}</span>`).join(' ')}</div>` : ''}</div>` : `<p class="note">${t('karwan_need')}</p>`}
   <h3>${t('cv_members')} (${fmt(c.members)})</h3>
-  <ul class="lb">${shown.map((m) => cvRow(m, c.owner && !m.owner ? `<button class="chip" data-act="cvremove" data-u="${esc(m.username)}" aria-label="${esc(t('cv_remove'))}" title="${esc(t('cv_remove'))}">✕</button>` : '')).join('')}</ul>
+  <ul class="lb">${shown.map((m) => cvRow(m, c.owner && !m.owner ? `<button class="chip" data-act="cvremove" data-u="${esc(m.username)}" aria-label="${esc(t('cv_remove'))}" title="${esc(t('cv_remove'))}">✕</button>` : c.owner ? '<span class="xslot" aria-hidden="true"></span>' : '')).join('')}</ul>
   ${cv.members.length > 8 && !S.cvAll ? `<button class="chip more" data-act="cvall">${t('cv_show_all')(fmt(cv.members.length))}</button>` : ''}
   ${c.owner ? `<h3>${t('cv_invite_title')}</h3><div class="padx bh">
       <input id="cvinvq" type="text" aria-label="${esc(t('cv_invite_ph'))}" autocomplete="off" autocapitalize="off" dir="ltr" placeholder="${esc(t('cv_invite_ph'))}"><div id="cvinvres" class="chips"></div>
@@ -960,7 +960,7 @@ function teachButton() {
 function settings() {
   const m = S.me;
   return `
-  <div class="myhead"><div class="mybig">${av(m, 84, false)}</div><div class="myact">
+  <div class="myhead"><div class="mybig">${av(m, 72, false)}</div><div class="myact">
     <label class="chip solid" tabindex="0">${t(m.avatar ? 'change_photo' : 'add_photo')}<input type="file" accept="image/*" data-avatar hidden></label>
     ${m.avatar ? `<button class="chip" data-act="rmavatar">${t('remove_photo')}</button>` : ''}
     <small class="muted">${t('photo_hint')}</small></div></div>
@@ -972,10 +972,7 @@ function settings() {
   <h3>${t('appearance')}</h3>
   <label class="padx">${t('language')}</label>
   <div class="seg"><button class="${S.lang === 'en' ? 'on' : ''}" data-act="setlang" data-l="en">English</button><button class="${S.lang === 'ur' ? 'on' : ''}" data-act="setlang" data-l="ur">اردو</button></div>
-  <label class="padx">${t('feel_sound')}</label>
-  <div class="seg"><button class="${prefs.sound === false ? '' : 'on'}" data-act="setfeel" data-k="sound" data-v="1">${t('on_word')}</button><button class="${prefs.sound === false ? 'on' : ''}" data-act="setfeel" data-k="sound" data-v="0">${t('off_word')}</button></div>
-  <label class="padx">${t('feel_vibrate')}</label>
-  <div class="seg"><button class="${prefs.vibrate === false ? '' : 'on'}" data-act="setfeel" data-k="vibrate" data-v="1">${t('on_word')}</button><button class="${prefs.vibrate === false ? 'on' : ''}" data-act="setfeel" data-k="vibrate" data-v="0">${t('off_word')}</button></div>
+  <div class="swlist">${['sound', 'vibrate'].map((k) => `<div class="swrow"><span id="sw-${k}">${t('feel_' + k)}</span><button class="sw" role="switch" aria-checked="${prefs[k] !== false}" aria-labelledby="sw-${k}" data-act="setfeel" data-k="${k}" data-v="${prefs[k] === false ? 1 : 0}"><i></i></button></div>`).join('')}</div>
   <label class="padx">${t('display')}</label>
   <div class="seg"><button class="${isDark() ? '' : 'on'}" data-act="setmode" data-m="light">${t('mode_light')}</button><button class="${isDark() ? 'on' : ''}" data-act="setmode" data-m="dark">${t('mode_dark_name')}</button></div>
 
@@ -1162,7 +1159,7 @@ function assignRow(a, mode) { // mode: 'mine' (the doer: ticks, moves or asks), 
   const answer = mode === 'masul' && a.askedDay && !a.done ? `<div class="row duerow"><small>${t('asked_for')(N(esc(a.askedDay)))}</small><button class="chip solid" data-act="dueyes" data-id="${a.id}">${t('agree')}</button><button class="chip" data-act="dueno" data-id="${a.id}">${t('keep_date')}</button></div>` : '';
   // the tick stays on the right; moving, asking, answering and removing sit on a line of their own under the title
   const extra = [(canMove || canAsk) && !editing ? `<button class="chip" data-act="dueedit" data-id="${a.id}">${t(canMove ? 'move_date' : 'ask_date')}</button>` : '',
-    (mode === 'masul' && !a.own) || (mode === 'mine' && a.own) ? `<button class="chip" data-act="${mode === 'mine' ? 'endown' : 'endassign'}" data-id="${a.id}">${t('end_assign')}</button>` : ''].join('');
+    (mode === 'masul' && !a.own) || (mode === 'mine' && a.own) ? `<button class="chip endbtn" data-act="${mode === 'mine' ? 'endown' : 'endassign'}" data-id="${a.id}">${t('end_assign')}</button>` : ''].join('');
   return `<div class="q ${done ? 'd' : ''}"><span class="bx"></span>
     <span class="t">${esc(a.title)}<small>${asgLabel(a)}${giver}</small>${state}${answer}${dueForm}${extra ? `<span class="qacts">${extra}</span>` : ''}</span>
     ${tickable ? `<button class="chip ${done ? '' : 'solid'}" data-act="atick" data-id="${a.id}" data-done="${done ? 0 : 1}">${done ? t('undo') : t('mark_done')}</button>` : ''}</div>`;
@@ -1323,17 +1320,17 @@ function tasksPage() {
 function progressGrid(g) {
   const c = cell;
   return `<div class="stats">${c(g.durood.total, t('total'), 'durood')}${c(g.durood.today, t('today'), 'durood')}${c(g.durood.week, t('week'), 'durood')}</div>
-    <div class="stats">${c(g.streak, t('streak'))}${c(g.xp, t('xp'), 'pts')}${c(g.level, t('level'))}</div>
+    <div class="stats">${c(g.streak, t('streak_l'))}${c(g.xp, t('xp'))}${c(g.level, t('level'))}</div>
     <div class="stats">${c(g.sunnahs, t('sunnah_word'))}${c(g.lectures, t('lectures_word'))}${c(g.reflections, t('reflect_title'))}</div>`;
 }
 
 function detailModal() {
   const d = S.bhDetail, r = d.data;
   const head = `<div class="row between"><h3 class="in">${esc(d.username)}</h3><button class="chip" data-act="closedetail">${t('close')}</button></div>`;
-  if (!r) return `<div class="modal"><div class="box">${head}<p class="muted center">…</p></div></div>`;
+  if (!r) return `<div class="modal msheet"><div class="box">${head}<p class="muted center">…</p></div></div>`;
   if (d.type === 'saalik') {
     const p = r.profile;
-    return `<div class="modal"><div class="box wide">${head}
+    return `<div class="modal msheet"><div class="box wide">${head}
       <p class="muted" dir="ltr">${esc(p.phone)} · ${esc(p.email)}<br>${esc(p.city || '')}${p.country ? ` · ${esc(p.country)}` : ''} · ${t('joined')} ${N(esc(p.joined))}</p>
       ${progressGrid(r.progress)}
       <p class="muted">${t('nav_caravan')}: <b>${r.extra.caravan ? esc(r.extra.caravan) : t('none_word')}</b></p>
@@ -1346,7 +1343,7 @@ function detailModal() {
       <div class="spacer"></div><button class="chip" data-act="bhdrop" data-u="${esc(d.username)}">${t('stop_murabbi')}</button></div></div>`;
   }
   const f = S.assignForm || { kind: 'task' };
-  return `<div class="modal"><div class="box wide">${head}
+  return `<div class="modal msheet"><div class="box wide">${head}
     <p class="muted">${esc(r.city || '')} · ${t('joined')} ${N(esc(r.joined))}</p>
     ${progressGrid(r.progress)}
     <b>${t('assigned_view')}</b>

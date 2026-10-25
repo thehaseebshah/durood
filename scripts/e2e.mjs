@@ -217,6 +217,10 @@ try {
     ok(await page.evaluate(() => document.documentElement.dir === 'rtl'), 'Settings switches to Urdu');
     await page.click('main .seg [data-act=setlang][data-l=en]'); await page.waitForTimeout(700);
     ok(await page.evaluate(() => document.documentElement.dir === 'ltr'), '...and back to English');
+    await page.click('.sw[data-k=sound]'); await page.waitForTimeout(300);
+    ok(await page.getAttribute('.sw[data-k=sound]', 'aria-checked') === 'false', 'the Sounds switch turns off');
+    await page.click('.sw[data-k=sound]'); await page.waitForTimeout(300);
+    ok(await page.getAttribute('.sw[data-k=sound]', 'aria-checked') === 'true', '...and back on');
     await page.close();
   }
 
