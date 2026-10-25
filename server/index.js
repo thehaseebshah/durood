@@ -13,13 +13,13 @@ import { USERNAME, isReserved, handleTaken as handleTakenBy } from './handles.js
 import { HttpError, hashPassword, checkPassword, signToken, verifyToken, rateLimit, lockedOut, recordFailure, forgiveFailure, clearFailures, clientIp, rateIp, sameSecret, signDevice, deviceUser } from './auth.js';
 import { auditAsync } from './audit.js';
 import * as access from './access.js';
-import { sendMail, resetEmail, confirmEmail, inviteEmail, baseUrl } from './mail.js';
+import { sendMail, mailLive, resetEmail, confirmEmail, inviteEmail, baseUrl } from './mail.js';
 import * as sunnah from './sunnah.js';
 import * as news from './news.js';
 import * as feedApi from './feed.js';
 import * as geo from './geo.js';
 import * as compete from './compete.js';
-import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, quizPassed, publicQuiz, parseQuestions, claimCircle, getMe, weekStart, setSpecialDay, deleteSpecialDay, listSpecialDays, leaderboard, qabilaBoard, teamView, publicStats } from './game.js';
+import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, quizPassed, publicQuiz, parseQuestions, claimCircle, getMe, weekStart, setSpecialDay, deleteSpecialDay, listSpecialDays, circleUrl, setCircleUrl, leaderboard, qabilaBoard, teamView, publicStats } from './game.js';
 
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -108,10 +108,34 @@ route('GET', '/api/caravan/name-check', ({ user, query }) => {
   const mine = one('SELECT c.id FROM caravan_members cm JOIN caravans c ON c.id = cm.caravan_id WHERE cm.user_id = ?', user);
   return { ok: !handleTakenBy(n, { exceptUserId: 0, exceptCaravanId: mine?.id ?? 0 }) };
 });
-route('POST', '/api/caravan/invite', ({ user, body }) => { rateLimit(`cvi:${user}`, 60, 3600e3); return { ...caravanApi.invite(user, body.username), view: caravanApi.view(user) }; });
-route('POST', '/api/caravan/join', ({ user, body }) => { rateLimit(`cvj:${user}`, 20, 3600e3); return { ...caravanApi.requestJoin(user, body.name), view: caravanApi.view(user), me: getMe(user) }; });
-route('POST', '/api/caravan/invitations/:id', ({ user, params, body }) => { const r = caravanApi.answerInvitation(user, Number(params.id), body.accept === true); return { ...r, view: caravanApi.view(user), me: getMe(user) }; });
-route('POST', '/api/caravan/requests/:username', ({ user, params, body }) => ({ ...caravanApi.answerRequest(user, params.username, body.accept === true), view: caravanApi.view(user) }));
+// who's who for the caravan notifications
+const cvOf = (userId) => one('SELECT c.id, c.name, c.owner_id FROM caravan_members cm JOIN caravans c ON c.id = cm.caravan_id WHERE cm.user_id = ?', userId);
+const nameOf = (userId) => one('SELECT username FROM users WHERE id = ?', userId)?.username;
+route('POST', '/api/caravan/invite', ({ user, body }) => {
+  rateLimit(`cvi:${user}`, 60, 3600e3);
+  const r = caravanApi.invite(user, body.username);
+  news.notifyCaravan('invite', one('SELECT id FROM users WHERE username = ?', String(body.username ?? '').trim())?.id, nameOf(user), cvOf(user)?.name);
+  return { ...r, view: caravanApi.view(user) };
+});
+route('POST', '/api/caravan/join', ({ user, body }) => {
+  rateLimit(`cvj:${user}`, 20, 3600e3);
+  const r = caravanApi.requestJoin(user, body.name);
+  const c = one('SELECT name, owner_id FROM caravans WHERE name = ?', String(body.name ?? '').trim());
+  if (c) news.notifyCaravan(cvOf(user)?.name === c.name ? 'joined' : 'request', c.owner_id, nameOf(user), c.name); // an earlier invitation turns a request into a join
+  return { ...r, view: caravanApi.view(user), me: getMe(user) };
+});
+route('POST', '/api/caravan/invitations/:id', ({ user, params, body }) => {
+  const r = caravanApi.answerInvitation(user, Number(params.id), body.accept === true);
+  const c = body.accept === true && cvOf(user);
+  if (c) news.notifyCaravan('joined', c.owner_id, nameOf(user), c.name);
+  return { ...r, view: caravanApi.view(user), me: getMe(user) };
+});
+route('POST', '/api/caravan/requests/:username', ({ user, params, body }) => {
+  const r = caravanApi.answerRequest(user, params.username, body.accept === true);
+  const c = body.accept === true && cvOf(user);
+  if (c) news.notifyCaravan('accepted', one('SELECT id FROM users WHERE username = ?', params.username)?.id, nameOf(user), c.name);
+  return { ...r, view: caravanApi.view(user) };
+});
 route('POST', '/api/caravan/cancel', ({ user, body }) => ({ ...caravanApi.cancelPending(user, { username: body.username, caravanId: body.caravanId }), view: caravanApi.view(user) }));
 route('POST', '/api/caravan/leave', ({ user }) => ({ ...caravanApi.leave(user), view: caravanApi.view(user), me: getMe(user) }));
 route('POST', '/api/caravan/remove', ({ user, body }) => ({ ...caravanApi.removeByOwner(user, body.username), view: caravanApi.view(user) }));
@@ -159,6 +183,9 @@ route('GET', '/api/burhan/saaliks', B(async ({ user }) => { rateLimit(`bsl:${use
 route('GET', '/api/burhan/saaliks/:username', B(({ user, params }) => { rateLimit(`bsr:${user}`, 120, 3600e3); return burhan.saalikReport(user, params.username); }));
 route('GET', '/api/burhan/razakars', B(({ user }) => ({ razakars: burhan.razakarList(user) })));
 route('GET', '/api/burhan/razakars/:username', B(({ user, params }) => burhan.razakarReport(user, params.username)));
+route('DELETE', '/api/burhan/razakars/:username', B(({ user, params }) => burhan.removeRazakar(user, params.username)));
+route('DELETE', '/api/burhan/saaliks/:username', B(({ user, params }) => burhan.dropSaalik(user, params.username)));
+route('DELETE', '/api/burhan/notices/:kind', B(({ user, params }) => burhan.dismissNotice(user, params.kind)));
 
 route('GET', '/api/invite-check', { auth: false }, ({ query, ip }) => {
   rateLimit(`inv:${ip}`, 60, 60e3);
@@ -398,7 +425,7 @@ route('POST', '/api/email/resend', ({ user }) => {
   rateLimit(`ers:${user}`, 3, 3600e3);
   const u = one('SELECT email, email_verified_at FROM users WHERE id = ?', user);
   if (!u.email_verified_at) sendMail(confirmEmail(u.email, `${baseUrl()}/?confirm=${makeToken(user, 'confirm', 7 * 86400e3)}`));
-  return { ok: true };
+  return { ok: true, sent: mailLive() }; // a test server without an email provider says so instead of "sent"
 });
 
 route('GET', '/api/history', ({ user }) => { rateLimit(`hist:${user}`, 60, 60e3); return history(user); });
@@ -435,7 +462,7 @@ route('GET', '/api/challenge', ({ user }) => ({ summary: challengeSummary(), ser
 route('GET', '/api/league', ({ user }) => { compete.ensureWeekClosed(); return compete.leagueView(user); });
 route('GET', '/api/team', ({ user }) => teamView(user));
 
-route('GET', '/api/lectures', ({ user }) => ({ lectures: feedApi.lectureList(user), circleUrl: CFG.circleUrl, circleXp: CFG.circleXp }));
+route('GET', '/api/lectures', ({ user }) => ({ lectures: feedApi.lectureList(user), circleUrl: circleUrl(), circleXp: CFG.circleXp }));
 route('POST', '/api/lectures/:id/quiz', ({ user, params, body }) => {
   rateLimit(`quiz:${user}`, 60, 60e3);
   // a few checks per lecture per half hour: enough to think again, too few to find the answers by trying every option
@@ -493,6 +520,8 @@ route('POST', '/api/report', ({ user, body }) => {
 });
 
 route('POST', '/api/admin/sunnahs', { auth: false, admin: true }, ({ body }) => ({ days: sunnah.addSunnahs(body.sunnahs ?? body) }));
+route('GET', '/api/admin/sunnahs', { auth: false, admin: true }, () => ({ sunnahs: sunnah.listSunnahs() }));
+route('DELETE', '/api/admin/sunnahs/:day', { auth: false, admin: true }, ({ params }) => sunnah.deleteSunnah(params.day));
 route('GET', '/api/admin/reported', { auth: false, admin: true }, () => ({ items: feedApi.reportedContent() }));
 route('POST', '/api/admin/content/:kind/:id', { auth: false, admin: true }, ({ params, body, admin }) => { const r = feedApi.moderateContent(params.kind, Number(params.id), body.action); profile.logAdmin(`content-${body.action}`, `${params.kind}:${params.id}`, '', admin.actor); return r; });
 route('GET', '/api/admin/prompts', { auth: false, admin: true }, () => ({ prompts: feedApi.listPrompts() }));
@@ -512,7 +541,7 @@ route('POST', '/api/admin/public-code', adm, ({ body }) => access.setPublicCode(
 route('GET', '/api/admin/waitlist', adm, ({ query }) => ({ requests: access.listWaitlist(query.get('status') || 'pending') }));
 route('POST', '/api/admin/waitlist/:id', adm, async ({ params, body }) => {
   const r = access.resolveWaitlist(Number(params.id), body.action);
-  if (r.code && r.email) r.emailed = await sendMail(inviteEmail(r.email, r.code));
+  if (r.code && r.email) { r.emailed = (await sendMail(inviteEmail(r.email, r.code))) && mailLive(); r.mailOff = !mailLive(); } // "emailed" only when an email really left
   return r;
 });
 route('GET', '/api/admin/members', adm, ({ query, admin }) => {
@@ -522,12 +551,21 @@ route('GET', '/api/admin/members', adm, ({ query, admin }) => {
   const mask = (v) => (v ? `${String(v).slice(0, 2)}•••${String(v).slice(-2)}` : v);
   return { members: members.map((m) => ({ ...m, email: mask(m.email), phone: mask(m.phone) })) }; // a moderator needs neither
 });
-route('POST', '/api/admin/members/:username', adm, ({ params, body, admin }) => {
+route('POST', '/api/admin/members/:username', adm, async ({ params, body, admin }) => {
   const a = body.action;
-  if (!admins.can(admin.role, a === 'reset-link' ? 'reset_link' : 'moderate')) throw new HttpError(403, 'not_allowed'); // suspending and clearing profiles are moderation; a reset link is account access
+  if (!admins.can(admin.role, a === 'reset-link' ? 'reset_link' : a === 'delete' ? 'delete_member' : 'moderate')) throw new HttpError(403, 'not_allowed'); // suspending and clearing profiles are moderation; a reset link is account access; deleting is the owner's
   // a moderator or organiser can't reset, suspend, hide or clear another admin: that would let them take over or lock out an owner
   const target = one('SELECT admin_role FROM users WHERE username = ?', params.username);
   if (target?.admin_role && admin.role !== 'owner') throw new HttpError(403, 'not_allowed');
+  if (a === 'delete') { // a member's request to be erased, made to the organiser (see the privacy page): the same anonymising as deleting from the app
+    const u = one('SELECT id, admin_role FROM users WHERE username = ? AND deleted_at IS NULL', params.username);
+    if (!u) throw new HttpError(404, 'not_found');
+    if (u.admin_role) throw new HttpError(409, 'remove_role_first');
+    anonymiseUser(u.id, await hashPassword(crypto.randomBytes(24).toString('hex')));
+    sunnah.purgeUser(u.id);
+    profile.logAdmin('delete-account', params.username, '', admin.actor);
+    return { ok: true };
+  }
   if (a === 'suspend' || a === 'unsuspend') { const r = access.setSuspended(params.username, a === 'suspend', !!body.branch, admin.role === 'owner'); profile.logAdmin(body.branch ? `${a}-branch` : a, params.username, '', admin.actor); return r; }
   if (a === 'hide' || a === 'unhide') { const r = setHidden(params.username, a === 'hide'); profile.logAdmin(a, params.username, '', admin.actor); return r; }
   if (a === 'reset-link') {
@@ -555,23 +593,43 @@ route('GET', '/api/admin/news', adm, () => ({ items: db.prepare('SELECT * FROM a
 route('POST', '/api/admin/news', adm, ({ body }) => news.postNews(body));
 route('DELETE', '/api/admin/news/:id', adm, ({ params }) => news.deleteNews(Number(params.id)));
 route('GET', '/api/admin/export', adm, ({ query }) => ({ csv: news.exportCsv(query.get('kind')) }));
+route('GET', '/api/admin/circle', adm, () => ({ circleUrl: circleUrl(), fromEnv: !getSetting('circle_url', '') && !!CFG.circleUrl }));
+route('POST', '/api/admin/circle', adm, ({ body }) => setCircleUrl(body.url));
 route('GET', '/api/admin/special-days', adm, () => ({ days: listSpecialDays() }));
 route('POST', '/api/admin/special-days', adm, ({ body }) => setSpecialDay(body));
 route('DELETE', '/api/admin/special-days/:day', adm, ({ params }) => deleteSpecialDay(params.day));
+// Al-Burhan oversight: phone numbers are not verified, so a moderator must be able to see who follows whom and break a wrong link
+route('GET', '/api/admin/burhan-links', { auth: false, admin: true }, () => { burhan.guard(); return burhan.adminLinks(); });
+route('DELETE', '/api/admin/burhan-links/:kind/:username', { auth: false, admin: true }, ({ params, admin }) => {
+  burhan.guard();
+  const r = burhan.adminBreak(params.kind, params.username);
+  profile.logAdmin(`break-${params.kind}`, params.username, '', admin.actor);
+  return r;
+});
 route('GET', '/api/admin/audit', { auth: false, admin: true }, () => auditAsync());
 route('GET', '/api/admin/status', adm, () => ({ lastAudit: getSetting('last_audit') ? JSON.parse(getSetting('last_audit')) : null, lastBackup: Number(getSetting('last_backup_at', '0')) || null }));
-route('POST', '/api/admin/lectures', { auth: false, admin: true }, ({ body }) => {
+// one reading of the lecture form, for adding and for editing
+function lectureFields(body) {
   const yt = String(body.youtube_id || '').trim();
-  if (!/^[\w-]{11}$/.test(yt) || !body.title_en) throw new HttpError(400, 'bad_lecture');
+  if (!/^[\w-]{11}$/.test(yt) || !String(body.title_en || '').trim()) throw new HttpError(400, 'bad_lecture');
   const questions = parseQuestions(body.questions);
   if (body.week && (!/^\d{4}-\d{2}-\d{2}$/.test(String(body.week)) || Number.isNaN(Date.parse(`${body.week}T00:00:00Z`)))) throw new HttpError(400, 'bad_lecture');
-  const week = body.week ? weekStart(String(body.week)) : weekStart();
-  const r = run('INSERT INTO lectures (youtube_id, title_en, title_ur, speaker, min_seconds, xp, questions, week_start, created_at) VALUES (?,?,?,?,?,?,?,?,?)',
-    yt, String(body.title_en), String(body.title_ur || ''), String(body.speaker || ''),
-    Math.max(30, Number(body.min_seconds) || 600), Math.min(CFG.lectureXpMax, Math.max(1, Number(body.xp) || CFG.lectureXp)), questions.length ? JSON.stringify(questions) : '', week, Date.now());
+  return [yt, String(body.title_en).trim(), String(body.title_ur || ''), String(body.speaker || ''),
+    Math.max(30, Number(body.min_seconds) || 600), Math.min(CFG.lectureXpMax, Math.max(1, Number(body.xp) || CFG.lectureXp)),
+    questions.length ? JSON.stringify(questions) : '', body.week ? weekStart(String(body.week)) : weekStart()];
+}
+route('POST', '/api/admin/lectures', { auth: false, admin: true }, ({ body }) => {
+  const r = run('INSERT INTO lectures (youtube_id, title_en, title_ur, speaker, min_seconds, xp, questions, week_start, created_at) VALUES (?,?,?,?,?,?,?,?,?)', ...lectureFields(body), Date.now());
   return { id: Number(r.lastInsertRowid) };
 });
-route('GET', '/api/admin/lectures', { auth: false, admin: true }, () => ({ lectures: db.prepare('SELECT id, youtube_id, title_en, speaker, week_start, min_seconds, xp FROM lectures ORDER BY week_start DESC, id DESC LIMIT 60').all() }));
+// fixing a typo or a quiz answer keeps the comments, likes, quiz passes and points already earned (deleting would wipe them)
+route('PUT', '/api/admin/lectures/:id', { auth: false, admin: true }, ({ params, body }) => {
+  const r = run('UPDATE lectures SET youtube_id = ?, title_en = ?, title_ur = ?, speaker = ?, min_seconds = ?, xp = ?, questions = ?, week_start = ? WHERE id = ?', ...lectureFields(body), Number(params.id));
+  if (!r.changes) throw new HttpError(404, 'not_found');
+  return { ok: true };
+});
+route('GET', '/api/admin/lectures', { auth: false, admin: true }, () => ({ lectures: db.prepare('SELECT id, youtube_id, title_en, title_ur, speaker, week_start, min_seconds, xp, questions FROM lectures ORDER BY week_start DESC, id DESC LIMIT 60').all()
+  .map((l) => ({ ...l, questions: l.questions ? JSON.parse(l.questions) : [] })) }));
 route('DELETE', '/api/admin/lectures/:id', { auth: false, admin: true }, ({ params }) => {
   const id = Number(params.id);
   tx(() => { // all or nothing: comments, their replies, likes and reports go with the lecture

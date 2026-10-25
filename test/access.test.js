@@ -94,7 +94,8 @@ test('waitlist: request, admin approves into a single-use code, rejection and re
   outbox.length = 0;
   const ap = await admin('POST', `/waitlist/${list.requests[0].id}`, { action: 'approve' });
   assert.match(ap.code, /^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
-  assert.equal(ap.emailed, true);
+  assert.equal(ap.emailed, false); // the test server only logs mail, and says so
+  assert.equal(ap.mailOff, true);
   assert.ok(outbox.some((m) => m.to === 'sara@x.pk' && m.text.includes(ap.code)));
   assert.ok((await signup('sara_k', ap.code)).token);
   assert.equal((await signup('sara_k2', ap.code)).error, 'invite_used');

@@ -25,18 +25,30 @@ let KEY = load('adminKey'), TOKEN = load('adminToken'), ME = null, showKey = fal
 const can = (p) => !!ME?.can.includes(p);
 let tab = 'challenge';
 let notice = '';
-const TABS = [['challenge', 'Challenge', 'status'], ['invites', 'Invite codes', 'organise'], ['waitlist', 'Waitlist', 'organise'], ['flags', 'Flagged totals', 'moderate'], ['members', 'Members', 'members'], ['moderation', 'Moderation', 'moderate'], ['news', 'News', 'organise'], ['feed', 'Feed', 'feed'], ['exports', 'Exports', 'organise'], ['admins', 'Admins', 'manage_admins']];
-const tabOk = ([, , p]) => (p === 'feed' ? can('organise') || can('moderate') : can(p));
+const TABS = [['challenge', 'Challenge', 'status'], ['invites', 'Invite codes', 'organise'], ['waitlist', 'Waitlist', 'organise'], ['flags', 'Flagged totals', 'moderate'], ['members', 'Members', 'members'], ['moderation', 'Moderation', 'moderate'], ['news', 'News', 'organise'], ['feed', 'Feed', 'feed'], ['exports', 'Exports', 'organise'], ['burhan', 'Al-Burhan', 'moderate'], ['admins', 'Admins', 'manage_admins']];
+let EDITION = 'public'; // the Al-Burhan tab exists only in the internal edition
+const tabOk = ([k, , p]) => (k === 'burhan' && EDITION !== 'internal' ? false : p === 'feed' ? can('organise') || can('moderate') : can(p));
 
+// what an error code means, in words an organiser can act on
+const ADMIN_ERR = {
+  not_allowed: 'Your role cannot do that.', rate_limited: 'Too many tries. Wait a few minutes.', not_found: 'That was not found. It may have been removed already.',
+  bad_quiz: 'The quiz is not in the right shape: up to 10 questions, each with q_en, 2 to 5 options_en (options_ur the same number, or none) and the answer number (0 is the first option).',
+  bad_lecture: 'Check the YouTube id (11 characters), the English title and the week date.',
+  bad_sunnah: 'Each Sunnah needs a day (YYYY-MM-DD) and an English text.', sunnah_in_use: 'Members have already ticked or posted this Sunnah. Edit its text instead of removing it.',
+  bad_special: 'A special day needs a date and an English name.', bad_url: 'The link must start with https://',
+  photo_gone: 'This photo was already deleted from the server (photos are kept 14 days), so it cannot be shown again.',
+  bad_role: 'Pick owner, moderator or organiser.', own_role: 'You cannot change your own role.', last_owner: 'There must always be at least one owner.',
+  member_not_found: 'No active member has that username.', remove_role_first: 'This member holds an admin role. Remove the role first, then delete the account.', bad_challenge: 'Check the start date, the number of days and the target.',
+};
 async function api(method, path, body) {
   const res = await fetch('/api/admin' + path, { method, headers: { 'content-type': 'application/json', ...(TOKEN ? { 'x-admin-token': TOKEN } : { 'x-admin-key': KEY }) }, body: body ? JSON.stringify(body) : undefined });
   const data = await res.json().catch(() => ({}));
   if (res.status === 403 && data.error === 'forbidden') { if (ME) signOut('Your session ended. Sign in again.'); throw new Error('Not signed in'); }
-  if (!res.ok) throw new Error(data.error === 'not_allowed' ? 'Your role cannot do that' : data.error === 'rate_limited' ? 'Too many tries. Wait a few minutes.' : data.error || 'Something went wrong');
+  if (!res.ok) throw new Error(ADMIN_ERR[data.error] || data.error || 'Something went wrong');
   return data;
 }
 const say = (m) => { notice = m; };
-async function run(fn) { try { await fn(); } catch (e) { say(`Error: ${e.message}`); } render(); }
+async function run(fn) { try { if ((await fn()) === 'stay') return; } catch (e) { say(`Error: ${e.message}`); } render(); } // 'stay': the action filled a form, keep it
 
 const views = {
   async challenge() {
@@ -70,15 +82,36 @@ const views = {
   },
   async feed() {
     const org = can('organise'), mod = can('moderate');
-    const [{ lectures }, { prompts }, { items }, { days }] = await Promise.all([org ? api('GET', '/lectures') : { lectures: [] }, org ? api('GET', '/prompts') : { prompts: [] }, mod ? api('GET', '/reported') : { items: [] }, org ? api('GET', '/special-days') : { days: [] }]);
+    const [{ lectures }, { prompts }, { items }, { days }, { sunnahs }, circle] = await Promise.all([org ? api('GET', '/lectures') : { lectures: [] }, org ? api('GET', '/prompts') : { prompts: [] }, mod ? api('GET', '/reported') : { items: [] }, org ? api('GET', '/special-days') : { days: [] }, org ? api('GET', '/sunnahs') : { sunnahs: [] }, org ? api('GET', '/circle') : {}]);
+    const today = pktToday();
+    // the next 14 days without a Sunnah: members see "not published yet" on those days
+    const gaps = Array.from({ length: 14 }, (_, i) => new Date(Date.parse(today + 'T00:00:00Z') + i * 864e5).toISOString().slice(0, 10)).filter((d) => !sunnahs.some((x) => x.day === d));
     const photoLink = (i) => (i.photoUrl ? `<a href="${esc(i.photoUrl)}" target="_blank" rel="noopener">photo</a>` : '');
-    return `${org ? `<h3>Lecture of the week</h3>
+    return `${org ? `<h3>Sunnah of the day</h3>
+      <p class="muted">Members see the day's Sunnah on Home and in the Feed, tick it (+20) and can post a photo of it (+40). A day without one shows "not published yet".</p>
+      ${gaps.length ? `<div class="msg" style="border-color:var(--err)">No Sunnah yet for: ${gaps.map((d) => esc(d)).join(', ')}</div>` : '<p class="muted">Every day of the next two weeks has a Sunnah.</p>'}
+      <div class="inline"><div><label>Day</label><input id="sudy" type="date" value="${esc(gaps[0] || today)}"></div><div><label>Source (e.g. Bukhari 5376)</label><input id="susrc" maxlength="120"></div></div>
+      <label>Sunnah (English)</label><input id="sutE" maxlength="120"><label>Sunnah (Urdu)</label><input id="sutU" maxlength="120" dir="rtl">
+      <label>How to do it (English, optional)</label><textarea id="sudE" maxlength="600" rows="2"></textarea><label>How to do it (Urdu, optional)</label><textarea id="sudU" maxlength="600" rows="2" dir="rtl"></textarea>
+      <div class="inline"><button class="chip solid" data-a="sunset">Save Sunnah</button></div>
+      <details><summary>Add many at once</summary><p class="muted">A JSON list: <code>[{"day":"2026-11-01","title_en":"Eat with the right hand","title_ur":"…","desc_en":"…","desc_ur":"…","source":"Muslim 2020"}]</code>. A day that already has one is replaced.</p>
+      <textarea id="subulk" rows="4"></textarea><div class="inline"><button class="chip" data-a="sunbulk">Save all</button></div></details>
+      ${sunnahs.length ? `<table><tr><th>Day</th><th>Sunnah</th><th>Source</th><th></th></tr>${sunnahs.map((x) => `<tr${x.day < today ? ' style="opacity:.6"' : ''}><td>${esc(x.day)}</td><td>${esc(x.title_en)}${x.title_ur ? `<br><span dir="rtl">${esc(x.title_ur)}</span>` : ' <small class="muted">(no Urdu)</small>'}</td><td>${esc(x.source)}</td>
+        <td><button class="chip" data-a="sunedit" data-day="${esc(x.day)}">Edit</button> ${x.day >= today ? `<button class="chip" data-a="sundel" data-day="${esc(x.day)}">Remove</button>` : ''}</td></tr>`).join('')}</table>` : '<p class="empty">No Sunnahs scheduled.</p>'}
+      <h3>Seerat Circle link</h3>
+      <p class="muted">Members see a card on Home with this link, and can claim +300 points once after they register. Leave it empty to hide the card.</p>
+      <label>Sign-up link (https://…)</label><input id="ciurl" type="url" maxlength="300" value="${esc(circle.circleUrl || '')}">
+      <div class="inline"><button class="chip solid" data-a="circleset">Save link</button></div>
+      <h3>Lecture of the week</h3>
       <p class="muted">Members see the lectures whose week is the current one. Any date in the week works. A quiz is optional: a JSON list like <code>[{"q_en":"Where was the Prophet ﷺ born?","options_en":["Makkah","Madinah"],"answer":0}]</code>.</p>
-      <div class="inline"><div><label>YouTube id (11 characters)</label><input id="lyt" maxlength="11"></div><div><label>Week (any date)</label><input id="lwk" type="date" value="${pktToday()}"></div><div><label>Minimum watch (seconds)</label><input id="lmin" type="number" min="30" value="600"></div></div>
+      <div class="inline"><div><label>YouTube id (11 characters)</label><input id="lyt" maxlength="11"></div><div><label>Week (any date)</label><input id="lwk" type="date" value="${pktToday()}"></div><div><label>Minimum watch (seconds)</label><input id="lmin" type="number" min="30" value="600"></div><div><label>Points (1 to 200)</label><input id="lxp" type="number" min="1" max="200" value="150"></div></div>
+      <input id="lid" type="hidden" value="">
       <label>Title (English)</label><input id="ltE" maxlength="120"><label>Title (Urdu, optional)</label><input id="ltU" maxlength="120" dir="rtl"><label>Speaker</label><input id="lsp" maxlength="80">
       <label>Quiz (optional JSON)</label><textarea id="lqz" rows="3"></textarea>
-      <div class="inline"><button class="chip solid" data-a="lecadd">Add lecture</button></div>
-      ${lectures.length ? `<table><tr><th>Week</th><th>Title</th><th>Speaker</th><th></th></tr>${lectures.map((l) => `<tr><td>${esc(l.week_start)}</td><td>${esc(l.title_en)}</td><td>${esc(l.speaker)}</td><td><button class="chip" data-a="lecdel" data-id="${l.id}">Delete</button></td></tr>`).join('')}</table>` : '<p class="empty">No lectures yet.</p>'}
+      <div class="inline"><button class="chip solid" data-a="lecadd" id="lecbtn">Add lecture</button> <button class="chip" data-a="lecnew" id="lecnew" hidden>Cancel edit</button></div>
+      ${lectures.length ? `<table><tr><th>Week</th><th>Title</th><th>Speaker</th><th>Points</th><th>Quiz</th><th></th></tr>${lectures.map((l) => `<tr><td>${esc(l.week_start)}</td><td>${esc(l.title_en)}</td><td>${esc(l.speaker)}</td><td>${l.xp}</td>
+        <td>${l.questions.length ? `<details><summary>${l.questions.length} question${l.questions.length === 1 ? '' : 's'}</summary>${l.questions.map((q) => `<p>${esc(q.q_en)}<br>${q.options_en.map((o, i) => (i === q.answer ? `<b>✓ ${esc(o)}</b>` : esc(o))).join(' · ')}</p>`).join('')}</details>` : '—'}</td>
+        <td><button class="chip" data-a="lecedit" data-id="${l.id}">Edit</button> <button class="chip" data-a="lecdel" data-id="${l.id}">Delete</button></td></tr>`).join('')}</table>` : '<p class="empty">No lectures yet.</p>'}
       <h3>Question of the day</h3>
       <p class="muted">Shown above the daily reflection box. A day without a question shows a general prompt.</p>
       <div class="inline"><div><label>Day</label><input id="pday" type="date" value="${pktToday()}"></div></div>
@@ -92,9 +125,18 @@ const views = {
       <div class="inline"><button class="chip solid" data-a="specialset">Save day</button></div>
       ${days.length ? `<table><tr><th>Day</th><th>Name</th><th></th></tr>${days.slice(0, 15).map((d) => `<tr><td>${esc(d.day)}</td><td>${esc(d.name_en)}</td><td><button class="chip" data-a="specialdel" data-day="${esc(d.day)}">Remove</button></td></tr>`).join('')}</table>` : ''}` : ''}
     ${mod ? `<h3>Reported or hidden</h3>
-      <p class="muted">Three reports from different members hide a photo or reflection. Restore it, or leave it removed.</p>
+      <p class="muted">Three reports from different members hide a photo or reflection. Keep something that was reported unfairly (the reports are cleared), remove it, or restore something hidden.</p>
       ${items.length ? `<table><tr><th>Kind</th><th>Member</th><th>Content</th><th>Reports</th><th>Status</th><th></th></tr>${items.map((i) => `<tr><td>${esc(i.kind)}</td><td>${esc(i.username)}</td><td>${esc(i.text || '')} ${photoLink(i)}</td><td>${i.reports}</td><td>${esc(i.status)}</td>
-        <td>${i.status === 'removed' ? `<button class="chip solid" data-a="restore2" data-kind="${esc(i.kind)}" data-id="${i.id}">Restore</button>` : `<button class="chip" data-a="remove2" data-kind="${esc(i.kind)}" data-id="${i.id}">Remove</button>`}</td></tr>`).join('')}</table>` : '<p class="empty">Nothing reported.</p>'}` : ''}`;
+        <td>${i.kind === 'post' && !i.photoUrl ? '<span class="muted">photo deleted</span>' : i.status === 'removed' ? `<button class="chip solid" data-a="restore2" data-kind="${esc(i.kind)}" data-id="${i.id}">Restore</button>` : `<button class="chip" data-a="keep2" data-kind="${esc(i.kind)}" data-id="${i.id}" title="The reports were not justified: clear them and take it off this list">Keep</button> <button class="chip" data-a="remove2" data-kind="${esc(i.kind)}" data-id="${i.id}">Remove</button>`}</td></tr>`).join('')}</table>` : '<p class="empty">Nothing reported.</p>'}` : ''}`;
+  },
+  async burhan() {
+    const { murabbi, masul } = await api('GET', '/burhan-links');
+    const stage = { waiting: 'murabbi not on the app yet', confirm: 'salik to confirm', pending: 'murabbi to accept', active: 'active: reports shared' };
+    return `<p class="muted">Phone numbers are not verified, so a wrong murabbi can be found through someone else's number. Check links that look wrong and break them. Breaking a link stops all sharing at once; either side can link again.</p>
+      <h3>Murabbi links</h3>
+      ${murabbi.length ? `<table><tr><th>Salik</th><th>Murabbi</th><th>Name in Mamulaat</th><th>Stage</th><th>Since</th><th></th></tr>${murabbi.map((l) => `<tr><td>${esc(l.salik)}</td><td>${esc(l.murabbi || '—')}</td><td>${esc(l.name)}</td><td>${esc(stage[l.stage])}</td><td>${date(l.at)}</td><td><button class="chip" data-a="bhbreak" data-k="murabbi" data-u="${esc(l.salik)}">Break</button></td></tr>`).join('')}</table>` : '<p class="empty">No murabbi links yet.</p>'}
+      <h3>Masul links</h3>
+      ${masul.length ? `<table><tr><th>Razakar</th><th>Masul</th><th>Since</th><th></th></tr>${masul.map((l) => `<tr><td>${esc(l.razakar)}</td><td>${esc(l.masul)}</td><td>${date(l.at)}</td><td><button class="chip" data-a="bhbreak" data-k="masul" data-u="${esc(l.razakar)}">Break</button></td></tr>`).join('')}</table>` : '<p class="empty">No masul links yet.</p>'}`;
   },
   async admins() {
     const { admins, roles } = await api('GET', '/admins');
@@ -185,7 +227,8 @@ const views = {
           <button class="chip" data-a="${m.suspended ? 'unsuspend' : 'suspend'}" data-u="${esc(m.username)}">${m.suspended ? 'Unsuspend' : 'Suspend'}</button>
           <button class="chip" data-a="${m.suspended ? 'unsuspendb' : 'suspendb'}" data-u="${esc(m.username)}">${m.suspended ? 'Unsuspend branch' : 'Suspend branch'}</button>
           <button class="chip" data-a="${m.hidden ? 'unhide' : 'hide'}" data-u="${esc(m.username)}">${m.hidden ? 'Unhide' : 'Hide from ranks'}</button>
-          ${can('reset_link') ? `<button class="chip" data-a="resetlink" data-u="${esc(m.username)}">Reset link</button>` : ''}`}</td></tr>`).join('')}</table>` : '<p class="empty">No members match.</p>'}`;
+          ${can('reset_link') ? `<button class="chip" data-a="resetlink" data-u="${esc(m.username)}">Reset link</button>` : ''}
+          ${can('delete_member') ? `<button class="chip" data-a="memdel" data-u="${esc(m.username)}">Delete account</button>` : ''}`}</td></tr>`).join('')}</table>` : '<p class="empty">No members match.</p>'}`;
   },
 };
 
@@ -197,6 +240,7 @@ function bar() {
 }
 async function enter() { // find out who the server thinks we are
   try { ME = await api('GET', '/me'); } catch { ME = null; }
+  try { EDITION = (await (await fetch('/api/config')).json()).edition || 'public'; } catch { /* stays public */ }
   if (ME && !tabOk(TABS.find(([k]) => k === tab))) tab = TABS.find(tabOk)?.[0] || 'challenge';
 }
 function signOut(msg = '') { TOKEN = ''; KEY = ''; ME = null; store('adminToken', null); store('adminKey', null); notice = msg; showKey = false; render(); }
@@ -236,12 +280,43 @@ document.addEventListener('click', (ev) => {
     },
     lecadd: async () => {
       const qz = $('#lqz').value.trim();
-      await api('POST', '/lectures', { youtube_id: $('#lyt').value.trim(), week: $('#lwk').value, min_seconds: Number($('#lmin').value), title_en: $('#ltE').value, title_ur: $('#ltU').value, speaker: $('#lsp').value, questions: qz ? JSON.parse(qz) : undefined });
-      say('Lecture added.');
+      let questions;
+      try { questions = qz ? JSON.parse(qz) : undefined; } catch { return say('The quiz is not valid JSON.'); }
+      const body = { youtube_id: $('#lyt').value.trim(), week: $('#lwk').value, min_seconds: Number($('#lmin').value), xp: Number($('#lxp').value), title_en: $('#ltE').value, title_ur: $('#ltU').value, speaker: $('#lsp').value, questions };
+      const id = $('#lid').value;
+      if (id) { await api('PUT', `/lectures/${id}`, body); say('Lecture updated. Comments, likes and quiz passes are kept.'); } else { await api('POST', '/lectures', body); say('Lecture added.'); }
     },
+    lecedit: async () => {
+      const l = (await api('GET', '/lectures')).lectures.find((x) => x.id === Number(d.id));
+      if (!l) return;
+      $('#lid').value = l.id; $('#lyt').value = l.youtube_id; $('#lwk').value = l.week_start; $('#lmin').value = l.min_seconds; $('#lxp').value = l.xp;
+      $('#ltE').value = l.title_en; $('#ltU').value = l.title_ur || ''; $('#lsp').value = l.speaker || ''; $('#lqz').value = l.questions.length ? JSON.stringify(l.questions, null, 1) : '';
+      $('#lecbtn').textContent = 'Save changes'; $('#lecnew').hidden = false; $('#ltE').focus();
+      return 'stay';
+    },
+    lecnew: async () => {},
     lecdel: async () => { if (!confirm('Delete this lecture?')) return; await api('DELETE', `/lectures/${d.id}`); say('Deleted.'); },
     promptset: async () => { await api('POST', '/prompts', { day: $('#pday').value, text_en: $('#ptE').value, text_ur: $('#ptU').value }); say('Question saved.'); },
     specialset: async () => { await api('POST', '/special-days', { day: $('#sday').value, name_en: $('#snE').value, name_ur: $('#snU').value }); say('Day saved.'); },
+    sunset: async () => {
+      if (!$('#sutE').value.trim()) return say('Write the Sunnah in English first.');
+      await api('POST', '/sunnahs', { sunnahs: [{ day: $('#sudy').value, title_en: $('#sutE').value.trim(), title_ur: $('#sutU').value.trim(), desc_en: $('#sudE').value.trim(), desc_ur: $('#sudU').value.trim(), source: $('#susrc').value.trim() }] });
+      say(`Sunnah saved for ${$('#sudy').value}.`);
+    },
+    sunbulk: async () => {
+      let list; try { list = JSON.parse($('#subulk').value); } catch { return say('That is not valid JSON.'); }
+      const r = await api('POST', '/sunnahs', { sunnahs: list });
+      say(`${r.days.length} Sunnah${r.days.length === 1 ? '' : 's'} saved.`);
+    },
+    sunedit: async () => {
+      const x = (await api('GET', '/sunnahs')).sunnahs.find((s) => s.day === d.day);
+      if (!x) return;
+      $('#sudy').value = x.day; $('#susrc').value = x.source; $('#sutE').value = x.title_en; $('#sutU').value = x.title_ur; $('#sudE').value = x.desc_en; $('#sudU').value = x.desc_ur;
+      $('#sutE').focus(); return 'stay';
+    },
+    sundel: async () => { if (!confirm(`Remove the Sunnah for ${d.day}?`)) return; await api('DELETE', `/sunnahs/${d.day}`); say('Removed.'); },
+    circleset: async () => { const r = await api('POST', '/circle', { url: $('#ciurl').value }); say(r.circleUrl ? 'Circle link saved. Members now see it on Home.' : 'Circle link removed: the card is hidden.'); },
+    keep2: async () => { await api('POST', `/content/${d.kind}/${d.id}`, { action: 'restore' }); say('Kept, and its reports cleared.'); },
     specialdel: async () => { await api('DELETE', `/special-days/${d.day}`); say('Removed.'); },
     remove2: async () => { await api('POST', `/content/${d.kind}/${d.id}`, { action: 'remove' }); say('Removed.'); },
     restore2: async () => { await api('POST', `/content/${d.kind}/${d.id}`, { action: 'restore' }); say('Restored.'); },
@@ -253,7 +328,7 @@ document.addEventListener('click', (ev) => {
     fnew: async () => { const r = await api('POST', '/invites', { label: $('#flabel').value, maxUses: $('#fmax').value }); say(`New founder code: ${r.code}`); },
     revoke: () => api('POST', `/invites/${d.code}/revoke`),
     wlfilter: async () => { window.__wl = d.s; },
-    approve: async () => { const r = await api('POST', `/waitlist/${d.id}`, { action: 'approve' }); say(`Approved. Invite code ${r.code}${r.emailed ? ' (emailed)' : ''}. Send it over WhatsApp from the approved tab.`); window.__wl = 'approved'; },
+    approve: async () => { const r = await api('POST', `/waitlist/${d.id}`, { action: 'approve' }); say(`Approved. Invite code ${r.code}${r.emailed ? ' (emailed)' : r.mailOff ? ' (not emailed: this server has no email provider)' : ''}. Send it over WhatsApp from the approved tab.`); window.__wl = 'approved'; },
     reject: () => api('POST', `/waitlist/${d.id}`, { action: 'reject' }),
     flfilter: async () => { window.__fl = d.s; },
     flclear: () => api('POST', `/flags/${d.id}`, { action: 'clear' }),
@@ -267,6 +342,11 @@ document.addEventListener('click', (ev) => {
     cvdelete: async () => { if (!confirm(`Delete the caravan "${d.n}"? Its members stay in the app but leave the caravan.`)) return; await api('DELETE', `/caravans/${d.id}`); say('Deleted.'); },
     search: async () => { window.__q = $('#q').value; },
     suspend: () => api('POST', `/members/${d.u}`, { action: 'suspend' }),
+    memdel: async () => {
+      if (prompt(`This erases ${d.u}'s name, email, phone, picture and photos for good. Their durood stays in the totals. Type the username to confirm.`) !== d.u) return say('Not deleted: the username did not match.');
+      await api('POST', `/members/${d.u}`, { action: 'delete' }); say(`${d.u}'s account was deleted.`);
+    },
+    bhbreak: async () => { if (!confirm(`Break ${d.u}'s ${d.k} link? Nothing more is shared; they can link again.`)) return; await api('DELETE', `/burhan-links/${d.k}/${d.u}`); say('Link broken.'); },
     unsuspend: () => api('POST', `/members/${d.u}`, { action: 'unsuspend' }),
     suspendb: () => confirm(`Suspend ${d.u} and everyone they invited, at every level?`) && api('POST', `/members/${d.u}`, { action: 'suspend', branch: true }).then((r) => say(`${r.affected} members suspended.`)),
     unsuspendb: () => api('POST', `/members/${d.u}`, { action: 'unsuspend', branch: true }).then((r) => say(`${r.affected} members restored.`)),

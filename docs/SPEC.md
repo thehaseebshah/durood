@@ -313,3 +313,15 @@ The shared `ADMIN_KEY` still works and acts as an owner. Keep it for emergencies
 - Moderators' member search doesn't match email or phone, so masked details can't be found by searching.
 - Photos: the image data is walked byte by byte and ends at the first end-of-image marker; anything else inside or behind it is refused. Database and backup files are readable by the app alone.
 - **Still open:** phone numbers are not verified. Someone who signs up with a salik's number before the salik does can request that salik's murabbi; the murabbi's yes is the only safeguard. The fix is a WhatsApp or SMS one-time code, which needs a messaging provider.
+
+## 26. Gaps closed (October 2026)
+- **Sunnah of the day** is scheduled on the admin page (Feed tab): one day at a time or many as JSON, with a list that shows the next two weeks' gaps. A Sunnah members have ticked or posted can be edited but not removed.
+- **Seerat Circle**: an organiser sets the sign-up link on the admin page (or `CIRCLE_URL`). Members see the card on Home and claim the one-time reward with "I have registered".
+- **Moderation**: "Keep" clears unfair reports and takes the item off the queue. A member whose reflection or lecture comment was hidden sees a note saying so. A photo whose file is already deleted (14 days) cannot be restored.
+- **Held totals**: after "Keep held" the member is told the decision instead of "being checked".
+- **Notifications**: a caravan invitation reaches the invitee; a join request or a new member reaches the owner; an accepted request reaches the newcomer. The invite-code join message now says Qabila.
+- **Email**: on a server without an email provider, members and admins are told nothing was emailed.
+- **Lectures**: can be edited (points, quiz, titles, week) without losing comments, likes or quiz passes; the admin list shows each quiz with its answers. Admin errors are in plain words.
+- **Al-Burhan**: a masul can remove a razakar (their open work ends); a murabbi can stop following a salik; the salik or razakar sees a one-line notice, also after a decline. Murabbi requests show a dot on the Caravan tab and a line on Home. The salik report names their caravan, shows the people they invited, their badges and recent reflections. Moderators see every murabbi and masul link on an Al-Burhan tab and can break a wrong one.
+- **Accounts**: an owner can delete a member's account from the admin page (not an admin's), anonymised exactly like deleting it in the app, and logged.
+- The privacy page describes what is collected and who sees it now (profile, posts, photos, Al-Burhan sharing). It still needs the organiser's name and contact.

@@ -273,7 +273,7 @@ function shell() {
   <a class="skip" href="#main">${t('skip_to')}</a>
   <header class="hd"><span>${t('app')}</span><span class="row"><span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button></span></header>
   <main id="main" tabindex="-1" class="wrap tab-${S.tab}"><h1 class="sr">${t('nav_' + S.tab)}</h1>${view()}</main>
-  <nav class="tabs" aria-label="${esc(t('app'))}"><div class="brand">${t('app')}</div>${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" ${S.tab === k ? 'aria-current="page"' : ''} data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em>${k === 'caravan' && (S.me.caravanInvites || S.me.caravanRequests) ? '<i class="pip" aria-hidden="true"></i>' : ''}</button>`).join('')}</nav>
+  <nav class="tabs" aria-label="${esc(t('app'))}"><div class="brand">${t('app')}</div>${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" ${S.tab === k ? 'aria-current="page"' : ''} data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em>${k === 'caravan' && (S.me.caravanInvites || S.me.caravanRequests || S.bh?.roles?.requests) ? '<i class="pip" aria-hidden="true"></i>' : ''}</button>`).join('')}</nav>
   ${S.player ? playerModal() : ''}
   ${S.bhDetail ? detailModal() : ''}
   ${S.profile ? profileModal() : ''}
@@ -292,7 +292,7 @@ function home() {
   const title = t('titles')[Math.min(m.level - 1, 9)];
   const live = m.today + S.pending;
   return `<div class="cols"><div class="col">
-  ${m.hiddenFromRanks ? `<div class="flagnote">${t('flagged')}</div>` : ''}
+  ${m.hiddenFromRanks ? `<div class="flagnote">${t(m.flagState === 'decided' ? 'flagged_decided' : 'flagged')}</div>` : ''}
   <div class="sub"><span>${t('today')}</span><span>${t('goal_word')} ${N(fmt(m.dailyGoal))}</span></div>
   <div class="big ${bigClass(live)}" id="big">${fmt(live)}</div>
   <div id="livebar">${bar((live / m.dailyGoal) * 100)}</div>
@@ -335,6 +335,7 @@ function home() {
     <b>${t('circle_title')}</b>
     <p>${t('circle_text')}</p>
     <a class="blk fill1" href="${esc(m.circleUrl)}" target="_blank" rel="noopener"><span>${t('circle_open')}</span><b class="ar">↗</b></a>
+    ${m.badges.includes('circle') ? `<p class="ok">✓ ${t('circle_done')}</p>` : `<button class="chip" data-act="circle">${t('circle_claim')}</button>`}
   </div>` : ''}
 
   <h3>${t('durood_quests')}</h3>
@@ -345,6 +346,7 @@ function home() {
 
   <h3>${t('caravan_title')}</h3>
   <button class="rowlink" data-act="tab" data-tab="caravan">${m.caravan ? `<span>${esc(m.caravan.name)} · ${fmt(m.caravan.members)} ${t('members')}</span><b>${m.caravanRequests ? `${m.caravanRequests} ` : ''}→</b>` : `<span>${m.caravanInvites ? t('cv_home_invited')(m.caravanInvites) : t('cv_home_none')}</span><b class="ar">→</b>`}</button>
+  ${S.bh?.roles?.requests ? `<button class="rowlink" data-act="tab" data-tab="caravan"><span>${uiIcon('chain', 14, 2)} ${t('bh_requests_home')(S.bh.roles.requests)}</span><b class="ar">→</b></button>` : ''}
 
   <p class="note">${t('reminder_note')}</p>
   </div></div>`;
@@ -513,6 +515,8 @@ function ago(at) {
   const m = Math.max(0, Math.round((Date.now() - at) / 60000));
   return m < 1 ? t('ago_now') : m < 60 ? t('ago_m')(m) : m < 1440 ? t('ago_h')(Math.floor(m / 60)) : t('ago_d')(Math.floor(m / 1440));
 }
+// the author's own post, hidden after reports or by a moderator: say so, rather than let it look live
+const hiddenNote = (st) => (st === 'removed' ? `<p class="note">${t('hidden_mine')}</p>` : '');
 const statusTag = (st) => `<span class="tag ${st}">${t('st_' + st)}</span>`;
 
 function sunnahCard(d) {
@@ -536,7 +540,7 @@ function sunnahCard(d) {
 function reflectionCard(r) {
   const prompt = r.prompt ? pick(r.prompt.textEn, r.prompt.textUr) : t('reflect_default');
   const body = r.mine
-    ? `<div class="reflbody" dir="auto">${esc(r.mine.body)}</div><div class="muted">${uiIcon('heart', 14, 2)} ${fmt(r.mine.likes)}</div>`
+    ? `<div class="reflbody" dir="auto">${esc(r.mine.body)}</div>${hiddenNote(r.mine.status)}<div class="muted">${uiIcon('heart', 14, 2)} ${fmt(r.mine.likes)}</div>`
     : `<textarea id="refl" aria-label="${esc(t('reflect_title'))}" maxlength="${r.max}" rows="3" placeholder="${t('reflect_ph')}" dir="auto">${esc(S.reflDraft || '')}</textarea>
        <div class="row between"><small class="muted">${t('reflect_rules')}</small><button class="chip solid" data-act="reflect">${t('reflect_post')}</button></div>`;
   return `<div class="fcard"><h3>${uiIcon('pen', 14, 2)} ${t('reflect_title')}</h3><div class="head">${esc(prompt)}</div>${body}</div>`;
@@ -544,7 +548,7 @@ function reflectionCard(r) {
 
 function lectureCard(x) {
   let talk = '';
-  if (x.myComment) talk = `<div class="reflbody" dir="auto">${esc(x.myComment.body)}</div><div class="muted">${uiIcon('heart', 14, 2)} ${fmt(x.myComment.likes)}</div>`;
+  if (x.myComment) talk = `<div class="reflbody" dir="auto">${esc(x.myComment.body)}</div>${hiddenNote(x.myComment.status)}<div class="muted">${uiIcon('heart', 14, 2)} ${fmt(x.myComment.likes)}</div>`;
   else if (x.canComment) talk = `<textarea aria-label="${esc(t('comment_title'))}" data-cbox="${x.id}" maxlength="${x.commentMax}" rows="2" placeholder="${t('comment_ph')}" dir="auto">${esc((S.cDraft || {})[x.id] || '')}</textarea>
       <div class="row between"><small class="muted">${t('comment_rules')}</small><button class="chip solid" data-act="comment" data-id="${x.id}">${t('reflect_post')}</button></div>`;
   else talk = `<small class="muted">${t(x.quiz && x.quiz.length ? 'comment_locked' : 'comment_locked_watch')}</small>`;
@@ -619,7 +623,7 @@ function feedView() {
   if (!f) return '<p class="muted center">…</p>';
   return `<div class="cols"><div class="col">
     <h3 class="first-d">${t('today_card')}</h3>
-    ${f.lectures.map(lectureCard).join('')}
+    ${f.lectures.length ? f.lectures.map(lectureCard).join('') : `<div class="fcard"><h3>${uiIcon('book', 14, 2)} ${t('lectures')}</h3><p class="muted">${t('no_lectures')}</p></div>`}
     ${sunnahCard(f.today)}
     ${reflectionCard(f.reflection)}
   </div><div class="col">
@@ -771,7 +775,7 @@ function me() {
   ${m.displayName ? `<div class="pname padx" dir="auto">${esc(m.displayName)}</div>` : ''}
   ${m.bio ? `<p class="pbio padx" dir="auto">${esc(m.bio)}</p>` : ''}
   <div class="muted" dir="ltr">${esc(m.email)} · ${esc(m.phone)}</div>
-  ${m.hiddenFromRanks ? `<div class="flagnote">${t('flagged')}</div>` : ''}
+  ${m.hiddenFromRanks ? `<div class="flagnote">${t(m.flagState === 'decided' ? 'flagged_decided' : 'flagged')}</div>` : ''}
   ${m.emailVerified ? '' : `<div class="notice">${t('email_unconfirmed')} <button class="linkbtn" data-act="resend">${t('resend')}</button></div>`}
   <div class="row wrapx padx shortcuts"><button class="chip" data-act="setlang" data-l="${S.lang === 'ur' ? 'en' : 'ur'}">${S.lang === 'ur' ? 'English' : 'اردو'}</button><a class="chip" href="#settings">${t('settings')}</a><button class="chip" data-act="logout">${t('logout')}</button></div>
   <div class="stats"><div><b>${m.level}</b><span>${t('level')}</span></div><div><b>${fmt(m.total)}</b><span>${t('total')}</span></div><div><b>${m.bestStreak}</b><span>${t('best_streak')}</span></div></div>
@@ -945,8 +949,10 @@ function burhanMe() {
     : pick ? `<div class="circlecard"><b>${t('masul_add_q')(esc(pick))}</b><p class="muted">${t('masul_sees')}</p>
         <div class="row"><button class="blk fill1" data-act="bhmasulyes"><span>${t('yes_add')}</span><b class="ar">→</b></button><button class="chip" data-act="bhmasulno">${t('cancel')}</button></div></div>`
     : `<p class="muted">${t('masul_text')}</p><div class="row"><input id="masulq" type="text" aria-label="${esc(t('masul_ph'))}" autocomplete="off" autocapitalize="off" dir="ltr" placeholder="${esc(t('masul_ph'))}"></div><div id="masulres" class="chips"></div>`;
+  const notes = (b.notices || []).map((n) => `<div class="notice row between"><span>${t('bh_n_' + n.kind)(esc(n.byName))}</span><button class="chip" data-act="bhnotice" data-k="${esc(n.kind)}">${t('ok_got_it')}</button></div>`).join('');
   return `<h3>${t('bh_title')}</h3>
   <div class="padx bh">
+    ${notes}
     ${whoSees()}
     <div class="spacer"></div><b>${t('murabbi_word')}</b>${murabbiBox}
     ${mu?.stage === 'active' ? mamulaatBars(b.mamulaat) : ''}
@@ -981,14 +987,19 @@ function detailModal() {
     return `<div class="modal"><div class="box wide">${head}
       <p class="muted" dir="ltr">${esc(p.phone)} · ${esc(p.email)}<br>${esc(p.city || '')}${p.country ? ` · ${esc(p.country)}` : ''} · ${t('joined')} ${N(esc(p.joined))}</p>
       ${progressGrid(r.progress)}
-      <div class="stats"><div><b>${fmt(r.extra.caravan)}</b><span>${t('c_members')}</span></div><div><b>${fmt(r.extra.qabila)}</b><span>${t('rk_trees')}</span></div><div><b>${fmt(r.extra.badges)}</b><span>${t('badges_word')}</span></div></div>
+      <p class="muted">${t('nav_caravan')}: <b>${r.extra.caravan ? esc(r.extra.caravan) : t('none_word')}</b></p>
+      <div class="stats"><div><b>${fmt(r.extra.invited)}</b><span>${t('invited_word')}</span></div><div><b>${fmt(r.extra.qabila)}</b><span>${t('rk_trees')}</span></div><div><b>${fmt(r.extra.badges)}</b><span>${t('badges_word')}</span></div></div>
+      ${r.extra.badgeList?.length ? `<p class="chips">${r.extra.badgeList.map((c) => `<span class="tag">${esc((t('badge')[c] || [c])[0])}</span>`).join(' ')}</p>` : ''}
+      ${r.extra.reflections?.length ? `<b>${t('reflect_title')}</b>${r.extra.reflections.map((x) => `<div class="reflbody" dir="auto"><small class="muted">${N(esc(x.day))}</small><br>${esc(x.body)}</div>`).join('')}` : ''}
       ${mamulaatBars(r.mamulaat)}${r.mamulaat.stale ? `<small class="muted">${t('mam_stale')}</small>` : ''}
       ${r.masul ? `<p class="muted">${t('masul_word')}: <b>${esc(r.masul)}</b></p>` : ''}
-      ${r.assignments.length ? `<b>${t('assigned_view')}</b>${r.assignments.map((a) => assignRow(a, 'view')).join('')}` : ''}</div></div>`;
+      ${r.assignments.length ? `<b>${t('assigned_view')}</b>${r.assignments.map((a) => assignRow(a, 'view')).join('')}` : ''}
+      <div class="spacer"></div><button class="chip" data-act="bhdrop" data-u="${esc(d.username)}">${t('stop_murabbi')}</button></div></div>`;
   }
   const f = S.assignForm || { kind: 'task' };
   return `<div class="modal"><div class="box wide">${head}
     <p class="muted">${esc(r.city || '')} · ${t('joined')} ${N(esc(r.joined))}</p>
+    <div class="row"><button class="chip" data-act="bhremove" data-u="${esc(d.username)}">${t('remove_razakar')}</button></div>
     ${progressGrid(r.progress)}
     <b>${t('assigned_view')}</b>
     ${r.assignments.length ? r.assignments.map((a) => assignRow(a, 'masul')).join('') : `<p class="muted">${t('none_assigned')}</p>`}
@@ -1172,7 +1183,7 @@ app.addEventListener('click', async (ev) => {
       }
     }
   }
-  if (act === 'resend') { try { await api('/email/resend', 'POST'); toast(t('email_sent')); } catch (e) { toast(errText(e)); } return; }
+  if (act === 'resend') { try { const r = await api('/email/resend', 'POST'); toast(t(r.sent === false ? 'email_off' : 'email_sent')); } catch (e) { toast(errText(e)); } return; }
   if (act === 'tab') return enterTab(el.dataset.tab);
   if (act === 'logout') return logout(true, true);
   if (act === 'logoutall') {
@@ -1329,6 +1340,17 @@ app.addEventListener('click', async (ev) => {
     return draw();
   }
   if (act === 'closedetail') { S.bhDetail = null; return draw(); }
+  if (act === 'bhdrop' || act === 'bhremove') {
+    if (!confirm(t(act === 'bhdrop' ? 'stop_murabbi_ask' : 'remove_razakar_ask')(el.dataset.u))) return;
+    try {
+      await api(`/burhan/${act === 'bhdrop' ? 'saaliks' : 'razakars'}/${encodeURIComponent(el.dataset.u)}`, 'DELETE');
+      S.bhDetail = null; await loadBurhan();
+      S.bhLists = { ...S.bhLists, saaliks: (await api('/burhan/saaliks')).saaliks, razakars: (await api('/burhan/razakars')).razakars };
+      toast(t('saved'));
+    } catch (e) { toast(errText(e)); }
+    return draw();
+  }
+  if (act === 'bhnotice') { try { await api(`/burhan/notices/${el.dataset.k}`, 'DELETE'); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
   if (act === 'assignkind') { S.assignForm = { kind: el.dataset.k }; return draw(); }
   if (act === 'endassign') {
     try {

@@ -35,6 +35,14 @@ CFG.maxSingle = CFG.maxDaily; // one submission can never exceed the daily ceili
 
 // ---- time: everything is bucketed by Pakistan time (UTC+5) -----------------
 const PK = 5 * 3600e3;
+/** The Seerat Circle sign-up link: set by an organiser on the admin page, or CIRCLE_URL. Empty hides the card. */
+export const circleUrl = () => getSetting('circle_url', '') || CFG.circleUrl;
+export function setCircleUrl(url) {
+  const u = String(url ?? '').trim();
+  if (u && !/^https:\/\/[^\s]{4,300}$/.test(u)) throw new HttpError(400, 'bad_url');
+  setSetting('circle_url', u);
+  return { circleUrl: circleUrl() };
+}
 export const dayOf = (ts = Date.now()) => new Date(ts + PK).toISOString().slice(0, 10);
 export const dayNum = (d) => Math.floor(Date.parse(d + 'T00:00:00Z') / 86400e3);
 export const dayStr = (n) => new Date(n * 86400e3).toISOString().slice(0, 10);
@@ -704,7 +712,7 @@ export function publicStats() {
     const live = { today: one('SELECT COALESCE((SELECT total FROM day_totals WHERE day = ?), 0) n', dayOf()).n, membersToday: one('SELECT COUNT(*) n FROM daily d JOIN users u ON u.id = d.user_id AND u.held = 0 WHERE d.day = ? AND d.count > 0', dayOf()).n };
     natCache = { at: Date.now(), v: { total: r.total, pending: r.pending, members: r.members, ...live, asOf: Date.now(), challenge: challengeSummary() } };
   }
-  return { ...natCache.v, target: CFG.nationalTarget, circleUrl: CFG.circleUrl };
+  return { ...natCache.v, target: CFG.nationalTarget, circleUrl: circleUrl() };
 }
 
 export function getMe(userId) {
@@ -718,7 +726,9 @@ export function getMe(userId) {
   const streakAlive = gapDays === 0 || gapDays === 1 || (gapDays === 2 && u.shields > 0); // a shield bridges one missed day
   return {
     id: u.id, username: u.username, displayName: u.display_name, bio: u.bio, avatar: avatarUrl(u.id, u.avatar_v), email: u.email, phone: u.phone, lang: u.lang, city: u.city, cityId: u.city_id, country: u.country, needsCity: !u.city_id,
-    dailyGoal: u.daily_goal, hiddenFromRanks: !!u.hidden_from_ranks, emailVerified: !!u.email_verified_at,
+    dailyGoal: u.daily_goal, hiddenFromRanks: !!u.hidden_from_ranks,
+    // 'decided' once an organiser looked and kept it out ("keep held"), so the member isn't told "being checked" for ever
+    flagState: !u.hidden_from_ranks ? null : one("SELECT 1 FROM flags WHERE user_id = ? AND status = 'open'", u.id) ? 'open' : one("SELECT 1 FROM flags WHERE user_id = ? AND status = 'confirmed'", u.id) ? 'decided' : 'open', emailVerified: !!u.email_verified_at,
     invites: inviteStatus(userId),
     total: u.total, today, week,
     streak: streakAlive ? u.streak : 0, bestStreak: u.best_streak, shields: u.shields,
@@ -729,7 +739,7 @@ export function getMe(userId) {
     team: { members: team.members, direct, total: u.team_total },
     sunnah: { posted: one("SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = 'sunnah'", userId).n },
     pub: publicStats(),
-    circleUrl: CFG.circleUrl, reminderTime: u.reminder_time, special: specialToday(), league: u.league,
+    circleUrl: circleUrl(), reminderTime: u.reminder_time, special: specialToday(), league: u.league,
     unreadNews: one('SELECT COUNT(*) n FROM announcements WHERE created_at > ?', u.news_seen_at).n,
     ...(hooks.profileExtra?.(userId) || { caravan: null, caravanInvites: 0, caravanRequests: 0 }), // caravan summary (caravan.js)
   };

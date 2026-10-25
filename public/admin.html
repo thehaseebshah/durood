@@ -17,6 +17,10 @@
     body { padding-bottom: 40px; } .wrap { max-width: 880px; }
     .bar2 { display: flex; gap: 8px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
     .bar2 input { flex: 1; min-width: 180px; }
+    /* every field on the admin page looks like one, whatever its type (date, url, untyped text, text areas) */
+    #panel input:not([type=checkbox]):not([type=radio]):not([type=hidden]), #panel textarea, #panel select { width: 100%; box-sizing: border-box; font: inherit; padding: 10px; border: 2px solid var(--ink); border-radius: 0; background: var(--cell); color: var(--ink); }
+    #panel textarea { resize: vertical; }
+    [hidden] { display: none !important; }
     .tabs2 { display: flex; border-bottom: 1px solid var(--line); overflow-x: auto; }
     .tabs2 button { flex: 1; background: none; border: 0; padding: 14px 10px; font-weight: 700; color: var(--soft); border-bottom: 4px solid transparent; white-space: nowrap; }
     .tabs2 button.on { color: var(--ink); border-bottom-color: var(--sig); }

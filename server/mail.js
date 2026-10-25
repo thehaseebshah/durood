@@ -34,6 +34,9 @@ async function viaSendgrid({ to, subject, text }) {
 /** Never throws: a failed email must not break sign-up or a reset request. Resolves true when handed to the provider. */
 const maskLinks = (t) => String(t).replace(/([?&](?:reset|confirm)=)[^\s&]+/g, '$1…');
 
+/** True when a real provider sends the mail; the console provider only writes it to the log (development and test servers). */
+export const mailLive = () => ['resend', 'sendgrid'].includes((process.env.MAIL_PROVIDER || '').toLowerCase());
+
 export async function sendMail(msg) {
   const provider = (process.env.MAIL_PROVIDER || 'console').toLowerCase();
   try {

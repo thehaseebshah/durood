@@ -71,7 +71,7 @@ test('every error code a member can trigger has a message in both languages', as
     for (const m of fs.readFileSync(new URL(`../server/${f}`, import.meta.url), 'utf8').matchAll(/new HttpError\(\d+, '(\w+)'\)/g)) codes.add(m[1]);
   }
   // codes only an administrator or a script can reach, or that never show as text
-  const adminOrTechnical = new Set(['forbidden', 'bad_path', 'method_not_allowed', 'bad_action', 'bad_cap', 'bad_code', 'bad_date', 'bad_days', 'bad_export', 'bad_lecture', 'bad_news', 'bad_prompt', 'bad_quiz', 'bad_sunnah', 'bad_target', 'bad_special', 'bad_subscription', 'bad_kind', 'bad_weekday', 'bad_day', 'bad_vote', 'mamulaat_bad_reply', 'bad_image', 'not_in_mamulaat_app', 'bad_role', 'own_role', 'last_owner', 'not_allowed', 'member_not_found', 'bad_login']);
+  const adminOrTechnical = new Set(['forbidden', 'bad_path', 'method_not_allowed', 'bad_action', 'bad_cap', 'bad_code', 'bad_date', 'bad_days', 'bad_export', 'bad_lecture', 'bad_news', 'bad_prompt', 'bad_quiz', 'bad_sunnah', 'bad_target', 'bad_special', 'bad_subscription', 'bad_kind', 'bad_weekday', 'bad_day', 'bad_vote', 'mamulaat_bad_reply', 'bad_image', 'not_in_mamulaat_app', 'bad_role', 'own_role', 'last_owner', 'not_allowed', 'member_not_found', 'bad_login', 'bad_url', 'sunnah_in_use', 'photo_gone', 'remove_role_first']);
   const missing = [];
   for (const c of codes) if (!adminOrTechnical.has(c)) for (const lang of ['en', 'ur']) if (!I18N[lang].err[c]) missing.push(`${lang}:${c}`);
   assert.deepEqual(missing, []);

@@ -74,6 +74,7 @@ export async function activateMurabbi(userId) {
            salik_ok = excluded.salik_ok, murabbi_ok = excluded.murabbi_ok, checked_at = excluded.checked_at`,
       userId, phone, name, m?.id ?? null, same ? cur.salik_ok : 0, same ? cur.murabbi_ok : 0, now, now);
     if (!same) run("DELETE FROM burhan_views WHERE subject_id = ? AND kind = 'murabbi'", userId);
+    run("DELETE FROM burhan_notices WHERE user_id = ? AND kind IN ('declined','ended')", userId); // looking again answers the notice
   });
   return murabbiState(userId);
 }
@@ -114,9 +115,24 @@ export function answerRequest(murabbiId, username, accept) {
   const s = one(`SELECT u.id FROM users u JOIN murabbi_links l ON l.user_id = u.id WHERE u.username = ? AND l.murabbi_id = ? AND l.salik_ok = 1 AND l.murabbi_ok = 0`, String(username), murabbiId);
   if (!s) throw new HttpError(404, 'not_found');
   if (accept) run('UPDATE murabbi_links SET murabbi_ok = 1 WHERE user_id = ?', s.id);
-  else run('DELETE FROM murabbi_links WHERE user_id = ?', s.id);
+  else tx(() => { run('DELETE FROM murabbi_links WHERE user_id = ?', s.id); notify(s.id, 'declined', murabbiId); }); // the salik is told, not left guessing
   return { ok: true };
 }
+/** A murabbi stops following a salik. Reports stop at once; the salik sees a short notice and can look up their murabbi again. */
+export function dropSaalik(murabbiId, username) {
+  const s = one(`SELECT u.id FROM users u JOIN murabbi_links l ON l.user_id = u.id WHERE u.username = ? AND l.murabbi_id = ? AND l.salik_ok = 1 AND l.murabbi_ok = 1`, String(username), murabbiId);
+  if (!s) throw new HttpError(404, 'not_found');
+  tx(() => {
+    run('DELETE FROM murabbi_links WHERE user_id = ?', s.id);
+    run("DELETE FROM burhan_views WHERE subject_id = ? AND kind = 'murabbi'", s.id);
+    notify(s.id, 'ended', murabbiId);
+  });
+  return { ok: true };
+}
+const notify = (userId, kind, byId) => run(`INSERT INTO burhan_notices (user_id, kind, by_name, at) VALUES (?,?,?,?)
+  ON CONFLICT(user_id, kind) DO UPDATE SET by_name = excluded.by_name, at = excluded.at`, userId, kind, one('SELECT username FROM users WHERE id = ?', byId)?.username ?? '', Date.now());
+export const notices = (userId) => all('SELECT kind, by_name byName, at FROM burhan_notices WHERE user_id = ? ORDER BY at DESC', userId);
+export function dismissNotice(userId, kind) { run('DELETE FROM burhan_notices WHERE user_id = ? AND kind = ?', userId, String(kind)); return { ok: true }; }
 
 // ---- mamulaat percentages --------------------------------------------------------------------------------------------------
 /** Fetches the last 14 days for a member (cached for TTL_MS). The Mamulaat app is the only source; only a daily percentage is stored. */
@@ -163,10 +179,18 @@ export function setMasul(userId, username) {
     const cur = one('SELECT masul_id FROM masul_links WHERE razakar_id = ?', userId);
     if (cur && cur.masul_id !== m.id) endAll(userId);
     run(`INSERT INTO masul_links (razakar_id, masul_id, created_at) VALUES (?,?,?) ON CONFLICT(razakar_id) DO UPDATE SET masul_id = excluded.masul_id`, userId, m.id, Date.now());
+    run("DELETE FROM burhan_notices WHERE user_id = ? AND kind = 'removed'", userId);
   });
   return masulState(userId);
 }
 const endAll = (razakarId) => run('UPDATE assignments SET ended_at = ? WHERE razakar_id = ? AND ended_at IS NULL', Date.now(), razakarId);
+/** A masul removes a razakar who named them (anyone can name a masul, so the masul must be able to say no). Their open work ends. */
+export function removeRazakar(masulId, username) {
+  const r = one('SELECT u.id FROM users u JOIN masul_links l ON l.razakar_id = u.id WHERE u.username = ? AND l.masul_id = ?', String(username), masulId);
+  if (!r) throw new HttpError(404, 'not_found');
+  tx(() => { endAll(r.id); run('DELETE FROM masul_links WHERE razakar_id = ?', r.id); run("DELETE FROM burhan_views WHERE subject_id = ? AND kind = 'masul'", r.id); notify(r.id, 'removed', masulId); });
+  return { ok: true };
+}
 export function clearMasul(userId) {
   tx(() => { endAll(userId); run('DELETE FROM masul_links WHERE razakar_id = ?', userId); run("DELETE FROM burhan_views WHERE subject_id = ? AND kind = 'masul'", userId); });
   return { ok: true };
@@ -312,8 +336,11 @@ export async function saalikReport(murabbiId, username) {
   const g = generalProgress(s.id);
   const extra = {
     badges: one('SELECT COUNT(*) n FROM badges WHERE user_id = ?', s.id)?.n ?? 0,
-    caravan: one('SELECT COUNT(*) n FROM users WHERE referrer_id = ?', s.id).n,
+    badgeList: all('SELECT code FROM badges WHERE user_id = ? ORDER BY earned_at DESC', s.id).map((b) => b.code),
+    caravan: one('SELECT c.name FROM caravan_members cm JOIN caravans c ON c.id = cm.caravan_id WHERE cm.user_id = ?', s.id)?.name ?? null, // the named group they belong to
+    invited: one('SELECT COUNT(*) n FROM users WHERE referrer_id = ? AND deleted_at IS NULL', s.id).n,             // people they brought in themselves
     qabila: one('SELECT COUNT(*) n FROM ancestors WHERE ancestor_id = ? AND depth > 0', s.id).n,
+    reflections: all("SELECT day, body FROM reflections WHERE user_id = ? AND status = 'visible' ORDER BY day DESC LIMIT 5", s.id),
   };
   const masul = masulState(s.id);
   const items = all('SELECT * FROM assignments WHERE razakar_id = ? AND ended_at IS NULL ORDER BY kind DESC, id', s.id).map((a) => assignmentOut(a, today));
@@ -329,6 +356,24 @@ export async function saalikList(murabbiId) {
   });
 }
 
+// ---- admin oversight ---------------------------------------------------------------------------------------------------------
+export function adminLinks() {
+  const murabbi = all(`SELECT s.username salik, m.username murabbi, l.murabbi_name name, l.salik_ok, l.murabbi_ok, l.created_at FROM murabbi_links l
+    JOIN users s ON s.id = l.user_id LEFT JOIN users m ON m.id = l.murabbi_id WHERE s.deleted_at IS NULL ORDER BY l.created_at DESC LIMIT 300`)
+    .map((r) => ({ salik: r.salik, murabbi: r.murabbi, name: r.name, stage: !r.murabbi ? 'waiting' : !r.salik_ok ? 'confirm' : !r.murabbi_ok ? 'pending' : 'active', at: r.created_at }));
+  const masul = all(`SELECT r.username razakar, m.username masul, l.created_at at FROM masul_links l JOIN users r ON r.id = l.razakar_id JOIN users m ON m.id = l.masul_id
+    WHERE r.deleted_at IS NULL ORDER BY l.created_at DESC LIMIT 300`);
+  return { murabbi, masul };
+}
+/** Breaks a link from the admin page (a wrong murabbi found through someone else's number, an unwanted masul). */
+export function adminBreak(kind, username) {
+  const u = one('SELECT id FROM users WHERE username = ?', String(username));
+  if (!u || !['murabbi', 'masul'].includes(kind)) throw new HttpError(404, 'not_found');
+  if (kind === 'murabbi') { if (!one('SELECT 1 FROM murabbi_links WHERE user_id = ?', u.id)) throw new HttpError(404, 'not_found'); unlinkMurabbi(u.id); }
+  else { if (!one('SELECT 1 FROM masul_links WHERE razakar_id = ?', u.id)) throw new HttpError(404, 'not_found'); clearMasul(u.id); }
+  return { ok: true };
+}
+
 // ---- everything the app needs on one screen --------------------------------------------------------------------------------------
 export async function burhanState(userId) {
   await refreshMurabbi(userId);
@@ -337,7 +382,7 @@ export async function burhanState(userId) {
   const assignments = myAssignments(userId);
   const today = assignments.filter((a) => (a.kind === 'routine' ? a.dueToday : !a.done));
   return {
-    edition: edition(), murabbi, masul: masulState(userId),
+    edition: edition(), murabbi, masul: masulState(userId), notices: notices(userId),
     mamulaat: murabbi?.stage === 'active' ? mamulaatSeries(userId) : null,
     assignments, today,
     roles: { saaliks: one('SELECT COUNT(*) n FROM murabbi_links l JOIN users u ON u.id = l.user_id WHERE l.murabbi_id = ? AND l.salik_ok = 1 AND l.murabbi_ok = 1 AND u.deleted_at IS NULL', userId).n,

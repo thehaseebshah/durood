@@ -209,3 +209,47 @@ test('a squatter on a murabbi\'s number gets nothing until a salik confirms them
   assert.equal((await api('GET', '/api/burhan/saaliks/sq_sal', { token: real.token })).status, 404, 'the old murabbi lost access at once');
   assert.equal((await api('GET', '/api/burhan/saaliks/sq_sal', { token: squat.token })).status, 404, 'the new one has none until both agree');
 });
+
+test('a declined or ended murabbi link is explained to the salik; a masul can remove a razakar; admins can see and break links', async () => {
+  const s = await signup('ne_sal'), m = await signup('ne_mur'), r = await signup('ne_raz');
+  murabbis[phoneOf.ne_sal] = { name: 'Qari Sahib', whatsapp: phoneOf.ne_mur.slice(1) };
+  await api('POST', '/api/burhan/murabbi', { token: s.token });
+  await api('POST', '/api/burhan/murabbi/confirm', { token: s.token });
+  // declined: the salik is told, and looking again clears the notice
+  assert.equal((await api('POST', '/api/burhan/requests/ne_sal', { token: m.token, body: { accept: false } })).ok, true);
+  let st = await api('GET', '/api/burhan', { token: s.token });
+  assert.equal(st.murabbi, null);
+  assert.deepEqual(st.notices.map((x) => [x.kind, x.byName]), [['declined', 'ne_mur']]);
+  await api('POST', '/api/burhan/murabbi', { token: s.token });
+  assert.deepEqual((await api('GET', '/api/burhan', { token: s.token })).notices, []);
+  await connect(s, m, 'ne_sal');
+  // the report names the caravan (none yet) and the people they invited, and lists badges
+  const rep = await api('GET', '/api/burhan/saaliks/ne_sal', { token: m.token });
+  assert.equal(rep.extra.caravan, null);
+  assert.equal(rep.extra.invited, 0);
+  assert.ok(Array.isArray(rep.extra.badgeList));
+  // admins see the link and can break it
+  const K = { 'x-admin-key': 'test-admin' };
+  const links = await (await fetch(base + '/api/admin/burhan-links', { headers: K })).json();
+  assert.equal(links.murabbi.find((l) => l.salik === 'ne_sal').stage, 'active');
+  // the murabbi ends it: reports stop at once, and the salik is told
+  assert.equal((await api('DELETE', '/api/burhan/saaliks/ne_sal', { token: m.token })).ok, true);
+  assert.equal((await api('GET', '/api/burhan/saaliks/ne_sal', { token: m.token })).status, 404);
+  st = await api('GET', '/api/burhan', { token: s.token });
+  assert.deepEqual(st.notices.map((x) => x.kind), ['ended']);
+  assert.equal((await api('DELETE', '/api/burhan/notices/ended', { token: s.token })).ok, true);
+  assert.deepEqual((await api('GET', '/api/burhan', { token: s.token })).notices, []);
+  // a masul removes a razakar who named them: open work ends, and the razakar is told
+  await api('PUT', '/api/burhan/masul', { token: r.token, body: { username: 'ne_mur' } });
+  await api('POST', '/api/assignments', { token: m.token, body: { razakar: 'ne_raz', kind: 'task', title: 'Bring the dates' } });
+  assert.equal((await api('DELETE', '/api/burhan/razakars/ne_raz', { token: m.token })).ok, true);
+  st = await api('GET', '/api/burhan', { token: r.token });
+  assert.equal(st.masul, null);
+  assert.equal(st.assignments.length, 0);
+  assert.deepEqual(st.notices.map((x) => x.kind), ['removed']);
+  // and an admin can break a masul link too
+  await api('PUT', '/api/burhan/masul', { token: r.token, body: { username: 'ne_mur' } });
+  assert.equal((await (await fetch(base + '/api/admin/burhan-links/masul/ne_raz', { method: 'DELETE', headers: K })).json()).ok, true);
+  assert.equal((await api('GET', '/api/burhan', { token: r.token })).masul, null);
+  assert.deepEqual(audit().problems, []);
+});

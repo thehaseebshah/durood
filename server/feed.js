@@ -112,6 +112,8 @@ export function moderateContent(kind, itemId, action) {
   if (!one(`SELECT 1 FROM ${it.table} WHERE id = ?`, itemId)) throw new HttpError(404, 'not_found');
   if (action === 'remove') run(`UPDATE ${it.table} SET ${it.gone} WHERE id = ?`, itemId);
   else if (action === 'restore') {
+    // a photo's file is deleted 14 days after it was posted: restoring the row would bring back nothing
+    if (kind === 'post' && one('SELECT 1 FROM posts WHERE id = ? AND purged_at IS NOT NULL', itemId)) throw new HttpError(409, 'photo_gone');
     run(`UPDATE ${it.table} SET ${it.restore}, reports = 0 WHERE id = ?`, itemId);
     run('DELETE FROM content_reports WHERE kind = ? AND item_id = ?', kind, itemId);
   } else throw new HttpError(400, 'bad_action');

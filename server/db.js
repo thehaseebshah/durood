@@ -459,6 +459,14 @@ CREATE TABLE IF NOT EXISTS murabbi_links (
   created_at     INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS murabbi_links_murabbi ON murabbi_links(murabbi_id);
+-- a one-line notice for a salik whose request was declined or whose murabbi ended the link, or a razakar their masul removed
+CREATE TABLE IF NOT EXISTS burhan_notices (
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  kind    TEXT NOT NULL CHECK (kind IN ('declined','ended','removed')),
+  by_name TEXT NOT NULL DEFAULT '',
+  at      INTEGER NOT NULL,
+  PRIMARY KEY (user_id, kind)
+);
 CREATE INDEX IF NOT EXISTS murabbi_links_phone ON murabbi_links(murabbi_phone);
 CREATE TABLE IF NOT EXISTS mamulaat_days (
   user_id INTEGER NOT NULL REFERENCES users(id),

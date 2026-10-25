@@ -69,7 +69,11 @@ export const setSender = (fn) => { sender = fn || sendPush; };
 const MSG = {
   remind: { en: ['Time for durood', 'Take a moment to send salawat on the Prophet ﷺ today.'], ur: ['درود کا وقت', 'آج نبی ﷺ پر درود بھیجنے کے لیے کچھ لمحے نکالیں۔'] },
   streak: { en: ['Your streak is about to break', 'You have not recited today. A few durood keep your streak alive.'], ur: ['آپ کا سلسلہ ٹوٹنے والا ہے', 'آج آپ نے درود نہیں پڑھا۔ چند درود سے سلسلہ قائم رہتا ہے۔'] },
-  joined: (who) => ({ en: ['Someone joined your caravan', `${who} joined with your code.`], ur: ['آپ کے کارواں میں کوئی شامل ہوا', `${who} آپ کے کوڈ سے شامل ہوا۔`] }),
+  joined: (who) => ({ en: ['Someone joined your Qabila', `${who} joined with your code.`], ur: ['آپ کے قبیلے میں کوئی شامل ہوا', `${who} آپ کے کوڈ سے شامل ہوا۔`] }),
+  cvInvite: (who, cv) => ({ en: ['A caravan invitation', `${who} invited you to the caravan ${cv}.`], ur: ['کارواں کی دعوت', `${who} نے آپ کو کارواں ${cv} میں مدعو کیا۔`] }),
+  cvRequest: (who, cv) => ({ en: ['Someone wants to join your caravan', `${who} asked to join ${cv}.`], ur: ['کوئی آپ کے کارواں میں آنا چاہتا ہے', `${who} نے ${cv} میں شامل ہونے کی درخواست کی۔`] }),
+  cvAccepted: (who, cv) => ({ en: ['You are in the caravan', `${who} accepted you into ${cv}.`], ur: ['آپ کارواں میں شامل ہو گئے', `${who} نے آپ کو ${cv} میں شامل کر لیا۔`] }),
+  cvJoined: (who, cv) => ({ en: ['Someone joined your caravan', `${who} joined ${cv}.`], ur: ['آپ کے کارواں میں کوئی شامل ہوا', `${who} ${cv} میں شامل ہو گئے۔`] }),
   crore: (k) => ({ en: [`${k} crore reached`, `Together we have recited ${k} crore durood in the challenge.`], ur: [`${k} کروڑ مکمل`, `سب نے مل کر چیلنج میں ${k} کروڑ درود پڑھ لیا۔`] }),
   caravan: { en: ['Your caravan reached a milestone', 'Open the app to see the new badge.'], ur: ['آپ کے کارواں نے سنگِ میل عبور کیا', 'نیا بیج دیکھنے کے لیے ایپ کھولیں۔'] },
 };
@@ -164,6 +168,12 @@ export function startScheduler() {
 
 // ---- event-driven messages --------------------------------------------------------------------------------------
 export const notifyJoined = (referrerId, who) => notify(referrerId, 'joined', who, MSG.joined(who)).catch(() => {});
+/** Caravan events: an invitation reaches the invitee, a request or a new member reaches the owner. Sent after the answer, never awaited. */
+export function notifyCaravan(kind, toId, who, caravanName) {
+  if (!toId) return;
+  const make = { invite: MSG.cvInvite, request: MSG.cvRequest, joined: MSG.cvJoined, accepted: MSG.cvAccepted }[kind];
+  setImmediate(() => notify(toId, `cv_${kind}`, `${who}:${caravanName}:${Date.now()}`, make(who, caravanName)).catch(() => {}));
+}
 hooks.milestone = (k) => setImmediate(() => notifyAll(`crore:${k}`, (lang) => pack(MSG.crore(k), lang, 'crore')).catch(() => {}));
 hooks.badge = (userId, code) => setImmediate(() => notify(userId, 'caravan', code, MSG.caravan).catch(() => {}));
 

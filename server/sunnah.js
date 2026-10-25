@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { db, tx, getSetting, setSetting } from './db.js';
 import { HttpError, photoSig, sameSecret } from './auth.js';
-import { CFG, dayOf, grant, evalBadges, settleQuests, tickSunnah } from './game.js';
+import { CFG, dayOf, dayNum, dayStr, grant, evalBadges, settleQuests, tickSunnah } from './game.js';
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
@@ -183,6 +183,16 @@ export function purgeUser(userId) {
 }
 
 // ---- admin ----------------------------------------------------------------
+/** The schedule around today: the last week and everything ahead, so an admin sees the gaps. */
+export const listSunnahs = (today = dayOf()) => all('SELECT day, title_en, title_ur, desc_en, desc_ur, source FROM sunnahs WHERE day >= ? ORDER BY day LIMIT 120', dayStr(dayNum(today) - 7));
+export function deleteSunnah(day) {
+  const s = one('SELECT id FROM sunnahs WHERE day = ?', String(day));
+  if (!s) throw new HttpError(404, 'not_found');
+  // once members have posted or ticked it, it is part of their record: change the text instead
+  if (one('SELECT 1 FROM posts WHERE sunnah_id = ?', s.id) || one("SELECT 1 FROM events WHERE kind = 'sunnah_tick' AND ref = ?", String(s.id))) throw new HttpError(409, 'sunnah_in_use');
+  run('DELETE FROM sunnahs WHERE day = ?', String(day));
+  return { ok: true };
+}
 export function addSunnahs(items) {
   const list = Array.isArray(items) ? items : [items];
   if (!list.length || list.length > 400) throw new HttpError(400, 'bad_sunnah');

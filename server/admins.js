@@ -8,7 +8,7 @@ const run = (sql, ...a) => db.prepare(sql).run(...a);
 export const ROLES = ['owner', 'moderator', 'organiser'];
 /** What each role may do. Owner can do everything, including managing admins and running the audit. */
 export const CAN = {
-  owner: new Set(['moderate', 'organise', 'members', 'reset_link', 'log', 'status', 'audit', 'manage_admins']),
+  owner: new Set(['moderate', 'organise', 'members', 'reset_link', 'log', 'status', 'audit', 'manage_admins', 'delete_member']),
   moderator: new Set(['moderate', 'members', 'log', 'status']),
   organiser: new Set(['organise', 'members', 'reset_link', 'status']),
 };
@@ -21,14 +21,16 @@ export const ADMIN_PERMS = {
   'GET /api/admin/reported': 'moderate', 'POST /api/admin/content/:kind/:id': 'moderate',
   'GET /api/admin/flags': 'moderate', 'POST /api/admin/flags/:id': 'moderate',
   'GET /api/admin/members': 'members', 'POST /api/admin/members/:username': 'members',   // the action inside decides (see index.js)
-  'POST /api/admin/sunnahs': 'organise', 'GET /api/admin/prompts': 'organise', 'POST /api/admin/prompts': 'organise',
+  'POST /api/admin/sunnahs': 'organise', 'GET /api/admin/sunnahs': 'organise', 'DELETE /api/admin/sunnahs/:day': 'organise', 'GET /api/admin/prompts': 'organise', 'POST /api/admin/prompts': 'organise',
   'GET /api/admin/invites': 'organise', 'POST /api/admin/invites': 'organise', 'POST /api/admin/invites/:code/revoke': 'organise', 'POST /api/admin/public-code': 'organise',
   'GET /api/admin/waitlist': 'organise', 'POST /api/admin/waitlist/:id': 'organise',
   'GET /api/admin/challenge': 'status', 'POST /api/admin/challenge': 'organise',
   'GET /api/admin/news': 'organise', 'POST /api/admin/news': 'organise', 'DELETE /api/admin/news/:id': 'organise',
   'GET /api/admin/export': 'organise',
+  'GET /api/admin/circle': 'organise', 'POST /api/admin/circle': 'organise',
   'GET /api/admin/special-days': 'organise', 'POST /api/admin/special-days': 'organise', 'DELETE /api/admin/special-days/:day': 'organise',
-  'GET /api/admin/lectures': 'organise', 'POST /api/admin/lectures': 'organise', 'DELETE /api/admin/lectures/:id': 'organise',
+  'GET /api/admin/lectures': 'organise', 'POST /api/admin/lectures': 'organise', 'PUT /api/admin/lectures/:id': 'organise', 'DELETE /api/admin/lectures/:id': 'organise',
+  'GET /api/admin/burhan-links': 'moderate', 'DELETE /api/admin/burhan-links/:kind/:username': 'moderate',
   'GET /api/admin/audit': 'audit', 'GET /api/admin/status': 'status',
   'GET /api/admin/me': 'status',
   'GET /api/admin/admins': 'manage_admins', 'POST /api/admin/admins': 'manage_admins', 'DELETE /api/admin/admins/:username': 'manage_admins',
