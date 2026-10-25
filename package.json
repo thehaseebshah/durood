@@ -9,6 +9,7 @@
     "start": "node server/index.js",
     "test": "FLAG_NEW_HIGH=1000000000 node --test --no-warnings test/*.test.js",
     "e2e": "node scripts/e2e.mjs",
+    "fuzz": "node --no-warnings scripts/fuzz.mjs",
     "audit": "node server/audit.js",
     "icons": "node scripts/make-icons.js"
   }
