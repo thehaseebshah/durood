@@ -1356,6 +1356,7 @@ function detailModal() {
 
 // ---- drawing + data loading -----------------------------------------------------
 let liveAt = 0;
+let lastBar = '';
 async function loadLive() {
   if (Date.now() - liveAt < 60000) return;
   liveAt = Date.now();
@@ -1432,7 +1433,14 @@ function draw() {
   document.body.classList.toggle('side-hidden', !!S.sideHidden);
   document.body.classList.toggle('drawer-open', !!S.drawer);
   document.title = S.me ? `${t('nav_' + S.tab)} · ${t('app')}` : t('app');
-  document.querySelector('meta[name=theme-color]')?.setAttribute('content', S.me ? (isDark() ? '#1c1c1e' : '#f6f6f8') : '#0c0e2b'); // the phone's bar matches the frosted header inside the app
+  const barColor = S.me ? (isDark() ? '#1c1c1e' : '#f6f6f8') : '#0c0e2b';
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', barColor); // the phone's bar matches the frosted header inside the app
+  if (barColor !== lastBar) { // the Android app's status bar is native: tell it too (light bar, dark icons; dark bar, light icons)
+    lastBar = barColor;
+    const sb = window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins?.StatusBar : null;
+    sb?.setBackgroundColor({ color: barColor }).catch(() => {});
+    sb?.setStyle({ style: barColor === '#f6f6f8' ? 'LIGHT' : 'DARK' }).catch(() => {});
+  }
   app.innerHTML = S.me ? shell() : S.offline ? offlineView() : S.intro !== null ? introView() : authView();
   restoreFields(keep);
   enhanceModal();
