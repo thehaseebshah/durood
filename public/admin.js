@@ -5,6 +5,17 @@ const fmt = (n) => Number(n ?? 0).toLocaleString('en-US');
 const human = (n) => { const a = Math.abs(n); return a >= 1e7 ? `${Math.round(a / 1e5) / 100} crore` : a >= 1e5 ? `${Math.round(a / 1e3) / 100} lakh` : fmt(a); };
 const pktToday = () => new Date(Date.now() + 5 * 3600e3).toISOString().slice(0, 10);
 const date = (t) => new Date(t).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Karachi' });
+// a <label> without `for` tells a screen reader nothing: tie each one to the field that follows it (or sits inside it)
+function linkLabels() {
+  let n = 0;
+  for (const l of document.querySelectorAll('label:not([for])')) {
+    const f = l.querySelector('input,select,textarea') || l.nextElementSibling?.matches('input,select,textarea') && l.nextElementSibling
+      || l.nextElementSibling?.querySelector?.('input,select,textarea') || l.parentElement?.querySelector('input,select,textarea');
+    if (!f || l.contains(f)) continue;
+    if (!f.id) f.id = `f-auto-${n++}`;
+    l.htmlFor = f.id;
+  }
+}
 const store = (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch { /* private mode */ } };
 // the same device token the app keeps: this browser can still sign in when strangers have locked the account with wrong guesses
 const deviceGet = () => { try { return localStorage.getItem('device'); } catch { return null; } };
@@ -196,6 +207,7 @@ async function render() {
   if (!ME) { $('#audit').innerHTML = ''; $('#panel').innerHTML = (notice ? `<div class="msg">${esc(notice)}</div>` : '') + '<p class="empty">Sign in with your member username and password. Admin roles are given by the owner.</p>'; notice = ''; return; }
   try { $('#panel').innerHTML = (notice ? `<div class="msg">${esc(notice)}</div>` : '') + (await views[tab]()); }
   catch (e) { $('#panel').innerHTML = `<div class="msg" style="border-color:var(--err)">${esc(e.message)}</div>`; }
+  linkLabels();
   notice = '';
   try {
     const st = await api('GET', '/status');

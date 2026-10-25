@@ -187,3 +187,35 @@ test('quiz answers: only while watching a lecture of this week, and a few checks
   for (let i = 0; i < 3; i++) assert.equal((await api('POST', `/api/lectures/${now.id}/quiz`, { token: u.token, body: { answers: [0, 0] } })).passed, false);
   assert.equal((await api('POST', `/api/lectures/${now.id}/quiz`, { token: u.token, body: { answers: [2, 1] } })).error, 'rate_limited');
 });
+
+test('the audit runs on its worker thread (it loads the database module there, which must not need the main thread)', async () => {
+  const dir = (await import('node:fs')).mkdtempSync((await import('node:os')).tmpdir() + '/audit-');
+  const { execFileSync } = await import('node:child_process');
+  const root = new URL('..', import.meta.url).pathname;
+  (await import('node:fs')).writeFileSync(`${dir}/run.mjs`, `const { auditAsync } = await import(${JSON.stringify(root + 'server/audit.js')}); const r = await auditAsync(); console.log(JSON.stringify({ ok: r.ok, problems: r.problems }));`);
+  const out = execFileSync(process.execPath, ['--no-warnings', `${dir}/run.mjs`], { env: { ...process.env, DB_PATH: `${dir}/a.db`, FLAG_NEW_HIGH: '1000000000' }, cwd: root }).toString().trim().split('\n').pop();
+  assert.deepEqual(JSON.parse(out), { ok: true, problems: [] });
+});
+
+test('admin member search treats _ and % as ordinary characters', async () => {
+  await signup('us_er_x');
+  const M = as({ 'x-admin-key': 'test-admin' });
+  assert.ok((await M('GET', '/members?q=us_er')).members.some((m) => m.username === 'us_er_x'));
+  assert.equal((await M('GET', '/members?q=us%25er')).members.some((m) => m.username === 'us_er_x'), false);
+  assert.equal((await M('GET', '/members?q=usXer')).members.some((m) => m.username === 'us_er_x'), false); // _ is not "any character"
+});
+
+test('a badge and the referral reward come back when an edit brings the total back up', async () => {
+  await signup('eu_top'); const k = await signup('eu_kid', 'eu_top');
+  await api('POST', '/api/log', { token: k.token, body: { count: 1000, rid: 'eu-kid-1' } });
+  const id = (await api('GET', '/api/history', { token: k.token })).days[0].entries[0].id;
+  await api('PATCH', `/api/entries/${id}`, { token: k.token, body: { count: 50 } });
+  assert.ok(!(await api('GET', '/api/me', { token: k.token })).badges.includes('d1k'));
+  const id2 = (await api('GET', '/api/history', { token: k.token })).days[0].entries[0].id;
+  await api('PATCH', `/api/entries/${id2}`, { token: k.token, body: { count: 1000 } });
+  assert.ok((await api('GET', '/api/me', { token: k.token })).badges.includes('d1k'));
+  const top = await api('POST', '/api/login', { body: { id: 'eu_top', password: 'secret1' } });
+  assert.ok(top.me.badges.includes('recruit1'));
+  const { audit } = await import('../server/audit.js');
+  assert.deepEqual(audit().problems, []);
+});

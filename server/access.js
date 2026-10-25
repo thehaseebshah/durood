@@ -130,13 +130,13 @@ export function resolveWaitlist(id, action) {
 
 // ---- admin: members -----------------------------------------------------------------------------------------
 export function searchMembers(q = '', { contacts = true } = {}) {
-  const like = `%${String(q).trim().replace(/[%_]/g, '')}%`;
+  const like = `%${String(q).trim().replace(/[\\%_]/g, '\\$&')}%`; // % and _ typed by the admin are plain characters (usernames and emails contain _)
   // without contact access, email and phone are not searched either: matching on them would reveal them a character at a time
-  const contact = contacts ? 'OR u.email LIKE ? OR u.phone LIKE ?' : '';
+  const contact = contacts ? "OR u.email LIKE ? ESCAPE '\\' OR u.phone LIKE ? ESCAPE '\\'" : '';
   return all(`SELECT u.id, u.username, u.city, u.total, u.team_total, u.created_day, u.hidden_from_ranks hidden, u.suspended, u.deleted_at,
       u.invited_via, r.username inviter, u.email, u.phone, u.email_verified_at
     FROM users u LEFT JOIN users r ON r.id = u.referrer_id
-    WHERE ? = '%%' OR u.username LIKE ? ${contact} OR u.city LIKE ?
+    WHERE ? = '%%' OR u.username LIKE ? ESCAPE '\\' ${contact} OR u.city LIKE ? ESCAPE '\\'
     ORDER BY u.id DESC LIMIT 60`, ...(contacts ? [like, like, like, like, like] : [like, like, like])).map((m) => ({
     username: m.username, city: m.city, total: m.total, team: m.team_total, joined: m.created_day, hidden: !!m.hidden, suspended: !!m.suspended,
     deleted: !!m.deleted_at, invitedVia: m.invited_via, inviter: m.inviter, email: m.email, phone: m.phone, emailVerified: !!m.email_verified_at,

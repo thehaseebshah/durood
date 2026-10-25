@@ -519,7 +519,7 @@ function sunnahCard(d) {
   const sn = d.sunnah, mine = d.mine, r = d.rules;
   if (!sn) return `<div class="fcard"><h3>${t('sunnah_title')}</h3><p class="muted">${t('no_sunnah')}</p></div>`;
   let photoPart;
-  if (mine) photoPart = `<div class="row between"><b>${t('your_post')}</b>${statusTag(mine.status)}</div>${mine.photoUrl ? `<img class="shot thumb" src="${esc(mine.photoUrl)}" alt="">` : `<p class="muted">${t('photo_gone')}</p>`}`;
+  if (mine) photoPart = `<div class="row between"><b>${t('your_post')}</b>${statusTag(mine.status)}</div>${mine.photoUrl ? `<img class="shot thumb" src="${esc(mine.photoUrl)}" alt="${esc(t('your_post'))}">` : `<p class="muted">${t('photo_gone')}</p>`}`;
   else if (S.draft) photoPart = `<b>${t('photo_preview')}</b>
       <div class="row"><button class="blk" style="flex:1" data-act="postit" data-kind="sunnah"><span>${t('post_it')}</span><b class="ar">→</b></button><button class="chip" data-act="draftx">${t('cancel')}</button></div>
       <img class="shot preview" src="${esc(S.draft)}" alt="">`;

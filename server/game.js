@@ -449,6 +449,14 @@ export function editEntry(userId, entryId, newCount, ridIn) {
       const touched = [userId, ...all('SELECT ancestor_id id FROM ancestors WHERE user_id = ? AND depth > 0', userId).map((r) => r.id),
         ...all('SELECT cm.user_id id FROM caravan_members cm WHERE cm.caravan_id = (SELECT caravan_id FROM caravan_members WHERE user_id = ?)', userId).map((r) => r.id)];
       for (const id of new Set(touched)) revokeDuroodBadges(id);
+    } else {
+      // edited back up: what the number really supports is paid again, the same as when it is first logged
+      const now = one('SELECT total, referrer_id FROM users WHERE id = ?', userId);
+      if (now.referrer_id && now.total - delta < CFG.referralMin && now.total >= CFG.referralMin && grant(now.referrer_id, 'referral', String(userId), CFG.referralXp)) {
+        settleQuests(now.referrer_id); evalBadges(now.referrer_id, []);
+      }
+      // (the member's own quests are not paid by an edit, only by a later log: a standing rule, so editing up and down can't be used to bounce)
+      for (const id of [userId, ...all('SELECT ancestor_id id FROM ancestors WHERE user_id = ? AND depth > 0', userId).map((r) => r.id)]) evalBadges(id, []);
     }
   });
   if (!duplicate) recordChallenge();

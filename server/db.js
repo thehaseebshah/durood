@@ -1,9 +1,10 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, chmodSync, existsSync } from 'node:fs';
 import path from 'node:path';
+import { isMainThread } from 'node:worker_threads';
 
 // the database holds password hashes, contact details and the push signing key: files this process creates are readable by it alone
-process.umask(0o077);
+if (isMainThread) process.umask(0o077); // not allowed inside a worker thread, which loads this file too (the audit)
 const file = process.env.DB_PATH || 'data/durood.db';
 if (file !== ':memory:') mkdirSync(path.dirname(file), { recursive: true });
 

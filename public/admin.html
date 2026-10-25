@@ -30,7 +30,8 @@
     .pillbox { display: inline-block; font-size: .68rem; font-weight: 700; border: 1.5px solid var(--ink); padding: 0 6px; margin-inline-end: 4px; }
     .pillbox.bad { border-color: var(--err); color: var(--err); } .pillbox.ok { border-color: var(--sig); color: var(--sig-text); }
     .inline { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; align-items: end; } .inline label { margin: 0 0 3px; } .inline > div { flex: 1; min-width: 140px; }
-    .msg { margin: 10px 0; padding: 10px 12px; background: var(--sig-bg); border-inline-start: 4px solid var(--sig); font-weight: 600; word-break: break-all; }
+    label.check { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+    .msg { margin: 10px 0; padding: 10px 12px; background: var(--sig-bg); border-inline-start: 4px solid var(--sig); font-weight: 600; overflow-wrap: anywhere; }
     .empty { color: var(--soft); padding: 14px 0; }
     .chip { margin: 2px 4px 2px 0; }
   </style>

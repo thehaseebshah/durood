@@ -408,7 +408,7 @@ html[dir=rtl] .stage-body { animation-name: slidein-rtl; } @keyframes slidein-rt
 .brandmark { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: .78rem; letter-spacing: 1.6px; text-transform: uppercase; color: var(--gold); }
 html[lang=ur] .brandmark { letter-spacing: 0; text-transform: none; font-size: 1rem; }
 .stage .pill { color: #f4f1ea; border-color: rgba(244, 241, 234, .45); border-radius: 999px; background: rgba(255, 255, 255, .06); }
-.ghost { background: none; border: 0; color: rgba(244, 241, 234, .75); font: inherit; font-weight: 600; cursor: pointer; padding: 6px 10px; }
+.ghost { background: none; border: 0; color: rgba(244, 241, 234, .75); font: inherit; font-weight: 600; cursor: pointer; padding: 6px 10px; min-height: 44px; min-width: 44px; }
 .hero-in { position: relative; z-index: 2; text-align: center; padding: 18px 24px 0; }
 .arabic.gold { color: var(--gold); font-size: clamp(2rem, 9.5vw, 2.9rem); line-height: 1.9; text-shadow: 0 0 28px rgba(227, 195, 116, .35); }
 .dur span { display: inline-block; opacity: 0; animation: rise .8s cubic-bezier(.2, .7, .2, 1) forwards; animation-delay: var(--d); }
@@ -528,7 +528,8 @@ nav.tabs .pip { position: absolute; top: 6px; inset-inline-end: calc(50% - 20px)
 /* people: pictures and initials */
 .av { border-radius: 50%; object-fit: cover; display: inline-block; flex: none; background: var(--track); }
 .av.ini { display: inline-grid; place-items: center; font-weight: 800; color: #fff; background: hsl(var(--h) 45% 38%); line-height: 1; }
-.avbtn { all: unset; cursor: pointer; display: inline-flex; border-radius: 50%; flex: none; }
+.avbtn { all: unset; cursor: pointer; display: inline-flex; border-radius: 50%; flex: none; position: relative; }
+.avbtn::after { content: ""; position: absolute; inset: -5px; } /* the picture stays small; the tappable area is at least 44 px */
 .avbtn:focus-visible { outline: 3px solid var(--sig); outline-offset: 2px; }
 .lb li > .av, .lb li > .avbtn, .lb li .rowbtn > .av { margin-inline-end: 10px; }
 .lb li .rowbtn > .av { margin-inline-end: 0; }
