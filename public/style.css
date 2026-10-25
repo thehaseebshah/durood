@@ -945,3 +945,18 @@ html[dir=rtl] .err { border: 0; }
 .lb .rank { border: 0 !important; }
 .earned:not(.static) { width: calc(100% - 28px); box-sizing: border-box; }
 .myhead + .stats, body.in-app main > .stats { border: 0; }
+/* Apple layer, third pass: fields stay visible on the grey ground, popup titles, the add sheet, Log out */
+body.in-app main input:not([type=checkbox]):not([type=radio]), body.in-app main select, body.in-app main textarea { background: var(--paper); border-color: var(--line); }
+.fold input:not([type=checkbox]):not([type=radio]), .fold select, .fold textarea, .counterbox input, .modal input:not([type=checkbox]):not([type=radio]), .modal select, .modal textarea { background: var(--cell) !important; border-color: transparent !important; }
+.modal .row.between > h3.in, .modal h3.in { margin: 0; padding: 0; background: none; color: var(--ink); font-size: 1.2rem; font-weight: 750; letter-spacing: -.2px; text-transform: none; }
+.sheetbox .sub { border: 0; }
+.sheetbox .sub > span { border: 0; text-transform: none; letter-spacing: 0; font-size: .82rem; font-weight: 600; color: var(--soft); padding: 6px 20px 0; }
+.sheetbox .sub > span:first-child { color: var(--ink); font-weight: 700; }
+.sheetbox .numbox .row, .sheetbox .numbox .hint, .sheetbox .tapopen, .sheetbox .numbox > label { margin-inline: 20px; }
+.sheetbox .big { font-size: min(9rem, 36vw); padding-inline: 20px; }
+.sheetbox .big.l5 { font-size: min(7rem, 28vw); } .sheetbox .big.l6 { font-size: min(6rem, 23vw); } .sheetbox .big.l7 { font-size: min(5rem, 19vw); }
+.sheetbox #livebar .bar { margin-inline: 20px; }
+body.in-app [data-act=logout].blk { margin: 12px 14px 0 !important; width: calc(100% - 28px); background: var(--paper); box-shadow: var(--shadow); color: var(--err); }
+body.in-app [data-act=logout].blk b { display: none; }
+.tab-caravan .lb { margin: 0 14px 12px; background: var(--paper); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.reschopts .rowlink b { color: var(--soft); font-weight: 600; }

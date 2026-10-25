@@ -1119,7 +1119,7 @@ function reschedSheet() {
   return `<div class="modal sheetm"><div class="box sheetbox" aria-label="${esc(t(a.own ? 'move_date' : 'ask_date'))}">
     <div class="row between"><b class="sheettitle">${t(a.own ? 'move_date' : 'ask_date')}</b><button class="chip" data-act="sheetx">${t('close')}</button></div>
     <p class="padx muted">${esc(a.title)} · ${t('due')(dayWords(a.dueDay))}</p>
-    <div class="reschopts">${opts.map(([k, d]) => `<button class="rowlink" data-act="reschpick" data-day="${d}"><span>${t('rs_' + k)}</span><b>${N(esc(d))}</b></button>`).join('')}</div>
+    <div class="reschopts">${opts.map(([k, d]) => `<button class="rowlink" data-act="reschpick" data-day="${d}"><span>${t('rs_' + k)}</span><b>${k === 'today' || k === 'tomorrow' ? new Date(`${d}T00:00:00Z`).toLocaleDateString(S.lang === 'ur' ? 'ur-PK' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }) : dayWords(d)}</b></button>`).join('')}</div>
     <div class="row padx duerow">${dueInput('resch-day', 'day', pkDay(2))}<button class="chip solid" data-act="reschpick">${t(a.own ? 'save' : 'ask_send')}</button></div>
     <p class="padx hint">${t(a.own ? 'move_warn' : 'ask_warn')}</p>
   </div></div>`;
