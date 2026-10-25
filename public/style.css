@@ -988,3 +988,9 @@ body.in-app:not(.scrolled) .hd { border-bottom-color: transparent; background: v
 .streaknudge { display: flex; gap: 8px; align-items: center; margin: 10px 14px 0; padding: 12px 14px; border-radius: 14px; background: #fff2d6; color: #6b4500; font-weight: 650; font-size: .9rem; animation: lift .4s ease-out; }
 .streaknudge.late { background: #ffe1d6; color: #8a2a00; }
 html[data-mode=dark] .streaknudge { background: #2f2508; color: #ffcf6b; } html[data-mode=dark] .streaknudge.late { background: #3a1608; color: #ffab8a; }
+/* feed: rounded photos, quiet action icons, the "post from Today" link as a soft card */
+.fitem img.shot, .fitem .shot, img.shot.preview { border-radius: 14px; }
+.facts .chip { background: transparent; padding: 6px 10px; color: var(--soft); font-weight: 600; }
+.facts .chip.like.on, .facts .chip.like[aria-pressed=true] { color: #e0245e; }
+.facts .chip:hover { background: var(--cell); }
+.tab-feed > .rowlink:first-of-type { margin: 6px 14px 4px; width: calc(100% - 28px); border: 0; border-radius: 14px; background: var(--sig-bg); padding: 12px 14px; }

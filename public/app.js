@@ -700,7 +700,7 @@ function threadHtml(it) {
 function feedItem(it) {
   const who = () => `<div class="fwho">${av(it, 32)}${nameLine(it)}${it.city ? ` <small>${esc(it.city)}</small>` : ''}<small class="when">${ago(it.at)}</small></div>`;
   const rk = replyKind(it);
-  const acts = `<div class="facts"><button class="chip like ${it.liked ? 'on' : ''}" data-act="like" data-kind="${rk}" data-id="${it.id}" aria-label="${esc(t('like_label'))}" aria-pressed="${it.liked ? 'true' : 'false'}" ${it.mine || it.liked ? 'disabled' : ''}>${uiIcon('heart', 14, 2)} ${fmt(it.likes)}</button>
+  const acts = `<div class="facts"><button class="chip like ${it.liked ? 'on' : ''}" data-act="like" data-kind="${rk}" data-id="${it.id}" aria-label="${esc(t('like_label'))}" aria-pressed="${it.liked ? 'true' : 'false'}" ${it.mine || it.liked ? 'disabled' : ''}>${uiIcon('heart', 14, 2)}${it.likes ? ` ${fmt(it.likes)}` : ''}</button>
     <button class="chip" data-act="thread" data-kind="${rk}" data-id="${it.id}" aria-label="${esc(t('reply_btn'))}" aria-expanded="${(S.threads || {})[threadKey(it)] ? 'true' : 'false'}">${uiIcon('chat', 14, 2)} ${it.replies ? fmt(it.replies) : t('reply_btn')}</button>
     ${it.mine ? '' : `<button class="chip" data-act="report" data-kind="${rk}" data-id="${it.id}" aria-label="${esc(t('report_label'))}" title="${esc(t('report_ask'))}">${uiIcon('flag', 14, 2)}</button>`}</div>${threadHtml(it)}`;
   if (it.type === 'announcement') {
