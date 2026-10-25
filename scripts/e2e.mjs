@@ -296,6 +296,26 @@ try {
   }
   await api('PATCH', '/api/me', { lang: 'en' }, host.token);
 
+  // ---- Accessibility: axe-core's WCAG 2 A/AA rules on every member page, light and dark (CI installs axe-core; skipped if absent) ----
+  let AXE = null;
+  try { AXE = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8'); } catch { console.log('skip axe-core is not installed; accessibility rules not run'); }
+  if (AXE) {
+    const found = new Map();
+    for (const mode of ['light', 'dark']) for (const tab of ['home', 'feed', 'rank', 'caravan', 'qabila', 'tasks', 'people', 'progress', 'settings']) {
+      const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, bypassCSP: true }); // the app's CSP rightly refuses injected scripts
+      const page = await ctx.newPage();
+      await page.goto(B + '/');
+      await page.evaluate(([t, md]) => { localStorage.setItem('token', t); localStorage.setItem('intro', '1'); localStorage.setItem('mode', md); }, [host.token, mode]);
+      await page.goto(B + '/'); await page.waitForTimeout(700);
+      await page.evaluate((t) => (document.querySelector(`.sitem[data-tab=${t}]`) || document.querySelector(`[data-tab=${t}]`))?.click(), tab); await page.waitForTimeout(700);
+      await page.addScriptTag({ content: AXE });
+      const v = await page.evaluate(async () => (await axe.run(document, { runOnly: ['wcag2a', 'wcag2aa'] })).violations.map((x) => `${x.id} (${x.nodes[0].target.join(' ')})`));
+      v.forEach((x) => found.set(x, `${mode}/${tab}`));
+      await ctx.close();
+    }
+    ok(found.size === 0, `no WCAG A/AA violations on any page, light or dark${found.size ? ': ' + [...found].slice(0, 6).map(([k, w]) => `${w} ${k}`).join('; ') : ''}`);
+  }
+
   // ---- Admin page: key sign-in, every tab opens, nothing runs off a phone screen -----------------------------------
   for (const [w, label] of [[1280, 'desktop'], [390, 'phone']]) {
     const page = await browser.newPage({ viewport: { width: w, height: 860 } });

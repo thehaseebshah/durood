@@ -797,7 +797,7 @@ input[aria-invalid=true], select[aria-invalid=true] { border-color: var(--err) !
    ====================================================================================================================== */
 :root {
   --ground: #f2f2f7; --paper: #ffffff; --ink: #1c1c1e; --soft: #8a8a8e; --hair: rgba(60, 60, 67, .12); --line: rgba(60, 60, 67, .14);
-  --track: #e9e9ee; --cell: #f2f2f7; --accent: #00875a; --on-accent: #ffffff; --sig-bg: #e6f6ee; --tint: #c9eedb;
+  --track: #e9e9ee; --cell: #f2f2f7; --accent: #007a50; --on-accent: #ffffff; --sig-bg: #e6f6ee; --tint: #c9eedb;
   --glass: rgba(249, 249, 251, .88); --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 4px 16px rgba(0, 0, 0, .05);
   --radius: 16px; --rounded: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Inter', 'Salawat', system-ui, sans-serif;
 }
@@ -1073,3 +1073,5 @@ html[data-mode=dark] .tab-settings .notice { background: #2f2508; color: #ffd98a
 /* Me: the name is a heading under the large title, not a second large title */
 .tab-progress .uname { font-size: 1.55rem; letter-spacing: -.5px; }
 .unitnote .u { margin: 0 .1em; }
+/* a finished quest's reward reads as done (grey), but stays legible: no opacity fade below 4.5:1 */
+.q.d .qxp, .q.d .qxp .u { opacity: 1; color: var(--soft); }
