@@ -27,6 +27,7 @@ const S = {
   pending: Number(ls.get('pending')) || 0,
   board: { type: 'users', period: 'week', metric: 'total', data: null },
   feed: null, feedSeen: null, reflDraft: '', tapOpen: false, geo: null, league: null,
+  drawer: false, sheet: null, sideHidden: ls.get('side') === '0', folds: (() => { try { return JSON.parse(ls.get('folds') || '{}'); } catch { return {}; } })(),
   intro: ls.get('intro') ? null : 0,
   team: null,
   learn: null,
@@ -130,8 +131,6 @@ function celebrate(res) {
 const SHAREABLE = new Set(['d1k', 'd10k', 'd100k', 'd1m', 'streak7', 'streak30', 'streak100', 'recruit5', 'recruit25', 'karwan7', 'karwan30', 'qabila10', 'qabila50', 'qabila250', 'league_silver', 'league_gold', 'league_diamond', 'city_podium', 'city_champion', 'group10k', 'group100k', 'group1m', 'caravan10k', 'caravan100k', 'caravan1m', 'caravan10m']);
 
 // ---- views (Swiss style: type, hairline rules, flat colour) --------------------------
-const NAV_GLYPH = { home: 'home', feed: 'feed', rank: 'bars', caravan: 'caravan', me: 'me' };
-const navIcon = (k) => uiIcon(NAV_GLYPH[k], 22, 1.7);
 
 const ICON_SUN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
 const ICON_MOON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>';
@@ -267,13 +266,42 @@ function cityModal() {
     <button class="blk" type="submit"><span>${t('save')}</span><b class="ar">→</b></button></form></div></div>`;
 }
 
+// ---- the frame: a sidebar (a drawer on phones, like Todoist), the bottom bar and the + button ---------------------------------------
+const NAV_GLYPH = { home: 'check', feed: 'feed', rank: 'bars', caravan: 'caravan', qabila: 'nodes', burhan: 'chain', progress: 'bolt', settings: 'me', browse: 'me' };
+const navIcon = (k, size = 22) => uiIcon(NAV_GLYPH[k] || 'star', size, 1.7);
+const openQuests = () => (S.me.quests || []).filter((q) => !q.info && !q.done).length;
+function sideItem(k, count = 0, dot = false) {
+  return `<button class="sitem ${S.tab === k ? 'on' : ''}" ${S.tab === k ? 'aria-current="page"' : ''} data-act="go" data-tab="${k}">${navIcon(k, 20)}<span>${t('nav_' + k)}</span>${count ? `<b class="cnt">${count > 99 ? '99+' : count}</b>` : dot ? '<i class="pip" aria-hidden="true"></i>' : ''}</button>`;
+}
+function sidebar() {
+  const m = S.me, title = t('titles')[Math.min(m.level - 1, 9)];
+  const cvCount = (m.caravanInvites || 0) + (m.caravanRequests || 0), bhCount = (S.bh?.roles?.requests || 0) + (S.bh?.today?.length || 0);
+  return `<aside class="side ${S.drawer ? 'open' : ''}" aria-label="${esc(t('menu'))}" id="side">
+    <div class="sidetop"><button class="sprof" data-act="go" data-tab="progress">${av(m, 40, false)}<span><b>${esc(m.displayName || m.username)}</b><small>${t('level')} ${m.level} · ${esc(title)}</small></span></button>
+      <button class="pill icon sclose" data-act="drawerx" aria-label="${esc(t('close'))}">✕</button></div>
+    <button class="sadd" data-act="addsheet">${uiIcon('plus', 20, 2.4)}<span>${t('add_durood')}</span></button>
+    <div class="sgroup">${sideItem('home', openQuests())}${sideItem('feed', m.unreadNews || 0)}${sideItem('rank')}</div>
+    <div class="slabel">${t('grp_groups')}</div>
+    <div class="sgroup">${sideItem('caravan', cvCount)}${sideItem('qabila')}</div>
+    ${inBurhan() ? `<div class="slabel">${t('bh_title')}</div><div class="sgroup">${sideItem('burhan', bhCount)}</div>` : ''}
+    <div class="slabel">${t('grp_you')}</div>
+    <div class="sgroup">${sideItem('progress')}${sideItem('settings', 0, !m.emailVerified)}</div>
+    <div class="sfoot"><button class="chip" data-act="setlang" data-l="${S.lang === 'ur' ? 'en' : 'ur'}">${S.lang === 'ur' ? 'English' : 'اردو'}</button><button class="chip" data-act="logout">${t('logout')}</button></div>
+  </aside>${S.drawer ? `<div class="scrim" data-act="drawerx" aria-hidden="true"></div>` : ''}`;
+}
 function shell() {
-  const tabs = ['home', 'feed', 'rank', 'caravan', 'me'];
+  const tabs = ['home', 'feed', 'rank'];
+  const fab = !['settings'].includes(S.tab);
   return `
   <a class="skip" href="#main">${t('skip_to')}</a>
-  <header class="hd"><span>${t('app')}</span><span class="row"><span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button></span></header>
+  ${sidebar()}
+  <header class="hd"><span class="row"><button class="pill icon burger" data-act="drawer" aria-label="${esc(t('menu'))}" aria-expanded="${S.drawer}" aria-controls="side">${uiIcon('menu', 18, 2)}</button><span class="ptitle">${t('nav_' + S.tab)}</span></span>
+    <span class="row"><span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button></span></header>
   <main id="main" tabindex="-1" class="wrap tab-${S.tab}"><h1 class="sr">${t('nav_' + S.tab)}</h1>${view()}</main>
-  <nav class="tabs" aria-label="${esc(t('app'))}"><div class="brand">${t('app')}</div>${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" ${S.tab === k ? 'aria-current="page"' : ''} data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em>${k === 'caravan' && (S.me.caravanInvites || S.me.caravanRequests || S.bh?.roles?.requests) ? '<i class="pip" aria-hidden="true"></i>' : ''}</button>`).join('')}</nav>
+  <nav class="tabs" aria-label="${esc(t('app'))}">${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" ${S.tab === k ? 'aria-current="page"' : ''} data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}
+    <button class="${['caravan', 'qabila', 'burhan', 'progress', 'settings'].includes(S.tab) ? 'on' : ''}" data-act="drawer" aria-label="${esc(t('menu'))}">${uiIcon('menu', 22, 1.7)}<em>${t('nav_browse')}</em>${S.me.caravanInvites || S.me.caravanRequests || S.bh?.roles?.requests ? '<i class="pip" aria-hidden="true"></i>' : ''}</button></nav>
+  ${fab ? `<button class="fab" data-act="addsheet" aria-label="${esc(t('add_durood'))}" title="${esc(t('add_durood'))}">${uiIcon('plus', 28, 2.4)}</button>` : ''}
+  ${S.sheet === 'add' ? addSheet() : ''}
   ${S.player ? playerModal() : ''}
   ${S.bhDetail ? detailModal() : ''}
   ${S.profile ? profileModal() : ''}
@@ -282,30 +310,23 @@ function shell() {
 }
 
 function view() {
-  return { home, feed: feedView, rank, caravan, me }[S.tab]();
+  return ({ home, feed: feedView, rank, caravan, qabila, burhan: burhanPage, progress, settings }[S.tab] || home)();
 }
 
-const bar = (pct) => `<div class="bar"><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div>`;
+// a section that folds away, like a Todoist section; what is open is remembered on this device
+function fold(k, title, meta, body, openByDefault = true) {
+  const open = S.folds[k] ?? openByDefault;
+  return `<section class="fold ${open ? 'open' : ''}"><button class="foldhead" data-act="fold" data-k="${k}" aria-expanded="${open}"><svg class="chev" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="ftitle">${title}</span>${meta ? `<span class="fmeta">${meta}</span>` : ''}</button>${open ? `<div class="foldbody">${body}</div>` : ''}</section>`;
+}
 
-function home() {
-  const m = S.me;
-  const title = t('titles')[Math.min(m.level - 1, 9)];
-  const live = m.today + S.pending;
-  return `<div class="cols"><div class="col">
-  ${m.hiddenFromRanks ? `<div class="flagnote">${t(m.flagState === 'decided' ? 'flagged_decided' : 'flagged')}</div>` : ''}
-  <div class="sub"><span>${t('today')}</span><span>${t('goal_word')} ${N(fmt(m.dailyGoal))}</span></div>
-  <div class="big ${bigClass(live)}" id="big">${fmt(live)}</div>
-  <div id="livebar">${bar((live / m.dailyGoal) * 100)}</div>
-
-  ${m.special ? `<div class="special">${uiIcon('star', 14, 2)} ${t('special_banner')(esc(pick(m.special.nameEn, m.special.nameUr)))}</div>` : ''}
-  <div class="live">${uiIcon('feed', 13, 2)} ${t('live_today')(fmt(m.pub.today || 0), fmt(m.pub.membersToday || 0))}</div>
-  <div class="numbox">
+// the durood counter's entry: a number, quick amounts, or counting by tapping. Used on Today and in the + sheet.
+function logBox() {
+  return `<div class="numbox">
     <label for="manual">${t('enter_total')}</label>
     <div class="row"><input type="number" id="manual" inputmode="numeric" min="1" placeholder="${t('count_ph')}" dir="ltr"><button class="blk addbtn" data-act="manual"><span>${t('add')}</span><b class="ar">→</b></button></div>
     <div class="quick presets">${[100, 500, 1000].map((n) => `<button class="chip" data-act="fill" data-n="${n}">${N('+' + fmt(n))}</button>`).join('')}</div>
     <div class="hint">${t('quick_hint')}</div>
   </div>
-
   <button class="linkbtn tapopen" data-act="taptoggle">${uiIcon('tap', 16, 1.9)} ${t('tap_open')} ${S.tapOpen || S.pending ? '−' : '+'}</button>
   ${S.tapOpen || S.pending ? `<div class="tapbox">
     <button class="tap blk" data-act="tap"><span class="lab">${uiIcon('tap', 26, 1.9)} ${t('tap_hint')}</span><b>${N('+1')}</b></button>
@@ -314,42 +335,65 @@ function home() {
       <span class="quick"><button class="chip" data-act="preset">${t('reset')}</button></span>
     </div>
     <button class="blk go" data-act="submitp" id="submitp" ${S.pending ? '' : 'disabled'}><span>${t('submit_pending')}</span><b class="ar">→</b></button>
-  </div>` : ''}
-
-  ${challengeCard(m)}
-
-  <div class="stats">
-    <div><b>${fmt(m.week)}</b><span>${t('week')}</span></div>
-    <div><b>${fmt(m.total)}</b><span>${t('total')}</span></div>
-    <div><b>${m.level}</b><span>${t('level')} · ${esc(title)}</span></div>
-  </div>
-  </div><div class="col">
-  ${burhanToday()}
-  <div class="lvl"><div class="row between"><span>${uiIcon('bolt', 14, 1.9)} ${t('level')} ${m.level} · ${esc(title)}</span><span title="${esc(t('shield_hint'))}">${uiIcon('shield', 14, 1.9)} ${m.shields}</span></div>${bar(m.pct)}</div>
-
-  ${pushPromptDue() ? `<div class="circlecard push"><b>${t('push_card_title')}</b><p>${t('push_card_text')}</p>
-    <div class="row"><button class="blk fill1" data-act="pushon"><span>${t('push_enable')}</span><b class="ar">→</b></button><button class="chip" data-act="pushno">${t('push_later')}</button></div></div>` : ''}
-  <button class="rowlink" data-act="goleague"><span>${uiIcon('bolt', 14, 2)} ${t('league_title')}</span><b>${t('tier_' + TIER_KEYS[m.league || 0])}</b></button>
-
-  ${m.circleUrl ? `<div class="circlecard">
-    <b>${t('circle_title')}</b>
-    <p>${t('circle_text')}</p>
-    <a class="blk fill1" href="${esc(m.circleUrl)}" target="_blank" rel="noopener"><span>${t('circle_open')}</span><b class="ar">↗</b></a>
-    ${m.badges.includes('circle') ? `<p class="ok">✓ ${t('circle_done')}</p>` : `<button class="chip" data-act="circle">${t('circle_claim')}</button>`}
-  </div>` : ''}
-
-  <h3>${t('durood_quests')}</h3>
-  ${m.quests.filter((q) => q.group === 'durood').map((q) => quest(q)).join('')}
-
-  <h3 class="row between"><span>${t('bonus_quests')}</span><button class="chip" data-act="tab" data-tab="feed">${t('see_bonus')}</button></h3>
-  ${m.quests.filter((q) => q.group === 'bonus').map((q) => quest(q, true)).join('')}
-
-  <h3>${t('caravan_title')}</h3>
-  <button class="rowlink" data-act="tab" data-tab="caravan">${m.caravan ? `<span>${esc(m.caravan.name)} · ${fmt(m.caravan.members)} ${t('members')}</span><b>${m.caravanRequests ? `${m.caravanRequests} ` : ''}→</b>` : `<span>${m.caravanInvites ? t('cv_home_invited')(m.caravanInvites) : t('cv_home_none')}</span><b class="ar">→</b>`}</button>
-  ${S.bh?.roles?.requests ? `<button class="rowlink" data-act="tab" data-tab="caravan"><span>${uiIcon('chain', 14, 2)} ${t('bh_requests_home')(S.bh.roles.requests)}</span><b class="ar">→</b></button>` : ''}
-
-  <p class="note">${t('reminder_note')}</p>
+  </div>` : ''}`;
+}
+function counter() {
+  const m = S.me, live = m.today + S.pending;
+  return `<div class="sub"><span>${t('today')}</span><span>${t('goal_word')} ${N(fmt(m.dailyGoal))}</span></div>
+  <div class="big ${bigClass(live)}" id="big">${fmt(live)}</div>
+  <div id="livebar">${bar((live / m.dailyGoal) * 100)}</div>`;
+}
+function addSheet() {
+  return `<div class="modal sheetm"><div class="box sheetbox" aria-label="${esc(t('add_durood'))}">
+    <div class="row between"><b class="sheettitle">${t('add_durood')}</b><button class="chip" data-act="sheetx">${t('close')}</button></div>
+    ${counter()}
+    ${logBox()}
   </div></div>`;
+}
+
+const bar = (pct) => `<div class="bar"><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div>`;
+
+// ---- Today: the counter, then everything to do today in folding sections -------------------------------------------------------
+function home() {
+  const m = S.me, f = S.feed;
+  if (!f && !S.feedLoading) { S.feedLoading = true; loadFeed().catch(() => {}).finally(() => { S.feedLoading = false; if (S.tab === 'home') draw(); }); } // first screen after sign-in
+  const notices = [
+    m.hiddenFromRanks ? `<div class="flagnote">${t(m.flagState === 'decided' ? 'flagged_decided' : 'flagged')}</div>` : '',
+    m.special ? `<div class="special">${uiIcon('star', 14, 2)} ${t('special_banner')(esc(pick(m.special.nameEn, m.special.nameUr)))}</div>` : '',
+    m.caravanInvites ? `<button class="rowlink" data-act="tab" data-tab="caravan"><span>${uiIcon('caravan', 14, 2)} ${t('cv_home_invited')(m.caravanInvites)}</span><b class="ar">→</b></button>` : '',
+    m.caravanRequests ? `<button class="rowlink" data-act="tab" data-tab="caravan"><span>${uiIcon('caravan', 14, 2)} ${t('cv_requests_home')(m.caravanRequests)}</span><b class="ar">→</b></button>` : '',
+    S.bh?.roles?.requests ? `<button class="rowlink" data-act="tab" data-tab="burhan"><span>${uiIcon('chain', 14, 2)} ${t('bh_requests_home')(S.bh.roles.requests)}</span><b class="ar">→</b></button>` : '',
+    pushPromptDue() ? `<div class="circlecard push"><b>${t('push_card_title')}</b><p>${t('push_card_text')}</p>
+      <div class="row"><button class="blk fill1" data-act="pushon"><span>${t('push_enable')}</span><b class="ar">→</b></button><button class="chip" data-act="pushno">${t('push_later')}</button></div></div>` : '',
+  ].join('');
+
+  // Sunnah & Seerah: today's Sunnah, this week's lecture, today's reflection
+  let seerah = '<p class="muted center">…</p>', seerahMeta = '';
+  if (f) {
+    const lec = f.lectures.length ? f.lectures.map(lectureCard).join('') : `<div class="fcard"><h3>${uiIcon('book', 14, 2)} ${t('lectures')}</h3><p class="muted">${t('no_lectures')}</p></div>`;
+    seerah = `${sunnahCard(f.today)}${lec}${reflectionCard(f.reflection)}`;
+    const items = [!!f.today?.sunnah && (f.today.ticked || !!f.today.mine), ...f.lectures.map((l) => !!l.done), !!f.reflection?.mine];
+    const total = (f.today?.sunnah ? 1 : 0) + f.lectures.length + 1;
+    seerahMeta = N(`${items.filter(Boolean).length} / ${total}`);
+  }
+  const quests = m.quests.filter((q) => !q.info);
+  const assigned = burhanToday();
+  const circle = m.circleUrl && !m.badges.includes('circle') ? `<div class="circlecard">
+    <b>${t('circle_title')}</b><p>${t('circle_text')}</p>
+    <a class="blk fill1" href="${esc(m.circleUrl)}" target="_blank" rel="noopener"><span>${t('circle_open')}</span><b class="ar">↗</b></a>
+    <button class="chip" data-act="circle">${t('circle_claim')}</button></div>` : '';
+
+  return `${notices}
+  <section class="counterbox">${counter()}
+  <div class="live">${uiIcon('feed', 13, 2)} ${t('live_today')(fmt(m.pub.today || 0), fmt(m.pub.membersToday || 0))}</div>
+  ${logBox()}</section>
+  ${fold('seerah', t('grp_seerah'), seerahMeta, seerah)}
+  ${assigned ? fold('assigned', t('assigned_title'), N(String(S.bh.today.length)), assigned) : ''}
+  ${fold('quests', t('grp_quests'), N(`${quests.filter((q) => q.done).length} / ${quests.length}`),
+    `${m.quests.filter((q) => q.group === 'durood').map((q) => quest(q)).join('')}${m.quests.filter((q) => q.group === 'bonus').map((q) => quest(q, true)).join('')}`)}
+  ${fold('challenge', t('challenge_title'), '', challengeCard(m), false)}
+  ${circle}
+  <p class="note">${t('reminder_note')}</p>`;
 }
 
 // keep the big number and its bar in step with taps without redrawing the screen
@@ -357,6 +401,7 @@ function home() {
 const bigClass = (n) => { const c = fmt(n).length; return c <= 3 ? '' : c <= 5 ? 'l5' : c === 6 ? 'l6' : 'l7'; };
 function liveHome() {
   const m = S.me, live = m.today + S.pending;
+  if (!$('#big')) return;
   $('#big').textContent = fmt(live);
   $('#big').className = `big ${bigClass(live)}`;
   $('#livebar').innerHTML = bar((live / m.dailyGoal) * 100);
@@ -621,16 +666,10 @@ function feedList(items) {
 function feedView() {
   const f = S.feed;
   if (!f) return '<p class="muted center">…</p>';
-  return `<div class="cols"><div class="col">
-    <h3 class="first-d">${t('today_card')}</h3>
-    ${f.lectures.length ? f.lectures.map(lectureCard).join('') : `<div class="fcard"><h3>${uiIcon('book', 14, 2)} ${t('lectures')}</h3><p class="muted">${t('no_lectures')}</p></div>`}
-    ${sunnahCard(f.today)}
-    ${reflectionCard(f.reflection)}
-  </div><div class="col">
-    <h3 class="first-d">${t('stream_title')}</h3>
+  // posting happens on Today; the feed is for reading what everyone shared
+  return `<button class="rowlink" data-act="tab" data-tab="home"><span>${uiIcon('pen', 14, 2)} ${t('feed_share')}</span><b class="ar">→</b></button>
     <div class="stream">${f.items.length ? feedList(f.items) : `<p class="muted center">${t('feed_empty')}</p>`}</div>
-    ${f.next ? `<button class="chip more" data-act="more">${t('more')}</button>` : ''}
-  </div></div>`;
+    ${f.next ? `<button class="chip more" data-act="more">${t('more')}</button>` : ''}`;
 }
 
 // ---- compete: the challenge, the weekly league, and rankings of people, caravans, Qabilas and cities ----------------------------
@@ -718,25 +757,34 @@ function cvHome(cv) {
   <div class="padx" style="margin-top:14px"><button class="chip" data-act="cvleave">${t('cv_leave')}</button></div>`;
 }
 function caravan() {
-  const m = S.me, tm = S.team, cv = S.cv;
+  const cv = S.cv;
+  return `${!cv ? '<p class="muted center">…</p>' : cv.caravan ? cvHome(cv) : cvJoinOrCreate(cv)}
+  <button class="rowlink" data-act="tab" data-tab="qabila"><span>${uiIcon('nodes', 14, 2)} ${t('cv_vs_qabila')}</span><b class="ar">→</b></button>`;
+}
+
+// ---- Qabila: your invite code, the people you brought in, everyone under you, and who is above you ---------------------------------------
+function qabila() {
+  const m = S.me, tm = S.team;
   const link = `${location.origin}/?invite=${m.username}`;
-  const main = !cv ? '<p class="muted center">…</p>' : cv.caravan ? cvHome(cv) : cvJoinOrCreate(cv);
-  return `<div class="cols"><div class="col">
-  ${main}
-  </div><div class="col">
-  <h3 class="first-d">${t('your_code')}</h3>
-  <p class="note first">${t('cq_def')}</p>
-  <div class="code">${esc(m.username)}</div>
-  <div class="muted" style="margin-top:12px">${t('your_link')}</div>
-  <div class="link">${esc(link)}</div>
-  <div class="invleft"><b>${m.invites.left}</b> <span>${t('invites_left')} · ${N(`${m.invites.used} / ${m.invites.cap}`)}</span><small>${t('invites_next')(m.invites.nextAt)}</small></div>
-  <div class="row" style="margin-top:12px"><button class="blk wa fill1" data-act="wa"><span class="lab">${uiIcon('share', 22, 1.8)} ${t('share_wa')}</span><b class="ar">→</b></button><button class="chip" data-act="copy" data-text="${esc(link)}">${t('copy')}</button></div>
-  ${burhanCaravan()}
-  <h3>${t('direct_list')} (${fmt(m.team.direct)})</h3>
-  ${!tm ? '…' : tm.direct.length ? `<ul class="lb">${tm.direct.map((d) => `
-    <li>${av(d, 34)}<span class="name">${esc(d.username)}<small>${d.city ? `${esc(d.city)} · ` : ''}${fmt(d.total)} · ${t('this_week')} ${fmt(d.week)}</small></span><span class="score">${fmt(d.total)}</span></li>`).join('')}</ul>` : `<p class="muted">${t('none_yet')}</p>`}
-  ${uplineBlock(tm)}
-  </div></div>`;
+  const down = m.team.total - m.total, nx = MILESTONES.find((x) => x > down) || MILESTONES.at(-1), pv = MILESTONES.filter((x) => x <= down).at(-1) || 0;
+  return `<p class="note first">${t('tree_sub')}</p>
+  <div class="stats"><div><b>${fmt(m.team.members)}</b><span>${t('tree_people')}</span></div><div><b>${fmt(m.team.total)}</b><span>${t('tree_total')}</span></div><div><b>${tm ? fmt(tm.week) : '…'}</b><span>${t('tree_week')}</span></div></div>
+  <div class="lvl"><div class="row between"><span>${t('tree_next')}</span><b>${fmt(nx)}</b></div>${bar(nx === pv ? 100 : ((down - pv) / (nx - pv)) * 100)}</div>
+  ${fold('qcode', t('your_code'), '', `<p class="note first">${t('cq_def')}</p>
+    <div class="code">${esc(m.username)}</div>
+    <div class="muted" style="margin-top:12px">${t('your_link')}</div>
+    <div class="link">${esc(link)}</div>
+    <div class="invleft"><b>${m.invites.left}</b> <span>${t('invites_left')} · ${N(`${m.invites.used} / ${m.invites.cap}`)}</span><small>${t('invites_next')(m.invites.nextAt)}</small></div>
+    <div class="row" style="margin-top:12px"><button class="blk wa fill1" data-act="wa"><span class="lab">${uiIcon('share', 22, 1.8)} ${t('share_wa')}</span><b class="ar">→</b></button><button class="chip" data-act="copy" data-text="${esc(link)}">${t('copy')}</button></div>`)}
+  ${fold('qdirect', `${t('direct_list')}`, N(fmt(m.team.direct)), !tm ? '…' : tm.direct.length ? `<ul class="lb">${tm.direct.map((d) => `
+    <li>${av(d, 34)}<span class="name">${esc(d.username)}<small>${d.city ? `${esc(d.city)} · ` : ''}${fmt(d.total)} · ${t('this_week')} ${fmt(d.week)}</small></span><span class="score">${fmt(d.total)}</span></li>`).join('')}</ul>` : `<p class="muted">${t('none_yet')}</p>`)}
+  ${tm?.upline?.length ? fold('qup', t('upline_title'), '', uplineBlock(tm).replace(/^<h3>.*?<\/h3>/, ''), false) : ''}`;
+}
+
+// ---- Al-Burhan: murabbi and masul, tasks and routines given to you, and (for murabbis and masuls) the people you look after -------------
+function burhanPage() {
+  if (!S.bh) return '<p class="muted center">…</p>';
+  return `${burhanMe()}${burhanCaravan()}`;
 }
 
 function historyBlock() {
@@ -764,7 +812,21 @@ const BADGE_FAMILIES = [
   ['city', ['city_podium', 'city_champion']],
 ];
 
-function me() {
+// ---- Progress: level and points, history of what you logged, and badges ------------------------------------------------------------
+function progress() {
+  const m = S.me, title = t('titles')[Math.min(m.level - 1, 9)];
+  return `<div class="myhead small"><div class="mybig">${av(m, 56, false)}</div><div><div class="uname">${esc(m.username)}</div><div class="muted">${t('level')} ${m.level} · ${esc(title)}</div></div></div>
+  <div class="stats"><div><b>${fmt(m.week)}</b><span>${t('week')}</span></div><div><b>${fmt(m.total)}</b><span>${t('total')}</span></div><div><b>${m.bestStreak}</b><span>${t('best_streak')}</span></div></div>
+  <div class="lvl"><div class="row between"><span>${uiIcon('bolt', 14, 1.9)} ${t('level')} ${m.level} · ${esc(title)}</span><b>${N(`${fmt(m.xp)} / ${fmt(m.next)}`)}</b></div>${bar(m.pct)}
+    <div class="row between muted" style="margin-top:6px"><span title="${esc(t('shield_hint'))}">${uiIcon('shield', 14, 1.9)} ${m.shields} ${t('shields_word')}</span><button class="linkbtn" data-act="goleague">${t('league_title')}: ${t('tier_' + TIER_KEYS[m.league || 0])}</button></div></div>
+  ${fold('points', t('points_title'), '', `<ul class="how">${t('points_list').map((x) => `<li>${x}</li>`).join('')}</ul>`, false)}
+  ${fold('history', t('hist_title'), '', `<p class="note first">${t('hist_hint')}</p>${historyBlock()}`)}
+  ${fold('badges', t('badges'), N(`${m.badges.length}`), `${BADGE_FAMILIES.map(([fam, list]) => `<h3>${t('fam_' + fam)}</h3>
+  <div class="badges">${list.slice().sort((x, y) => m.badges.includes(y) - m.badges.includes(x)).map((c) => { const got = m.badges.includes(c); return `<div class="badge ${got ? 'got' : ''}" title="${esc(t('badge')[c][1])}">${badgeSvg(c, got)}<b>${esc(t('badge')[c][0])}</b><span>${esc(t('badge')[c][1])}</span></div>`; }).join('')}</div>`).join('')}`)}`;
+}
+
+// ---- Settings: profile, preferences, security, and leaving ------------------------------------------------------------------------
+function settings() {
   const m = S.me;
   return `
   <div class="myhead"><div class="mybig">${av(m, 84, false)}</div><div class="myact">
@@ -775,27 +837,7 @@ function me() {
   ${m.displayName ? `<div class="pname padx" dir="auto">${esc(m.displayName)}</div>` : ''}
   ${m.bio ? `<p class="pbio padx" dir="auto">${esc(m.bio)}</p>` : ''}
   <div class="muted" dir="ltr">${esc(m.email)} · ${esc(m.phone)}</div>
-  ${m.hiddenFromRanks ? `<div class="flagnote">${t(m.flagState === 'decided' ? 'flagged_decided' : 'flagged')}</div>` : ''}
   ${m.emailVerified ? '' : `<div class="notice">${t('email_unconfirmed')} <button class="linkbtn" data-act="resend">${t('resend')}</button></div>`}
-  <div class="row wrapx padx shortcuts"><button class="chip" data-act="setlang" data-l="${S.lang === 'ur' ? 'en' : 'ur'}">${S.lang === 'ur' ? 'English' : 'اردو'}</button><a class="chip" href="#settings">${t('settings')}</a><button class="chip" data-act="logout">${t('logout')}</button></div>
-  <div class="stats"><div><b>${m.level}</b><span>${t('level')}</span></div><div><b>${fmt(m.total)}</b><span>${t('total')}</span></div><div><b>${m.bestStreak}</b><span>${t('best_streak')}</span></div></div>
-  <h3>${t('points_title')}</h3>
-  <div class="lvl"><div class="row between"><span>${t('level')} ${m.level} · ${esc(t('titles')[Math.min(m.level - 1, 9)])}</span><b>${N(`${fmt(m.xp)} / ${fmt(m.next)}`)}</b></div>${bar(m.pct)}</div>
-  <ul class="how">${t('points_list').map((x) => `<li>${x}</li>`).join('')}</ul>
-
-  ${burhanMe()}
-  <h3>${t('tree_title')}</h3>
-  <p class="note first">${t('tree_sub')}</p>
-  <div class="stats"><div><b>${fmt(m.team.members)}</b><span>${t('tree_people')}</span></div><div><b>${fmt(m.team.total)}</b><span>${t('tree_total')}</span></div><div><b>${S.team ? fmt(S.team.week) : '…'}</b><span>${t('tree_week')}</span></div></div>
-  ${(() => { const down = m.team.total - m.total, nx = MILESTONES.find((x) => x > down) || MILESTONES.at(-1), pv = MILESTONES.filter((x) => x <= down).at(-1) || 0; return `<div class="lvl"><div class="row between"><span>${t('tree_next')}</span><b>${fmt(nx)}</b></div>${bar(nx === pv ? 100 : ((down - pv) / (nx - pv)) * 100)}</div>`; })()}
-
-  <h3>${t('hist_title')}</h3>
-  <p class="note first">${t('hist_hint')}</p>
-  ${historyBlock()}
-
-  ${BADGE_FAMILIES.map(([fam, list]) => `<h3>${t('badges')} · ${t('fam_' + fam)}</h3>
-  <div class="badges">${list.slice().sort((x, y) => m.badges.includes(y) - m.badges.includes(x)).map((c) => { const got = m.badges.includes(c); return `<div class="badge ${got ? 'got' : ''}" title="${esc(t('badge')[c][1])}">${badgeSvg(c, got)}<b>${esc(t('badge')[c][0])}</b><span>${esc(t('badge')[c][1])}</span></div>`; }).join('')}</div>`).join('')}
-
   <h3 id="settings">${t('profile_title')}</h3>
   <form novalidate data-form="profile">
     <label for="p-name">${t('display_name')}</label>
@@ -915,9 +957,8 @@ function assignRow(a, mode) { // mode: 'mine' (razakar ticks) or 'masul' (masul 
 function burhanToday() {
   const b = S.bh;
   if (!b || (!b.today.length && !(b.mamulaat && b.mamulaat.today != null))) return '';
-  return `<h3>${t('bh_title')} · ${t('today')}</h3>
-  ${b.today.map((a) => assignRow(a, 'mine')).join('')}
-  ${b.mamulaat && b.mamulaat.today != null ? `<button class="rowlink" data-act="tab" data-tab="me"><span>${t('mam_title')}</span><b>${b.mamulaat.today}%</b></button>` : ''}`;
+  return `${b.today.map((a) => assignRow(a, 'mine')).join('')}
+  ${b.mamulaat && b.mamulaat.today != null ? `<button class="rowlink" data-act="tab" data-tab="burhan"><span>${t('mam_title')}</span><b>${b.mamulaat.today}%</b></button>` : ''}`;
 }
 
 function whoSees() {
@@ -1063,9 +1104,10 @@ function enhanceModal() {
   }
 }
 document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape' && S.drawer && !app.querySelector('.modal')) { S.drawer = false; draw(); $('.burger')?.focus(); return; }
   const m = app.querySelector('.modal');
   if (!m) return;
-  if (ev.key === 'Escape') { m.querySelector('[data-act=pclose],[data-act=celebrateX],[data-act=closedetail],[data-act=closeprofile]')?.click(); return; }
+  if (ev.key === 'Escape') { m.querySelector('[data-act=pclose],[data-act=celebrateX],[data-act=closedetail],[data-act=closeprofile],[data-act=sheetx]')?.click(); return; }
   if (ev.key !== 'Tab') return;
   const f = [...m.querySelectorAll('button:not([disabled]), [href], input:not([disabled]):not([type=hidden]), select, textarea, [tabindex]:not([tabindex="-1"])')].filter((e) => e.offsetParent !== null);
   if (!f.length) return;
@@ -1087,6 +1129,8 @@ function draw() {
   if (S.me) checkCelebrate();
   const keep = snapshotFields();
   document.body.classList.toggle('in-app', !!S.me);
+  document.body.classList.toggle('side-hidden', !!S.sideHidden);
+  document.body.classList.toggle('drawer-open', !!S.drawer);
   document.title = S.me ? `${t('nav_' + S.tab)} · ${t('app')}` : t('app');
   app.innerHTML = S.me ? shell() : S.offline ? offlineView() : S.intro !== null ? introView() : authView();
   restoreFields(keep);
@@ -1097,25 +1141,33 @@ const boardUrl = (b) => (b.type === 'users' ? `/leaderboard?type=users&period=${
   : b.type === 'league' ? '/league'
   : b.type === 'cities' ? `/leaderboard?type=cities&metric=${b.metric}`
   : b.metric === 'total' ? `/leaderboard?type=${b.type}&period=week` : `/leaderboard?type=${b.type}&metric=${b.metric}`);
+async function loadFeed() { S.feed = await api('/feed'); S.learn = { lectures: S.feed.lectures }; S.feedSeen = S.feed.seenAt; }
+async function loadBurhanLists() {
+  if (!S.bh || !(S.bh.roles.saaliks || S.bh.roles.razakars || S.bh.roles.requests)) return;
+  S.bhLists = { saaliks: S.bh.roles.saaliks ? (await api('/burhan/saaliks')).saaliks : [], razakars: S.bh.roles.razakars ? (await api('/burhan/razakars')).razakars : [], requests: S.bh.roles.requests ? (await api('/burhan/requests')).requests : [] };
+}
 async function enterTab(tab) {
-  S.tab = tab;
+  if (tab === 'me') tab = 'progress'; // older links
+  if (tab === 'burhan' && !inBurhan()) tab = 'home';
+  S.tab = tab; S.drawer = false;
   draw();
+  window.scrollTo(0, 0);
   try {
     if (tab === 'rank') { S.board.data = null; draw(); S.board.data = await api(boardUrl(S.board)); }
-    if (inBurhan() && ['home', 'me', 'caravan'].includes(tab)) { loadBurhan().then(async () => { if (tab === 'caravan' && S.bh && (S.bh.roles.saaliks || S.bh.roles.razakars || S.bh.roles.requests)) { S.bhLists = { saaliks: S.bh.roles.saaliks ? (await api('/burhan/saaliks')).saaliks : [], razakars: S.bh.roles.razakars ? (await api('/burhan/razakars')).razakars : [], requests: S.bh.roles.requests ? (await api('/burhan/requests')).requests : [] }; if (S.tab === 'caravan') draw(); } }); }
-    if (tab === 'caravan') { [S.team, S.cv] = await Promise.all([api('/team'), api('/caravan')]); }
-    if (tab === 'me') { [S.history, S.team] = await Promise.all([api('/history'), api('/team')]); }
+    if (inBurhan() && ['home', 'burhan'].includes(tab)) loadBurhan().then(async () => { if (tab === 'burhan') { await loadBurhanLists(); if (S.tab === 'burhan') draw(); } });
+    if (tab === 'home') { await loadFeed(); return S.tab === 'home' && draw(); }
+    if (tab === 'caravan') S.cv = await api('/caravan');
+    if (tab === 'qabila') S.team = await api('/team');
+    if (tab === 'progress') S.history = await api('/history');
     if (tab === 'feed') {
       S.feed = null; draw();
-      S.feed = await api('/feed');
-      S.learn = { lectures: S.feed.lectures };
-      S.feedSeen = S.feed.seenAt;
+      await loadFeed();
       draw();
       await api('/news/seen', 'POST');
       S.me.unreadNews = 0;
       return draw();
     }
-    if (tab !== 'home') draw();
+    if (S.tab === tab) draw();
   } catch (e) { toast(errText(e)); }
 }
 async function refreshMe() {
@@ -1184,7 +1236,19 @@ app.addEventListener('click', async (ev) => {
     }
   }
   if (act === 'resend') { try { const r = await api('/email/resend', 'POST'); toast(t(r.sent === false ? 'email_off' : 'email_sent')); } catch (e) { toast(errText(e)); } return; }
-  if (act === 'tab') return enterTab(el.dataset.tab);
+  if (act === 'tab' || act === 'go') return enterTab(el.dataset.tab);
+  if (act === 'drawer') {
+    if (matchMedia('(min-width: 1024px)').matches) { S.sideHidden = !S.sideHidden; ls.set('side', S.sideHidden ? '0' : '1'); return draw(); } // wide screens: show or hide the sidebar
+    S.drawer = !S.drawer; draw(); if (S.drawer) $('#side .sitem.on, #side .sitem')?.focus(); return;
+  }
+  if (act === 'drawerx') { S.drawer = false; return draw(); }
+  if (act === 'addsheet') {
+    S.drawer = false;
+    if (S.tab === 'home' && $('#manual')) { $('#manual').scrollIntoView({ block: 'center', behavior: 'smooth' }); $('#manual').focus({ preventScroll: true }); return draw(); } // Today has the box already
+    S.sheet = 'add'; draw(); $('#manual')?.focus(); return;
+  }
+  if (act === 'sheetx') { S.sheet = null; return draw(); }
+  if (act === 'fold') { const k = el.dataset.k; S.folds[k] = el.getAttribute('aria-expanded') !== 'true'; ls.set('folds', JSON.stringify(S.folds)); return draw(); }
   if (act === 'logout') return logout(true, true);
   if (act === 'logoutall') {
     if (!confirm(t('logout_all_ask'))) return;
@@ -1243,7 +1307,7 @@ app.addEventListener('click', async (ev) => {
   if (act === 'fill') { const f = $('#manual'); f.value = (Number(f.value) || 0) + Number(el.dataset.n); f.focus(); return; }
   if (act === 'manual') {
     const n = Number($('#manual').value);
-    if (await submitLog(n)) draw();
+    if (await submitLog(n)) { S.sheet = null; draw(); } // the + sheet closes once the number is saved
     return;
   }
 
@@ -1271,7 +1335,7 @@ app.addEventListener('click', async (ev) => {
       const r = await api('/sunnah/post', 'POST', { image: S.draft });
       S.draft = null; S.draftKind = null; S.me = r.me;
       toast(`${t('photo_posted')} · ${t('points_gained')(fmt(gainedSince(before)))}`);
-      return enterTab('feed');
+      await loadFeed(); return draw();
     } catch (e) { toast(errText(e)); if (e.message === 'bad_image' || e.message === 'duplicate_image') S.draft = null; return draw(); }
   }
   if (act === 'reflect') {
@@ -1283,7 +1347,7 @@ app.addEventListener('click', async (ev) => {
       const r = await api('/reflections', 'POST', { text });
       S.me = r.me; S.reflDraft = '';
       toast(`${t('reflect_posted')} · ${t('points_gained')(fmt(gainedSince(before)))}`);
-      return enterTab('feed');
+      await loadFeed(); return draw();
     } catch (e) { toast(errText(e)); el.disabled = false; }
     return;
   }
@@ -1713,6 +1777,8 @@ const nativeApp = window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plug
 if (nativeApp) {
   document.documentElement.classList.add('native');
   nativeApp.addListener('backButton', () => {
+    if (S.drawer) { S.drawer = false; return draw(); }
+    if (S.sheet) { S.sheet = null; return draw(); }
     if (S.player) { stopPlayerTimer(); S.player = null; return draw(); }
     if (S.profile) { S.profile = null; return draw(); }
     if (S.editing) { S.editing = null; return draw(); }

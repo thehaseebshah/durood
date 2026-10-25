@@ -310,31 +310,70 @@ html[lang=ur] .ctitle { letter-spacing: 0; }
 .circlecard.push { border-color: var(--sig); }
 .hd > span:first-child { white-space: nowrap; }
 
-/* ---- desktop: a sidebar and a two-column dashboard. Phones keep the single column and bottom tabs. ---- */
+/* ---- navigation, after Todoist: a sidebar that is a drawer on phones and stays open on wide screens; a bottom bar; a + button ---- */
 .brand { display: none; }
+.hd .ptitle { margin-inline-start: 10px; }
+.hd .burger { margin-inline-start: -6px; }
+.side { position: fixed; top: 0; bottom: 0; inset-inline-start: 0; width: min(300px, 86vw); background: var(--paper); border-inline-end: 1px solid var(--line); z-index: 30; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; padding-bottom: env(safe-area-inset-bottom);
+  transform: translateX(-102%); transition: transform .22s ease; visibility: hidden; }
+html[dir=rtl] .side { transform: translateX(102%); }
+.side.open, html[dir=rtl] .side.open { transform: none; visibility: visible; box-shadow: 0 0 40px rgba(0, 0, 0, .35); }
+.scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); z-index: 29; }
+body.drawer-open { overflow: hidden; }
+.sidetop { display: flex; align-items: center; gap: 8px; padding: 14px 12px 10px 16px; border-bottom: 5px solid var(--sig); }
+.sprof { all: unset; cursor: pointer; display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding: 4px; }
+.sprof:focus-visible { outline: 3px solid var(--sig); }
+.sprof b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sprof small { color: var(--soft); }
+.sadd { display: flex; align-items: center; gap: 10px; margin: 12px; padding: 12px 14px; background: var(--sig); color: var(--on-sig); border: 0; font: inherit; font-weight: 700; cursor: pointer; min-height: 44px; }
+.slabel { padding: 14px 20px 4px; font-size: .68rem; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--soft); }
+html[lang=ur] .slabel { letter-spacing: 0; font-size: .85rem; }
+.sgroup { display: flex; flex-direction: column; }
+.sitem { display: flex; align-items: center; gap: 14px; background: none; border: 0; border-radius: 0; font: inherit; color: var(--ink); padding: 11px 20px; min-height: 44px; text-align: start; cursor: pointer; position: relative; }
+.sitem:hover { background: var(--cell); }
+.sitem.on { background: var(--sig-bg); font-weight: 700; box-shadow: inset 4px 0 0 var(--sig); }
+html[dir=rtl] .sitem.on { box-shadow: inset -4px 0 0 var(--sig); }
+.sitem span { flex: 1; }
+.sitem .cnt { font-size: .75rem; color: var(--soft); font-weight: 600; font-variant-numeric: tabular-nums; }
+.sitem .pip { position: static; width: 9px; height: 9px; border-radius: 50%; background: var(--err); }
+.sfoot { margin-top: auto; display: flex; gap: 8px; flex-wrap: wrap; padding: 16px 20px; border-top: 1px solid var(--line); }
+/* the + button: adding durood from any screen, like Todoist's quick add */
+.fab { position: fixed; inset-inline-end: 18px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 7; width: 58px; height: 58px; border-radius: 50%; border: 0; background: var(--sig); color: var(--on-sig); display: grid; place-items: center; box-shadow: 0 6px 18px rgba(0, 0, 0, .28); cursor: pointer; }
+/* the + sheet rises from the bottom on phones */
+.modal.sheetm { place-items: end center; padding: 0; }
+.sheetm .box.sheetbox { max-width: 560px; border: 0; border-top: 5px solid var(--sig); padding: 14px 0 calc(14px + env(safe-area-inset-bottom)); }
+.sheetbox > .row { padding-inline: 20px; }
+/* folding sections, like Todoist's */
+.fold { border-top: 1px solid var(--line); }
+.foldhead { display: flex; align-items: center; gap: 10px; width: 100%; background: var(--track); border: 0; border-radius: 0; font: inherit; color: var(--sig-text); padding: 12px 20px; min-height: 46px; cursor: pointer; text-align: start; font-size: .78rem; font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; }
+html[lang=ur] .foldhead { letter-spacing: 0; text-transform: none; font-size: .95rem; }
+.foldhead .chev { flex: none; transition: transform .15s; color: var(--ink); }
+html[dir=rtl] .foldhead .chev { transform: scaleX(-1); }
+.fold.open .foldhead .chev, html[dir=rtl] .fold.open .foldhead .chev { transform: rotate(90deg); }
+.sheettitle { font-size: 1.1rem; }
+.foldhead .ftitle { flex: 1; }
+.foldhead .fmeta { color: var(--soft); font-weight: 600; letter-spacing: 0; text-transform: none; }
+.foldbody > .fcard:first-child { border-top: 0; }
+.counterbox { border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+.myhead.small { display: flex; align-items: center; gap: 14px; padding: 16px 20px; }
+.myhead.small .uname { padding: 0; }
+
 @media (min-width: 1024px) {
-  body.in-app { padding-bottom: 0; --side: 232px; }
+  /* wide screens: the sidebar stays open (the menu button hides it), the bottom bar and + button give way to the sidebar's own */
+  body.in-app { padding-bottom: 0; --side: 280px; }
+  body.in-app .side, html[dir=rtl] body.in-app .side { transform: none; visibility: visible; transition: none; width: var(--side); box-shadow: none; }
+  body.in-app .scrim { display: none; }
+  body.in-app .side .sclose { display: none; }
+  body.in-app nav.tabs, body.in-app .fab { display: none; }
   body.in-app .hd { margin-inline-start: var(--side); padding-inline: 32px; }
-  body.in-app .hd > span:first-child { visibility: hidden; }
-  body.in-app nav.tabs { top: 0; bottom: 0; inset-inline: 0 auto; width: var(--side); flex-direction: column; justify-content: flex-start; padding: 0; border-top: 0; border-inline-end: 1px solid var(--line); overflow-y: auto; }
-  body.in-app nav.tabs .brand { display: block; padding: 20px 24px 18px; font-weight: 800; font-size: .95rem; letter-spacing: 1.4px; text-transform: uppercase; border-bottom: 5px solid var(--sig); margin-bottom: 8px; }
-  html[lang=ur] body.in-app nav.tabs .brand { letter-spacing: 0; text-transform: none; font-size: 1.15rem; }
-  body.in-app nav.tabs button { flex: 0 0 auto; display: flex; align-items: center; gap: 14px; border-inline-end: 0; border-bottom: 1px solid var(--line); padding: 16px 24px; font-size: .95rem; text-align: start; }
-  body.in-app nav.tabs button svg { margin: 0; }
-  body.in-app nav.tabs button.on { box-shadow: inset 5px 0 0 var(--sig); }
-  html[dir=rtl] body.in-app nav.tabs button.on { box-shadow: inset -5px 0 0 var(--sig); }
-  body.in-app nav.tabs button.on::before { display: none; }
-  /* the content sits centred in the area beside the sidebar */
-  body.in-app .wrap { --w: min(1180px, 100vw - var(--side) - 48px); max-width: none; width: var(--w); margin-inline: calc(var(--side) + (100vw - var(--side) - var(--w)) / 2) auto; min-height: calc(100vh - 60px); }
-  body.in-app .wrap.tab-rank, body.in-app .wrap.tab-news, body.in-app .wrap.tab-me { --w: min(760px, 100vw - var(--side) - 48px); }
-  body.in-app .cols { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start; }
-  body.in-app .cols > .col + .col { border-inline-start: 1px solid var(--line); min-height: calc(100vh - 62px); }
-  body.in-app .cols > .col > h3:first-child, body.in-app .cols > .col > h3.first-d { margin-top: 0; }
-  body.in-app .badges { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  body.in-app .wrap { --w: min(760px, 100vw - var(--side) - 48px); max-width: none; width: var(--w); margin-inline: calc(var(--side) + (100vw - var(--side) - var(--w)) / 2) auto; min-height: calc(100vh - 60px); }
   body.in-app #toast { inset-inline-start: var(--side); }
   body.in-app .modal { padding-inline-start: var(--side); }
+  body.in-app.side-hidden { --side: 0px; }
+  body.in-app.side-hidden .side { display: none; }
+  body.in-app .badges { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  body.in-app .modal.sheetm { place-items: center; }
 }
-@media (min-width: 1600px) { body.in-app { --side: 260px; } }
 .numbox label { padding-inline: 20px; }
 .padx { padding-inline: 20px; }
 

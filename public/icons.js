@@ -18,6 +18,8 @@ const G = {
   tap: '<circle fill="FILL" cx="12" cy="12" r="3"/><circle fill="none" cx="12" cy="12" r="7.5"/>',
   play: '<rect fill="FILL" x="3" y="5" width="18" height="14"/><path fill="none" d="M10 9.5l5 2.5-5 2.5z"/>',
   check: '<path fill="none" d="M5 12.5l4.5 4.5L19 7"/>',
+  menu: '<path fill="none" d="M4 7h16M4 12h16M4 17h16"/>',
+  plus: '<path fill="none" d="M12 5v14M5 12h14"/>',
   camera: '<rect fill="FILL" x="3" y="7" width="18" height="12"/><circle fill="none" cx="12" cy="13" r="3.2"/><path fill="none" d="M8.5 7l1.2-2h4.6l1.2 2"/>',
   share: '<path fill="none" d="M5 12v7h14v-7M12 4v10M8 8l4-4 4 4"/>',
   bolt: '<path fill="FILL" d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
