@@ -459,6 +459,14 @@ CREATE TABLE IF NOT EXISTS murabbi_links (
   created_at     INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS murabbi_links_murabbi ON murabbi_links(murabbi_id);
+-- members who say they teach a Seerat Circle; an organiser confirms before the teacher's reward is paid
+CREATE TABLE IF NOT EXISTS circle_teachers (
+  user_id    INTEGER PRIMARY KEY REFERENCES users(id),
+  status     TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+  note       TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL,
+  decided_at INTEGER
+);
 -- a one-line notice for a salik whose request was declined or whose murabbi ended the link, or a razakar their masul removed
 CREATE TABLE IF NOT EXISTS burhan_notices (
   user_id INTEGER NOT NULL REFERENCES users(id),

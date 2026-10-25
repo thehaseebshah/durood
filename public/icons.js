@@ -47,7 +47,7 @@ export const BADGES = {
   city_podium: ['star', 1, 2], city_champion: ['star', 2, 2],
   group10k: ['caravan', 1, 3], group100k: ['caravan', 2, 3], group1m: ['caravan', 3, 3],
   recruit1: ['nodes', 1, 3], recruit5: ['nodes', 2, 3], recruit25: ['nodes', 3, 3],
-  scholar1: ['book', 1, 2], scholar10: ['book', 2, 2], circle: ['seat', 1, 1],
+  scholar1: ['book', 1, 2], scholar10: ['book', 2, 2], circle: ['seat', 1, 1], circle_teacher: ['seat', 2, 2],
   caravan10k: ['chain', 1, 4], caravan100k: ['chain', 2, 4], caravan1m: ['chain', 3, 4], caravan10m: ['chain', 4, 4],
 };
 

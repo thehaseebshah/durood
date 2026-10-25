@@ -82,7 +82,7 @@ const views = {
   },
   async feed() {
     const org = can('organise'), mod = can('moderate');
-    const [{ lectures }, { prompts }, { items }, { days }, { sunnahs }, circle] = await Promise.all([org ? api('GET', '/lectures') : { lectures: [] }, org ? api('GET', '/prompts') : { prompts: [] }, mod ? api('GET', '/reported') : { items: [] }, org ? api('GET', '/special-days') : { days: [] }, org ? api('GET', '/sunnahs') : { sunnahs: [] }, org ? api('GET', '/circle') : {}]);
+    const [{ lectures }, { prompts }, { items }, { days }, { sunnahs }, circle, { teachers }] = await Promise.all([org ? api('GET', '/lectures') : { lectures: [] }, org ? api('GET', '/prompts') : { prompts: [] }, mod ? api('GET', '/reported') : { items: [] }, org ? api('GET', '/special-days') : { days: [] }, org ? api('GET', '/sunnahs') : { sunnahs: [] }, org ? api('GET', '/circle') : {}, org ? api('GET', '/circle-teachers') : { teachers: [] }]);
     const today = pktToday();
     // the next 14 days without a Sunnah: members see "not published yet" on those days
     const gaps = Array.from({ length: 14 }, (_, i) => new Date(Date.parse(today + 'T00:00:00Z') + i * 864e5).toISOString().slice(0, 10)).filter((d) => !sunnahs.some((x) => x.day === d));
@@ -102,6 +102,10 @@ const views = {
       <p class="muted">Members see a card on Home with this link, and can claim +300 points once after they register. Leave it empty to hide the card.</p>
       <label>Sign-up link (https://…)</label><input id="ciurl" type="url" maxlength="300" value="${esc(circle.circleUrl || '')}">
       <div class="inline"><button class="chip solid" data-a="circleset">Save link</button></div>
+      <h3>Circle teachers</h3>
+      <p class="muted">Members who say they teach a Seerat Circle. Confirm the ones you know: they get 1,000 points once and the Circle Teacher badge (joining a circle gives 300).</p>
+      ${teachers.length ? `<table><tr><th>Member</th><th>City</th><th>Asked</th><th>Status</th><th></th></tr>${teachers.map((x) => `<tr><td>${esc(x.username)}</td><td>${esc(x.city)}</td><td>${date(x.at)}</td><td>${esc(x.status)}</td>
+        <td>${x.status === 'approved' ? '' : `<button class="chip solid" data-a="teachyes" data-u="${esc(x.username)}">Confirm</button>`} ${x.status === 'pending' ? `<button class="chip" data-a="teachno" data-u="${esc(x.username)}">Not a teacher</button>` : ''}</td></tr>`).join('')}</table>` : '<p class="empty">No requests yet.</p>'}
       <h3>Lecture of the week</h3>
       <p class="muted">Members see the lectures whose week is the current one. Any date in the week works. A quiz is optional: a JSON list like <code>[{"q_en":"Where was the Prophet ﷺ born?","options_en":["Makkah","Madinah"],"answer":0}]</code>.</p>
       <div class="inline"><div><label>YouTube id (11 characters)</label><input id="lyt" maxlength="11"></div><div><label>Week (any date)</label><input id="lwk" type="date" value="${pktToday()}"></div><div><label>Minimum watch (seconds)</label><input id="lmin" type="number" min="30" value="600"></div><div><label>Points (1 to 200)</label><input id="lxp" type="number" min="1" max="200" value="150"></div></div>
@@ -316,6 +320,8 @@ document.addEventListener('click', (ev) => {
     },
     sundel: async () => { if (!confirm(`Remove the Sunnah for ${d.day}?`)) return; await api('DELETE', `/sunnahs/${d.day}`); say('Removed.'); },
     circleset: async () => { const r = await api('POST', '/circle', { url: $('#ciurl').value }); say(r.circleUrl ? 'Circle link saved. Members now see it on Home.' : 'Circle link removed: the card is hidden.'); },
+    teachyes: async () => { await api('POST', `/circle-teachers/${d.u}`, { action: 'approve' }); say(`${d.u} confirmed as a circle teacher (+1,000 points).`); },
+    teachno: async () => { await api('POST', `/circle-teachers/${d.u}`, { action: 'reject' }); say(`${d.u}'s request was turned down. They can ask again.`); },
     keep2: async () => { await api('POST', `/content/${d.kind}/${d.id}`, { action: 'restore' }); say('Kept, and its reports cleared.'); },
     specialdel: async () => { await api('DELETE', `/special-days/${d.day}`); say('Removed.'); },
     remove2: async () => { await api('POST', `/content/${d.kind}/${d.id}`, { action: 'remove' }); say('Removed.'); },

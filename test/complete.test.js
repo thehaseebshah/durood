@@ -142,3 +142,25 @@ test('only an owner deletes an account from the admin page, never an admin\'s, a
   assert.ok((await K('GET', '/log')).log.some((x) => x.action === 'delete-account' && x.target === 'dl_target'));
   assert.deepEqual(audit().problems, []);
 });
+
+test('teaching a Seerat Circle earns more than joining one, once an organiser confirms it', async () => {
+  const u = await signup('tc_teacher'), j = await signup('tc_joiner');
+  await K('POST', '/circle', { url: 'https://albn.org/seerat' });
+  assert.equal((await api('POST', '/api/circle/claim', { token: j.token })).xpGained, 300);
+  const before = (await api('GET', '/api/me', { token: u.token })).xp;
+  assert.equal((await api('POST', '/api/circle/teach', { token: u.token, body: {} })).me.circleTeach, 'pending');
+  assert.equal((await api('GET', '/api/me', { token: u.token })).xp, before); // nothing until confirmed
+  assert.equal((await K('GET', '/circle-teachers')).teachers.find((x) => x.username === 'tc_teacher').status, 'pending');
+  await K('POST', '/circle-teachers/tc_teacher', { action: 'reject' });
+  assert.equal((await api('GET', '/api/me', { token: u.token })).circleTeach, 'rejected');
+  await api('POST', '/api/circle/teach', { token: u.token, body: {} }); // can ask again
+  await K('POST', '/circle-teachers/tc_teacher', { action: 'approve' });
+  const me = await api('GET', '/api/me', { token: u.token });
+  assert.equal(me.xp, before + 1000);
+  assert.ok(me.badges.includes('circle_teacher'));
+  await K('POST', '/circle-teachers/tc_teacher', { action: 'approve' }); // paid once
+  assert.equal((await api('GET', '/api/me', { token: u.token })).xp, before + 1000);
+  assert.equal((await api('POST', '/api/circle/teach', { token: u.token, body: {} })).error, 'already_teacher');
+  assert.deepEqual(audit().problems, []);
+  await K('POST', '/circle', { url: '' });
+});

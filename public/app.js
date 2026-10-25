@@ -381,7 +381,7 @@ function home() {
   const circle = m.circleUrl && !m.badges.includes('circle') ? `<div class="circlecard">
     <b>${t('circle_title')}</b><p>${t('circle_text')}</p>
     <a class="blk fill1" href="${esc(m.circleUrl)}" target="_blank" rel="noopener"><span>${t('circle_open')}</span><b class="ar">↗</b></a>
-    <button class="chip" data-act="circle">${t('circle_claim')}</button></div>` : '';
+    <div class="row wrapx"><button class="chip" data-act="circle">${t('circle_claim')}</button>${teachButton()}</div></div>` : '';
 
   return `${notices}
   <section class="counterbox">${counter()}
@@ -806,7 +806,7 @@ function historyBlock() {
 
 // three families of achievements, plus the city podium: personal, caravan (people you invited yourself), Qabila (everyone under you)
 const BADGE_FAMILIES = [
-  ['personal', ['first_step', 'd1k', 'd10k', 'd100k', 'd1m', 'streak7', 'streak30', 'streak100', 'scholar1', 'scholar10', 'circle', 'sunnah1', 'sunnah7', 'sunnah30', 'league_silver', 'league_gold', 'league_diamond']],
+  ['personal', ['first_step', 'd1k', 'd10k', 'd100k', 'd1m', 'streak7', 'streak30', 'streak100', 'scholar1', 'scholar10', 'circle', 'circle_teacher', 'sunnah1', 'sunnah7', 'sunnah30', 'league_silver', 'league_gold', 'league_diamond']],
   ['karwan', ['recruit1', 'recruit5', 'recruit25', 'group10k', 'group100k', 'group1m', 'karwan7', 'karwan30']],
   ['qabila', ['qabila10', 'qabila50', 'qabila250', 'caravan10k', 'caravan100k', 'caravan1m', 'caravan10m']],
   ['city', ['city_podium', 'city_champion']],
@@ -819,10 +819,22 @@ function progress() {
   <div class="stats"><div><b>${fmt(m.week)}</b><span>${t('week')}</span></div><div><b>${fmt(m.total)}</b><span>${t('total')}</span></div><div><b>${m.bestStreak}</b><span>${t('best_streak')}</span></div></div>
   <div class="lvl"><div class="row between"><span>${uiIcon('bolt', 14, 1.9)} ${t('level')} ${m.level} · ${esc(title)}</span><b>${N(`${fmt(m.xp)} / ${fmt(m.next)}`)}</b></div>${bar(m.pct)}
     <div class="row between muted" style="margin-top:6px"><span title="${esc(t('shield_hint'))}">${uiIcon('shield', 14, 1.9)} ${m.shields} ${t('shields_word')}</span><button class="linkbtn" data-act="goleague">${t('league_title')}: ${t('tier_' + TIER_KEYS[m.league || 0])}</button></div></div>
+  ${m.circleUrl ? fold('circle', t('circle_title'), m.circleTeach === 'approved' ? t('teach_done') : m.badges.includes('circle') ? '✓' : '', `<p class="muted">${t('circle_text')}</p>
+    <div class="row wrapx"><a class="chip" href="${esc(m.circleUrl)}" target="_blank" rel="noopener">${t('circle_open')} ↗</a>
+    ${m.badges.includes('circle') ? `<span class="ok">✓ ${t('circle_done')}</span>` : `<button class="chip" data-act="circle">${t('circle_claim')}</button>`}</div>
+    <p class="muted">${t('teach_text')}</p><div class="row wrapx">${teachButton()}</div>`, !m.badges.includes('circle_teacher')) : ''}
   ${fold('points', t('points_title'), '', `<ul class="how">${t('points_list').map((x) => `<li>${x}</li>`).join('')}</ul>`, false)}
   ${fold('history', t('hist_title'), '', `<p class="note first">${t('hist_hint')}</p>${historyBlock()}`)}
   ${fold('badges', t('badges'), N(`${m.badges.length}`), `${BADGE_FAMILIES.map(([fam, list]) => `<h3>${t('fam_' + fam)}</h3>
   <div class="badges">${list.slice().sort((x, y) => m.badges.includes(y) - m.badges.includes(x)).map((c) => { const got = m.badges.includes(c); return `<div class="badge ${got ? 'got' : ''}" title="${esc(t('badge')[c][1])}">${badgeSvg(c, got)}<b>${esc(t('badge')[c][0])}</b><span>${esc(t('badge')[c][1])}</span></div>`; }).join('')}</div>`).join('')}`)}`;
+}
+
+// teaching a Seerat Circle: asked for once, confirmed by an organiser, then paid
+function teachButton() {
+  const st = S.me.circleTeach;
+  if (st === 'approved') return `<span class="ok">✓ ${t('teach_done')}</span>`;
+  if (st === 'pending') return `<span class="muted">${t('teach_pending')}</span>`;
+  return `${st === 'rejected' ? `<span class="muted">${t('teach_rejected')}</span>` : ''}<button class="chip" data-act="teach">${t('teach_btn')}</button>`;
 }
 
 // ---- Settings: profile, preferences, security, and leaving ------------------------------------------------------------------------
@@ -1492,6 +1504,11 @@ app.addEventListener('click', async (ev) => {
       S.feed.items = [...S.feed.items, ...more.items]; S.feed.next = more.next;
     } catch (e) { toast(errText(e)); }
     return draw();
+  }
+  if (act === 'teach') {
+    if (!confirm(t('teach_ask'))) return;
+    try { const r = await api('/circle/teach', 'POST', {}); S.me = r.me; toast(t('teach_pending')); draw(); } catch (e) { toast(errText(e)); }
+    return;
   }
   if (act === 'circle') {
     try { const r = await api('/circle/claim', 'POST'); S.me = r.me; celebrate(r); draw(); } catch (e) { toast(errText(e)); }

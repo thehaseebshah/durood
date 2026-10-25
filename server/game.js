@@ -13,7 +13,8 @@ export const CFG = {
   // rewards are deliberately small so they can never outweigh reciting.
   specialXp: 150,            // the bonus quest on a special day (every Friday, and days the admin marks)
   cityMinActive: 5,          // a city appears on the city boards only with this many members who recited this week
-  circleXp: 300,             // one-time, for registering with a Seerat Circle
+  circleXp: 300,             // one-time, for registering with a Seerat Circle (self-declared)
+  circleTeachXp: 1_000,      // one-time, for teaching a Seerat Circle, once an organiser confirms it
   sunnahTickXp: 20,          // "I did today's sunnah"
   sunnahXp: 40,              // added when the photo is verified, so a verified day is worth 3x the tick (60)
   replyXp: 2,                // for a short reply, never on your own post...
@@ -75,6 +76,7 @@ const BADGES = {
   scholar1: (s) => s.lectures >= 1,
   scholar10: (s) => s.lectures >= 10,
   circle: (s) => s.circle,
+  circle_teacher: (s) => s.teacher,
   sunnah1: (s) => s.sunnahs >= 1,
   sunnah7: (s) => s.sunnahs >= 7,
   sunnah30: (s) => s.sunnahs >= 30,
@@ -119,7 +121,7 @@ function stats(userId) {
   // caravanTotal = everyone in the member's named caravan; downline = the whole referral tree (Qabila). Durood on hold is left out of both.
   const caravanTotal = one(`SELECT COALESCE(SUM(u.total), 0) n FROM caravan_members me JOIN caravan_members cm ON cm.caravan_id = me.caravan_id JOIN users u ON u.id = cm.user_id
                            WHERE me.user_id = ? AND u.held = 0 AND u.deleted_at IS NULL AND u.suspended = 0`, userId).n;
-  return { ...u, treeActive: u.tree_active, caravanTotal, downline: u.team_total - u.total, referrals: count('referral'), lectures: count('lecture'), sunnahs: count('sunnah'), circle: count('circle') > 0 };
+  return { ...u, treeActive: u.tree_active, caravanTotal, downline: u.team_total - u.total, referrals: count('referral'), lectures: count('lecture'), sunnahs: count('sunnah'), circle: count('circle') > 0, teacher: count('circle_teach') > 0 };
 }
 
 const bumpDay = (day, delta) => run('INSERT INTO day_totals (day, total) VALUES (?, ?) ON CONFLICT(day) DO UPDATE SET total = total + excluded.total', day, delta);
@@ -596,6 +598,28 @@ export function claimCircle(userId) {
   return { xpGained: ok ? CFG.circleXp : 0, already: !ok, newBadges: fresh.map((b) => b.code) };
 }
 
+/** "I teach a Seerat Circle": waits for an organiser, who knows the teachers. A refused request can be made again. */
+export function requestTeach(userId, note = '') {
+  const cur = one('SELECT status FROM circle_teachers WHERE user_id = ?', userId);
+  if (cur?.status === 'approved') throw new HttpError(409, 'already_teacher');
+  run(`INSERT INTO circle_teachers (user_id, status, note, created_at) VALUES (?, 'pending', ?, ?)
+       ON CONFLICT(user_id) DO UPDATE SET status = 'pending', note = excluded.note, created_at = excluded.created_at, decided_at = NULL`, userId, String(note ?? '').trim().slice(0, 200), Date.now());
+  return { teach: 'pending' };
+}
+export const teachStatus = (userId) => one('SELECT status FROM circle_teachers WHERE user_id = ?', userId)?.status ?? null;
+export const listTeachRequests = () => all(`SELECT u.username, u.city, c.status, c.note, c.created_at at, c.decided_at FROM circle_teachers c JOIN users u ON u.id = c.user_id
+  WHERE u.deleted_at IS NULL ORDER BY c.status = 'pending' DESC, c.created_at DESC LIMIT 200`);
+export function decideTeach(username, approve) {
+  const u = one('SELECT u.id FROM users u JOIN circle_teachers c ON c.user_id = u.id WHERE u.username = ? AND u.deleted_at IS NULL', String(username));
+  if (!u) throw new HttpError(404, 'not_found');
+  const fresh = [];
+  tx(() => {
+    run('UPDATE circle_teachers SET status = ?, decided_at = ? WHERE user_id = ?', approve ? 'approved' : 'rejected', Date.now(), u.id);
+    if (approve && grant(u.id, 'circle_teach', 'teach', CFG.circleTeachXp)) evalBadges(u.id, fresh);
+  });
+  return { ok: true };
+}
+
 // ---- the 40-day challenge ---------------------------------------------------------------------------------
 // 10 crore (100,000,000) durood in 40 days. The clock starts when the first member joins; an admin can correct the date.
 // The meter counts everything reported since the start day and keeps counting after day 40. Challenge boards cover the
@@ -739,7 +763,7 @@ export function getMe(userId) {
     team: { members: team.members, direct, total: u.team_total },
     sunnah: { posted: one("SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = 'sunnah'", userId).n },
     pub: publicStats(),
-    circleUrl: circleUrl(), reminderTime: u.reminder_time, special: specialToday(), league: u.league,
+    circleUrl: circleUrl(), circleTeach: teachStatus(u.id), reminderTime: u.reminder_time, special: specialToday(), league: u.league,
     unreadNews: one('SELECT COUNT(*) n FROM announcements WHERE created_at > ?', u.news_seen_at).n,
     ...(hooks.profileExtra?.(userId) || { caravan: null, caravanInvites: 0, caravanRequests: 0 }), // caravan summary (caravan.js)
   };

@@ -333,3 +333,6 @@ The shared `ADMIN_KEY` still works and acts as an owner. Keep it for emergencies
 - **Feed** is only what everyone shared; posting happens on Today.
 - **Caravan** is the named group. **Qabila** holds the invite code and link, the people you invited, the tree's totals and milestone, and the people above you. **Progress & badges** holds level, points, history (edit today and yesterday) and badges. **Al-Burhan** holds murabbi, masul, assigned work and, for murabbis and masuls, the people they look after. **Settings** holds the profile, preferences, security and account deletion.
 - A razakar sees the tasks and routines given to them on Today (those due today) and on the Al-Burhan page (all of them).
+
+## 28. Seerat Circle teachers
+Joining a Seerat Circle is self-declared and pays 300 once (badge "Circle Member"). Teaching one pays more: a member taps "I teach a Seerat Circle", an organiser confirms it on the admin page (Feed tab, Circle teachers), and the teacher gets 1,000 points once and the "Circle Teacher" badge. A refused request can be made again; confirming twice pays once. The QA server's circle link is https://albn.org/seerat.

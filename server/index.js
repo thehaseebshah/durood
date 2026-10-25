@@ -19,7 +19,7 @@ import * as news from './news.js';
 import * as feedApi from './feed.js';
 import * as geo from './geo.js';
 import * as compete from './compete.js';
-import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, quizPassed, publicQuiz, parseQuestions, claimCircle, getMe, weekStart, setSpecialDay, deleteSpecialDay, listSpecialDays, circleUrl, setCircleUrl, leaderboard, qabilaBoard, teamView, publicStats } from './game.js';
+import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, quizPassed, publicQuiz, parseQuestions, claimCircle, getMe, weekStart, setSpecialDay, deleteSpecialDay, listSpecialDays, circleUrl, setCircleUrl, requestTeach, listTeachRequests, decideTeach, leaderboard, qabilaBoard, teamView, publicStats } from './game.js';
 
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -477,6 +477,7 @@ route('POST', '/api/lectures/:id/complete', ({ user, params }) => {
   return { ...r, me: getMe(user) };
 });
 route('POST', '/api/circle/claim', ({ user }) => ({ ...claimCircle(user), me: getMe(user) }));
+route('POST', '/api/circle/teach', ({ user, body }) => { rateLimit(`teach:${user}`, 5, 86400e3); requestTeach(user, body.note); return { me: getMe(user) }; });
 
 route('GET', '/api/sunnah/today', ({ user }) => sunnah.today(user));
 route('GET', '/api/sunnah/mine', ({ user }) => ({ posts: sunnah.mine(user) }));
@@ -593,6 +594,8 @@ route('GET', '/api/admin/news', adm, () => ({ items: db.prepare('SELECT * FROM a
 route('POST', '/api/admin/news', adm, ({ body }) => news.postNews(body));
 route('DELETE', '/api/admin/news/:id', adm, ({ params }) => news.deleteNews(Number(params.id)));
 route('GET', '/api/admin/export', adm, ({ query }) => ({ csv: news.exportCsv(query.get('kind')) }));
+route('GET', '/api/admin/circle-teachers', adm, () => ({ teachers: listTeachRequests() }));
+route('POST', '/api/admin/circle-teachers/:username', adm, ({ params, body, admin }) => { const r = decideTeach(params.username, body.action === 'approve'); profile.logAdmin(`teacher-${body.action === 'approve' ? 'approve' : 'reject'}`, params.username, '', admin.actor); return r; });
 route('GET', '/api/admin/circle', adm, () => ({ circleUrl: circleUrl(), fromEnv: !getSetting('circle_url', '') && !!CFG.circleUrl }));
 route('POST', '/api/admin/circle', adm, ({ body }) => setCircleUrl(body.url));
 route('GET', '/api/admin/special-days', adm, () => ({ days: listSpecialDays() }));
