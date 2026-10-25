@@ -1,4 +1,4 @@
-import { mkdirSync, readdirSync, unlinkSync, renameSync, statSync, statfsSync, existsSync } from 'node:fs';
+import { mkdirSync, chmodSync, readdirSync, unlinkSync, renameSync, statSync, statfsSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { db, getSetting, setSetting } from './db.js';
 
@@ -9,7 +9,7 @@ import { db, getSetting, setSetting } from './db.js';
  */
 export function backupNow(dir = process.env.BACKUP_DIR, keep = Number(process.env.BACKUP_KEEP) || 3) {
   if (!dir) throw new Error('BACKUP_DIR is not set');
-  mkdirSync(dir, { recursive: true });
+  mkdirSync(dir, { recursive: true, mode: 0o700 });
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('.', '').replace('T', '-').replace('Z', ''); // to the millisecond, so two backups never collide
   const file = path.join(dir, `seerah-quest-${stamp}.db`), tmp = `${file}.partial`;
   // never start a copy that cannot fit: a full volume stops the app, not only the backup
@@ -20,6 +20,7 @@ export function backupNow(dir = process.env.BACKUP_DIR, keep = Number(process.en
   }
   try {
     db.exec(`VACUUM INTO '${tmp.replace(/'/g, "''")}'`);
+    chmodSync(tmp, 0o600); // a copy of everything, readable by the app alone
     renameSync(tmp, file); // a half-written copy never carries the real name, so it can never be mistaken for a good backup
   } catch (e) {
     for (const f of [tmp, `${tmp}-journal`]) { try { unlinkSync(f); } catch { /* none */ } }

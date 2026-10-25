@@ -72,6 +72,30 @@ test('image cleaning strips metadata and rejects non-JPEGs', () => {
   assert.throws(() => cleanJpeg(raw.subarray(0, raw.length - 2)), /bad_image/);
 });
 
+test('nothing can ride inside or behind the image data: hidden segments, a second frame, too many scans, a short frame header', () => {
+  const seg = (m, body) => Buffer.concat([Buffer.from([0xff, m]), Buffer.from([(body.length + 2) >> 8, (body.length + 2) & 255]), body]);
+  const raw = fakeJpeg({ exif: false });
+  const body = raw.subarray(0, raw.length - 2); // without its end-of-image marker
+  // metadata and a script tucked between the scan and a final end marker are refused, not kept
+  const smuggled = Buffer.concat([raw, seg(0xe1, Buffer.from('Exif\0\0GPSLatitude=51.5')), Buffer.from('<script>alert(1)</script>'), Buffer.from([0xff, 0xd9])]);
+  const out = cleanJpeg(smuggled).data; // bytes after the first end-of-image are cut
+  assert.ok(!out.includes('GPSLatitude') && !out.includes('<script>'));
+  assert.throws(() => cleanJpeg(Buffer.concat([body, seg(0xe1, Buffer.from('Exif\0\0GPS')), Buffer.from([0xff, 0xd9])])), /bad_image/);
+  assert.throws(() => cleanJpeg(Buffer.concat([body, seg(0xfe, Buffer.from('hello')), Buffer.from([0xff, 0xd9])])), /bad_image/);
+  // a second frame header
+  const sof = seg(0xc0, Buffer.from([8, 1, 144, 1, 144, 1, 1, 0x11, 0]));
+  assert.throws(() => cleanJpeg(Buffer.concat([raw.subarray(0, 2), sof, raw.subarray(2)])), /bad_image/);
+  // a frame header too short to hold its size: refused, not a crash
+  assert.throws(() => cleanJpeg(Buffer.concat([Buffer.from([0xff, 0xd8]), seg(0xe1, Buffer.alloc(600)), Buffer.from([0xff, 0xc0, 0, 2])])), /bad_image/);
+  // at most 16 scans
+  const scan = seg(0xda, Buffer.from([1, 1, 0, 0, 63, 0]));
+  const many = Buffer.concat([body, ...Array.from({ length: 17 }, () => Buffer.concat([scan, Buffer.from([1, 2, 3])])), Buffer.from([0xff, 0xd9])]);
+  assert.throws(() => cleanJpeg(many), /bad_image/);
+  // restart markers and stuffed bytes inside the data are image data
+  const withRst = Buffer.concat([body, Buffer.from([0xff, 0x00, 7, 0xff, 0xd0, 9, 0xff, 0xd9])]);
+  assert.ok(cleanJpeg(withRst).data.includes(Buffer.from([0xff, 0xd0, 9])));
+});
+
 test('posting needs a scheduled sunnah; admin schedules one', async () => {
   const a = await signup('poster_a');
   assert.equal((await post(a)).error, 'no_sunnah');

@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync, unlinkSync, mkdtempSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { db, tx, getSetting, setSetting } from './db.js';
-import { HttpError, photoSig } from './auth.js';
+import { HttpError, photoSig, sameSecret } from './auth.js';
 import { CFG, dayOf, grant, evalBadges, settleQuests, tickSunnah } from './game.js';
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -26,23 +26,56 @@ export function cleanJpeg(buf, { maxBytes = MAX_IMAGE, minDim = 200, maxDim = 12
   const bad = () => new HttpError(400, 'bad_image');
   if (buf.length < 600 || buf.length > maxBytes || buf[0] !== 0xff || buf[1] !== 0xd8) throw bad();
   const KEEP = new Set([0xc0, 0xc1, 0xc2, 0xc4, 0xdb, 0xdd]); // SOF0-2, DHT, DQT, DRI
+  const BETWEEN = new Set([0xc4, 0xdb, 0xdd]);                // tables a progressive image may carry between its scans
   const out = [Buffer.from([0xff, 0xd8])];
-  let i = 2, width = 0, height = 0, scanAt = -1;
-  while (i + 4 <= buf.length) {
-    if (buf[i] !== 0xff) throw bad();
-    const m = buf[i + 1];
-    if (m === 0xff) { i += 1; continue; }
+  let i = 2, width = 0, height = 0, frames = 0;
+  const segment = () => {                                    // the marker segment at i, length-checked
+    if (i + 4 > buf.length || buf[i] !== 0xff) throw bad();
     const len = buf.readUInt16BE(i + 2);
     if (len < 2 || i + 2 + len > buf.length) throw bad();
-    if (m === 0xc0 || m === 0xc1 || m === 0xc2) { height = buf.readUInt16BE(i + 5); width = buf.readUInt16BE(i + 7); }
-    if (m === 0xda) { scanAt = i; break; }          // start of scan: everything after is image data up to the final EOI
+    return len;
+  };
+  // header: keep only the tables and the one frame header, up to the first scan
+  for (;;) {
+    if (i + 2 > buf.length || buf[i] !== 0xff) throw bad();
+    if (buf[i + 1] === 0xff) { i += 1; continue; }          // fill byte
+    if (buf[i + 1] === 0xda) break;
+    const m = buf[i + 1], len = segment();
+    if (m === 0xc0 || m === 0xc1 || m === 0xc2) {
+      if (++frames > 1 || len < 8) throw bad();
+      height = buf.readUInt16BE(i + 5); width = buf.readUInt16BE(i + 7);
+    }
     if (KEEP.has(m)) out.push(buf.subarray(i, i + 2 + len));
     i += 2 + len;
   }
-  if (scanAt < 0) throw bad();
-  const end = buf.lastIndexOf(Buffer.from([0xff, 0xd9]));
-  if (end <= scanAt) throw bad();
-  out.push(buf.subarray(scanAt, end + 2));          // the scan(s), cut at the last EOI so nothing can ride behind the image
+  if (frames !== 1) throw bad();
+  // scans: the entropy-coded data is walked byte by byte, so only image data, restart markers and tables between scans pass,
+  // and the image ends at the first end-of-image marker. Nothing else (metadata, comments, other files) can ride inside or behind it.
+  let scans = 0;
+  for (;;) {
+    if (i + 2 > buf.length || buf[i] !== 0xff) throw bad();
+    const m = buf[i + 1];
+    if (m === 0xff) { i += 1; continue; }
+    if (m === 0xd9) { out.push(Buffer.from([0xff, 0xd9])); break; }
+    const len = segment();
+    if (m === 0xda) {
+      if (++scans > 16) throw bad();
+      const start = i;
+      let j = i + 2 + len;
+      while (j < buf.length) {
+        if (buf[j] !== 0xff) { j += 1; continue; }
+        const n = buf[j + 1];
+        if (n === 0x00 || (n >= 0xd0 && n <= 0xd7)) { j += 2; continue; } // stuffed byte or restart marker
+        if (n === 0xff) { j += 1; continue; }                                // fill
+        break;
+      }
+      out.push(buf.subarray(start, j));
+      i = j;
+    } else if (BETWEEN.has(m)) {
+      out.push(buf.subarray(i, i + 2 + len));
+      i += 2 + len;
+    } else throw bad();
+  }
   const data = Buffer.concat(out);
   if (!width || !height || width < minDim || height < minDim || width > maxDim || height > maxDim) throw bad();
   return { data, width, height };
@@ -51,7 +84,7 @@ export function cleanJpeg(buf, { maxBytes = MAX_IMAGE, minDim = 200, maxDim = 12
 const photoUrl = (id) => `/photos/${id}/${photoSig(id)}`;
 
 export function photoFile(id, sig) {
-  if (sig !== photoSig(id)) return null;
+  if (!sameSecret(String(sig), photoSig(id))) return null;
   const p = one("SELECT p.file FROM posts p JOIN users u ON u.id = p.user_id WHERE p.id = ? AND p.status != 'removed' AND p.purged_at IS NULL AND u.suspended = 0 AND u.deleted_at IS NULL", id);
   return p ? path.join(UPLOAD_DIR, p.file) : null;
 }

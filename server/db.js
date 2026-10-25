@@ -1,12 +1,15 @@
 import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, chmodSync, existsSync } from 'node:fs';
 import path from 'node:path';
 
+// the database holds password hashes, contact details and the push signing key: files this process creates are readable by it alone
+process.umask(0o077);
 const file = process.env.DB_PATH || 'data/durood.db';
 if (file !== ':memory:') mkdirSync(path.dirname(file), { recursive: true });
 
 export const db = new DatabaseSync(file);
 db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
+if (file !== ':memory:') for (const f of [file, `${file}-wal`, `${file}-shm`]) { try { if (existsSync(f)) chmodSync(f, 0o600); } catch { /* not ours to change */ } } // files made before the umask
 
 const cols = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name);
 const hasTable = (t) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(t);

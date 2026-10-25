@@ -2,7 +2,7 @@
 import { mkdirSync, writeFileSync, renameSync, unlinkSync, readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { db, tx } from './db.js';
-import { HttpError, avatarUrl, avatarSig, hashPassword, checkPassword } from './auth.js';
+import { HttpError, avatarUrl, avatarSig, hashPassword, checkPassword, sameSecret } from './auth.js';
 import { deleteHooks } from './game.js';
 import { cleanJpeg, UPLOAD_DIR } from './sunnah.js';
 import { LINK } from './feed.js';
@@ -58,7 +58,7 @@ export function removeAvatar(userId) {
 }
 /** The file for a signed picture address, or null. Only the member's current picture is served. */
 export function avatarFile(id, v, sig) {
-  if (!Number.isInteger(id) || !Number.isInteger(v) || sig !== avatarSig(id, v)) return null;
+  if (!Number.isInteger(id) || !Number.isInteger(v) || !sameSecret(String(sig), avatarSig(id, v))) return null;
   const u = one('SELECT avatar_v, deleted_at, suspended FROM users WHERE id = ?', id);
   if (!u || u.avatar_v !== v || u.deleted_at || u.suspended) return null;
   const f = avatarPath(id, v);

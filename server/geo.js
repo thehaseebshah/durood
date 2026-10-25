@@ -69,7 +69,7 @@ export function ipCountry(ip) {
 
 /** IP first, then the browser's time zone, then Pakistan. The member can always change it. */
 export function detectCountry({ ip, tz } = {}) {
-  return ipCountry(ip) || (tz && TZ[tz]) || 'PK';
+  return ipCountry(ip) || (tz && Object.hasOwn(TZ, tz) && TZ[tz]) || 'PK'; // own keys only: ?tz=__proto__ must not reach Object.prototype
 }
 
 // ---- cities ------------------------------------------------------------------------------------------------------------------
