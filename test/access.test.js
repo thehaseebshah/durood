@@ -188,6 +188,27 @@ test('streak points: the daily streak quest pays more the longer the streak, onc
   assert.deepEqual(audit().problems, []);
 });
 
+test('undo: an entry edited to 0 is removed; totals, quests and history follow, and the ledger stays exact', async () => {
+  const m = await signup('undo_m');
+  const r = await api('POST', '/api/log', { token: m.token, body: { count: 3130 } });
+  assert.ok(r.entryId);
+  assert.equal(r.me.today, 3130);
+  assert.ok(r.me.quests.find((q) => q.id === 'goal').done);
+  const u = await api('PATCH', `/api/entries/${r.entryId}`, { token: m.token, body: { count: 0, rid: 'undo-test-rid-1' } });
+  assert.equal(u.me.today, 0); assert.equal(u.me.total, 0);
+  assert.equal(u.me.quests.find((q) => q.id === 'goal').done, false); // the goal quest it paid is taken back
+  assert.equal(u.history.days.flatMap((d) => d.entries).length, 0); // the entry is gone from the history
+  assert.equal((await api('PATCH', `/api/entries/${r.entryId}`, { token: m.token, body: { count: 0, rid: 'undo-test-rid-2' } })).error, 'entry_superseded'); // only once
+  assert.equal((await api('PATCH', `/api/entries/${r.entryId}`, { token: m.token, body: { count: -5, rid: 'undo-test-rid-3' } })).error, 'bad_count');
+  // an invited member's only entry taken back: the inviter's Qabila no longer counts them as active, and nothing is left over
+  const kid = await signup('undo_kid', 'undo_m');
+  const k = await api('POST', '/api/log', { token: kid.token, body: { count: 40 } });
+  assert.equal((await api('GET', '/api/me', { token: m.token })).team.total, 40);
+  await api('PATCH', `/api/entries/${k.entryId}`, { token: kid.token, body: { count: 0, rid: 'undo-test-kid-1' } });
+  assert.equal((await api('GET', '/api/me', { token: m.token })).team.total, 0);
+  assert.deepEqual(audit().problems, []);
+});
+
 test('suspending a member, or a whole branch, locks them out but keeps their durood in the totals', async () => {
   const root = await signup('branch_root');
   const kid = await signup('branch_kid', 'branch_root');
@@ -240,7 +261,7 @@ test('editing an entry: reversing entry plus replacement, caches follow, history
   assert.equal((await api('PATCH', `/api/entries/${now[0].id}`, { token: u.token, body: { count: 313 } })).error, 'entry_superseded');
   const cur = e2.history.days[0].entries[0].id;
   assert.equal((await api('PATCH', `/api/entries/${cur}`, { token: u.token, body: { count: 313 } })).error, 'no_change');
-  assert.equal((await api('PATCH', `/api/entries/${cur}`, { token: u.token, body: { count: 0 } })).error, 'bad_count');
+  assert.equal((await api('PATCH', `/api/entries/${cur}`, { token: u.token, body: { count: -1 } })).error, 'bad_count'); // (0 removes an entry: see the undo test)
   assert.equal((await api('PATCH', `/api/entries/${cur}`, { token: u.token, body: { count: 1.5 } })).error, 'bad_count');
   assert.equal((await api('PATCH', `/api/entries/${cur}`, { token: u.token, body: { count: 100001 } })).error, 'bad_count');
   const stranger = await signup('ed_stranger');

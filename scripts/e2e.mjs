@@ -84,6 +84,10 @@ try {
     await page.click('[data-act=submitp]'); await page.waitForTimeout(1500);
     await page.locator('[data-act=celebrateX]').click().catch(() => {});
     ok((await api('GET', '/api/me', null, host.token)).today === 165, 'tapped durood is added once');
+    // a slip of the finger: add, then Undo on the toast
+    await page.fill('#manual', '7'); await page.click('[data-act=manual]'); await page.waitForTimeout(700);
+    await page.locator('#toast .tact').click(); await page.waitForTimeout(900);
+    ok((await api('GET', '/api/me', null, host.token)).today === 165, 'Undo on the toast takes the number back');
     ok(await page.locator('.u-durood').count() > 0 && await page.locator('.u-pts').count() > 0, 'numbers carry durood / pts units');
     ok(!(await overflowX(page)), 'Today has no sideways scroll on a phone');
     // today's sunnah: tick it, then post a photo (made in the page: a canvas drawn and handed to the file input)

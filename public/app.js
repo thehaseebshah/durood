@@ -164,7 +164,9 @@ function celebrate(res) {
   if (res.xpGained) bits.push(t('points_gained')(fmt(res.xpGained)));
   if (res.levelUp) bits.push(t('level_up')(res.levelUp));
   for (const b of res.newBadges || []) bits.push(`${t('new_badge')} ${t('badge')[b][0]}`);
-  if (bits.length) toast(bits.join(' · '), (res.newBadges || [])[0]);
+  // a just-added number can be taken back straight away (a slip of the finger: 3130 for 313)
+  const undo = res.entryId && res.added ? { label: t('undo'), run: () => undoLog(res.entryId) } : undefined;
+  if (bits.length) toast(bits.join(' · '), (res.newBadges || [])[0], undo);
   if (res.levelUp || res.newBadges?.length) navigator.vibrate?.([60, 40, 60]);
   // a card to share for a real milestone (not the very first small ones) or a new level
   const big = (res.newBadges || []).find((c) => SHAREABLE.has(c));
@@ -174,6 +176,12 @@ function celebrate(res) {
     // the card waits for the counter to roll and the points to float up, so the two moments don't land on top of each other
     if (S.celebrate) { S.celebrateHold = Date.now() + 1400; setTimeout(draw, 1450); }
   }
+}
+async function undoLog(entryId) {
+  try {
+    const r = await api(`/entries/${entryId}`, 'PATCH', { count: 0, rid: `u-${crypto.randomUUID()}` });
+    S.rollFrom = S.me.today; S.me = r.me; S.history = r.history; haptic('light'); toast(t('log_undone')); draw();
+  } catch (e) { toast(errText(e)); }
 }
 const SHAREABLE = new Set(['d1k', 'd10k', 'd100k', 'd1m', 'streak7', 'streak30', 'streak100', 'recruit5', 'recruit25', 'karwan7', 'karwan30', 'qabila10', 'qabila50', 'qabila250', 'league_silver', 'league_gold', 'league_diamond', 'city_podium', 'city_champion', 'group10k', 'group100k', 'group1m', 'caravan10k', 'caravan100k', 'caravan1m', 'caravan10m']);
 

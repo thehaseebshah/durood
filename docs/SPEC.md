@@ -391,3 +391,7 @@ The member app, sign-in and admin share one stylesheet; its last section restyle
 - **Empty states**: an empty list shows a soft round icon and one kind line.
 - **Large titles**: each page opens with a large title; the small one fades into the frosted header after 40px of scrolling.
 - **Checks**: `npm test` (API), `npm run fuzz` (malformed input on every route, no 5xx), `npm run e2e` (the whole app in a browser, English, Urdu, dark, desktop). CI runs all three.
+
+## 38. Undo a just-added number
+
+`POST /api/log` returns the new `entryId`; the "saved" toast offers Undo, which edits that entry to 0. An entry edited to 0 is removed: only its reversing row is written, it leaves the history, the quests and badges it paid are taken back as with any edit down, and if the member's total returns to 0 they stop counting as active in the trees above them. Negative numbers are refused.

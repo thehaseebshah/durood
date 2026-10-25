@@ -363,6 +363,7 @@ export function logDurood(userId, count, rid) {
   const after = one('SELECT xp FROM users WHERE id = ?', userId).xp;
   return {
     duplicate,
+    entryId: one('SELECT id FROM entries WHERE user_id = ? AND rid = ?', userId, rid)?.id ?? null, // lets the app offer Undo
     added: duplicate ? 0 : count,
     xpGained: after - before,
     levelUp: levelFor(after).level > levelFor(before).level ? levelFor(after).level : null,
@@ -461,7 +462,8 @@ export function setHidden(username, hidden) {
  * Quest rewards whose condition no longer holds are taken back (revokeQuests); so are the inviter's referral reward and invite quest when the total falls back under referralMin (revokeReferral), and durood badges no longer met, for the member and the groups above them (revokeDuroodBadges). A day can't be edited down to nothing.
  */
 export function editEntry(userId, entryId, newCount, ridIn) {
-  if (!Number.isInteger(newCount) || newCount < 1 || newCount > CFG.maxSingle) throw new HttpError(400, 'bad_count');
+  // 0 removes the entry (a mistyped number undone): only the reversing row is written
+  if (!Number.isInteger(newCount) || newCount < 0 || newCount > CFG.maxSingle) throw new HttpError(400, 'bad_count');
   const base = ridIn ?? `edit-${entryId}-${Date.now()}`;
   if (!/^[\w-]{6,50}$/.test(base)) throw new HttpError(400, 'bad_request_id');
   let duplicate = false;
@@ -482,9 +484,11 @@ export function editEntry(userId, entryId, newCount, ridIn) {
 
     const now = Date.now();
     run("INSERT INTO entries (user_id, day, count, rid, created_at, kind, ref_id) VALUES (?,?,?,?,?, 'reverse', ?)", userId, e.day, -e.count, `${base}:r`, now, e.id);
-    run("INSERT INTO entries (user_id, day, count, rid, created_at, kind, ref_id) VALUES (?,?,?,?,?, 'replace', ?)", userId, e.day, newCount, `${base}:n`, now, e.id);
+    if (newCount > 0) run("INSERT INTO entries (user_id, day, count, rid, created_at, kind, ref_id) VALUES (?,?,?,?,?, 'replace', ?)", userId, e.day, newCount, `${base}:n`, now, e.id);
     run('UPDATE daily SET count = count + ? WHERE user_id = ? AND day = ?', delta, userId, e.day);
     run('UPDATE users SET total = total + ?, xp = xp + ? WHERE id = ?', delta, delta, userId);
+    // a removal can bring the member back to nothing recited: they no longer count as active in the trees above them
+    if (one('SELECT total FROM users WHERE id = ?', userId).total === 0) run('UPDATE users SET tree_active = tree_active - 1 WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth > 0)', userId);
     if (!eu.held) {
       run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth <= ?)', delta, userId, CFG.teamMaxDepth);
       bumpDay(e.day, delta);
