@@ -176,3 +176,22 @@ test('caravan badges follow the named group; Qabila badges follow the invite tre
   assert.ok(msgs.includes('group10k') && msgs.includes('caravan10k'));
   assert.deepEqual(audit().problems, []);
 });
+
+test('caravan mates say MashaAllah on a milestone: once each, never on their own, and only on what their caravan can see', async () => {
+  const { cheer } = await import('../server/feed.js');
+  const uid = (u) => db.prepare('SELECT id FROM users WHERE username = ?').get(u).id;
+  const a = await signup('ch_owner'), b = await signup('ch_mate'), c = await signup('ch_stranger');
+  await api('POST', '/api/caravan', { token: a.token, body: { name: 'cheer_cv' } });
+  await api('POST', '/api/caravan/invite', { token: a.token, body: { username: 'ch_mate' } });
+  const inv = (await api('GET', '/api/caravan', { token: b.token })).invitations[0];
+  await api('POST', `/api/caravan/invitations/${inv.id}`, { token: b.token, body: { accept: true } });
+  await api('POST', '/api/log', { token: a.token, body: { count: 1000, rid: 'cheer-log-1000' } });
+  const ev = db.prepare("SELECT id FROM feed_events WHERE user_id = ? AND kind = 'badge' ORDER BY id DESC LIMIT 1").get(uid('ch_owner'));
+  assert.ok(ev);
+  assert.equal(cheer(uid('ch_mate'), ev.id).cheers, 1);
+  assert.equal(cheer(uid('ch_mate'), ev.id).cheers, 1); // once each
+  assert.throws(() => cheer(uid('ch_owner'), ev.id), /own_post/);
+  assert.throws(() => cheer(uid('ch_stranger'), ev.id), /not_found/);
+  const item = (await api('GET', '/api/feed', { token: b.token })).items.find((x) => x.type === 'milestone' && x.id === ev.id);
+  assert.equal(item.cheers, 1); assert.equal(item.cheered, true);
+});

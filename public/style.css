@@ -783,3 +783,8 @@ input[aria-invalid=true], select[aria-invalid=true] { border-color: var(--err) !
 .lb .rank.mid { font-size: 1.15rem; } .lb .rank.long { font-size: .9rem; letter-spacing: -.5px; }
 .earned.static { cursor: default; justify-content: center; border: 0; }
 .chip.more { margin: 10px 20px; }
+/* MashaAllah on a caravan mate's milestone */
+.chip.cheer { margin-top: 8px; border-radius: 99px; font-weight: 700; }
+.chip.cheer.on { background: var(--sig-bg); color: var(--sig-text); border-color: var(--sig); opacity: 1; }
+.chip.cheer.pop { animation: pop .45s cubic-bezier(.3, 1.6, .5, 1); }
+.cheerline { margin-top: 6px; font-size: .8rem; font-weight: 700; color: var(--sig-text); }

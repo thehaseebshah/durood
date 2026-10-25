@@ -175,6 +175,18 @@ try {
     await kp.close();
   }
 
+  // ---- a caravan mate's milestone: MashaAllah ---------------------------------------------------------------------------
+  {
+    await api('POST', '/api/log', { count: 1000, rid: crypto.randomUUID() }, kid.token);
+    const page = await open(host.token);
+    await go(page, 'feed');
+    const btn = page.locator('[data-act=cheer]').first();
+    ok(await btn.count() === 1, 'a caravan mate\'s milestone offers MashaAllah');
+    await btn.click(); await page.waitForTimeout(800);
+    ok(await page.locator('[data-act=cheer].on').count() >= 1, 'MashaAllah is recorded and shown');
+    await page.close();
+  }
+
   // ---- no signal: durood is kept on the phone and sent once back online; the app opens offline on the last numbers --------------
   {
     const off = await register('e2e_offline');

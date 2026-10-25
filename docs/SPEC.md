@@ -376,3 +376,7 @@ Joining a Seerat Circle is self-declared and pays 300 once (badge "Circle Member
 ## 34. Offline durood
 
 Durood added with no connection is kept on the phone (`outbox` in local storage, each entry with its request id) and shown on the counter at once. It is sent when the connection returns (the `online` event, every 20 seconds, at start, and after any successful log); the request id makes a resend count once. If the server refuses an entry (e.g. the daily limit) the member is told and it is dropped. The member's last data is cached so the app opens offline on their last numbers, with a quiet bar saying so; it is cleared on sign-out.
+
+## 35. MashaAllah on milestones
+
+A member can say "MashaAllah" once on a caravan mate's milestone in the feed (`POST /api/cheer {id}`), never on their own and only on milestones their caravan can see. It earns no points, so there is nothing to farm; the owner sees "N said MashaAllah" on their own card.

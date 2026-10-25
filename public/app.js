@@ -717,7 +717,9 @@ function feedItem(it) {
   if (it.type === 'milestone') {
     const b = t('badge')[it.code] || [it.code, ''];
     return `<div class="fitem ms ${it.mine ? 'mine' : ''}"><div class="flabel">${uiIcon('star', 12, 2)} ${t('ms_label')}<small class="when">${ago(it.at)}</small></div>
-      <b>${t('ms_text')(esc(it.username), esc(b[0]))}</b><div class="muted">${esc(b[1])}</div></div>`;
+      <b>${t('ms_text')(esc(it.username), esc(b[0]))}</b><div class="muted">${esc(b[1])}</div>
+      ${it.mine ? (it.cheers ? `<div class="cheerline">${t('cheered_n')(it.cheers)}</div>` : '')
+        : `<button class="chip cheer ${it.cheered ? 'on' : ''}" data-act="cheer" data-id="${it.id}" ${it.cheered ? 'disabled' : ''} aria-pressed="${it.cheered}">${t('mashallah')}${it.cheers ? ` ${N(fmt(it.cheers))}` : ''}</button>`}</div>`;
   }
   if (it.type === 'city') {
     return `<div class="fitem ms"><div class="flabel">${uiIcon('star', 12, 2)} ${t('city_label')}<small class="when">${ago(it.at)}</small></div><b>${t('city_item')(it.rank, esc(it.label))}</b></div>`;
@@ -1698,6 +1700,16 @@ app.addEventListener('click', async (ev) => {
     return enterTab('rank');
   }
   if (act === 'wa') return window.open(`https://wa.me/?text=${encodeURIComponent(t('share_text')(S.me.username, `${location.origin}/?invite=${S.me.username}`))}`, '_blank', 'noopener');
+  if (act === 'cheer') {
+    el.disabled = true; el.classList.add('on', 'pop'); haptic('light');
+    try {
+      const r = await api('/cheer', 'POST', { id: Number(el.dataset.id) });
+      const item = S.feed?.items.find((x) => x.type === 'milestone' && x.id === Number(el.dataset.id));
+      if (item) Object.assign(item, r);
+      draw();
+    } catch (e) { el.disabled = false; el.classList.remove('on'); toast(errText(e)); }
+    return;
+  }
   if (act === 'startx') { ls.set('started', '1'); return draw(); }
   if (act === 'shareinv') {
     const url = `${location.origin}/?invite=${S.me.username}`;

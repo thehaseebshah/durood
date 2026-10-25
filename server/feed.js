@@ -76,6 +76,19 @@ export function like(userId, kind, itemId) {
   });
 }
 
+// ---- "MashaAllah" on a milestone: caravan mates congratulate each other. No points, so there is nothing to farm. ------------------
+db.exec(`CREATE TABLE IF NOT EXISTS cheers (event_id INTEGER NOT NULL REFERENCES feed_events(id), user_id INTEGER NOT NULL REFERENCES users(id),
+  created_at INTEGER NOT NULL, PRIMARY KEY (event_id, user_id)) WITHOUT ROWID`);
+/** Only a milestone the member can see in their feed (their caravan's), never their own, once each. */
+export function cheer(userId, eventId) {
+  const e = one(`SELECT e.id, e.user_id FROM feed_events e JOIN users u ON u.id = e.user_id WHERE e.id = ? AND e.kind = 'badge' AND u.deleted_at IS NULL AND u.suspended = 0
+      AND e.user_id IN (SELECT cm.user_id FROM caravan_members cm WHERE cm.caravan_id = (SELECT x.caravan_id FROM caravan_members x WHERE x.user_id = ?))`, Number(eventId), userId);
+  if (!e) throw new HttpError(404, 'not_found');
+  if (e.user_id === userId) throw new HttpError(403, 'own_post');
+  run('INSERT OR IGNORE INTO cheers (event_id, user_id, created_at) VALUES (?,?,?)', e.id, userId, Date.now());
+  return { cheers: one('SELECT COUNT(*) n FROM cheers WHERE event_id = ?', e.id).n, cheered: true };
+}
+
 /** Three reports from different members hide an item until an admin looks at it. Own items cannot be reported. */
 export function report(userId, kind, itemId) {
   const it = itemOf(kind);
@@ -233,7 +246,8 @@ export function feed(userId, before = Date.now() + 1) {
       WHERE e.kind = 'badge' AND e.created_at < ? AND u.deleted_at IS NULL AND u.suspended = 0
         AND (e.user_id = ? OR e.user_id IN (SELECT cm.user_id FROM caravan_members cm WHERE cm.caravan_id = (SELECT x.caravan_id FROM caravan_members x WHERE x.user_id = ?)))
       ORDER BY e.created_at DESC LIMIT ?`, cutoff, userId, userId, FEED_PAGE + 1)) {
-    items.push({ type: 'milestone', id: e.id, at: e.created_at, username: e.username, code: e.ref, mine: e.user_id === userId });
+    items.push({ type: 'milestone', id: e.id, at: e.created_at, username: e.username, code: e.ref, mine: e.user_id === userId,
+      cheers: one('SELECT COUNT(*) n FROM cheers WHERE event_id = ?', e.id).n, cheered: !!one('SELECT 1 FROM cheers WHERE event_id = ? AND user_id = ?', e.id, userId) });
   }
   for (const c of all("SELECT key, value FROM settings WHERE key GLOB 'ch_m_[0-9]*'")) {
     const at = Number(c.value), k = Number(c.key.slice(5));

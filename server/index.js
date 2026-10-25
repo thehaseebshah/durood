@@ -539,6 +539,7 @@ route('POST', '/api/like', ({ user, body }) => {
   const r = feedApi.like(user, body.kind, Number(body.id));
   return { ...r, me: getMe(user) };
 });
+route('POST', '/api/cheer', ({ user, body }) => { rateLimit(`cheer:${user}`, 120, 60e3); return feedApi.cheer(user, body.id); });
 route('POST', '/api/report', ({ user, body }) => {
   rateLimit(`report:${user}`, 30, 60e3);
   return feedApi.report(user, body.kind, Number(body.id));
