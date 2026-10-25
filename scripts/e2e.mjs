@@ -316,6 +316,20 @@ try {
     ok(found.size === 0, `no WCAG A/AA violations on any page, light or dark${found.size ? ': ' + [...found].slice(0, 6).map(([k, w]) => `${w} ${k}`).join('; ') : ''}`);
   }
 
+  // ---- Design consistency: no element draws the old hard 1.5px+ ink-coloured frame (every page, the sign-up form, the add sheet) ----
+  {
+    const frames = new Set();
+    const scan = (page, where) => page.evaluate(() => { const ink = getComputedStyle(document.body).color; const out = [];
+      document.querySelectorAll('body *').forEach((e) => { if (!e.offsetParent) return; const cs = getComputedStyle(e);
+        if (['Top', 'Right', 'Bottom', 'Left'].some((sd) => parseFloat(cs['border' + sd + 'Width']) >= 1.5 && cs['border' + sd + 'Style'] !== 'none' && cs['border' + sd + 'Color'] === ink)) out.push(`${e.tagName.toLowerCase()}.${String(e.className).trim().split(/\s+/).join('.')}`); });
+      return out; }).then((r) => r.forEach((x) => frames.add(`${where}: ${x}`)));
+    for (const tab of ['home', 'feed', 'rank', 'caravan', 'qabila', 'tasks', 'people', 'progress', 'settings']) { const page = await open(host.token); await go(page, tab); await scan(page, tab); await page.close(); }
+    const page = await open(host.token); await go(page, 'feed'); await page.click('.hadd'); await page.waitForTimeout(400); await scan(page, 'add sheet'); await page.close();
+    const anon = await browser.newPage({ viewport: { width: 390, height: 844 } }); await anon.goto(B + '/?invite=E2ECODE'); await anon.evaluate(() => localStorage.setItem('intro', '1')); await anon.goto(B + '/?invite=E2ECODE'); await anon.waitForTimeout(700);
+    await anon.getByRole('button', { name: /join/i }).first().click().catch(() => {}); await anon.waitForTimeout(400); await scan(anon, 'sign-up'); await anon.close();
+    ok(frames.size === 0, `no old-style hard frames anywhere${frames.size ? ': ' + [...frames].slice(0, 5).join('; ') : ''}`);
+  }
+
   // ---- Admin page: key sign-in, every tab opens, nothing runs off a phone screen -----------------------------------
   for (const [w, label] of [[1280, 'desktop'], [390, 'phone']]) {
     const page = await browser.newPage({ viewport: { width: w, height: 860 } });
