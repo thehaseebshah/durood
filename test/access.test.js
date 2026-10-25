@@ -12,7 +12,7 @@ process.env.PUBLIC_FOUNDERS_CODE = 'TESTFOUND';
 const { createServer } = await import('../server/index.js');
 const { db } = await import('../server/db.js');
 const { audit } = await import('../server/audit.js');
-const { dayOf } = await import('../server/game.js');
+const { dayOf, weekStart } = await import('../server/game.js');
 const { outbox } = await import('../server/mail.js');
 
 let server, base, n = 0;
@@ -272,6 +272,8 @@ test('editing an entry: reversing entry plus replacement, caches follow, history
 
 test('edit window: yesterday is editable, anything older is locked; the daily cap still applies', async () => {
   const u = await signup('win_user');
+  // on a Monday, yesterday is in last week, which an earlier test's durood has already closed (closed weeks are locked by design); reopen it so this checks the edit window alone
+  db.prepare('DELETE FROM settings WHERE key = ?').run(`week_closed:${weekStart(shift(dayOf(), -1))}`);
   const yEntry = seedDay('win_user', 1, 400);
   const oldEntry = seedDay('win_user', 3, 400);
   const day2 = seedDay('win_user', 2, 400);
