@@ -171,6 +171,15 @@ try {
     await kp.locator('[data-act=cvaccept]').first().click(); await kp.waitForTimeout(900);
     ok((await api('GET', '/api/caravan', null, host.token)).caravan?.members === 2, 'the invitee accepts and the caravan has two members');
     await kp.close();
+    // the owner gives it an Urdu display name; the page shows it, with the handle beneath
+    const op = await open(host.token);
+    await go(op, 'caravan');
+    await op.fill('#cv-display', 'قافلۂ نور'); await op.click('form[data-form=cvdisplay] button[type=submit]'); await op.waitForTimeout(900);
+    ok((await op.textContent('.cvname'))?.trim() === 'قافلۂ نور' && (await op.textContent('.cvname + .muted')).includes('@e2e_cv'), 'the owner gives the caravan an Urdu display name; its handle stays beneath');
+    // rapid taps between pages skip animations without page errors
+    for (let i = 0; i < 20; i++) await op.evaluate((tb) => document.querySelector(`nav.tabs [data-tab=${tb}]`).click(), ['feed', 'rank', 'home'][i % 3]);
+    await op.waitForTimeout(800);
+    await op.close();
   }
 
   // ---- masul and razakar: a task given from My people is done on the razakar's Tasks page --------------------------------

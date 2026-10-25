@@ -793,7 +793,7 @@ function rank() {
   const grp = ['caravans', 'trees', 'cities', 'majalis'].includes(b.type);
   const list = b.type === 'league' ? leagueView() : !rows ? skel() : rows.length ? `<ul class="lb">${rows.map((r) => `
     <li class="${r.me ? 'me' : ''}"><span class="rank">${r.rank}</span>${r.avatar !== undefined ? av(r, 34) : ''}
-      <span class="name">${esc(r.name ?? (r.nameUr ? pick(r.username, r.nameUr) : r.username))}${r.me ? ` <em class="tag">${t(b.type === 'caravans' ? 'cv_yours' : 'you')}</em>` : ''}<small>${r.city ? `${esc(r.city)}` : ''}${grp ? `${r.city ? ' · ' : ''}${membersN(r.members)}${b.metric === 'average' ? ` · ${fmt(r.active)} ${t('active')}` : ''}` : ''}</small></span>
+      <span class="name" dir="auto">${esc(r.displayName || (r.name ?? (r.nameUr ? pick(r.username, r.nameUr) : r.username)))}${r.me ? ` <em class="tag">${t(b.type === 'caravans' ? 'cv_yours' : 'you')}</em>` : ''}<small>${r.city ? `${esc(r.city)}` : ''}${grp ? `${r.city ? ' · ' : ''}${membersN(r.members)}${b.metric === 'average' ? ` · ${fmt(r.active)} ${t('active')}` : ''}` : ''}</small></span>
       <span class="score">${N(`${grp && b.metric === 'growth' && r.score > 0 ? '+' : ''}${fmt(r.score)}`)}${unit('durood')}</span></li>`).join('')}${b.data.you ? `
     <li class="gap" aria-hidden="true">⋯</li>
     <li class="me"><span class="rank${b.data.you.rank > 999 ? ' long' : b.data.you.rank > 99 ? ' mid' : ''}">${fmt(b.data.you.rank)}</span>${av(S.me, 34)}<span class="name">${esc(S.me.username)} <em class="tag">${t('you')}</em><small>${esc(S.me.city || '')}</small></span>
@@ -841,8 +841,8 @@ function cvHome(cv) {
   const c = cv.caravan, ks = cv.streak, shown = S.cvAll ? cv.members : cv.members.slice(0, 8);
   const pending = cv.pending || [];
   return `<h3 class="first-d">${t('caravan_title')}</h3>
-  <div class="uname cvname">${esc(c.name)}</div>
-  <div class="muted padx">${t('cv_owner_is')(esc(c.ownerName))}</div>
+  <div class="uname cvname"${c.displayName ? ' dir="auto"' : ''}>${esc(c.displayName || c.name)}</div>
+  <div class="muted padx">${c.displayName ? `${N('@' + esc(c.name))} · ` : ''}${t('cv_owner_is')(esc(c.ownerName))}</div>
   <div class="stats">${cell(c.members, t('c_members'))}${cell(c.total, t('c_total'), 'durood')}${cell(c.week, t('c_week'), 'durood')}</div>
   <div class="lvl"><div class="row between"><span>${t('next_milestone')}</span><b>${U(c.next, 'durood')}</b></div>${bar(c.next === c.prev ? 100 : ((c.total - c.prev) / (c.next - c.prev)) * 100)}</div>
   ${ks.active ? `<div class="karwan"><b>${uiIcon('flame', 16, 1.8)} ${t('karwan_streak')(ks.streak)}</b>
@@ -858,7 +858,10 @@ function cvHome(cv) {
         <div class="row">${p.kind === 'request' ? `<button class="blk fill1" data-act="cvreqyes" data-u="${esc(p.username)}"><span>${t('accept')}</span><b class="ar">→</b></button><button class="chip" data-act="cvreqno" data-u="${esc(p.username)}">${t('decline')}</button>` : `<button class="chip" data-act="cvcancelinv" data-u="${esc(p.username)}">${t('cv_cancel')}</button>`}</div></div>`).join('')}` : ''}</div>
     <form novalidate class="cname" data-form="cvrename"><label for="cv-rename">${t('cv_rename')}</label>
       <div class="row"><input id="cv-rename" name="name" type="text" maxlength="20" autocomplete="off" autocapitalize="off" dir="ltr" value="${esc(c.name)}"><button class="chip solid" type="submit">${t('save')}</button></div>
-      <div class="hint" id="cvcheck">${t('cv_name_hint')}</div></form>` : ''}
+      <div class="hint" id="cvcheck">${t('cv_name_hint')}</div></form>
+    <form novalidate class="cname" data-form="cvdisplay"><label for="cv-display">${t('cv_display')}</label>
+      <div class="row"><input id="cv-display" name="displayName" type="text" maxlength="40" autocomplete="off" dir="auto" placeholder="${esc(t('cv_display_ph'))}" value="${esc(c.displayName || '')}"><button class="chip solid" type="submit">${t('save')}</button></div>
+      <div class="hint">${t('cv_display_hint')}</div></form>` : ''}
   <div class="padx" style="margin-top:14px"><button class="chip" data-act="cvleave">${t('cv_leave')}</button></div>`;
 }
 function caravan() {
@@ -1517,7 +1520,10 @@ async function enterTab(tab) {
   if (['tasks', 'people'].includes(tab) && !inBurhan()) tab = 'home';
   S.tab = tab; S.drawer = false; S.enterAt = Date.now();
   // pages cross-fade and slide, where the browser can (Chrome and Android's WebView); otherwise they just change
-  if (document.startViewTransition && !reduceMotion()) document.startViewTransition(() => draw()); else draw();
+  if (document.startViewTransition && !reduceMotion()) {
+    const vt = document.startViewTransition(() => draw());
+    vt.ready.catch(() => {}); vt.finished.catch(() => {}); // a quick second tap skips the first animation: expected, not an error
+  } else draw();
   window.scrollTo(0, 0);
   try {
     if (tab === 'rank') { // the last copy of a board shows at once while a fresh one loads; a reply for a board no longer chosen is ignored
@@ -2110,13 +2116,15 @@ app.addEventListener('submit', async (ev) => {
       S.cv = r.view; S.me = r.me; toast(t('saved')); draw();
     } else if (kind === 'cvrename') {
       S.cv = (await api('/caravan/name', 'PUT', { name: f.name })).view; toast(t('saved')); draw();
+    } else if (kind === 'cvdisplay') {
+      S.cv = (await api('/caravan/display-name', 'PUT', { displayName: f.displayName })).view; toast(t('saved')); draw();
     } else if (kind === 'delete') {
       if (!confirm(t('delete_confirm'))) { btn.disabled = false; return; }
       await api('/me', 'DELETE', { password: f.password });
       logout(false); S.authMode = 'login'; draw(); toast(t('deleted'));
     }
   } catch (e) {
-    if (kind === 'settings' || kind === 'delete' || kind === 'citysave' || kind === 'profile' || kind === 'password' || kind === 'phone' || kind === 'cvcreate' || kind === 'cvrename' || kind === 'assign' || kind === 'owntask' || kind === 'majlisnew' || kind === 'teamassign' || kind === 'inviter') { toast(errText(e)); btn.disabled = false; }
+    if (kind === 'settings' || kind === 'delete' || kind === 'citysave' || kind === 'profile' || kind === 'password' || kind === 'phone' || kind === 'cvcreate' || kind === 'cvrename' || kind === 'cvdisplay' || kind === 'assign' || kind === 'owntask' || kind === 'majlisnew' || kind === 'teamassign' || kind === 'inviter') { toast(errText(e)); btn.disabled = false; }
     else {
       S.error = errText(e); draw();
       // point at the field the message is about

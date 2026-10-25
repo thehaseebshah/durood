@@ -257,3 +257,22 @@ test('the caravan streak: three or more members, half of them reciting each day,
   const late = await signup('st_late'); await joined(o, late);
   assert.equal(caravan.streakStatus(id).streak, 1, 'today is now 2 of 5 (not yet half); yesterday still counts, and the newcomer is not counted for it');
 });
+
+test('display name: the owner can give the caravan a name in Urdu; it shows on the page and the boards; only the owner, no links; admins can clear it', async () => {
+  const o = await signup('dn_owner'), m = await signup('dn_member');
+  await make(o, 'dn_caravan'); await joined(o, m);
+  const set = (u, displayName) => api('PUT', '/api/caravan/display-name', { token: u.token, body: { displayName } });
+  assert.equal((await set(m, 'قافلہ نور')).error, 'owner_only');
+  assert.equal((await set(o, 'see https://x.example')).error, 'no_links');
+  const r = await set(o, '  قافلہ   نور  ');
+  assert.equal(r.view.caravan.displayName, 'قافلہ نور', 'trimmed, spaces collapsed');
+  assert.equal(r.view.caravan.name, 'dn_caravan', 'the handle is unchanged');
+  await log(o, 300); await log(m, 200);
+  const row = (await api('GET', '/api/leaderboard?type=caravans', { token: m.token })).rows.find((x) => x.name === 'dn_caravan');
+  assert.equal(row?.displayName, 'قافلہ نور', 'the boards carry it');
+  assert.equal((await set(o, '')).view.caravan.displayName, '', 'the owner can clear it');
+  await set(o, 'قافلہ نور');
+  const id = (await view(o)).caravan.id;
+  assert.equal((await api('DELETE', `/api/admin/caravans/${id}/display-name`, { headers: admin })).ok, true);
+  assert.equal((await view(m)).caravan.displayName, '', 'an admin cleared it');
+});

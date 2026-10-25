@@ -569,6 +569,7 @@ CREATE TABLE IF NOT EXISTS caravan_invites (
 );
 CREATE INDEX IF NOT EXISTS caravan_invites_user ON caravan_invites(user_id, kind);
 `);
+addCol('caravans', 'display_name', "TEXT NOT NULL DEFAULT ''");   // optional name in any script (e.g. Urdu); `name` stays the unique English handle
 // the old per-member caravan name is replaced by real caravans; free those names
 if (db.prepare("SELECT value FROM settings WHERE key = 'caravan_v2'").get()?.value !== '1') {
   db.exec("UPDATE users SET caravan_name = NULL WHERE caravan_name IS NOT NULL");

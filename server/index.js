@@ -105,6 +105,7 @@ route('GET', '/api/username-check', { auth: false }, ({ query, ip }) => {
 route('GET', '/api/caravan', ({ user }) => caravanApi.view(user));
 route('POST', '/api/caravan', ({ user, body }) => { rateLimit(`cvc:${user}`, 20, 3600e3); return { ...caravanApi.create(user, body.name), view: caravanApi.view(user), me: getMe(user) }; });
 route('PUT', '/api/caravan/name', ({ user, body }) => { rateLimit(`cvn:${user}`, 10, 3600e3); caravanApi.rename(user, body.name); return { view: caravanApi.view(user) }; });
+route('PUT', '/api/caravan/display-name', ({ user, body }) => { rateLimit(`cvdn:${user}`, 10, 3600e3); caravanApi.setDisplayName(user, body.displayName); return { view: caravanApi.view(user) }; });
 route('GET', '/api/caravan/name-check', ({ user, query }) => {
   const n = String(query.get('u') || '').trim();
   if (!USERNAME.test(n) || isReserved(n)) return { ok: false, reason: 'bad_caravan_name' };
@@ -145,6 +146,7 @@ route('POST', '/api/caravan/remove', ({ user, body }) => ({ ...caravanApi.remove
 route('GET', '/api/caravan/search', ({ user, query }) => { rateLimit(`cvs:${user}`, 60, 60e3); return { usernames: caravanApi.searchInvitees(user, query.get('q')), caravans: caravanApi.searchCaravans(query.get('q')) }; });
 route('GET', '/api/admin/caravans', { auth: false, admin: true }, ({ query }) => ({ caravans: caravanApi.adminList(query.get('q') || '') }));
 route('PUT', '/api/admin/caravans/:id', { auth: false, admin: true }, ({ params, body, admin }) => { const old = one('SELECT name FROM caravans WHERE id = ?', Number(params.id)); const r = caravanApi.adminRename(Number(params.id), body.name); profile.logAdmin('rename-caravan', old?.name, `to ${r.name}`, admin.actor); return r; });
+route('DELETE', '/api/admin/caravans/:id/display-name', { auth: false, admin: true }, ({ params, admin }) => { const id = Number(params.id); const r = caravanApi.adminClearDisplayName(id); profile.logAdmin('clear-caravan-display-name', String(id), '', admin.actor); return r; });
 route('DELETE', '/api/admin/caravans/:id', { auth: false, admin: true }, ({ params, admin }) => { const r = caravanApi.adminDelete(Number(params.id)); profile.logAdmin('delete-caravan', r.name, '', admin.actor); return { ok: true }; });
 route('POST', '/api/admin/login', { auth: false }, async ({ body, ip }) => {
   rateLimit(`adminlogin:${ip}`, 30, 600e3);

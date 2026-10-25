@@ -407,6 +407,7 @@ The member app, sign-in and admin share one stylesheet; its last section restyle
 - Member and profile pop-ups rise from the bottom as sheets on phones; "Remove this" on an assignment is red; stat labels say "Day streak" and "Points" without a repeated unit.
 - Feed actions keep a gap between icon and label, and the first icon lines up with the post text. In a caravan the owner's remove column is kept on every row, so the scores line up.
 - Navigation has one menu control per screen size: on phones the Browse tab opens the menu (no header button); on wide screens the header button is a sidebar icon labelled "Show/Hide sidebar".
+- A caravan can have an optional display name in any script (e.g. Urdu, up to 40 characters, no links), set by its owner and shown on its page and in the caravan rankings; its unique English handle is still how it is found and invited. Admins can clear a display name.
 - City search accepts Urdu for Pakistan's main cities (server/data/cities-ur.tsv, 95 names mapped to their English entries; Arabic-keyboard letters and spaces do not matter).
 - Second review pass: the challenge tiles use lakh/crore like the rest of the card; list scores and their units share one right edge; Settings says Light/Dark and uses a gear icon; the goal bar's star is hidden at 0; the invite buttons share one height; Move deadline shows every option as a date ("Wed 28 Oct") with hairline dividers.
 

@@ -221,9 +221,9 @@ const views = {
         <td>${p.avatar ? `<button class="chip" data-a="rmavatar" data-u="${esc(p.username)}">Remove photo</button>` : ''}${p.displayName || p.bio ? `<button class="chip" data-a="clearprofile" data-u="${esc(p.username)}">Clear name and line</button>` : ''}</td></tr>`).join('')}</table>` : '<p class="empty">Nothing matches.</p>'}
       <h3>Caravans</h3>
       <div class="inline"><div><label>Search caravan name or owner</label><input id="cq" value="${esc(cq)}"></div><button class="chip solid" data-a="csearch">Search</button></div>
-      ${caravans.length ? `<table><tr><th>Caravan</th><th>Owner</th><th>Members</th><th></th></tr>${caravans.map((c) => `<tr><td><b>${esc(c.name)}</b><br><span class="muted">${date(c.created_at)}</span></td><td>${esc(c.owner)}</td>
+      ${caravans.length ? `<table><tr><th>Caravan</th><th>Owner</th><th>Members</th><th></th></tr>${caravans.map((c) => `<tr><td><b>${esc(c.name)}</b>${c.display_name ? `<br><span dir="auto">${esc(c.display_name)}</span>` : ''}<br><span class="muted">${date(c.created_at)}</span></td><td>${esc(c.owner)}</td>
         <td>${fmt(c.members)}<br><span class="muted">${esc(c.sample || '')}${c.members > 6 ? ', …' : ''}</span></td>
-        <td><button class="chip" data-a="cvrename" data-id="${c.id}" data-n="${esc(c.name)}">Rename</button><button class="chip" data-a="cvdelete" data-id="${c.id}" data-n="${esc(c.name)}">Delete</button></td></tr>`).join('')}</table>` : '<p class="empty">No caravans.</p>'}
+        <td><button class="chip" data-a="cvrename" data-id="${c.id}" data-n="${esc(c.name)}">Rename</button>${c.display_name ? `<button class="chip" data-a="cvcleardn" data-id="${c.id}" data-n="${esc(c.name)}">Clear display name</button>` : ''}<button class="chip" data-a="cvdelete" data-id="${c.id}" data-n="${esc(c.name)}">Delete</button></td></tr>`).join('')}</table>` : '<p class="empty">No caravans.</p>'}
       <h3>Recent moderation actions</h3>
       ${log.length ? `<table><tr><th>When</th><th>Who</th><th>Action</th><th>Target</th><th>Detail</th></tr>${log.map((l) => `<tr><td>${date(l.at)}</td><td>${esc(l.actor) || '<span class="muted">earlier</span>'}</td><td>${esc(l.action)}</td><td>${esc(l.target)}</td><td class="muted">${esc(l.detail)}</td></tr>`).join('')}</table>` : '<p class="empty">Nothing yet.</p>'}`;
   },
@@ -357,6 +357,7 @@ document.addEventListener('click', (ev) => {
     rmavatar: async () => { if (!confirm(`Remove ${d.u}'s picture?`)) return; await api('POST', `/members/${d.u}`, { action: 'remove-avatar' }); say('Picture removed.'); },
     clearprofile: async () => { if (!confirm(`Remove ${d.u}'s picture, name and line?`)) return; await api('POST', `/members/${d.u}`, { action: 'clear-profile' }); say('Cleared.'); },
     cvrename: async () => { const n = prompt('New name for this caravan (3-20 letters, numbers or _):', d.n); if (!n || n === d.n) return; await api('PUT', `/caravans/${d.id}`, { name: n }); say('Renamed.'); },
+    cvcleardn: async () => { if (!confirm(`Clear the display name of "${d.n}"? It will show its name instead.`)) return; await api('DELETE', `/caravans/${d.id}/display-name`); say('Cleared.'); },
     cvdelete: async () => { if (!confirm(`Delete the caravan "${d.n}"? Its members stay in the app but leave the caravan.`)) return; await api('DELETE', `/caravans/${d.id}`); say('Deleted.'); },
     search: async () => { window.__q = $('#q').value; },
     suspend: () => api('POST', `/members/${d.u}`, { action: 'suspend' }),

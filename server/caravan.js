@@ -7,6 +7,7 @@ import { CFG, hooks, deleteHooks, award, evalBadges, dayOf, dayNum, dayStr, week
 import { validHandle, handleTaken } from './handles.js';
 import { caravanHooks } from './compete.js';
 import { suspendHooks } from './access.js';
+import { plain, NAME_MAX } from './profile.js';
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
@@ -52,6 +53,15 @@ export function rename(userId, rawName) {
     run('UPDATE caravans SET name = ? WHERE id = ?', name, c.id);
     return { ok: true };
   });
+}
+
+/** The owner gives the caravan a display name in any script (Urdu, say), or clears it; the unique handle is unchanged. Same rules as a member's display name. */
+export function setDisplayName(userId, raw) {
+  const dn = plain(raw, NAME_MAX, 2);
+  const c = caravanOf(userId);
+  if (!c || c.owner_id !== userId) throw new HttpError(403, 'owner_only');
+  run('UPDATE caravans SET display_name = ? WHERE id = ?', dn, c.id);
+  return { ok: true };
 }
 
 /** The owner asks a member by username. If that member had already asked to join, they simply join. */
@@ -269,7 +279,7 @@ export function view(userId) {
                     WHERE cm.caravan_id = ? AND ${LIVE} AND u.held = 0 AND d.day >= ? AND d.count > 0`, c.id, wk);
   const owner = c.owner_id === userId;
   const out = {
-    caravan: { id: c.id, name: c.name, owner, ownerName: one('SELECT username FROM users WHERE id = ?', c.owner_id).username, members: agg.members, total: agg.total, week: wagg.week, active: wagg.active,
+    caravan: { id: c.id, name: c.name, displayName: c.display_name || '', owner, ownerName: one('SELECT username FROM users WHERE id = ?', c.owner_id).username, members: agg.members, total: agg.total, week: wagg.week, active: wagg.active,
       next: MILESTONES.find((x) => x > agg.total) || MILESTONES.at(-1), prev: MILESTONES.filter((x) => x <= agg.total).at(-1) || 0 },
     streak: streakStatus(c.id),
     members: members.map((m) => ({ username: m.username, displayName: m.dn, avatar: avatarUrl(m.uid, m.av), city: m.city, total: m.total, week: m.week, today: !!m.today, owner: false, joinedAt: m.joined_at })),
@@ -309,9 +319,9 @@ export function board(userId, period = 'week', metric = 'total') {
                   FROM w JOIN caravan_members cm ON cm.user_id = w.user_id JOIN users u ON u.id = w.user_id WHERE ${LIVE} GROUP BY cm.caravan_id`, wk, wk, wk, from, to)
         .map((r) => ({ id: r.id, active: r.active, score: metric === 'growth' ? r.wk - r.last : metric === 'average' ? (r.active ? Math.round(r.wk / r.active) : 0) : period === 'week' ? r.wk : r.any }));
     }
-    const names = new Map(all('SELECT id, name FROM caravans').map((r) => [r.id, r.name]));
+    const names = new Map(all('SELECT id, name, display_name FROM caravans').map((r) => [r.id, r]));
     return sums.filter((r) => (members.get(r.id) || 0) >= MIN_BOARD_MEMBERS && (metric === 'growth' ? r.score !== 0 : r.score > 0))
-      .map((r) => ({ id: r.id, name: names.get(r.id), members: members.get(r.id), active: r.active, score: r.score }))
+      .map((r) => ({ id: r.id, name: names.get(r.id).name, displayName: names.get(r.id).display_name || '', members: members.get(r.id), active: r.active, score: r.score }))
       .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name)).slice(0, 50);
   });
   return { rows: rows.map((r, i) => ({ rank: i + 1, ...r, me: r.id === mine })), weekStart: wk, metric, minMembers: MIN_BOARD_MEMBERS };
@@ -320,11 +330,18 @@ export function board(userId, period = 'week', metric = 'total') {
 // ---- administration ---------------------------------------------------------------------------------------------------------------------
 export const adminList = (q = '') => {
   const like = `%${String(q).trim().slice(0, 30).replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
-  return all(`SELECT c.id, c.name, u.username owner, c.created_at,
+  return all(`SELECT c.id, c.name, c.display_name, u.username owner, c.created_at,
     (SELECT COUNT(*) FROM caravan_members cm WHERE cm.caravan_id = c.id) members,
     (SELECT GROUP_CONCAT(x.username, ', ') FROM (SELECT m.username FROM caravan_members cm JOIN users m ON m.id = cm.user_id WHERE cm.caravan_id = c.id ORDER BY cm.joined_at LIMIT 6) x) sample
     FROM caravans c JOIN users u ON u.id = c.owner_id WHERE c.name LIKE ? ESCAPE '\\' OR u.username LIKE ? ESCAPE '\\' ORDER BY c.id DESC LIMIT 200`, like, like);
 };
+/** An admin clears a caravan's display name (an offensive one, say). */
+export function adminClearDisplayName(id) {
+  if (!one('SELECT 1 FROM caravans WHERE id = ?', id)) throw new HttpError(404, 'not_found');
+  run("UPDATE caravans SET display_name = '' WHERE id = ?", id);
+  return { ok: true };
+}
+
 /** An admin renames a caravan (an offensive name, say). The same name rules and name space apply. */
 export function adminRename(id, rawName) {
   const name = cleanName(rawName);
