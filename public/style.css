@@ -1107,3 +1107,9 @@ body.in-app main .phonerow select { background: var(--cell); border-color: trans
 @media (min-width: 1024px) { body.in-app .hd .burger { margin-inline-start: 0; } }
 .signoutall { display: block; margin: 8px 20px 0; padding: 10px 0; min-height: 44px; } /* a full-height tap target that stays inside the screen */
 .big.l9, .counterbox .big.l9 { font-size: min(4.6rem, 15vw); letter-spacing: -.03em; }
+/* shown until the app's code arrives (replaced on first draw), so slow connections never see a blank page */
+.boot { min-height: 100vh; display: grid; place-content: center; gap: 6px; text-align: center; background: var(--ground, #f2f2f7); color: var(--soft); }
+.boot b { font-size: 1.1rem; letter-spacing: 3px; text-transform: uppercase; }
+.boot span { font-family: 'Noto Nastaliq Urdu', serif; opacity: .8; animation: bootpulse 1.4s ease-in-out infinite; }
+@keyframes bootpulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .boot span { animation: none; } }
