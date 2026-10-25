@@ -5,9 +5,9 @@ WORKDIR /app
 COPY package.json ./
 COPY server ./server
 COPY public ./public
-COPY scripts/backup.mjs ./scripts/backup.mjs
-# /data is the persistent volume (database, photos, backups); the app runs as an unprivileged user
-RUN mkdir -p /data && chown -R node:node /data /app
+COPY scripts/backup.mjs scripts/make-admin.mjs ./scripts/
+# /data is the persistent volume (database, photos, backups); the app runs as an unprivileged user who can't rewrite its own code
+RUN mkdir -p /data && chown -R node:node /data
 USER node
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s CMD node -e "fetch('http://localhost:'+process.env.PORT+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"

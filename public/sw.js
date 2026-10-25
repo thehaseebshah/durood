@@ -1,5 +1,5 @@
 // App-shell cache so the app opens offline; API calls always go to the network.
-const CACHE = 'quest-v3';
+const CACHE = 'quest-v4';
 const SHELL = ['/', '/app.js', '/style.css', '/i18n.js', '/icons.js', '/fonts/amiri-arabic.woff2', '/fonts/inter-latin.woff2', '/fonts/nastaliq-400.woff2', '/fonts/nastaliq-700.woff2', '/icons/icon-512.png', '/privacy.html', '/manifest.webmanifest', '/icons/icon-192.png'];
 
 self.addEventListener('install', (e) => {
@@ -11,13 +11,15 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/photos/')) return;
-  // network first so deploys show up immediately; cache is the offline fallback
+  // network first so deploys show up immediately; cache is the offline fallback. Pages are stored under '/' only, so a link's
+  // ?reset= or ?confirm= token never stays on the device, and only good copies of the app's own files are kept.
+  const page = e.request.mode === 'navigate';
+  const key = page ? '/' : url.pathname;
   e.respondWith(
     fetch(e.request).then((r) => {
-      const copy = r.clone();
-      caches.open(CACHE).then((c) => c.put(e.request, copy));
+      if (r.ok && (page || SHELL.includes(key))) { const copy = r.clone(); caches.open(CACHE).then((c) => c.put(key, copy)); }
       return r;
-    }).catch(() => caches.match(e.request).then((m) => m || caches.match('/'))),
+    }).catch(() => caches.match(key).then((m) => m || caches.match('/'))),
   );
 });
 

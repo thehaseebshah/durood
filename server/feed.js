@@ -29,7 +29,7 @@ export function reflectionToday(userId) {
 
 /** Plain text only: control characters out, no links, 1..max characters. */
 function cleanText(text, max) {
-  const body = String(text ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').replace(/[ \t]+/g, ' ').trim();
+  const body = String(text ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g, '').replace(/[ \t]+/g, ' ').trim();
   const len = [...body].length;
   if (!len) throw new HttpError(400, 'empty_text');
   if (len > max) throw new HttpError(400, 'text_too_long');
@@ -165,6 +165,7 @@ export function postReply(userId, kind, itemId, text) {
 
 export function listReplies(userId, kind, itemId) {
   if (!Object.hasOwn(REPLY_TARGETS, kind)) throw new HttpError(400, 'bad_kind');
+  if (!one(REPLY_TARGETS[kind], itemId)) throw new HttpError(404, 'not_found'); // replies go with a removed or hidden post
   return all(`SELECT r.id, r.body, r.created_at, r.user_id, u.username, u.city, u.avatar_v av, u.display_name dn,
       EXISTS(SELECT 1 FROM content_reports c WHERE c.kind = 'reply' AND c.item_id = r.id AND c.user_id = ?) reported
     FROM replies r JOIN users u ON u.id = r.user_id
@@ -227,7 +228,7 @@ export function feed(userId, before = Date.now() + 1) {
       replies: replyN('comment', c.id), lectureEn: c.title_en, lectureUr: c.title_ur });
   }
   for (const e of all(`SELECT e.id, e.user_id, e.ref, e.created_at, u.username FROM feed_events e JOIN users u ON u.id = e.user_id
-      WHERE e.kind = 'badge' AND e.created_at < ? AND u.deleted_at IS NULL
+      WHERE e.kind = 'badge' AND e.created_at < ? AND u.deleted_at IS NULL AND u.suspended = 0
         AND (e.user_id = ? OR e.user_id IN (SELECT cm.user_id FROM caravan_members cm WHERE cm.caravan_id = (SELECT x.caravan_id FROM caravan_members x WHERE x.user_id = ?)))
       ORDER BY e.created_at DESC LIMIT ?`, cutoff, userId, userId, FEED_PAGE + 1)) {
     items.push({ type: 'milestone', id: e.id, at: e.created_at, username: e.username, code: e.ref, mine: e.user_id === userId });

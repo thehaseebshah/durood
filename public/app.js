@@ -94,8 +94,15 @@ function setSession(token, me) {
   setTimeout(initBurhan, 0);
 }
 
-function logout(render = true) {
+function logout(render = true, byUser = false) {
+  if (byUser && S.token && pushSupported()) { // this device stops getting the last member's notifications
+    const tok = S.token;
+    fetch('/api/push', { method: 'DELETE', headers: { Authorization: `Bearer ${tok}` } }).catch(() => {});
+    navigator.serviceWorker.ready.then((reg) => reg.pushManager.getSubscription()).then((sub) => sub?.unsubscribe()).catch(() => {});
+  }
   S.bh = null; S.bhDetail = null; S.bhLists = null; S.profile = null;
+  // nothing of one member's is left for the next person on a shared phone
+  S.pending = 0; ls.del('pending'); S.draft = null; S.draftKind = null; S.reflDraft = ''; S.cDraft = {}; S.threads = {}; S.history = null; S.editing = null;
   S.token = null; S.me = null; ls.del('token');
   S.tab = 'home'; S.team = S.cv = S.learn = S.feed = S.board.data = null;
   if (render) draw();
@@ -1165,7 +1172,7 @@ app.addEventListener('click', async (ev) => {
   }
   if (act === 'resend') { try { await api('/email/resend', 'POST'); toast(t('email_sent')); } catch (e) { toast(errText(e)); } return; }
   if (act === 'tab') return enterTab(el.dataset.tab);
-  if (act === 'logout') return logout();
+  if (act === 'logout') return logout(true, true);
   if (act === 'logoutall') {
     if (!confirm(t('logout_all_ask'))) return;
     try { const r = await api('/sessions/revoke', 'POST'); S.token = r.token; ls.set('token', r.token); toast(t('logout_all_done')); } catch (e) { toast(errText(e)); }

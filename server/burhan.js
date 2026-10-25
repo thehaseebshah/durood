@@ -300,7 +300,11 @@ export function razakarList(masulId) {
 
 /** A murabbi's report on one salik: the whole profile, all progress, mamulaat, and any tasks and routines they carry. */
 export async function saalikReport(murabbiId, username) {
-  const s = one(`SELECT u.id FROM users u JOIN murabbi_links l ON l.user_id = u.id WHERE u.username = ? AND l.murabbi_id = ? AND l.salik_ok = 1 AND l.murabbi_ok = 1 AND u.deleted_at IS NULL`, String(username), murabbiId);
+  const q = `SELECT u.id FROM users u JOIN murabbi_links l ON l.user_id = u.id WHERE u.username = ? AND l.murabbi_id = ? AND l.salik_ok = 1 AND l.murabbi_ok = 1 AND u.deleted_at IS NULL`;
+  let s = one(q, String(username), murabbiId);
+  if (!s) throw new HttpError(404, 'not_found');
+  await refreshMurabbi(s.id);                      // a murabbi the Mamulaat app has since replaced loses access now, not when the salik next opens the app
+  s = one(q, String(username), murabbiId);
   if (!s) throw new HttpError(404, 'not_found');
   touchView(murabbiId, s.id, 'murabbi');
   const sync = await syncMamulaat(s.id);
@@ -316,8 +320,10 @@ export async function saalikReport(murabbiId, username) {
   return { profile: { username: u.username, phone: u.phone, email: u.email, city: u.city, country: u.country, joined: u.created_day, lang: u.lang },
     progress: g, extra, mamulaat: { ...mamulaatSeries(s.id), stale: sync.stale }, masul: masul?.username ?? null, assignments: items };
 }
-export function saalikList(murabbiId) {
-  return all(`SELECT u.id, u.username, u.city, u.avatar_v av FROM murabbi_links l JOIN users u ON u.id = l.user_id WHERE l.murabbi_id = ? AND l.salik_ok = 1 AND l.murabbi_ok = 1 AND u.deleted_at IS NULL ORDER BY u.username`, murabbiId).map((u) => {
+export async function saalikList(murabbiId) {
+  const q = `SELECT u.id, u.username, u.city, u.avatar_v av FROM murabbi_links l JOIN users u ON u.id = l.user_id WHERE l.murabbi_id = ? AND l.salik_ok = 1 AND l.murabbi_ok = 1 AND u.deleted_at IS NULL ORDER BY u.username`;
+  for (const u of all(q, murabbiId)) await refreshMurabbi(u.id); // at most daily per salik; a replaced murabbi drops out of the list
+  return all(q, murabbiId).map((u) => {
     const g = generalProgress(u.id), m = mamulaatSeries(u.id);
     return { username: u.username, avatar: avatarUrl(u.id, u.av), city: u.city, duroodToday: g.durood.today, duroodWeek: g.durood.week, streak: g.streak, mamulaatToday: m.today, mamulaatAverage: m.average };
   });

@@ -143,11 +143,12 @@ export function searchMembers(q = '') {
 }
 
 /** Suspends (or restores) a member, or their whole branch. Durood already reported stays in every total. */
-export function setSuspended(username, suspended, branch = false) {
+export function setSuspended(username, suspended, branch = false, includeAdmins = true) {
   const u = one('SELECT id FROM users WHERE username = ?', username);
   if (!u) throw new HttpError(404, 'not_found');
   const ids = branch ? all('SELECT user_id id FROM ancestors WHERE ancestor_id = ?', u.id).map((r) => r.id) : [u.id];
-  const st = db.prepare('UPDATE users SET suspended = ? WHERE id = ? AND deleted_at IS NULL');
+  // only an owner's branch suspension reaches members who hold an admin role
+  const st = db.prepare(`UPDATE users SET suspended = ? WHERE id = ? AND deleted_at IS NULL${includeAdmins ? '' : ' AND admin_role IS NULL'}`);
   for (const id of ids) st.run(suspended ? 1 : 0, id);
   return { ok: true, affected: ids.length };
 }

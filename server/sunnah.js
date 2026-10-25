@@ -52,7 +52,7 @@ const photoUrl = (id) => `/photos/${id}/${photoSig(id)}`;
 
 export function photoFile(id, sig) {
   if (sig !== photoSig(id)) return null;
-  const p = one("SELECT file FROM posts WHERE id = ? AND status != 'removed' AND purged_at IS NULL", id);
+  const p = one("SELECT p.file FROM posts p JOIN users u ON u.id = p.user_id WHERE p.id = ? AND p.status != 'removed' AND p.purged_at IS NULL AND u.suspended = 0 AND u.deleted_at IS NULL", id);
   return p ? path.join(UPLOAD_DIR, p.file) : null;
 }
 

@@ -214,6 +214,27 @@ function revokeQuests(userId, day) {
   }
 }
 
+/**
+ * When an invitee's total is edited back under referralMin, the inviter's referral reward and the weekly invite quest it completed are taken back,
+ * so a fake account that logs 100 and edits it down to 1 earns its inviter nothing. They are paid again if the invitee really reaches the line.
+ */
+function revokeReferral(userId) {
+  const u = one('SELECT total, referrer_id FROM users WHERE id = ?', userId);
+  if (!u.referrer_id || u.total >= CFG.referralMin) return;
+  const take = (kind, ref) => {
+    const ev = one('SELECT xp FROM events WHERE user_id = ? AND kind = ? AND ref = ?', u.referrer_id, kind, ref);
+    if (!ev) return;
+    run('DELETE FROM events WHERE user_id = ? AND kind = ? AND ref = ?', u.referrer_id, kind, ref);
+    run('UPDATE users SET xp = xp - ? WHERE id = ?', ev.xp, u.referrer_id);
+  };
+  take('referral', String(userId));
+  const today = dayOf();
+  for (const wk of new Set([weekStart(today), weekStart(dayStr(dayNum(today) - 1))])) { // the edit window reaches yesterday, which may be last week
+    const still = one('SELECT COUNT(*) n FROM users WHERE referrer_id = ? AND created_day >= ? AND total >= ?', u.referrer_id, wk, CFG.referralMin).n;
+    if (!still) take('quest', `invite:${wk}`);
+  }
+}
+
 export function settleQuests(userId) {
   const u = one('SELECT * FROM users WHERE id = ?', userId);
   for (const q of questState(u)) {
@@ -375,7 +396,7 @@ export function setHidden(username, hidden) {
 /**
  * Changes one of the member's own entries from today or yesterday. Nothing is overwritten: the ledger gets a reversing
  * entry for the old number and a replacement entry for the new one, so the whole history stays on record.
- * Quest rewards whose condition no longer holds are taken back (revokeQuests); badge and invite rewards already earned are not. A day can't be edited down to nothing.
+ * Quest rewards whose condition no longer holds are taken back (revokeQuests); so are the inviter's referral reward and invite quest when the total falls back under referralMin (revokeReferral); badges already earned are not. A day can't be edited down to nothing.
  */
 export function editEntry(userId, entryId, newCount, ridIn) {
   if (!Number.isInteger(newCount) || newCount < 1 || newCount > CFG.maxSingle) throw new HttpError(400, 'bad_count');
@@ -406,16 +427,19 @@ export function editEntry(userId, entryId, newCount, ridIn) {
       bumpDay(e.day, delta);
     }
     evaluateFlags(userId, e.day);
-    if (delta < 0) revokeQuests(userId, e.day);
+    if (delta < 0) { revokeQuests(userId, e.day); revokeReferral(userId); }
   });
   if (!duplicate) recordChallenge();
   return { duplicate };
 }
 
+const HISTORY_ROWS = 600;
 /** The last 7 days of the member's entries, newest first, with every edit shown. Today and yesterday are editable. */
 export function history(userId) {
   const today = dayOf(), yesterday = dayStr(dayNum(today) - 1), from = dayStr(dayNum(today) - 6);
-  const rows = all('SELECT * FROM entries WHERE user_id = ? AND day >= ? ORDER BY id', userId, from);
+  // the newest HISTORY_ROWS entries only: a member who logs one at a time all week must not make this answer megabytes long
+  const rows = all('SELECT * FROM entries WHERE user_id = ? AND day >= ? ORDER BY id DESC LIMIT ?', userId, from, HISTORY_ROWS).reverse();
+  const totals = new Map(all('SELECT day, count FROM daily WHERE user_id = ? AND day >= ?', userId, from).map((d) => [d.day, d.count]));
   const byId = new Map(rows.map((r) => [r.id, r]));
   const reversed = new Set(rows.filter((r) => r.kind === 'reverse').map((r) => r.ref_id));
   const days = new Map();
@@ -430,7 +454,7 @@ export function history(userId) {
     }
     const day = days.get(r.day) ?? { day: r.day, total: 0, editable: r.day === today || r.day === yesterday, entries: [] };
     day.entries.push({ id: r.id, count: r.count, at: r.created_at, original: e.count, edits });
-    day.total += r.count;
+    day.total = totals.get(r.day) ?? 0; // from the daily total, so a cut-off list still shows the right number
     days.set(r.day, day);
   }
   return { today, yesterday, days: [...days.values()].sort((a, b) => (a.day < b.day ? 1 : -1)) };
@@ -761,7 +785,7 @@ export function teamView(userId) {
   const direct = all(`SELECT u.username, u.city, u.id uid, u.avatar_v av, u.display_name dn, u.total, u.team_total, u.created_day,
         COALESCE((SELECT SUM(count) FROM daily d WHERE d.user_id = u.id AND d.day >= ?), 0) week,
         (SELECT COUNT(*) FROM ancestors a WHERE a.ancestor_id = u.id AND a.depth > 0) members
-      FROM users u WHERE u.referrer_id = ? ORDER BY u.team_total DESC LIMIT 200`, wk, userId);
+      FROM users u WHERE u.referrer_id = ? AND u.deleted_at IS NULL AND u.suspended = 0 ORDER BY u.team_total DESC LIMIT 200`, wk, userId);
   const week = one(`SELECT COALESCE(SUM(d.count),0) n FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 JOIN ancestors a ON a.user_id = d.user_id
                     WHERE a.ancestor_id = ? AND d.day >= ? AND a.depth <= ?`, userId, wk, CFG.teamMaxDepth).n;
   const byDepth = all(`SELECT depth, COUNT(*) n FROM ancestors WHERE ancestor_id = ? AND depth > 0 GROUP BY depth ORDER BY depth LIMIT 20`, userId);

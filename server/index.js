@@ -10,7 +10,7 @@ import * as caravanApi from './caravan.js';
 import * as profile from './profile.js';
 import * as admins from './admins.js';
 import { USERNAME, isReserved, handleTaken as handleTakenBy } from './handles.js';
-import { HttpError, hashPassword, checkPassword, signToken, verifyToken, rateLimit, lockedOut, recordFailure, clientIp, sameSecret } from './auth.js';
+import { HttpError, hashPassword, checkPassword, signToken, verifyToken, rateLimit, lockedOut, recordFailure, forgiveFailure, clearFailures, clientIp, sameSecret } from './auth.js';
 import { auditAsync } from './audit.js';
 import * as access from './access.js';
 import { sendMail, resetEmail, confirmEmail, inviteEmail, baseUrl } from './mail.js';
@@ -121,9 +121,14 @@ route('PUT', '/api/admin/caravans/:id', { auth: false, admin: true }, ({ params,
 route('DELETE', '/api/admin/caravans/:id', { auth: false, admin: true }, ({ params, admin }) => { const r = caravanApi.adminDelete(Number(params.id)); profile.logAdmin('delete-caravan', r.name, '', admin.actor); return { ok: true }; });
 route('POST', '/api/admin/login', { auth: false }, async ({ body, ip }) => {
   rateLimit(`adminlogin:${ip}`, 30, 600e3);
-  const key = `adminloginfail:${String(body.id || '').toLowerCase().slice(0, 40)}`;
-  if (lockedOut(key, 8)) throw new HttpError(429, 'rate_limited');
-  try { return await admins.adminLogin(body.id, body.password); } catch (e) { if (e.code === 'bad_login') recordFailure(key, 900e3); throw e; }
+  const id = String(body.id || '').trim().toLowerCase().slice(0, 40); // trimmed like adminLogin does, so " owner" is not a fresh budget
+  const uid = one('SELECT id FROM users WHERE username = ?', id)?.id;
+  const keys = [`adminloginfail:${ip}:${id}`, `adminloginfail:${id}`];  // per caller, and per account unless the caller signed this admin in before
+  if (lockedOut(keys[0], 8) || (lockedOut(keys[1], 8) && !knownAddress(uid, ip))) throw new HttpError(429, 'rate_limited');
+  keys.forEach((k) => recordFailure(k, 900e3));                         // counted before the slow check, taken back on success
+  const r = await admins.adminLogin(id, body.password);
+  keys.forEach(forgiveFailure); rememberAddress(uid, ip);
+  return r;
 });
 route('GET', '/api/admin/me', { auth: false, admin: true }, ({ admin }) => ({ role: admin.role, actor: admin.actor, username: admin.username, can: [...admins.CAN[admin.role]] }));
 route('GET', '/api/admin/admins', { auth: false, admin: true }, () => ({ admins: admins.listAdmins(), roles: admins.ROLES }));
@@ -146,7 +151,7 @@ route('GET', '/api/burhan/usernames', B(({ user, query }) => { rateLimit(`bu:${u
 route('POST', '/api/assignments', B(({ user, body }) => { rateLimit(`as:${user}`, 60, 3600e3); return burhan.addAssignment(user, body.razakar, body); }));
 route('DELETE', '/api/assignments/:id', B(({ user, params }) => burhan.endAssignment(user, Number(params.id))));
 route('POST', '/api/assignments/:id/tick', B(({ user, params, body }) => burhan.tickAssignment(user, Number(params.id), body.done !== false)));
-route('GET', '/api/burhan/saaliks', B(({ user }) => ({ saaliks: burhan.saalikList(user) })));
+route('GET', '/api/burhan/saaliks', B(async ({ user }) => { rateLimit(`bsl:${user}`, 120, 3600e3); return { saaliks: await burhan.saalikList(user) }; }));
 route('GET', '/api/burhan/saaliks/:username', B(({ user, params }) => { rateLimit(`bsr:${user}`, 120, 3600e3); return burhan.saalikReport(user, params.username); }));
 route('GET', '/api/burhan/razakars', B(({ user }) => ({ razakars: burhan.razakarList(user) })));
 route('GET', '/api/burhan/razakars/:username', B(({ user, params }) => burhan.razakarReport(user, params.username)));
@@ -196,8 +201,8 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
     let r = null;
     if (String(inviteRaw || '').trim()) r = access.resolveInvite(inviteRaw);
     if (handleTakenBy(username)) throw new HttpError(409, 'username_taken');
-    if (one('SELECT 1 FROM users WHERE email = ?', email)) throw new HttpError(409, 'email_taken');
-    if (one('SELECT 1 FROM users WHERE phone = ?', phone)) throw new HttpError(409, 'phone_taken');
+    // one answer for both, so sign-up can't be used to test whether someone's email or number is registered
+    if (one('SELECT 1 FROM users WHERE email = ? OR phone = ?', email, phone)) throw new HttpError(409, 'account_exists');
     if (r) access.consumeInvite(r);
     const referrerId = r?.kind === 'member' ? r.referrerId : null;
     const res = run(`INSERT INTO users (username, email, phone, pass, lang, city, city_id, country, referrer_id, created_day, created_at, invited_via, invite_code)
@@ -207,7 +212,7 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
     const uid = Number(res.lastInsertRowid);
     startChallengeIfNeeded(); // day 1 of the challenge is the day the first member joins
     run('INSERT INTO ancestors (user_id, ancestor_id, depth) VALUES (?,?,0)', uid, uid);
-    burhan.linkWaitingMurabbis(uid, phone); // a murabbi who signs up completes the links of the saliks waiting for them
+    if (burhan.internal()) burhan.linkWaitingMurabbis(uid, phone); // a murabbi who signs up completes the links of the saliks waiting for them (Al-Burhan only)
     if (referrerId) {
       run(`INSERT INTO ancestors (user_id, ancestor_id, depth)
            SELECT ?, ancestor_id, depth + 1 FROM ancestors WHERE user_id = ?`, uid, referrerId);
@@ -221,6 +226,17 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
 });
 
 let dummyHash = null;
+// addresses that recently signed each account in (kept in memory, five per account, 30 days)
+const knownAddresses = new Map();
+const knownAddress = (uid, ip) => !!uid && (knownAddresses.get(uid)?.get(ip) || 0) > Date.now() - 30 * 86400e3;
+function rememberAddress(uid, ip) {
+  if (!uid) return;
+  const m = knownAddresses.get(uid) || new Map();
+  m.delete(ip); m.set(ip, Date.now());
+  while (m.size > 5) m.delete(m.keys().next().value);
+  knownAddresses.delete(uid); knownAddresses.set(uid, m);
+  while (knownAddresses.size > 50_000) knownAddresses.delete(knownAddresses.keys().next().value);
+}
 route('POST', '/api/login', { auth: false }, async ({ body, ip }) => {
   rateLimit(`login:${ip}`, 120, 600e3);
   const ident = String(body.id || '').trim().slice(0, 254);
@@ -230,12 +246,16 @@ route('POST', '/api/login', { auth: false }, async ({ body, ip }) => {
   const u = ident.includes('@') ? one('SELECT id, pass, suspended, deleted_at FROM users WHERE email = ?', ident.toLowerCase())
     : phone ? one('SELECT id, pass, suspended, deleted_at FROM users WHERE phone = ?', phone)
     : one('SELECT id, pass, suspended, deleted_at FROM users WHERE username = ?', ident);
-  // wrong passwords are counted per account however the person is named, and only failures count, so a stranger cannot lock the owner out of a correct login
-  const key = `loginfail:${u ? u.id : ident.toLowerCase().slice(0, 80)}`;
-  if (lockedOut(key, 10)) throw new HttpError(429, 'rate_limited');
+  // wrong passwords are counted per account however the person is named, from every address together, so guessing from many
+  // addresses is stopped. An address that signed this account in before keeps working, so a stranger can't lock the member out.
+  const acct = u ? u.id : ident.toLowerCase().slice(0, 80);
+  const keys = [`loginfail:${ip}:${acct}`, `loginfail:${acct}`];
+  if (lockedOut(keys[0], 10) || (lockedOut(keys[1], 10) && !knownAddress(u?.id, ip))) throw new HttpError(429, 'rate_limited');
+  keys.forEach((k) => recordFailure(k, 600e3)); // counted before the slow check so parallel guesses can't all slip past the lock
   dummyHash ??= await hashPassword('timing-equaliser');
   const ok = await checkPassword(password, u && !u.deleted_at ? u.pass : dummyHash); // the same work whether or not the account exists
-  if (!u || u.deleted_at || !ok) { recordFailure(key, 600e3); throw new HttpError(401, 'bad_login'); }
+  if (!u || u.deleted_at || !ok) throw new HttpError(401, 'bad_login');
+  keys.forEach(forgiveFailure); rememberAddress(u.id, ip);
   if (u.suspended) throw new HttpError(403, 'suspended');
   return { token: tokenFor(u.id), me: getMe(u.id) };
 });
@@ -290,7 +310,9 @@ route('DELETE', '/api/me/avatar', ({ user }) => { profile.removeAvatar(user); re
 route('POST', '/api/me/password', async ({ user, body }) => {
   const key = `pwfail:${user}`;
   if (lockedOut(key, 5)) throw new HttpError(429, 'rate_limited');                                  // five wrong current passwords lock this for a while
-  try { await profile.changePassword(user, body.current, body.next); } catch (e) { if (e.code === 'wrong_password') recordFailure(key, 900e3); throw e; }
+  recordFailure(key, 900e3);                                                                        // counted first so parallel guesses can't slip past
+  try { await profile.changePassword(user, body.current, body.next); } catch (e) { if (e.code !== 'wrong_password') forgiveFailure(key); throw e; }
+  forgiveFailure(key);
   return { token: tokenFor(user), me: getMe(user) };                                                // this device stays signed in; all others are signed out
 });
 route('POST', '/api/me/phone', async ({ user, body }) => {
@@ -298,7 +320,10 @@ route('POST', '/api/me/phone', async ({ user, body }) => {
   const cur = one('SELECT pass FROM users WHERE id = ?', user);
   const key = `pwfail:${user}`;
   if (lockedOut(key, 5)) throw new HttpError(429, 'rate_limited');
-  if (!(await checkPassword(String(body.password || ''), cur.pass))) { recordFailure(key, 900e3); throw new HttpError(403, 'wrong_password'); }
+  recordFailure(key, 900e3);
+  if (!(await checkPassword(String(body.password || ''), cur.pass))) throw new HttpError(403, 'wrong_password');
+  forgiveFailure(key);
+  if (lockedOut(`phonechg:${user}`, 3)) throw new HttpError(429, 'rate_limited'); // checked again after the wait
   const phone = normalizePhone(body.phone, String(body.cc || '').toUpperCase().slice(0, 2));
   if (!phone) throw new HttpError(400, 'bad_phone');
   profile.setPhone(user, phone);
@@ -318,7 +343,8 @@ route('POST', '/api/password/forgot', { auth: false }, async ({ body, ip }) => {
   rateLimit(`pw:${ip}`, 8, 3600e3);
   const email = String(body.email || '').trim().toLowerCase();
   if (!EMAIL.test(email)) throw new HttpError(400, 'bad_email');
-  rateLimit(`pwe:${email}`, 3, 3600e3);
+  // three emails an hour per address, counted per caller so a stranger can't use up the member's own; over the limit the answer is the same
+  try { rateLimit(`pwe:${ip}:${email}`, 3, 3600e3); rateLimit(`pwe:${email}`, 20, 3600e3); } catch { return { ok: true }; }
   const u = one('SELECT id, suspended, deleted_at FROM users WHERE email = ?', email);
   if (u && !u.deleted_at) sendMail(resetEmail(email, `${baseUrl()}/?reset=${makeToken(u.id, 'reset', 3600e3)}`)).catch(() => {}); // not awaited: the answer must not reveal, by its speed, whether the address is registered
   return { ok: true }; // identical answer whether or not the address is registered
@@ -334,6 +360,7 @@ route('POST', '/api/password/reset', { auth: false }, async ({ body, ip }) => {
     run('UPDATE users SET pass = ?, token_ver = token_ver + 1 WHERE id = ?', pass, userId); // old sessions stop working
     run("UPDATE tokens SET used_at = ? WHERE user_id = ? AND kind = 'reset' AND used_at IS NULL", Date.now(), userId);
   });
+  clearFailures(`loginfail:${userId}`); clearFailures(`pwfail:${userId}`); rememberAddress(userId, ip); // whoever reset by email is the member
   return { token: tokenFor(userId), me: getMe(userId) };
 });
 
@@ -355,7 +382,7 @@ route('POST', '/api/email/resend', ({ user }) => {
   return { ok: true };
 });
 
-route('GET', '/api/history', ({ user }) => history(user));
+route('GET', '/api/history', ({ user }) => { rateLimit(`hist:${user}`, 60, 60e3); return history(user); });
 route('PATCH', '/api/entries/:id', ({ user, params, body }) => {
   rateLimit(`edit:${user}`, 30, 60e3);
   const r = editEntry(user, Number(params.id), Number(body.count), body.rid);
@@ -363,7 +390,10 @@ route('PATCH', '/api/entries/:id', ({ user, params, body }) => {
 });
 
 route('DELETE', '/api/me', { admin: false }, async ({ user, body }) => {
+  const key = `pwfail:${user}`;
+  if (lockedOut(key, 5)) throw new HttpError(429, 'rate_limited'); // the same lock as the other password checks: a stolen session is not a guessing oracle
   const u = one('SELECT pass FROM users WHERE id = ?', user);
+  recordFailure(key, 900e3);
   if (!(await checkPassword(String(body.password || ''), u.pass))) throw new HttpError(401, 'bad_login');
   anonymiseUser(user, await hashPassword(crypto.randomBytes(24).toString('hex')));
   sunnah.purgeUser(user); // their photos go with their name
@@ -462,11 +492,19 @@ route('POST', '/api/admin/waitlist/:id', adm, async ({ params, body }) => {
   if (r.code && r.email) r.emailed = await sendMail(inviteEmail(r.email, r.code));
   return r;
 });
-route('GET', '/api/admin/members', adm, ({ query }) => ({ members: access.searchMembers(query.get('q') || '') }));
+route('GET', '/api/admin/members', adm, ({ query, admin }) => {
+  const members = access.searchMembers(query.get('q') || '');
+  if (admins.can(admin.role, 'reset_link')) return { members }; // owners and organisers help members back into their accounts, so they see how to reach them
+  const mask = (v) => (v ? `${String(v).slice(0, 2)}•••${String(v).slice(-2)}` : v);
+  return { members: members.map((m) => ({ ...m, email: mask(m.email), phone: mask(m.phone) })) }; // a moderator needs neither
+});
 route('POST', '/api/admin/members/:username', adm, ({ params, body, admin }) => {
   const a = body.action;
   if (!admins.can(admin.role, a === 'reset-link' ? 'reset_link' : 'moderate')) throw new HttpError(403, 'not_allowed'); // suspending and clearing profiles are moderation; a reset link is account access
-  if (a === 'suspend' || a === 'unsuspend') { const r = access.setSuspended(params.username, a === 'suspend', !!body.branch); profile.logAdmin(body.branch ? `${a}-branch` : a, params.username, '', admin.actor); return r; }
+  // a moderator or organiser can't reset, suspend, hide or clear another admin: that would let them take over or lock out an owner
+  const target = one('SELECT admin_role FROM users WHERE username = ?', params.username);
+  if (target?.admin_role && admin.role !== 'owner') throw new HttpError(403, 'not_allowed');
+  if (a === 'suspend' || a === 'unsuspend') { const r = access.setSuspended(params.username, a === 'suspend', !!body.branch, admin.role === 'owner'); profile.logAdmin(body.branch ? `${a}-branch` : a, params.username, '', admin.actor); return r; }
   if (a === 'hide' || a === 'unhide') { const r = setHidden(params.username, a === 'hide'); profile.logAdmin(a, params.username, '', admin.actor); return r; }
   if (a === 'reset-link') {
     const u = one('SELECT id FROM users WHERE username = ? AND deleted_at IS NULL', params.username);

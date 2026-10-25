@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { promisify } from 'node:util';
+import path from 'node:path';
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 
 const scrypt = promisify(crypto.scrypt);
@@ -15,24 +16,39 @@ export class HttpError extends Error {
 function loadSecret() {
   if (process.env.AUTH_SECRET) return process.env.AUTH_SECRET;
   if (process.env.DB_PATH === ':memory:') return crypto.randomBytes(32).toString('hex');
-  const f = 'data/secret.key';
+  if (existsSync('data/secret.key')) return readFileSync('data/secret.key', 'utf8'); // where older installs kept it
+  const dir = path.dirname(process.env.DB_PATH || 'data/durood.db'), f = path.join(dir, 'secret.key'); // beside the database, never in the app's code
   if (existsSync(f)) return readFileSync(f, 'utf8');
-  mkdirSync('data', { recursive: true });
+  mkdirSync(dir, { recursive: true });
   const s = crypto.randomBytes(32).toString('hex');
   writeFileSync(f, s, { mode: 0o600 });
   return s;
 }
 const SECRET = loadSecret();
 
+// scrypt runs on libuv's small thread pool, which static files use too: at most two run at once and a short queue waits,
+// so a burst of password checks answers "busy" instead of stalling every other request
+const SCRYPT_MAX = 2, SCRYPT_QUEUE = 40;
+let scryptBusy = 0;
+const scryptWaiting = [];
+async function limitedScrypt(pw, salt) {
+  if (scryptBusy >= SCRYPT_MAX) {
+    if (scryptWaiting.length >= SCRYPT_QUEUE) throw new HttpError(503, 'busy');
+    await new Promise((resolve) => scryptWaiting.push(resolve));
+  }
+  scryptBusy++;
+  try { return await scrypt(pw, salt, 32); } finally { scryptBusy--; scryptWaiting.shift()?.(); }
+}
+
 export async function hashPassword(pw) {
   const salt = crypto.randomBytes(16);
-  const key = await scrypt(pw, salt, 32);
+  const key = await limitedScrypt(pw, salt);
   return `${salt.toString('hex')}:${key.toString('hex')}`;
 }
 
 export async function checkPassword(pw, stored) {
   const [salt, key] = stored.split(':');
-  const got = await scrypt(pw, Buffer.from(salt, 'hex'), 32);
+  const got = await limitedScrypt(pw, Buffer.from(salt, 'hex'));
   return crypto.timingSafeEqual(got, Buffer.from(key, 'hex'));
 }
 
@@ -74,6 +90,9 @@ export function recordFailure(key, windowMs) {
   const now = Date.now(), b = buckets.get(key);
   if (!b || b.reset < now) buckets.set(key, { n: 1, reset: now + windowMs }); else b.n += 1;
 }
+/** Takes back one counted attempt. Attempts are counted before the slow password check, so parallel guesses can't all slip past the lock. */
+export function forgiveFailure(key) { const b = buckets.get(key); if (b && b.n > 0) b.n -= 1; }
+export const clearFailures = (key) => buckets.delete(key);
 
 /**
  * The caller's address for rate limits. Behind a reverse proxy set TRUST_PROXY to the number of proxies in front of the app

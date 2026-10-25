@@ -18,7 +18,7 @@ const rm = (f) => { try { unlinkSync(f); } catch { /* already gone */ } };
 
 /** Plain one-line text: control characters out, spaces squeezed, no links. Empty is allowed (it clears the field). */
 function plain(raw, max, min = 0) {
-  const t = String(raw ?? '').replace(/[\u0000-\u001f\u007f‎‏‪-‮]/g, ' ').replace(/\s+/g, ' ').trim();
+  const t = String(raw ?? '').replace(/[\u0000-\u001f\u007f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, ' ').replace(/\s+/g, ' ').trim();
   const len = [...t].length;
   if (len && len < min) throw new HttpError(400, 'text_too_short');
   if (len > max) throw new HttpError(400, 'text_too_long');

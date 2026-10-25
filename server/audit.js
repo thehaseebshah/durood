@@ -112,15 +112,18 @@ function auditChecks({ fix }) {
  * its own connection (SQLite lets readers and the writer work at once). An in-memory database cannot be shared, so tests and
  * development run it inline.
  */
+let running = null; // one audit at a time: repeated clicks share the run in progress instead of each starting a worker
 export function auditAsync() {
   const t0 = Date.now();
   if (!process.env.DB_PATH || process.env.DB_PATH === ':memory:') return Promise.resolve({ ...audit(), ms: Date.now() - t0 });
-  return new Promise((resolve, reject) => {
+  if (running) return running;
+  running = new Promise((resolve, reject) => {
     const w = new Worker(new URL('./audit-worker.js', import.meta.url), { resourceLimits: { maxOldGenerationSizeMb: 64 } }); // never let the check take the whole machine's memory
     w.once('message', (r) => resolve({ ...r, ms: Date.now() - t0 }));
     w.once('error', reject);
     w.once('exit', (c) => { if (c !== 0) reject(new Error(`audit worker exited with ${c}`)); });
-  });
+  }).finally(() => { running = null; });
+  return running;
 }
 
 if (process.argv[1]?.endsWith('audit.js')) {

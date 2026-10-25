@@ -32,6 +32,8 @@ async function viaSendgrid({ to, subject, text }) {
 }
 
 /** Never throws: a failed email must not break sign-up or a reset request. Resolves true when handed to the provider. */
+const maskLinks = (t) => String(t).replace(/([?&](?:reset|confirm)=)[^\s&]+/g, '$1…');
+
 export async function sendMail(msg) {
   const provider = (process.env.MAIL_PROVIDER || 'console').toLowerCase();
   try {
@@ -40,7 +42,7 @@ export async function sendMail(msg) {
     else {
       outbox.push({ ...msg, at: Date.now() });
       if (outbox.length > 200) outbox.shift();
-      if (process.env.NODE_ENV !== 'test' && process.env.DB_PATH !== ':memory:') console.log(`[mail:console] to=${msg.to} subject="${msg.subject}"\n${msg.text}\n`);
+      if (process.env.NODE_ENV !== 'test' && process.env.DB_PATH !== ':memory:') console.log(`[mail:console] to=${msg.to} subject="${msg.subject}"\n${process.env.NODE_ENV === 'production' ? maskLinks(msg.text) : msg.text}\n`); // in production a log reader must not get working reset links
     }
     return true;
   } catch (e) {
