@@ -765,7 +765,7 @@ function rank() {
       <span class="name">${esc(r.name ?? (r.nameUr ? pick(r.username, r.nameUr) : r.username))}${r.me ? ` <em class="tag">${t(b.type === 'caravans' ? 'cv_yours' : 'you')}</em>` : ''}<small>${r.city ? `${esc(r.city)}` : ''}${grp ? `${r.city ? ' · ' : ''}${membersN(r.members)}${b.metric === 'average' ? ` · ${fmt(r.active)} ${t('active')}` : ''}` : ''}</small></span>
       <span class="score">${N(`${grp && b.metric === 'growth' && r.score > 0 ? '+' : ''}${fmt(r.score)}`)}${unit('durood')}</span></li>`).join('')}${b.data.you ? `
     <li class="gap" aria-hidden="true">⋯</li>
-    <li class="me"><span class="rank">${fmt(b.data.you.rank)}</span>${av(S.me, 34)}<span class="name">${esc(S.me.username)} <em class="tag">${t('you')}</em><small>${esc(S.me.city || '')}</small></span>
+    <li class="me"><span class="rank${b.data.you.rank > 999 ? ' long' : b.data.you.rank > 99 ? ' mid' : ''}">${fmt(b.data.you.rank)}</span>${av(S.me, 34)}<span class="name">${esc(S.me.username)} <em class="tag">${t('you')}</em><small>${esc(S.me.city || '')}</small></span>
       <span class="score">${U(b.data.you.score, 'durood')}</span></li>` : ''}</ul>` : `<p class="muted center">${t(b.type === 'cities' ? 'empty_cities' : 'empty_board')}</p>`;
   const kinds = [['users', 'rk_people'], ['league', 'rk_league'], ['caravans', 'rk_caravans'], ['trees', 'rk_trees'], ['cities', 'rk_cities'], ...(inBurhan() ? [['majalis', 'rk_majalis']] : [])];
   const note = b.type === 'league' ? '' : grp ? `${t('rk_note_' + b.type)} ${t('cv_note_' + b.metric)}` : (b.period === 'challenge' ? t('challenge_note') : '');
