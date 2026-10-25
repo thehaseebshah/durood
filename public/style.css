@@ -781,3 +781,5 @@ input[aria-invalid=true], select[aria-invalid=true] { border-color: var(--err) !
 .alldone { margin: 12px 20px; padding: 12px 14px; border-radius: 12px; background: var(--sig-bg); color: var(--sig-text); font-weight: 700; font-size: .9rem; animation: lift .4s ease-out; }
 .lb li.gap { justify-content: center; color: var(--soft); padding: 4px 0 !important; border-bottom: 1px dashed var(--line); letter-spacing: 4px; }
 .lb .rank.mid { font-size: 1.15rem; } .lb .rank.long { font-size: .9rem; letter-spacing: -.5px; }
+.earned.static { cursor: default; justify-content: center; border: 0; }
+.chip.more { margin: 10px 20px; }

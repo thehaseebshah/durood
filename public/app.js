@@ -621,7 +621,9 @@ function profileModal() {
     <div class="pbig">${av(p, 96, false)}</div>
     ${p.displayName ? `<div class="pname" dir="auto">${esc(p.displayName)}</div>` : ''}
     ${p.bio ? `<p class="pbio" dir="auto">${esc(p.bio)}</p>` : ''}
-    <p class="muted center">${p.city ? `${esc(p.city)} · ` : ''}${t('member_since')} ${N(esc(p.joined))}${p.caravan ? ` · ${esc(p.caravan)}` : ''}</p></div></div>`;
+    <p class="muted center">${p.city ? `${esc(p.city)} · ` : ''}${t('member_since')} ${N(esc(p.joined))}${p.caravan ? ` · ${esc(p.caravan)}` : ''}</p>
+    ${p.level ? `<div class="stats flat">${p.total != null ? cell(p.total, t('total'), 'durood') : ''}${cell(p.streak, t('streak'))}${cell(p.level, t('level'))}</div>` : ''}
+    ${p.badges?.length ? `<div class="earned static">${p.badges.filter((c) => t('badge')[c]).map((c) => `<span title="${esc(t('badge')[c][0])}">${badgeSvg(c, true)}</span>`).join('')}</div>` : ''}</div></div>`;
 }
 
 // ---- the feed ---------------------------------------------------------------------------------------------------

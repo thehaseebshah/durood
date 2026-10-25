@@ -103,10 +103,17 @@ export function setPhone(userId, phone) {
 
 // ---- what anyone in the app may see ---------------------------------------------------------------------------------------------------
 export function publicProfile(username) {
-  const u = one(`SELECT id, username, display_name, bio, avatar_v, city, created_day, xp, streak, last_day FROM users WHERE username = ? AND deleted_at IS NULL AND suspended = 0`, String(username ?? ''));
+  const u = one(`SELECT id, username, display_name, bio, avatar_v, city, created_day, xp, streak, last_day, shields, total, hidden_from_ranks, held FROM users WHERE username = ? AND deleted_at IS NULL AND suspended = 0`, String(username ?? ''));
   if (!u) throw new HttpError(404, 'not_found');
   const cv = one('SELECT c.name FROM caravan_members cm JOIN caravans c ON c.id = cm.caravan_id WHERE cm.user_id = ?', u.id);
-  return { username: u.username, displayName: u.display_name, bio: u.bio, avatar: avatarUrl(u.id, u.avatar_v), city: u.city, joined: u.created_day, caravan: cv?.name ?? null };
+  // what the public boards already show: level, a streak that is still running, badges, and durood (only while it counts on the boards)
+  const today = new Date(Date.now() + 5 * 3600e3).toISOString().slice(0, 10);
+  const gap = u.last_day ? Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${u.last_day}T00:00:00Z`)) / 864e5) : null;
+  const streak = gap === 0 || gap === 1 || (gap === 2 && u.shields > 0) ? u.streak : 0;
+  const onBoards = !u.hidden_from_ranks && !u.held;
+  const badges = db.prepare('SELECT code FROM badges WHERE user_id = ? ORDER BY earned_at DESC LIMIT 6').all(u.id).map((b) => b.code);
+  return { username: u.username, displayName: u.display_name, bio: u.bio, avatar: avatarUrl(u.id, u.avatar_v), city: u.city, joined: u.created_day, caravan: cv?.name ?? null,
+    level: Math.floor(Math.sqrt(Math.max(0, u.xp) / 100)) + 1, streak, badges, total: onBoards ? u.total : null };
 }
 
 // ---- moderation (admin) ---------------------------------------------------------------------------------------------------------------

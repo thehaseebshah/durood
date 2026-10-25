@@ -196,3 +196,14 @@ test('admin moderation: find pictures and names, remove them, rename or delete a
   assert.ok(log.find((l) => l.action === 'rename-caravan').detail.includes('md_good_name'));
   assert.ok(c.token);
 });
+
+test('a public profile shows level, a running streak, badges and durood; durood held for a check is not shown', async () => {
+  const a = await signup('pp_viewer'), b = await signup('pp_shown');
+  await api('POST', '/api/log', { token: b.token, body: { count: 1200, rid: 'pp-shown-log-1' } });
+  let p = await api('GET', '/api/members/pp_shown', { token: a.token });
+  assert.equal(p.total, 1200); assert.equal(p.streak, 1); assert.ok(p.level >= 4); assert.ok(p.badges.includes('d1k'));
+  db.prepare("UPDATE users SET hidden_from_ranks = 1 WHERE username = 'pp_shown'").run();
+  p = await api('GET', '/api/members/pp_shown', { token: a.token });
+  assert.equal(p.total, null);
+  db.prepare("UPDATE users SET hidden_from_ranks = 0 WHERE username = 'pp_shown'").run();
+});
