@@ -207,3 +207,12 @@ test('a public profile shows level, a running streak, badges and durood; durood 
   assert.equal(p.total, null);
   db.prepare("UPDATE users SET hidden_from_ranks = 0 WHERE username = 'pp_shown'").run();
 });
+
+test('static caching: app code revalidates on every load, fonts are kept a year, images a day', async () => {
+  const cc = async (p) => (await api('GET', p, { raw: true })).headers.get('cache-control');
+  assert.equal(await cc('/app.js'), 'no-cache');
+  assert.equal(await cc('/style.css'), 'no-cache');
+  assert.match(await cc('/fonts/inter-latin.woff2'), /max-age=31536000, immutable/);
+  assert.match(await cc('/fonts/salawat.woff2'), /immutable/);
+  assert.equal(await cc('/icons/icon-192.png'), 'public, max-age=86400');
+});

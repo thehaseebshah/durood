@@ -769,7 +769,8 @@ async function handleStatic(req, res, url) {
   const etag = `"${crypto.createHash('sha1').update(data).digest('base64url').slice(0, 16)}"`;
   const headers = {
     'Content-Type': MIME[ext] || 'application/octet-stream',
-    'Cache-Control': ['.html', '.js', '.css', '.webmanifest'].includes(ext) ? 'no-cache' : 'public, max-age=86400',
+    // code revalidates every load; fonts never change in place (a new font gets a new name), so phones keep them a year
+    'Cache-Control': ['.html', '.js', '.css', '.webmanifest'].includes(ext) ? 'no-cache' : ext === '.woff2' ? 'public, max-age=31536000, immutable' : 'public, max-age=86400',
     'X-Content-Type-Options': 'nosniff', ETag: etag, Vary: 'Accept-Encoding',
   };
   if (req.headers['if-none-match'] === etag) { res.writeHead(304, headers); return res.end(); }
