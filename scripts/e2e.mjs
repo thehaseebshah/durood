@@ -213,6 +213,8 @@ try {
     await go(page, 'settings');
     await page.fill('#s-goal', '250'); await page.click('form[data-form=settings] button[type=submit]'); await page.waitForTimeout(900);
     ok((await api('GET', '/api/me', null, host.token)).dailyGoal === 250, 'the daily goal is changed in Settings');
+    await page.click('[data-act=fold][data-k=ssec]').catch(() => {}); await page.waitForTimeout(900);
+    ok(await page.locator('form[data-form=phone] select[name=phoneCountry] option').count() > 100, 'changing your number in Settings offers every country, not only Pakistan');
     await page.click('main .seg [data-act=setlang][data-l=ur]'); await page.waitForTimeout(700);
     ok(await page.evaluate(() => document.documentElement.dir === 'rtl'), 'Settings switches to Urdu');
     await page.click('main .seg [data-act=setlang][data-l=en]'); await page.waitForTimeout(700);

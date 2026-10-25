@@ -250,10 +250,14 @@ function introView() {
 const cityPicker = (label, initial = '') => `<label for="city-input">${label}</label>
   <div class="cityfield"><input id="city-input" type="text" data-city role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="city-list" autocomplete="off" placeholder="${t('city_ph')}" value="${esc(initial)}">
   <input type="hidden" name="cityId" value=""><ul id="city-list" class="suggest" role="listbox" hidden></ul></div><div class="hint">${t('city_hint')}</div>`;
-const countryOptions = () => (S.geo?.countries || [{ cc: 'PK', name: 'Pakistan', dial: '92' }])
+// the country list (11 KB) is fetched the first time a phone form shows, on sign-up or in Settings, not on the welcome slides
+const countryOptions = () => (ensureGeo(), S.geo?.countries || [{ cc: 'PK', name: 'Pakistan', dial: '92' }])
   .map((c) => `<option value="${c.cc}" ${c.cc === (S.geo?.country || 'PK') ? 'selected' : ''}>${esc(c.name)} (+${c.dial})</option>`).join('');
-async function loadGeo() {
-  try { S.geo = await api(`/geo?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone || '')}`); if (!S.me) draw(); } catch { /* the form falls back to Pakistan */ }
+let geoAsked = false;
+function ensureGeo() {
+  if (geoAsked) return;
+  geoAsked = true;
+  api(`/geo?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone || '')}`).then((g) => { S.geo = g; draw(); }, () => { geoAsked = false; }); // the form falls back to Pakistan meanwhile
 }
 
 
@@ -2343,5 +2347,4 @@ if (nativeApp) {
     nativeApp.exitApp();
   });
 }
-if (!S.token) loadGeo();
 boot();
