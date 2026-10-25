@@ -350,7 +350,7 @@ function shell() {
   return `
   <a class="skip" href="#main">${t('skip_to')}</a>
   ${sidebar()}
-  <header class="hd"><span class="row"><button class="pill icon burger" data-act="drawer" aria-label="${esc(t('menu'))}" aria-expanded="${S.drawer}" aria-controls="side">${uiIcon('menu', 18, 2)}</button><span class="ptitle">${t('nav_' + S.tab)}</span></span>
+  <header class="hd"><span class="row"><button class="pill icon burger" data-act="drawer" aria-label="${esc(t(S.sideHidden ? 'side_show' : 'side_hide'))}" title="${esc(t(S.sideHidden ? 'side_show' : 'side_hide'))}" aria-controls="side">${uiIcon('sidebar', 18, 1.9)}</button><span class="ptitle">${t('nav_' + S.tab)}</span></span>
     <span class="row"><span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button></span></header>
   <main id="main" tabindex="-1" class="wrap tab-${S.tab}${fab ? ' fabpad' : ''}${Date.now() - (S.enterAt || 0) < 900 ? ' enter' : ''}"><h1 class="sr">${t('nav_' + S.tab)}</h1><div class="ltitle" aria-hidden="true">${t('nav_' + S.tab)}</div>${S.offlineMode || outbox().length ? `<div class="offbar" role="status">${uiIcon('refresh', 14, 2)} ${S.offlineMode ? t('offline_bar') : ''} ${outbox().length ? t('outbox_n')(fmt(outbox().reduce((n, x) => n + x.count, 0))) : ''}</div>` : ''}${view()}</main>
   <nav class="tabs" aria-label="${esc(t('app'))}">${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" ${S.tab === k ? 'aria-current="page"' : ''} data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}
@@ -1404,7 +1404,7 @@ function enhanceModal() {
   }
 }
 document.addEventListener('keydown', (ev) => {
-  if (ev.key === 'Escape' && S.drawer && !app.querySelector('.modal')) { S.drawer = false; draw(); $('.burger')?.focus(); return; }
+  if (ev.key === 'Escape' && S.drawer && !app.querySelector('.modal')) { S.drawer = false; draw(); ($('.burger')?.offsetParent ? $('.burger') : $('nav.tabs [data-act=drawer]'))?.focus(); return; }
   const m = app.querySelector('.modal');
   if (!m) return;
   if (ev.key === 'Escape') { m.querySelector('[data-act=pclose],[data-act=celebrateX],[data-act=closedetail],[data-act=closeprofile],[data-act=sheetx]')?.click(); return; }

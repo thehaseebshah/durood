@@ -1075,3 +1075,5 @@ html[data-mode=dark] .tab-settings .notice { background: #2f2508; color: #ffd98a
 .unitnote .u { margin: 0 .1em; }
 /* a finished quest's reward reads as done (grey), but stays legible: no opacity fade below 4.5:1 */
 .q.d .qxp, .q.d .qxp .u { opacity: 1; color: var(--soft); }
+/* phones: the Browse tab opens the menu, so the header has no second menu button; wide screens: the button shows or hides the pinned sidebar */
+@media (max-width: 1023px) { .hd .burger { display: none; } }

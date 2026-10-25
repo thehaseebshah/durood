@@ -20,6 +20,7 @@ const G = {
   play: '<rect fill="FILL" x="3" y="5" width="18" height="14"/><path fill="none" d="M10 9.5l5 2.5-5 2.5z"/>',
   check: '<path fill="none" d="M5 12.5l4.5 4.5L19 7"/>',
   menu: '<path fill="none" d="M4 7h16M4 12h16M4 17h16"/>',
+  sidebar: '<rect fill="none" x="3.5" y="4.5" width="17" height="15" rx="3"/><path fill="none" d="M9.5 4.5v15"/>',
   plus: '<path fill="none" d="M12 5v14M5 12h14"/>',
   camera: '<rect fill="FILL" x="3" y="7" width="18" height="12"/><circle fill="none" cx="12" cy="13" r="3.2"/><path fill="none" d="M8.5 7l1.2-2h4.6l1.2 2"/>',
   share: '<path fill="none" d="M5 12v7h14v-7M12 4v10M8 8l4-4 4 4"/>',

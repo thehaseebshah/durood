@@ -406,3 +406,4 @@ The member app, sign-in and admin share one stylesheet; its last section restyle
 - Settings: Sounds and Vibration are iOS switches (`role=switch`) in a grouped list; the name under the photo is a heading, and the unconfirmed-email warning is an amber card.
 - Member and profile pop-ups rise from the bottom as sheets on phones; "Remove this" on an assignment is red; stat labels say "Day streak" and "Points" without a repeated unit.
 - Feed actions keep a gap between icon and label, and the first icon lines up with the post text. In a caravan the owner's remove column is kept on every row, so the scores line up.
+- Navigation has one menu control per screen size: on phones the Browse tab opens the menu (no header button); on wide screens the header button is a sidebar icon labelled "Show/Hide sidebar".
