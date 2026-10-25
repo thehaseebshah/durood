@@ -77,8 +77,8 @@ test('logging durood: xp, streak, badges, caps', async () => {
   assert.equal(r.me.streak, 1);
   assert.ok(r.newBadges.includes('first_step') && r.newBadges.includes('d1k'));
   assert.ok(r.me.quests.find((q) => q.id === 'goal').done);
-  assert.equal(r.xpGained, 1000 + 100 + 100 + 300 + FRI()); // durood + 1,000 milestone + daily goal + weekly goal (700) quests
-  assert.equal(r.me.quests.filter((q) => q.group === 'durood').length, 4);
+  assert.equal(r.xpGained, 1000 + 100 + 100 + 300 + 5 + FRI()); // durood + 1,000 milestone + daily goal + weekly goal (700) quests + streak day 1
+  assert.equal(r.me.quests.filter((q) => q.group === 'durood').length, 5 + (FRI() ? 1 : 0));
   assert.equal((await api('POST', '/api/log', { token, body: { count: 0 } })).error, 'bad_count');
   assert.equal((await api('POST', '/api/log', { token, body: { count: 1.5 } })).error, 'bad_count');
   assert.equal((await api('POST', '/api/log', { token, body: { count: 999999 } })).error, 'bad_count');
@@ -102,7 +102,7 @@ test('referral tree: full-depth team totals, delayed referral reward, no opt-out
   assert.equal(meA.team.members, 2);
   assert.equal(meA.team.direct, 1);
   assert.equal(meA.xp, 500 + 250); // b's first log pays 500; 'invite' weekly quest pays 250; grandchild pays root nothing
-  assert.equal((await api('GET', '/api/me', { token: b.token })).xp, 200 + 500 + 250 + 100 + FRI()); // own 200, c's first log, invite quest, goal quest
+  assert.equal((await api('GET', '/api/me', { token: b.token })).xp, 200 + 500 + 250 + 100 + 5 + FRI()); // own 200, c's first log, invite quest, goal quest, streak day 1
 
   const team = await api('GET', '/api/team', { token: a.token });
   assert.equal(team.total, 900);
@@ -203,7 +203,7 @@ test('durood milestones and the weekly goal quest pay once; sunnah/seerah reward
   const r = await api('POST', '/api/log', { token, body: { count: 10_000 } });
   assert.ok(r.newBadges.includes('d10k'));
   // 10,000 durood + d1k 100 + d10k 500 + daily goal 100 + weekly goal (700) 300
-  assert.equal(r.xpGained, 10_000 + 100 + 500 + 100 + 300 + FRI());
+  assert.equal(r.xpGained, 10_000 + 100 + 500 + 100 + 300 + 5 + FRI());
   const again = await api('POST', '/api/log', { token, body: { count: 50 } });
   assert.equal(again.xpGained, 50); // nothing is paid twice
   const { CFG } = await import('../server/game.js');

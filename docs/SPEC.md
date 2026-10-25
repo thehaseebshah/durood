@@ -363,3 +363,12 @@ Joining a Seerat Circle is self-declared and pays 300 once (badge "Circle Member
 - **Sharing**: WhatsApp, the phone's own share sheet (`navigator.share`, where available) and Copy.
 - **"Who invited you?"** (`POST /api/me/inviter`, `game.js linkInviter`): a member who joined with the public or a founder code can name their inviter once, within 14 days, while nobody has joined through them. Their ancestry, the team totals above them, the active count and (if they already have 100 durood) the referral reward follow as if they had used that code. It uses one of the inviter's invites; the inviter is notified. Errors: `link_closed`, `inviter_unknown`, `invite_full`.
 - **Units**: every number shows what it counts: a green `durood` tag for durood recited, a gold `pts` tag for points earned, plus `days` and `people`. "XP" is called points everywhere. Quests show the points they pay. The Me page explains the difference in one line.
+
+## 33. Streak points, reorganised pages, and motion
+
+- **Streak points**: a daily "Streak day N" quest pays 5 points per day of streak (up to 150 a day from day 30), once the day reaches 100 durood. Editing the day under 100 takes it back. `CFG.streakXpPer`, `CFG.streakXpCap`; `streakIfToday` follows the same shield rule as logging.
+- **Today**: counter → Getting started (new members, three weeks, hideable) → Quests (durood quests, with streak) → Tasks today → Sunnah & Seerah (the Seerat Circle card lives here until joined) → 40-day challenge. The "everyone together" line never shows less than the member's own day.
+- **Me**: latest badges as a strip, Badges / History collapsed, then Majlis, Murabbi and masul, the circle teacher claim (once joined) and How points work.
+- **Tasks**: no duplicate Today list; open tasks sorted by deadline; the + button adds a task here.
+- **Settings**: Language and display first; Security and Delete account folded.
+- **Motion**: bars grow from their last value, newly finished quests pop, the header flame jumps when the streak grows, earned points float up, the daily goal bursts (with chime and vibration), level and badge cards wait until that settles, rows rise in when a page opens, and pulling down at the top refreshes the page. All of it is off under reduced motion.

@@ -21,6 +21,8 @@ export const CFG = {
   sunnahXp: 40,              // added when the photo is verified, so a verified day is worth 3x the tick (60)
   replyXp: 2,                // for a short reply, never on your own post...
   replyDailyCap: 5,          // ...and for at most this many replies a day
+  streakXpPer: 5,            // the daily streak quest pays this much per day of streak...
+  streakXpCap: 30,           // ...up to day 30 (150 points a day from then on)
   questMinDurood: 100,       // a durood quest needs at least this many a day, whatever personal goal a member sets (a goal of 1 must not pay)
   lectureXp: 150,            // default for a weekly lecture (admin can set up to lectureXpMax)
   lectureXpMax: 200,
@@ -217,6 +219,12 @@ export const deleteSpecialDay = (day) => { run('DELETE FROM special_days WHERE d
 export const listSpecialDays = () => all('SELECT * FROM special_days ORDER BY day DESC LIMIT 60');
 
 // ---- quests ---------------------------------------------------------------
+/** The streak a member is on if they recite today: the same rule logDurood uses (a shield bridges one missed day). */
+export function streakIfToday(u, day = dayOf()) {
+  const gap = u.last_day ? dayNum(day) - dayNum(u.last_day) : null;
+  return gap === 0 ? u.streak : gap === 1 || (gap === 2 && u.shields > 0) ? u.streak + 1 : 1;
+}
+export const streakXp = (n) => CFG.streakXpPer * Math.min(Math.max(1, n), CFG.streakXpCap);
 function questState(u) {
   const day = dayOf(), wk = weekStart();
   const today = one('SELECT count FROM daily WHERE user_id = ? AND day = ?', u.id, day)?.count ?? 0;
@@ -239,6 +247,8 @@ function questState(u) {
     q('weekgoal', 'durood', 'week', 300, weekSum, goal * 7),
     q('days5', 'durood', 'week', 200, daysWeek, 5),
     q('invite', 'durood', 'week', 250, invitedWeek, 1),
+    // the longer the streak, the more a day of reciting is worth (paid once the day reaches the quest minimum)
+    { ...q('streak', 'durood', 'day', streakXp(streakIfToday(u, day)), today, CFG.questMinDurood), streakDay: streakIfToday(u, day) },
     ...(specialToday(day) ? [q('special', 'durood', 'day', CFG.specialXp, today, goal)] : []),
     q('sunnah', 'bonus', 'day', CFG.sunnahTickXp, tickedToday, 1, true),
     q('reflect', 'bonus', 'day', CFG.reflectXp, reflectedToday, 1),
@@ -256,7 +266,7 @@ function revokeQuests(userId, day) {
   const count = one('SELECT count FROM daily WHERE user_id = ? AND day = ?', userId, day)?.count ?? 0;
   const weekSum = one('SELECT COALESCE(SUM(count), 0) n FROM daily WHERE user_id = ? AND day >= ? AND day < ?', userId, wk, dayStr(dayNum(wk) + 7)).n;
   const daysWeek = one('SELECT COUNT(*) n FROM daily WHERE user_id = ? AND day >= ? AND day < ? AND count >= ?', userId, wk, dayStr(dayNum(wk) + 7), CFG.questMinDurood).n;
-  const holds = { [`goal:${day}`]: count >= goal, [`special:${day}`]: count >= goal, [`weekgoal:${wk}`]: weekSum >= goal * 7, [`days5:${wk}`]: daysWeek >= 5 };
+  const holds = { [`goal:${day}`]: count >= goal, [`streak:${day}`]: count >= CFG.questMinDurood, [`special:${day}`]: count >= goal, [`weekgoal:${wk}`]: weekSum >= goal * 7, [`days5:${wk}`]: daysWeek >= 5 };
   for (const [ref, ok] of Object.entries(holds)) {
     if (ok) continue;
     const ev = one("SELECT xp FROM events WHERE user_id = ? AND kind = 'quest' AND ref = ?", userId, ref);
@@ -782,6 +792,7 @@ export function getMe(userId) {
     flagState: !u.hidden_from_ranks ? null : one("SELECT 1 FROM flags WHERE user_id = ? AND status = 'open'", u.id) ? 'open' : one("SELECT 1 FROM flags WHERE user_id = ? AND status = 'confirmed'", u.id) ? 'decided' : 'open', emailVerified: !!u.email_verified_at,
     invites: inviteStatus(userId),
     inviter: u.referrer_id ? one('SELECT username FROM users WHERE id = ?', u.referrer_id)?.username ?? null : null, canLinkInviter: canLinkInviter(u),
+    joinedDay: u.created_day,
     total: u.total, today, week,
     streak: streakAlive ? u.streak : 0, bestStreak: u.best_streak, shields: u.shields,
     ...levelFor(u.xp),

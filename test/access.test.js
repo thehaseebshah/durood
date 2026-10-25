@@ -156,6 +156,38 @@ test('who invited you: a member who joined with a founder code links to their in
   assert.deepEqual(audit().problems, []);
 });
 
+test('streak points: the daily streak quest pays more the longer the streak, once the day reaches 100, and edits take it back', async () => {
+  const m = await signup('stk_m'), id = uid('stk_m');
+  let me = await api('GET', '/api/me', { token: m.token });
+  let q = me.quests.find((x) => x.id === 'streak');
+  assert.deepEqual([q.streakDay, q.xp, q.goal, q.done], [1, 5, 100, false]);
+  await api('POST', '/api/log', { token: m.token, body: { count: 50 } });
+  assert.equal((await api('GET', '/api/me', { token: m.token })).quests.find((x) => x.id === 'streak').done, false); // under 100: not yet
+  await api('POST', '/api/log', { token: m.token, body: { count: 50 } });
+  assert.equal((await api('GET', '/api/me', { token: m.token })).quests.find((x) => x.id === 'streak').done, true);
+  // a member on day 12 of a streak, reciting today: 60 points; day 40 is capped at 150
+  const day = dayOf(), yesterday = shift(day, -1);
+  db.prepare("DELETE FROM daily WHERE user_id = ? AND day = ?").run(id, yesterday);
+  const k = await signup('stk_k'), kid = uid('stk_k');
+  db.prepare('UPDATE users SET streak = 11, last_day = ? WHERE id = ?').run(yesterday, kid);
+  q = (await api('GET', '/api/me', { token: k.token })).quests.find((x) => x.id === 'streak');
+  assert.deepEqual([q.streakDay, q.xp], [12, 60]);
+  db.prepare('UPDATE users SET streak = 39 WHERE id = ?').run(kid);
+  q = (await api('GET', '/api/me', { token: k.token })).quests.find((x) => x.id === 'streak');
+  assert.deepEqual([q.streakDay, q.xp], [40, 150]);
+  const before = (await api('GET', '/api/me', { token: k.token })).xp;
+  const r = await api('POST', '/api/log', { token: k.token, body: { count: 120 } });
+  me = await api('GET', '/api/me', { token: k.token });
+  assert.equal(me.streak, 40);
+  assert.ok(me.xp - before >= 120 + 150, `gained ${me.xp - before}`);
+  // edited down under 100: the streak points go back
+  const h = await api('GET', '/api/history', { token: k.token });
+  const entry = h.days[0].entries[0];
+  await api('PATCH', `/api/entries/${entry.id}`, { token: k.token, body: { count: 20 } });
+  assert.equal((await api('GET', '/api/me', { token: k.token })).quests.find((x) => x.id === 'streak').done, false);
+  assert.deepEqual(audit().problems, []);
+});
+
 test('suspending a member, or a whole branch, locks them out but keeps their durood in the totals', async () => {
   const root = await signup('branch_root');
   const kid = await signup('branch_kid', 'branch_root');

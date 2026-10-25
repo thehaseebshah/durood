@@ -55,6 +55,7 @@ const N = (x) => `<span class="n">${x}</span>`; // keeps '+50' and '475 / 900' l
 const UNITS = { durood: 'u_durood', pts: 'u_pts', days: 'u_days', people: 'u_people' };
 const unit = (u) => `<i class="u u-${u}">${t(UNITS[u])}</i>`;
 const U = (n, u) => `${N(fmt(n))}${unit(u)}`;
+const membersN = (n) => `${fmt(n)} ${t(n === 1 ? 'member1' : 'members')}`;
 const cell = (v, label, u) => `<div><b>${fmt(v)}</b><span>${label}${u ? ` ${unit(u)}` : ''}</span></div>`;
 const $ = (s) => document.querySelector(s);
 const app = $('#app');
@@ -156,6 +157,7 @@ function logout(render = true, byUser = false) {
 const gainedSince = (before) => Math.max(0, (S.me.xp || 0) - (before || 0));
 function celebrate(res) {
   const bits = [];
+  if (res.goalHit) bits.push(t('goal_reached'));
   if (res.added) bits.push(t('saved_n')(fmt(res.added)));
   if (res.xpGained) bits.push(t('points_gained')(fmt(res.xpGained)));
   if (res.levelUp) bits.push(t('level_up')(res.levelUp));
@@ -167,6 +169,8 @@ function celebrate(res) {
   if (!S.celebrate) {
     if (big) S.celebrate = { kind: 'badge', code: big };
     else if (res.levelUp && res.levelUp >= 2) S.celebrate = { kind: 'level', level: res.levelUp };
+    // the card waits for the counter to roll and the points to float up, so the two moments don't land on top of each other
+    if (S.celebrate) { S.celebrateHold = Date.now() + 1400; setTimeout(draw, 1450); }
   }
 }
 const SHAREABLE = new Set(['d1k', 'd10k', 'd100k', 'd1m', 'streak7', 'streak30', 'streak100', 'recruit5', 'recruit25', 'karwan7', 'karwan30', 'qabila10', 'qabila50', 'qabila250', 'league_silver', 'league_gold', 'league_diamond', 'city_podium', 'city_champion', 'group10k', 'group100k', 'group1m', 'caravan10k', 'caravan100k', 'caravan1m', 'caravan10m']);
@@ -338,16 +342,16 @@ function shell() {
   ${sidebar()}
   <header class="hd"><span class="row"><button class="pill icon burger" data-act="drawer" aria-label="${esc(t('menu'))}" aria-expanded="${S.drawer}" aria-controls="side">${uiIcon('menu', 18, 2)}</button><span class="ptitle">${t('nav_' + S.tab)}</span></span>
     <span class="row"><span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button></span></header>
-  <main id="main" tabindex="-1" class="wrap tab-${S.tab}"><h1 class="sr">${t('nav_' + S.tab)}</h1>${view()}</main>
+  <main id="main" tabindex="-1" class="wrap tab-${S.tab}${Date.now() - (S.enterAt || 0) < 900 ? ' enter' : ''}"><h1 class="sr">${t('nav_' + S.tab)}</h1>${view()}</main>
   <nav class="tabs" aria-label="${esc(t('app'))}">${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" ${S.tab === k ? 'aria-current="page"' : ''} data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}
     <button class="${['caravan', 'qabila', 'tasks', 'people', 'progress', 'settings'].includes(S.tab) ? 'on' : ''}" data-act="drawer" aria-label="${esc(t('menu'))}">${uiIcon('menu', 22, 1.7)}<em>${t('nav_browse')}</em>${S.me.caravanInvites || S.me.caravanRequests || S.bh?.roles?.requests ? '<i class="pip" aria-hidden="true"></i>' : ''}</button></nav>
-  ${fab ? `<button class="fab" data-act="addsheet" aria-label="${esc(t('add_durood'))}" title="${esc(t('add_durood'))}">${uiIcon('plus', 28, 2.4)}</button>` : ''}
+  ${fab ? `<button class="fab" data-act="addsheet" aria-label="${esc(t(S.tab === 'tasks' ? 'own_new' : 'add_durood'))}" title="${esc(t(S.tab === 'tasks' ? 'own_new' : 'add_durood'))}">${uiIcon('plus', 28, 2.4)}</button>` : ''}
   ${S.sheet === 'add' ? addSheet() : ''}
   ${S.sheet === 'resched' ? reschedSheet() : ''}
   ${S.player ? playerModal() : ''}
   ${S.bhDetail ? detailModal() : ''}
   ${S.profile ? profileModal() : ''}
-  ${S.celebrate ? celebrateModal() : ''}
+  ${S.celebrate && !(S.celebrateHold > Date.now()) ? celebrateModal() : ''}
   ${S.me.needsCity ? cityModal() : ''}`;
 }
 
@@ -396,6 +400,29 @@ function addSheet() {
 const bar = (pct) => `<div class="bar"><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div>`;
 
 // ---- Today: the counter, then everything to do today in folding sections -------------------------------------------------------
+// Seerat Circle: part of Sunnah & Seerah until the member has joined one (then only the teacher claim remains, on Me)
+function circleCard(m) {
+  if (!m.circleUrl || m.badges.includes('circle')) return '';
+  return `<div class="circlecard">
+    <b>${t('circle_title')}</b><p>${t('circle_text')}</p>
+    <a class="blk fill1" href="${esc(m.circleUrl)}" target="_blank" rel="noopener"><span>${t('circle_open')}</span><b class="ar">↗</b></a>
+    <div class="row wrapx"><button class="chip" data-act="circle">${t('circle_claim')}</button>${teachButton()}</div></div>`;
+}
+// first steps for a new member: each one ticks itself off; the card goes once all are done, or when dismissed
+function startCard(m) {
+  if (ls.get('started') === '1' || (m.joinedDay && Date.now() - Date.parse(`${m.joinedDay}T00:00:00Z`) > 21 * 864e5)) return '';
+  const steps = [
+    [!!m.caravan, 'st_caravan', 'caravan'],
+    [m.team.direct > 0, 'st_invite', 'qabila'],
+    ...(m.canLinkInviter ? [[false, 'st_inviter', 'qabila']] : []),
+    [m.badges.includes('circle') || !m.circleUrl, 'st_circle', 'home'],
+  ];
+  const left = steps.filter(([ok]) => !ok).length;
+  if (!left) return '';
+  return `<section class="startcard"><div class="row between"><b>${t('st_title')}</b><button class="linkbtn" data-act="startx">${t('st_hide')}</button></div>
+    <div class="bar small">${''}<i style="width:${((steps.length - left) / steps.length) * 100}%"></i></div>
+    <ol>${steps.map(([ok, key, tab]) => `<li class="${ok ? 'ok' : ''}">${ok ? `<span class="tick">✓</span><s>${t(key)}</s>` : `<button class="linkbtn" data-act="tab" data-tab="${tab}">${t(key)} →</button>`}</li>`).join('')}</ol></section>`;
+}
 function home() {
   const m = S.me, f = S.feed;
   if (!f && !S.feedLoading) { S.feedLoading = true; loadFeed().catch(() => {}).finally(() => { S.feedLoading = false; if (S.tab === 'home') draw(); }); } // first screen after sign-in
@@ -413,28 +440,26 @@ function home() {
   let seerah = skel(), seerahMeta = '';
   if (f) {
     const lec = f.lectures.length ? f.lectures.map(lectureCard).join('') : `<div class="fcard"><h3>${uiIcon('book', 14, 2)} ${t('lectures')}</h3><p class="muted">${t('no_lectures')}</p></div>`;
-    seerah = `${sunnahCard(f.today)}${lec}${reflectionCard(f.reflection)}`;
+    seerah = `${sunnahCard(f.today)}${lec}${reflectionCard(f.reflection)}${circleCard(m)}`;
     const items = [!!f.today?.sunnah && (f.today.ticked || !!f.today.mine), ...f.lectures.map((l) => !!l.done), !!f.reflection?.mine];
     const total = (f.today?.sunnah ? 1 : 0) + f.lectures.length + 1;
     seerahMeta = N(`${items.filter(Boolean).length} / ${total}`);
   }
-  const quests = m.quests.filter((q) => !q.info);
+  // durood quests here; the Sunnah & Seerah items show what they pay in their own cards
+  const quests = m.quests.filter((q) => q.group === 'durood');
   const assigned = burhanToday();
-  const circle = m.circleUrl && !m.badges.includes('circle') ? `<div class="circlecard">
-    <b>${t('circle_title')}</b><p>${t('circle_text')}</p>
-    <a class="blk fill1" href="${esc(m.circleUrl)}" target="_blank" rel="noopener"><span>${t('circle_open')}</span><b class="ar">↗</b></a>
-    <div class="row wrapx"><button class="chip" data-act="circle">${t('circle_claim')}</button>${teachButton()}</div></div>` : '';
+  // the live line never shows less than the member's own day (the shared numbers are cached for a few seconds)
+  const liveToday = Math.max(m.pub.today || 0, m.today || 0), liveMembers = Math.max(m.pub.membersToday || 0, m.today ? 1 : 0);
 
   return `${notices}
   <section class="counterbox">${counter()}
-  <div class="live">${uiIcon('feed', 13, 2)} ${t('live_today')(fmt(m.pub.today || 0), fmt(m.pub.membersToday || 0))}</div>
+  ${liveToday ? `<div class="live">${uiIcon('feed', 13, 2)} ${t('live_today')(fmt(liveToday), fmt(liveMembers))}</div>` : ''}
   ${logBox()}</section>
-  ${fold('seerah', t('grp_seerah'), seerahMeta, seerah)}
+  ${startCard(m)}
+  ${fold('quests', t('grp_quests'), N(`${quests.filter((q) => q.done).length} / ${quests.length}`), quests.map((q) => quest(q)).join(''))}
   ${assigned ? fold('assigned', t('grp_tasks_today'), N(String(S.bh.today.length)), `${assigned}<button class="rowlink" data-act="tab" data-tab="tasks"><span>${t('tasks_all')}</span><b class="ar">→</b></button>`) : ''}
-  ${fold('quests', t('grp_quests'), N(`${quests.filter((q) => q.done).length} / ${quests.length}`),
-    `${m.quests.filter((q) => q.group === 'durood').map((q) => quest(q)).join('')}${m.quests.filter((q) => q.group === 'bonus').map((q) => quest(q, true)).join('')}`)}
+  ${fold('seerah', t('grp_seerah'), seerahMeta, seerah)}
   ${fold('challenge', t('challenge_title'), '', challengeCard(m), false)}
-  ${circle}
   <p class="note">${t('reminder_note')}</p>`;
 }
 
@@ -473,7 +498,7 @@ function challengeCard(m) {
   } else if (c.state === 'done') {
     body = `<div class="cstatus ahead">${t('done_msg')(human(c.target))}</div>`;
   }
-  return `<div class="challenge">${head}${tot}${barEl}${body}<div class="cnote">${fmt(m.pub.members)} ${t('members')} · ${t('self_reported')}</div></div>`;
+  return `<div class="challenge">${head}${tot}${barEl}${body}<div class="cnote">${membersN(m.pub.members)} · ${t('self_reported')}</div></div>`;
 }
 
 // ---- celebration: each crore reached, and the finish ---------------------------------------------------------------
@@ -554,9 +579,9 @@ async function shareCard() {
 
 const QUEST_UNIT = { goal: 'durood', weekgoal: 'durood', special: 'durood', days5: 'days', invite: 'people' };
 function quest(q, dim) {
-  return `<div class="q ${q.done ? 'd' : ''} ${dim ? 'dim' : ''}">
+  return `<div class="q ${q.done ? 'd' : ''} ${dim ? 'dim' : ''}" data-q="${q.id}">
     <span class="bx"></span>
-    <span class="t">${t('q_' + q.id)} <em>${t(q.period === 'day' ? 'daily' : 'weekly')}</em><small>${q.goal > 1 ? `${N(`${fmt(q.cur)} / ${fmt(q.goal)}`)}${unit(QUEST_UNIT[q.id] || 'durood')}` : ''}</small></span>
+    <span class="t">${q.id === 'streak' ? `${uiIcon('flame', 14, 2)} ${t('q_streak')(q.streakDay)}` : t('q_' + q.id)} <em>${t(q.period === 'day' ? 'daily' : 'weekly')}</em><small>${q.goal > 1 ? `${N(`${fmt(q.cur)} / ${fmt(q.goal)}`)}${unit(QUEST_UNIT[q.id] || 'durood')}` : ''}</small></span>
     <span class="qxp" title="${esc(t('q_reward'))}">${N(`+${fmt(q.xp)}`)}${unit('pts')}</span>
   </div>`;
 }
@@ -736,7 +761,7 @@ function rank() {
   const grp = ['caravans', 'trees', 'cities', 'majalis'].includes(b.type);
   const list = b.type === 'league' ? leagueView() : !rows ? skel() : rows.length ? `<ul class="lb">${rows.map((r) => `
     <li class="${r.me ? 'me' : ''}"><span class="rank">${r.rank}</span>${r.avatar !== undefined ? av(r, 34) : ''}
-      <span class="name">${esc(r.name ?? (r.nameUr ? pick(r.username, r.nameUr) : r.username))}${r.me ? ` <em class="tag">${t(b.type === 'caravans' ? 'cv_yours' : 'you')}</em>` : ''}<small>${r.city ? `${esc(r.city)}` : ''}${grp ? `${r.city ? ' · ' : ''}${fmt(r.members)} ${t('members')}${b.metric === 'average' ? ` · ${fmt(r.active)} ${t('active')}` : ''}` : ''}</small></span>
+      <span class="name">${esc(r.name ?? (r.nameUr ? pick(r.username, r.nameUr) : r.username))}${r.me ? ` <em class="tag">${t(b.type === 'caravans' ? 'cv_yours' : 'you')}</em>` : ''}<small>${r.city ? `${esc(r.city)}` : ''}${grp ? `${r.city ? ' · ' : ''}${membersN(r.members)}${b.metric === 'average' ? ` · ${fmt(r.active)} ${t('active')}` : ''}` : ''}</small></span>
       <span class="score">${N(`${grp && b.metric === 'growth' && r.score > 0 ? '+' : ''}${fmt(r.score)}`)}${unit('durood')}</span></li>`).join('')}</ul>` : `<p class="muted center">${t(b.type === 'cities' ? 'empty_cities' : 'empty_board')}</p>`;
   const kinds = [['users', 'rk_people'], ['league', 'rk_league'], ['caravans', 'rk_caravans'], ['trees', 'rk_trees'], ['cities', 'rk_cities'], ...(inBurhan() ? [['majalis', 'rk_majalis']] : [])];
   const note = b.type === 'league' ? '' : grp ? `${t('rk_note_' + b.type)} ${t('cv_note_' + b.metric)}` : (b.period === 'challenge' ? t('challenge_note') : '');
@@ -759,15 +784,15 @@ function rank() {
 function uplineBlock(tm) {
   if (!tm?.upline?.length) return '';
   return `<h3>${t('upline_title')}</h3>
-  <ul class="lb upline">${tm.upline.map((u) => `<li><span class="name">${esc(u.username)}<small>${u.city ? `${esc(u.city)} · ` : ''}${fmt(u.members)} ${t('members')}</small></span><span class="score">${U(u.team, 'durood')}</span></li>`).join('')}</ul>`;
+  <ul class="lb upline">${tm.upline.map((u) => `<li><span class="name">${esc(u.username)}<small>${u.city ? `${esc(u.city)} · ` : ''}${membersN(u.members)}</small></span><span class="score">${U(u.team, 'durood')}</span></li>`).join('')}</ul>`;
 }
 
 // ---- caravans: a group you create and name, joined by invitation or by asking ----------------------------------------------------
-const cvRow = (r, extra = '') => `<li>${av(r, 34)}<span class="name">${esc(r.username)}${r.owner ? ` <em class="tag">${t('cv_owner')}</em>` : ''}<small>${r.city ? `${esc(r.city)} · ` : ''}${t('this_week')} ${U(r.week, 'durood')}${r.today ? ` · ${t('cv_today')}` : ''}</small></span><span class="score">${fmt(r.total)}</span>${extra}</li>`;
+const cvRow = (r, extra = '') => `<li>${av(r, 34)}<span class="name">${esc(r.username)}${r.owner ? ` <em class="tag">${t('cv_owner')}</em>` : ''}<small>${r.city ? `${esc(r.city)} · ` : ''}${t('this_week')} ${U(r.week, 'durood')}${r.today ? ` · ${t('cv_today')}` : ''}</small></span><span class="score">${U(r.total, 'durood')}</span>${extra}</li>`;
 function cvJoinOrCreate(cv) {
   return `<h3 class="first-d">${t('caravan_title')}</h3>
   <p class="muted">${t('cv_intro')}</p>
-  ${cv.invitations.length ? `<h3>${t('cv_invitations')}</h3>${cv.invitations.map((i) => `<div class="circlecard"><b>${esc(i.name)}</b> · ${fmt(i.members)} ${t('members')}
+  ${cv.invitations.length ? `<h3>${t('cv_invitations')}</h3>${cv.invitations.map((i) => `<div class="circlecard"><b>${esc(i.name)}</b> · ${membersN(i.members)}
       <div class="row" style="margin-top:8px"><button class="blk fill1" data-act="cvaccept" data-id="${i.id}"><span>${t('cv_join_it')}</span><b class="ar">→</b></button><button class="chip" data-act="cvdecline" data-id="${i.id}">${t('decline')}</button></div></div>`).join('')}` : ''}
   <form novalidate class="cname" data-form="cvcreate"><label for="cv-new">${t('cv_create')}</label>
     <div class="row"><input id="cv-new" name="name" type="text" maxlength="20" autocomplete="off" autocapitalize="off" dir="ltr" placeholder="${esc(t('cv_name_ph'))}"><button class="chip solid" type="submit">${t('cv_create_btn')}</button></div>
@@ -873,16 +898,17 @@ function progress() {
   <div class="lvl"><div class="row between"><span>${uiIcon('bolt', 14, 1.9)} ${t('level')} ${m.level} · ${esc(title)}</span><b>${N(`${fmt(m.xp)} / ${fmt(m.next)}`)}${unit('pts')}</b></div>${bar(m.pct)}
     <p class="unitnote">${unit('durood')} ${unit('pts')} ${t('units_note')}</p>
     <div class="row between muted" style="margin-top:6px"><span title="${esc(t('shield_hint'))}">${uiIcon('shield', 14, 1.9)} ${m.shields} ${t('shields_word')}</span><button class="linkbtn" data-act="goleague">${t('league_title')}: ${t('tier_' + TIER_KEYS[m.league || 0])}</button></div></div>
-  ${m.circleUrl ? fold('circle', t('circle_title'), m.circleTeach === 'approved' ? t('teach_done') : m.badges.includes('circle') ? '✓' : '', `<p class="muted">${t('circle_text')}</p>
-    <div class="row wrapx"><a class="chip" href="${esc(m.circleUrl)}" target="_blank" rel="noopener">${t('circle_open')} ↗</a>
-    ${m.badges.includes('circle') ? `<span class="ok">✓ ${t('circle_done')}</span>` : `<button class="chip" data-act="circle">${t('circle_claim')}</button>`}</div>
-    <p class="muted">${t('teach_text')}</p><div class="row wrapx">${teachButton()}</div>`, !m.badges.includes('circle_teacher')) : ''}
+  ${m.badges.length ? `<button class="earned" data-act="fold" data-k="badges" aria-label="${esc(t('badges'))}">${m.badges.slice(-8).reverse().map((c) => `<span title="${esc(t('badge')[c][0])}">${badgeSvg(c, true)}</span>`).join('')}${m.badges.length > 8 ? `<b>+${m.badges.length - 8}</b>` : ''}</button>` : ''}
+  ${fold('badges', t('badges'), N(`${m.badges.length} / ${BADGE_FAMILIES.reduce((n, [, l]) => n + l.length, 0)}`), `${BADGE_FAMILIES.map(([fam, list]) => `<h3>${t('fam_' + fam)}</h3>
+  <div class="badges">${list.slice().sort((x, y) => m.badges.includes(y) - m.badges.includes(x)).map((c) => { const got = m.badges.includes(c); return `<div class="badge ${got ? 'got' : ''}" title="${esc(t('badge')[c][1])}">${badgeSvg(c, got)}<b>${esc(t('badge')[c][0])}</b><span>${esc(t('badge')[c][1])}</span></div>`; }).join('')}</div>`).join('')}`, false)}
+  ${fold('history', t('hist_title'), '', `<p class="note first">${t('hist_hint')}</p>${historyBlock()}`, false)}
   ${inBurhan() ? fold('majlis', t('majlis_title'), m.majlis ? esc(pick(m.majlis.name, m.majlis.nameUr)) : '', majlisBox(), !m.majlis) : ''}
   ${inBurhan() ? fold('guides', t('guides_title'), (S.bh?.notices || []).length ? '•' : '', burhanMe() || skel()) : ''}
-  ${fold('points', t('points_title'), '', `<ul class="how">${t('points_list').map((x) => `<li>${x}</li>`).join('')}</ul>`, false)}
-  ${fold('history', t('hist_title'), '', `<p class="note first">${t('hist_hint')}</p>${historyBlock()}`)}
-  ${fold('badges', t('badges'), N(`${m.badges.length}`), `${BADGE_FAMILIES.map(([fam, list]) => `<h3>${t('fam_' + fam)}</h3>
-  <div class="badges">${list.slice().sort((x, y) => m.badges.includes(y) - m.badges.includes(x)).map((c) => { const got = m.badges.includes(c); return `<div class="badge ${got ? 'got' : ''}" title="${esc(t('badge')[c][1])}">${badgeSvg(c, got)}<b>${esc(t('badge')[c][0])}</b><span>${esc(t('badge')[c][1])}</span></div>`; }).join('')}</div>`).join('')}`)}`;
+  ${m.circleUrl && m.badges.includes('circle') ? fold('circle', t('circle_title'), m.circleTeach === 'approved' ? t('teach_done') : m.badges.includes('circle') ? '✓' : '', `<p class="muted">${t('circle_text')}</p>
+    <div class="row wrapx"><a class="chip" href="${esc(m.circleUrl)}" target="_blank" rel="noopener">${t('circle_open')} ↗</a>
+    ${m.badges.includes('circle') ? `<span class="ok">✓ ${t('circle_done')}</span>` : `<button class="chip" data-act="circle">${t('circle_claim')}</button>`}</div>
+    <p class="muted">${t('teach_text')}</p><div class="row wrapx">${teachButton()}</div>`, false) : ''}
+  ${fold('points', t('points_title'), '', `<ul class="how">${t('points_list').map((x) => `<li>${x}</li>`).join('')}</ul>`, false)}`;
 }
 
 // the member's majlis: pick one, or propose a new one for an admin to approve
@@ -890,14 +916,14 @@ function majlisBox() {
   const d = S.majalis;
   if (!d) { if (!S.majalisLoading) { S.majalisLoading = true; api('/majalis').then((r) => { S.majalis = r; }).catch(() => {}).finally(() => { S.majalisLoading = false; draw(); }); } return skel(); }
   const prop = d.proposal;
-  return `<p class="muted">${t('majlis_text')}</p>
+  return `<div class="padx"><p class="muted">${t('majlis_text')}</p>
     <div class="row"><select id="mj-pick" aria-label="${esc(t('majlis_title'))}"><option value="">${t('majlis_none')}</option>${d.majalis.map((x) => `<option value="${x.id}" ${d.mine?.id === x.id ? 'selected' : ''}>${esc(pick(x.name, x.nameUr))} (${fmt(x.members)})</option>`).join('')}</select>
     <button class="chip solid" data-act="majlisset">${t('majlis_save')}</button></div>
     ${prop ? `<p class="note">${prop.status === 'pending' ? t('majlis_waiting')(esc(prop.name)) : t('majlis_refused')(esc(prop.name))}</p>` : ''}
     ${prop?.status === 'pending' ? '' : `<details class="pdetails"><summary>${t('majlis_propose')}</summary>
       <form novalidate data-form="majlisnew"><input name="name" type="text" maxlength="40" placeholder="${esc(t('majlis_propose_ph'))}" aria-label="${esc(t('majlis_propose_ph'))}" dir="auto">
       <input name="nameUr" type="text" maxlength="40" placeholder="${esc(t('majlis_propose_ur'))}" aria-label="${esc(t('majlis_propose_ur'))}" dir="rtl">
-      <button class="chip solid" type="submit">${t('majlis_send')}</button></form></details>`}`;
+      <button class="chip solid" type="submit">${t('majlis_send')}</button></form></details>`}</div>`;
 }
 
 // teaching a Seerat Circle: asked for once, confirmed by an organiser, then paid
@@ -921,6 +947,18 @@ function settings() {
   ${m.bio ? `<p class="pbio padx" dir="auto">${esc(m.bio)}</p>` : ''}
   <div class="muted" dir="ltr">${esc(m.email)} · ${esc(m.phone)}</div>
   ${m.emailVerified ? '' : `<div class="notice">${t('email_unconfirmed')} <button class="linkbtn" data-act="resend">${t('resend')}</button></div>`}
+  <h3>${t('appearance')}</h3>
+  <label class="padx">${t('language')}</label>
+  <div class="seg"><button class="${S.lang === 'en' ? 'on' : ''}" data-act="setlang" data-l="en">English</button><button class="${S.lang === 'ur' ? 'on' : ''}" data-act="setlang" data-l="ur">اردو</button></div>
+  <label class="padx">${t('feel_sound')}</label>
+  <div class="seg"><button class="${prefs.sound === false ? '' : 'on'}" data-act="setfeel" data-k="sound" data-v="1">${t('on_word')}</button><button class="${prefs.sound === false ? 'on' : ''}" data-act="setfeel" data-k="sound" data-v="0">${t('off_word')}</button></div>
+  <label class="padx">${t('feel_vibrate')}</label>
+  <div class="seg"><button class="${prefs.vibrate === false ? '' : 'on'}" data-act="setfeel" data-k="vibrate" data-v="1">${t('on_word')}</button><button class="${prefs.vibrate === false ? 'on' : ''}" data-act="setfeel" data-k="vibrate" data-v="0">${t('off_word')}</button></div>
+  <label class="padx">${t('display')}</label>
+  <div class="seg"><button class="${isDark() ? '' : 'on'}" data-act="setmode" data-m="light">${t('mode_light')}</button><button class="${isDark() ? 'on' : ''}" data-act="setmode" data-m="dark">${t('mode_dark_name')}</button></div>
+
+  ${pushSupported() ? `<div class="hint" style="margin-top:12px;padding-inline:20px">${Notification.permission === 'granted' ? t('push_on') : Notification.permission === 'denied' ? t('push_denied') : t('push_off')}</div>
+  <div class="row" style="padding-inline:20px">${Notification.permission === 'granted' ? `<button class="chip" data-act="pushoff">${t('push_disable')}</button>` : Notification.permission === 'denied' ? '' : `<button class="chip solid" data-act="pushon">${t('push_enable')}</button>`}</div>` : `<div class="hint" style="margin-top:12px">${t('push_unsupported')}</div>`}
   <h3 id="settings">${t('profile_title')}</h3>
   <form novalidate data-form="profile">
     <label for="p-name">${t('display_name')}</label>
@@ -944,8 +982,7 @@ function settings() {
     <input id="s-pw" type="password" name="password" autocomplete="current-password" dir="ltr">
     <button class="blk" type="submit"><span>${t('save')}</span><b class="ar">→</b></button>
   </form>
-  <h3>${t('security_title')}</h3>
-  <form novalidate data-form="password">
+  ${fold('ssec', t('security_title'), '', `  <form novalidate data-form="password">
     <label for="pw-cur">${t('pw_current')}</label><input id="pw-cur" type="password" name="current" autocomplete="current-password" dir="ltr">
     <label for="pw-new">${t('pw_new')}</label><input id="pw-new" type="password" name="next" autocomplete="new-password" dir="ltr">
     <label for="pw-again">${t('pw_again')}</label><input id="pw-again" type="password" name="again" autocomplete="new-password" dir="ltr">
@@ -959,28 +996,17 @@ function settings() {
     <div class="hint">${t('phone_note')}</div>
     <button class="blk out" type="submit"><span>${t('phone_change')}</span></button>
   </form>
-  <h3>${t('appearance')}</h3>
-  <label class="padx">${t('language')}</label>
-  <div class="seg"><button class="${S.lang === 'en' ? 'on' : ''}" data-act="setlang" data-l="en">English</button><button class="${S.lang === 'ur' ? 'on' : ''}" data-act="setlang" data-l="ur">اردو</button></div>
-  <label class="padx">${t('feel_sound')}</label>
-  <div class="seg"><button class="${prefs.sound === false ? '' : 'on'}" data-act="setfeel" data-k="sound" data-v="1">${t('on_word')}</button><button class="${prefs.sound === false ? 'on' : ''}" data-act="setfeel" data-k="sound" data-v="0">${t('off_word')}</button></div>
-  <label class="padx">${t('feel_vibrate')}</label>
-  <div class="seg"><button class="${prefs.vibrate === false ? '' : 'on'}" data-act="setfeel" data-k="vibrate" data-v="1">${t('on_word')}</button><button class="${prefs.vibrate === false ? 'on' : ''}" data-act="setfeel" data-k="vibrate" data-v="0">${t('off_word')}</button></div>
-  <label class="padx">${t('display')}</label>
-  <div class="seg"><button class="${isDark() ? '' : 'on'}" data-act="setmode" data-m="light">${t('mode_light')}</button><button class="${isDark() ? 'on' : ''}" data-act="setmode" data-m="dark">${t('mode_dark_name')}</button></div>
-
-  ${pushSupported() ? `<div class="hint" style="margin-top:12px;padding-inline:20px">${Notification.permission === 'granted' ? t('push_on') : Notification.permission === 'denied' ? t('push_denied') : t('push_off')}</div>
-  <div class="row" style="padding-inline:20px">${Notification.permission === 'granted' ? `<button class="chip" data-act="pushoff">${t('push_disable')}</button>` : Notification.permission === 'denied' ? '' : `<button class="chip solid" data-act="pushon">${t('push_enable')}</button>`}</div>` : `<div class="hint" style="margin-top:12px">${t('push_unsupported')}</div>`}
+`, false)}
   <button class="blk out" data-act="logout" style="margin-top:12px"><span>${t('logout')}</span></button>
   <button class="linkbtn padx" data-act="logoutall" style="margin-top:8px">${t('logout_all')}</button>
 
-  <h3>${t('delete_title')}</h3>
-  <form novalidate data-form="delete">
+  ${fold('sdel', t('delete_title'), '', `  <form novalidate data-form="delete">
     <p class="muted">${t('delete_text')}</p>
     <label for="d-pw">${t('password')}</label>
     <input id="d-pw" type="password" name="password" autocomplete="current-password" required dir="ltr">
     <button class="blk out danger" type="submit"><span>${t('delete_btn')}</span></button>
   </form>
+`, false)}
   ${footerLinks()}`;
 }
 
@@ -1169,7 +1195,7 @@ function burhanCaravan() {
   const shown = tf ? ra.filter((x) => (x.tags || []).includes(tf)) : ra;
   const chips = allTags.length ? `<div class="chips tagbar"><button class="chip ${tf ? '' : 'solid'}" data-act="teamf" data-tag="">${t('team_all')} ${N(String(ra.length))}</button>${allTags.map((x) => `<button class="chip ${tf === x.tag ? 'solid' : ''}" data-act="teamf" data-tag="${esc(x.tag)}">#${esc(x.tag)} ${N(String(x.n))}</button>`).join('')}</div>` : (ra.length ? `<p class="hint padx">${t('team_hint')}</p>` : '');
   const teamForm = tf ? assignForm('teamassign', t('team_assign')(esc(tf))) : '';
-  const razakars = ra.length ? `${chips}${teamForm}<ul class="lb">${shown.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.asks ? ` · <b>${t('asks_n')(x.asks)}</b>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${x.routinePercent}%`}${(x.tags || []).length ? `<span class="tagline">${x.tags.map((g) => `<em class="ttag">#${esc(g)}</em>`).join(' ')}</span>` : ''}</small></span><span class="score">${fmt(x.duroodWeek)}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('razakars_none')}</p>`;
+  const razakars = ra.length ? `${chips}${teamForm}<ul class="lb">${shown.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.asks ? ` · <b>${t('asks_n')(x.asks)}</b>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${x.routinePercent}%`}${(x.tags || []).length ? `<span class="tagline">${x.tags.map((g) => `<em class="ttag">#${esc(g)}</em>`).join(' ')}</span>` : ''}</small></span><span class="score">${U(x.duroodWeek, 'durood')}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('razakars_none')}</p>`;
   return `${rq.length ? fold('preq', t('requests_title'), N(String(rq.length)), reqs) : ''}
   ${fold('psaliks', t('saaliks_title'), N(String(sa.length)), saliks)}
   ${fold('prazakars', t('razakars_title'), N(String(ra.length)), razakars)}`;
@@ -1248,7 +1274,7 @@ function tasksPage() {
   if (!b) return skel();
   const f = S.ownForm || { kind: 'task' };
   const list = b.assignments, routines = list.filter((a) => a.kind === 'routine'), tasks = list.filter((a) => a.kind === 'task');
-  const open = tasks.filter((a) => !a.done), done = tasks.filter((a) => a.done);
+  const open = tasks.filter((a) => !a.done).sort((x, y) => String(x.due || '9').localeCompare(String(y.due || '9'))), done = tasks.filter((a) => a.done); // soonest deadline (and overdue) first
   const form = `<form novalidate data-form="owntask" class="assign"><b>${t('own_new')}</b>
       <div class="seg thin"><button type="button" class="${f.kind === 'task' ? 'on' : ''}" data-act="ownkind" data-k="task">${t('task_word')}</button><button type="button" class="${f.kind === 'routine' ? 'on' : ''}" data-act="ownkind" data-k="routine">${t('routine_word')}</button></div>
       <input type="text" name="title" maxlength="80" aria-label="${esc(t('own_ph'))}" placeholder="${esc(t('own_ph'))}" dir="auto">
@@ -1258,7 +1284,6 @@ function tasksPage() {
       <button class="blk" type="submit"><span>${t('own_add')}</span><b class="ar">→</b></button>
       <p class="hint">${b.masul || (b.murabbi && b.murabbi.stage === 'active') ? t('own_seen_by') : t('own_private')}</p></form>`;
   return `${fold('tnew', t('own_new'), '', form, !list.length)}
-  ${fold('ttoday', t('today'), N(String(b.today.length)), b.today.length ? b.today.map(taskRow).join('') : `<p class="muted padx">${t('tasks_none_today')}</p>`)}
   ${fold('ttasks', t('tasks_open'), N(String(open.length)), open.length ? open.map(taskRow).join('') : `<p class="muted padx">${t('tasks_none')}</p>`)}
   ${fold('troutines', t('routines_title'), N(String(routines.length)), routines.length ? routines.map(taskRow).join('') : `<p class="muted padx">${t('routines_none')}</p>`)}
   ${done.length ? fold('tdone', t('tasks_done'), N(String(done.length)), done.map(taskRow).join(''), false) : ''}`;
@@ -1383,6 +1408,46 @@ function draw() {
   restoreFields(keep);
   enhanceModal();
   if (S.rollFrom != null && S.me) { rollNumber($('#big'), S.rollFrom + S.pending, S.me.today + S.pending); S.rollFrom = null; }
+  afterDraw();
+}
+
+// ---- motion after each render: bars grow from where they were, quests just finished pop, the streak flame jumps,
+// earned points float up, and reaching the daily goal bursts. Memory is kept per bar so a redraw that changes nothing stays still.
+const fxMem = { bars: new Map(), quests: null, streak: null };
+function afterDraw() {
+  if (!S.me) return;
+  const still = reduceMotion();
+  document.querySelectorAll('.bar > i').forEach((el, i) => {
+    if (el.closest('#livebar, #pbar')) return; // these follow every tap / second themselves
+    const k = `${S.tab}:${i}`, to = el.style.width, from = fxMem.bars.get(k);
+    fxMem.bars.set(k, to);
+    if (still || from === to) return;
+    el.style.transition = 'none'; el.style.width = from ?? '0%';
+    void el.offsetWidth; // start from the old width
+    el.style.transition = ''; el.style.width = to;
+  });
+  const done = new Set(S.me.quests.filter((q) => q.done).map((q) => q.id));
+  if (fxMem.quests && !still) for (const id of done) if (!fxMem.quests.has(id)) document.querySelector(`.q[data-q="${id}"]`)?.classList.add('justdone');
+  fxMem.quests = done;
+  if (fxMem.streak != null && S.me.streak > fxMem.streak && !still) document.querySelector('.stk')?.classList.add('bump');
+  fxMem.streak = S.me.streak;
+  const fx = S.fx; S.fx = null;
+  if (!fx || still) return;
+  const at = ($('#livebar') || $('.fab') || app).getBoundingClientRect();
+  if (fx.pts) {
+    const el = document.createElement('div');
+    el.className = 'floatpts'; el.innerHTML = `${N('+' + fmt(fx.pts))}${unit('pts')}`;
+    el.style.left = `${at.left + at.width / 2}px`; el.style.top = `${at.top - 40}px`;
+    document.body.append(el); setTimeout(() => el.remove(), 1600);
+  }
+  if (fx.goal) {
+    sound('hundred'); haptic('hundred');
+    const end = $('#livebar')?.getBoundingClientRect() || at, burst = document.createElement('div');
+    burst.className = 'burst';
+    burst.style.left = `${S.lang === 'ur' ? end.left : end.right}px`; burst.style.top = `${end.top + end.height / 2}px`;
+    burst.innerHTML = Array.from({ length: 14 }, (_, i) => { const a = (i / 14) * Math.PI * 2, r = 46 + (i % 3) * 14; return `<i style="--dx:${Math.cos(a) * r}px;--dy:${Math.sin(a) * r}px;--d:${(i % 4) * 40}ms"></i>`; }).join('');
+    document.body.append(burst); setTimeout(() => burst.remove(), 1300);
+  }
 }
 
 const boardUrl = (b) => (b.type === 'users' ? `/leaderboard?type=users&period=${b.period}`
@@ -1398,7 +1463,7 @@ async function enterTab(tab) {
   if (tab === 'me') tab = 'progress'; // older links
   if (tab === 'burhan') tab = 'tasks'; // the old Al-Burhan page became Tasks, My people and Me
   if (['tasks', 'people'].includes(tab) && !inBurhan()) tab = 'home';
-  S.tab = tab; S.drawer = false;
+  S.tab = tab; S.drawer = false; S.enterAt = Date.now();
   // pages cross-fade and slide, where the browser can (Chrome and Android's WebView); otherwise they just change
   if (document.startViewTransition && !reduceMotion()) document.startViewTransition(() => draw()); else draw();
   window.scrollTo(0, 0);
@@ -1420,6 +1485,30 @@ async function enterTab(tab) {
     if (S.tab === tab) draw();
   } catch (e) { toast(errText(e)); }
 }
+// pull down at the top of a page to refresh it, as in most phone apps
+(() => {
+  let y0 = null, dy = 0, ind = null;
+  const reset = () => { y0 = null; dy = 0; if (ind) { ind.remove(); ind = null; } };
+  addEventListener('touchstart', (e) => { if (S.me && !S.sheet && !S.drawer && scrollY <= 0 && e.touches.length === 1 && !e.target.closest('input, textarea, .trow, .tap, .seg')) y0 = e.touches[0].clientY; }, { passive: true });
+  addEventListener('touchmove', (e) => {
+    if (y0 == null) return;
+    dy = Math.max(0, e.touches[0].clientY - y0);
+    if (dy < 8) return;
+    if (!ind) { ind = document.createElement('div'); ind.className = 'ptr'; ind.innerHTML = uiIcon('refresh', 18, 2.2); document.body.append(ind); }
+    const p = Math.min(1, dy / 80);
+    ind.style.transform = `translate(-50%, ${Math.min(dy, 110) * 0.6}px) rotate(${p * 270}deg)`; ind.style.opacity = p;
+    ind.classList.toggle('ready', p >= 1);
+  }, { passive: true });
+  addEventListener('touchend', async () => {
+    if (y0 == null) return;
+    const go = dy >= 80, el = ind; ind = null; y0 = null; dy = 0;
+    if (!go) { el?.remove(); return; }
+    el.classList.add('spin'); haptic('light');
+    try { await refreshMe(); await enterTab(S.tab); } catch (e) { toast(errText(e)); }
+    el.remove();
+  });
+  addEventListener('touchcancel', reset);
+})();
 async function refreshMe() {
   S.me = await api('/me');
   S.lang = S.me.lang;
@@ -1438,7 +1527,9 @@ async function submitLog(count) {
       try {
         const res = await api('/log', 'POST', { count, rid });
         S.rollFrom = S.me.today; // the counter rolls up to the new number
+        const goal = S.me.dailyGoal, hit = S.me.today < goal && res.me.today >= goal;
         S.me = res.me;
+        S.fx = { pts: res.xpGained, goal: hit }; res.goalHit = hit;
         haptic('done'); sound('done');
         celebrate(res);
         return true;
@@ -1496,6 +1587,10 @@ app.addEventListener('click', async (ev) => {
   if (act === 'drawerx') { S.drawer = false; return draw(); }
   if (act === 'addsheet') {
     S.drawer = false;
+    if (S.tab === 'tasks') { // on Tasks the + adds a task, as in Todoist
+      S.folds.tnew = true; draw();
+      const box = $('[data-form=owntask] input[name=title]'); box?.scrollIntoView({ block: 'center', behavior: 'smooth' }); box?.focus({ preventScroll: true }); return;
+    }
     if (S.tab === 'home' && $('#manual')) { $('#manual').scrollIntoView({ block: 'center', behavior: 'smooth' }); $('#manual').focus({ preventScroll: true }); return draw(); } // Today has the box already
     S.sheet = 'add'; draw(); $('#manual')?.focus(); return;
   }
@@ -1577,6 +1672,7 @@ app.addEventListener('click', async (ev) => {
     return enterTab('rank');
   }
   if (act === 'wa') return window.open(`https://wa.me/?text=${encodeURIComponent(t('share_text')(S.me.username, `${location.origin}/?invite=${S.me.username}`))}`, '_blank', 'noopener');
+  if (act === 'startx') { ls.set('started', '1'); return draw(); }
   if (act === 'shareinv') {
     const url = `${location.origin}/?invite=${S.me.username}`;
     try { await navigator.share({ title: 'Seerah Quest', text: t('share_text')(S.me.username, ''), url }); } catch { /* closed */ }

@@ -1,6 +1,7 @@
 // Icon system: Monoline for UI items, Offset Duotone for reward badges.
 // Everything is inline SVG that inherits the app's colour tokens, so white and dark modes just work.
 const G = {
+  refresh: '<path fill="none" d="M20 12a8 8 0 1 1-2.3-5.7"/><path fill="none" d="M20 4v5h-5"/>',
   beads: '<path fill="none" d="M3 8Q12 22 21 8"/><circle fill="FILL" cx="4.5" cy="9" r="1.8"/><circle fill="FILL" cx="8" cy="14" r="1.8"/><circle fill="FILL" cx="12" cy="16" r="1.8"/><circle fill="FILL" cx="16" cy="14" r="1.8"/><circle fill="FILL" cx="19.5" cy="9" r="1.8"/>',
   flame: '<path fill="FILL" d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z"/>',
   shield: '<path fill="FILL" d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/>',
