@@ -21,6 +21,11 @@
     #panel input:not([type=checkbox]):not([type=radio]):not([type=hidden]), #panel textarea, #panel select { width: 100%; box-sizing: border-box; font: inherit; padding: 10px; border: 2px solid var(--ink); border-radius: 0; background: var(--cell); color: var(--ink); }
     #panel textarea { resize: vertical; }
     [hidden] { display: none !important; }
+    .amenu summary { cursor: pointer; font-weight: 700; padding: 8px 12px; border: 1.5px solid var(--ink); display: inline-block; list-style: none; }
+    .amenu summary::-webkit-details-marker { display: none; }
+    .amenu summary::after { content: ' ▾'; }
+    .amenu[open] > div { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+    .amenu [data-a=memdel] { color: var(--err); border-color: var(--err); }
     .tabs2 { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
     .tabs2 button { background: none; border: 0; padding: 12px 10px; flex: 1 0 auto; font-weight: 700; color: var(--soft); border-bottom: 4px solid transparent; white-space: nowrap; }
     .tabs2 button.on { color: var(--ink); border-bottom-color: var(--sig); }

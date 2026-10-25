@@ -231,14 +231,14 @@ const views = {
       <div class="inline"><div><label>Search name, email, phone or city</label><input id="q" value="${esc(q)}"></div><button class="chip solid" data-a="search">Search</button></div>
       ${members.length ? `<table><tr><th>Member</th><th>Counts</th><th>Status</th><th>Actions</th></tr>${members.map((m) => `<tr>
         <td><b>${esc(m.username)}</b><br><span class="muted">${esc(m.city)} · ${esc(m.joined)}<br>${m.inviter ? 'invited by ' + esc(m.inviter) : esc(m.invitedVia)}</span></td>
-        <td>${fmt(m.total)}<br><span class="muted">caravan ${fmt(m.team)}${m.invites ? `<br>invites ${m.invites.used}/${m.invites.cap}` : ''}</span></td>
+        <td>${fmt(m.total)}<br><span class="muted">Qabila ${fmt(m.team)}${m.invites ? `<br>invites ${m.invites.used}/${m.invites.cap}` : ''}</span></td>
         <td>${m.deleted ? '<span class="pillbox bad">DELETED</span>' : ''}${m.suspended ? '<span class="pillbox bad">SUSPENDED</span>' : ''}${m.hidden ? '<span class="pillbox">HIDDEN</span>' : ''}${m.emailVerified ? '<span class="pillbox ok">EMAIL OK</span>' : ''}<br><span class="muted" dir="ltr">${esc(m.email)}<br>${esc(m.phone)}</span></td>
-        <td>${m.deleted ? '' : `
+        <td>${m.deleted ? '' : `<details class="amenu"><summary>Actions</summary><div>
           <button class="chip" data-a="${m.suspended ? 'unsuspend' : 'suspend'}" data-u="${esc(m.username)}">${m.suspended ? 'Unsuspend' : 'Suspend'}</button>
           <button class="chip" data-a="${m.suspended ? 'unsuspendb' : 'suspendb'}" data-u="${esc(m.username)}">${m.suspended ? 'Unsuspend branch' : 'Suspend branch'}</button>
           <button class="chip" data-a="${m.hidden ? 'unhide' : 'hide'}" data-u="${esc(m.username)}">${m.hidden ? 'Unhide' : 'Hide from ranks'}</button>
           ${can('reset_link') ? `<button class="chip" data-a="resetlink" data-u="${esc(m.username)}">Reset link</button>` : ''}
-          ${can('delete_member') ? `<button class="chip" data-a="memdel" data-u="${esc(m.username)}">Delete account</button>` : ''}`}</td></tr>`).join('')}</table>` : '<p class="empty">No members match.</p>'}`;
+          ${can('delete_member') ? `<button class="chip" data-a="memdel" data-u="${esc(m.username)}">Delete account</button>` : ''}</div></details>`}</td></tr>`).join('')}</table>` : '<p class="empty">No members match.</p>'}`;
   },
 };
 
