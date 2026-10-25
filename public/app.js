@@ -56,6 +56,8 @@ const UNITS = { durood: 'u_durood', pts: 'u_pts', days: 'u_days', people: 'u_peo
 const unit = (u) => `<i class="u u-${u}">${t(UNITS[u])}</i>`;
 const U = (n, u) => `${N(fmt(n))}${unit(u)}`;
 const membersN = (n) => `${fmt(n)} ${t(n === 1 ? 'member1' : 'members')}`;
+// an empty list says so kindly: a soft icon and one line, centred
+const empty = (icon, text) => `<div class="empty"><span class="eico">${uiIcon(icon, 22, 1.8)}</span><p>${text}</p></div>`;
 const cell = (v, label, u) => `<div><b>${fmt(v)}</b><span>${label}${u ? ` ${unit(u)}` : ''}</span></div>`;
 const $ = (s) => document.querySelector(s);
 const app = $('#app');
@@ -743,7 +745,7 @@ function feedView() {
   if (!f) return skel();
   // posting happens on Today; the feed is for reading what everyone shared
   return `<button class="rowlink" data-act="tab" data-tab="home"><span>${uiIcon('pen', 14, 2)} ${t('feed_share')}</span><b class="ar">→</b></button>
-    <div class="stream">${f.items.length ? feedList(f.items) : `<p class="muted center">${t('feed_empty')}</p>`}</div>
+    <div class="stream">${f.items.length ? feedList(f.items) : empty('feed', t('feed_empty'))}</div>
     ${f.next ? `<button class="chip more" data-act="more">${t('more')}</button>` : ''}`;
 }
 
@@ -870,7 +872,7 @@ function qabila() {
     <div class="row" style="margin-top:12px"><button class="blk wa fill1" data-act="wa"><span class="lab">${uiIcon('share', 22, 1.8)} ${t('share_wa')}</span><b class="ar">→</b></button>${navigator.share ? `<button class="chip" data-act="shareinv">${t('share_other')}</button>` : ''}<button class="chip" data-act="copy" data-text="${esc(link)}">${t('copy')}</button></div>`)}
   ${fold('qinv', t('invites_title'), N(`${fmt(m.invites.left)}`), invitesBox(m), true)}
   ${fold('qdirect', `${t('direct_list')}`, N(fmt(m.team.direct)), !tm ? '…' : tm.direct.length ? `<ul class="lb">${tm.direct.map((d) => `
-    <li>${av(d, 34)}<span class="name">${esc(d.username)}<small>${d.city ? `${esc(d.city)} · ` : ''}${t('this_week')} ${U(d.week, 'durood')}</small></span><span class="score">${U(d.total, 'durood')}</span></li>`).join('')}</ul>` : `<p class="muted">${t('none_yet')}</p>`)}
+    <li>${av(d, 34)}<span class="name">${esc(d.username)}<small>${d.city ? `${esc(d.city)} · ` : ''}${t('this_week')} ${U(d.week, 'durood')}</small></span><span class="score">${U(d.total, 'durood')}</span></li>`).join('')}</ul>` : empty('nodes', t('none_yet')))}
   ${tm?.upline?.length ? fold('qup', t('upline_title'), '', uplineBlock(tm).replace(/^<h3>.*?<\/h3>/, ''), false) : ''}`;
 }
 
@@ -1302,8 +1304,8 @@ function tasksPage() {
       <button class="blk" type="submit"><span>${t('own_add')}</span><b class="ar">→</b></button>
       <p class="hint">${b.masul || (b.murabbi && b.murabbi.stage === 'active') ? t('own_seen_by') : t('own_private')}</p></form>`;
   return `${fold('tnew', t('own_new'), '', form, !list.length)}
-  ${fold('ttasks', t('tasks_open'), N(String(open.length)), open.length ? open.map(taskRow).join('') : `<p class="muted padx">${t('tasks_none')}</p>`)}
-  ${fold('troutines', t('routines_title'), N(String(routines.length)), routines.length ? routines.map(taskRow).join('') : `<p class="muted padx">${t('routines_none')}</p>`)}
+  ${fold('ttasks', t('tasks_open'), N(String(open.length)), open.length ? open.map(taskRow).join('') : empty('check', t('tasks_none')))}
+  ${fold('troutines', t('routines_title'), N(String(routines.length)), routines.length ? routines.map(taskRow).join('') : empty('check', t('routines_none')))}
   ${done.length ? fold('tdone', t('tasks_done'), N(String(done.length)), done.map(taskRow).join(''), false) : ''}`;
 }
 
@@ -1337,7 +1339,7 @@ function detailModal() {
     <p class="muted">${esc(r.city || '')} · ${t('joined')} ${N(esc(r.joined))}</p>
     ${progressGrid(r.progress)}
     <b>${t('assigned_view')}</b>
-    ${r.assignments.length ? r.assignments.map((a) => assignRow(a, 'masul')).join('') : `<p class="muted">${t('none_assigned')}</p>`}
+    ${r.assignments.length ? r.assignments.map((a) => assignRow(a, 'masul')).join('') : empty('check', t('none_assigned'))}
     ${tagEditor(r)}
     ${assignForm('assign', t('assign_new'))}
     <div class="row dangerrow"><button class="chip" data-act="bhremove" data-u="${esc(d.username)}">${t('remove_razakar')}</button></div>

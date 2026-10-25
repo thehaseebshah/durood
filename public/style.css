@@ -975,3 +975,6 @@ body.in-app .hd { transition: background .2s, border-color .2s; }
 body.in-app:not(.scrolled) .hd { border-bottom-color: transparent; background: var(--ground); -webkit-backdrop-filter: none; backdrop-filter: none; }
 @media (prefers-reduced-motion: reduce) { body.in-app .hd .ptitle { transition: none; } }
 .chip { white-space: nowrap; flex-shrink: 0; }
+.empty { text-align: center; padding: 22px 20px; color: var(--soft); }
+.empty .eico { display: inline-grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: var(--cell); color: var(--soft); margin-bottom: 8px; }
+.empty p { margin: 0; font-size: .9rem; }
