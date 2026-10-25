@@ -175,6 +175,27 @@ try {
     await kp.close();
   }
 
+  // ---- reflection, a lecture, the daily goal and the language from Settings ------------------------------------------------------
+  {
+    await api('POST', '/api/admin/lectures', { youtube_id: 'dQw4w9WgXcQ', title_en: 'E2E lecture', speaker: 'Test', min_seconds: 30 }, null, K);
+    const page = await open(host.token);
+    await page.fill('#refl', 'Patience is light.'); await page.click('[data-act=reflect]'); await page.waitForTimeout(900);
+    ok((await api('GET', '/api/feed', null, host.token)).reflection?.mine?.body === 'Patience is light.', 'a reflection is posted');
+    await page.reload(); await page.waitForTimeout(1200);
+    await page.locator('[data-act=watch]').first().click(); await page.waitForTimeout(900);
+    ok(await page.locator('.modal [data-act=pclose]').count() === 1, 'a lecture opens in the player');
+    await page.click('.modal [data-act=pclose]'); await page.waitForTimeout(400);
+    ok(await page.locator('.modal').count() === 0, 'the player closes');
+    await go(page, 'settings');
+    await page.fill('#s-goal', '250'); await page.click('form[data-form=settings] button[type=submit]'); await page.waitForTimeout(900);
+    ok((await api('GET', '/api/me', null, host.token)).dailyGoal === 250, 'the daily goal is changed in Settings');
+    await page.click('main .seg [data-act=setlang][data-l=ur]'); await page.waitForTimeout(700);
+    ok(await page.evaluate(() => document.documentElement.dir === 'rtl'), 'Settings switches to Urdu');
+    await page.click('main .seg [data-act=setlang][data-l=en]'); await page.waitForTimeout(700);
+    ok(await page.evaluate(() => document.documentElement.dir === 'ltr'), '...and back to English');
+    await page.close();
+  }
+
   // ---- a caravan mate's milestone: MashaAllah ---------------------------------------------------------------------------
   {
     await api('POST', '/api/log', { count: 1000, rid: crypto.randomUUID() }, kid.token);
