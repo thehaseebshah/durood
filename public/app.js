@@ -1421,6 +1421,7 @@ function draw() {
   document.body.classList.toggle('side-hidden', !!S.sideHidden);
   document.body.classList.toggle('drawer-open', !!S.drawer);
   document.title = S.me ? `${t('nav_' + S.tab)} · ${t('app')}` : t('app');
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', S.me ? (isDark() ? '#1c1c1e' : '#f6f6f8') : '#0c0e2b'); // the phone's bar matches the frosted header inside the app
   app.innerHTML = S.me ? shell() : S.offline ? offlineView() : S.intro !== null ? introView() : authView();
   restoreFields(keep);
   enhanceModal();

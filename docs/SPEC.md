@@ -380,3 +380,7 @@ Durood added with no connection is kept on the phone (`outbox` in local storage,
 ## 35. MashaAllah on milestones
 
 A member can say "MashaAllah" once on a caravan mate's milestone in the feed (`POST /api/cheer {id}`), never on their own and only on milestones their caravan can see. It earns no points, so there is nothing to farm; the owner sees "N said MashaAllah" on their own card.
+
+## 36. Look: an Apple-style layer
+
+The member app, sign-in and admin share one stylesheet; its last section restyles the original Swiss components in an iOS manner without changing the markup: grouped rounded cards (16px) on a soft grey ground (#f2f2f7, black in dark mode), a frosted sticky header and tab bar (backdrop blur), pill chips and rounded buttons in a deeper green (#00875a, AA with white text), iOS segmented controls, filled rounded fields with a focus ring, rounded numerals (ui-rounded where the system has it), sentence-case labels, grabber-topped sheets, blurred dialogs and toasts. The phone's status-bar colour follows the header.

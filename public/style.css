@@ -788,3 +788,160 @@ input[aria-invalid=true], select[aria-invalid=true] { border-color: var(--err) !
 .chip.cheer.on { background: var(--sig-bg); color: var(--sig-text); border-color: var(--sig); opacity: 1; }
 .chip.cheer.pop { animation: pop .45s cubic-bezier(.3, 1.6, .5, 1); }
 .cheerline { margin-top: 6px; font-size: .8rem; font-weight: 700; color: var(--sig-text); }
+
+/* ======================================================================================================================
+   Apple-style layer: grouped rounded cards on a soft grey ground, frosted header and tab bar, pill buttons, iOS segmented
+   controls, rounded numerals, gentle shadows. It restyles the components above without changing the markup.
+   ====================================================================================================================== */
+:root {
+  --ground: #f2f2f7; --paper: #ffffff; --ink: #1c1c1e; --soft: #8a8a8e; --hair: rgba(60, 60, 67, .12); --line: rgba(60, 60, 67, .14);
+  --track: #e9e9ee; --cell: #f2f2f7; --accent: #00875a; --on-accent: #ffffff; --sig-bg: #e6f6ee; --tint: #c9eedb;
+  --glass: rgba(249, 249, 251, .78); --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 4px 16px rgba(0, 0, 0, .05);
+  --radius: 16px; --rounded: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+}
+html[data-mode=dark] {
+  --ground: #000000; --paper: #1c1c1e; --ink: #f2f2f7; --soft: #98989f; --hair: rgba(84, 84, 88, .5); --line: rgba(84, 84, 88, .55);
+  --track: #2c2c2e; --cell: #2c2c2e; --accent: #30d158; --on-accent: #04170f; --sig-bg: #0f2e1f; --tint: #14503a;
+  --glass: rgba(28, 28, 30, .72); --shadow: 0 1px 2px rgba(0, 0, 0, .4);
+}
+html, body { background: var(--ground); }
+body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', Helvetica, Arial, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+html[lang=ur] body { font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', -apple-system, 'Inter', serif; }
+body.in-app .wrap { border-inline: 0; background: transparent; }
+
+/* frosted header */
+body.in-app .hd { position: sticky; top: 0; z-index: 9; background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: .5px solid var(--line); text-transform: none; letter-spacing: -.2px; font-size: 1.05rem; font-weight: 700; padding: 10px 16px; }
+.pill { border: 0; background: var(--track); border-radius: 99px; color: var(--ink); }
+.pill.icon { width: 36px; height: 36px; padding: 0; }
+
+/* section headers: quiet grey captions, no bars */
+h3 { background: transparent; border: 0; color: var(--soft); padding: 18px 20px 6px; font-weight: 600; }
+h3::before { display: none; }
+
+/* grouped cards */
+.fold, .counterbox, body.in-app main > .stats, body.in-app main > .lvl, .myhead + .stats, .fitem, .circlecard, .startcard, .linkinv, .earned:not(.static), .challenge {
+  background: var(--paper); border-radius: var(--radius); box-shadow: var(--shadow); border: 0; }
+.fold, .counterbox, body.in-app main > .stats, body.in-app main > .lvl, .challenge { margin: 12px 14px; overflow: hidden; }
+.fold:has(details[open]) { overflow: visible; }
+.foldhead { background: transparent; color: var(--ink); text-transform: none; letter-spacing: -.1px; font-size: 1rem; font-weight: 650; padding: 14px 16px; }
+html[lang=ur] .foldhead { font-size: 1.05rem; }
+.foldhead .chev { color: var(--soft); }
+.fold.open .foldhead { border-bottom: .5px solid var(--line); }
+.foldbody > :last-child, .lb li:last-child, .q:last-child { border-bottom: 0; }
+.q, .lb li, .trow, .rowlink, .fcard, .hrow, .hday { border-color: var(--line); }
+.q .t em { border: 0; background: var(--track); border-radius: 6px; padding: 1px 6px; }
+.fcard { border-top: .5px solid var(--line); }
+.foldbody > .fcard:first-child { border-top: 0; }
+.fcard > h3 { margin-inline: -20px; }
+.fitem { margin: 10px 14px; padding: 14px 16px; }
+.fitem.ms, .fitem.ms.mine, .fitem.ann.unread { border-inline-start: 0; }
+.fitem.ms.mine { box-shadow: var(--shadow), inset 0 0 0 1.5px var(--tint); }
+.circlecard, .startcard, .linkinv { border: 0; }
+.startcard, .linkinv { background: var(--sig-bg); box-shadow: none; }
+.earned:not(.static) { margin: 12px 14px; width: auto; }
+
+/* the counter */
+.counterbox { padding-bottom: 14px; }
+.counterbox .sub { border: 0; }
+.big, .stats b, .lb .score, .lb .rank, .ctotal b, .uname, .qxp, .invleft b { font-family: var(--rounded); }
+.big { letter-spacing: -.04em; }
+.bar { border-radius: 99px; overflow: hidden; height: 12px; }
+.bar > i { border-radius: 99px; }
+#livebar .bar { margin-inline: 16px; }
+.counterbox #livebar { position: relative; }
+
+/* stats */
+.stats { border: 0; }
+.stats > div { border-color: var(--line); }
+.lvl { border: 0; }
+
+/* buttons */
+.blk { background: var(--accent); color: var(--on-accent); border: 0; border-radius: 14px; text-transform: none; letter-spacing: 0; font-weight: 650; box-shadow: none; transition: transform .15s, filter .15s; }
+.blk b { color: var(--on-accent); opacity: .8; }
+.blk:active { transform: scale(.98); filter: brightness(.95); }
+.blk.out { background: var(--track); color: var(--ink); } .blk.out b { color: var(--ink); }
+.blk.wa { background: #25d366; color: #05210f; } .blk.wa b { color: #05210f; }
+.blk.danger, .blk.out.danger { background: transparent; color: var(--err); box-shadow: inset 0 0 0 1.5px var(--err); }
+.chip { border: 0; background: var(--track); color: var(--ink); border-radius: 99px; padding: 7px 14px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+.chip.solid { background: var(--accent); color: var(--on-accent); }
+.chip:active { filter: brightness(.94); }
+.dangerrow .chip, .amenu [data-a=memdel] { background: transparent; box-shadow: inset 0 0 0 1.5px var(--err); }
+
+/* fields */
+input[type=text], input[type=email], input[type=tel], input[type=password], input[type=number], input[type=date], input[type=time], input[type=url], select, textarea, .fcard textarea {
+  border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); transition: border-color .2s, box-shadow .2s; }
+body.in-app main input:not([type=checkbox]):not([type=radio]), body.in-app main select, body.in-app main textarea { background: var(--cell); border-color: transparent; }
+input:focus, select:focus, textarea:focus { outline: 0; border-color: var(--accent) !important; box-shadow: 0 0 0 4px var(--tint); }
+.numbox input { border-radius: 14px; }
+
+/* segmented controls */
+.seg { margin: 10px 14px; padding: 3px; gap: 3px; background: var(--track); border: 0; border-radius: 11px; }
+.seg button { border: 0 !important; border-radius: 9px; margin: 0; padding: 9px 6px; color: var(--ink); font-weight: 600; background: transparent; transition: background .2s, box-shadow .2s; }
+.seg button.on { background: var(--paper); box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04); color: var(--ink); }
+.seg.five button { border-top: 0 !important; margin-top: 0; }
+@media (max-width: 600px) { .seg.five { gap: 3px; } .seg.five button { flex: 1 0 30%; } }
+
+/* lists */
+.lb li.me, html[dir=rtl] .lb li.me { background: var(--sig-bg); box-shadow: none; }
+.lb li:nth-child(-n+3) .rank::after { border-radius: 50%; }
+.rowlink { color: var(--accent); font-weight: 600; }
+
+/* tab bar and FAB */
+nav.tabs { background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); border-top: .5px solid var(--line); }
+nav.tabs button { border: 0; color: var(--soft); }
+nav.tabs button.on { color: var(--accent); box-shadow: none; font-weight: 650; }
+nav.tabs button.on::before { display: none; }
+.fab { background: var(--accent); color: var(--on-accent); box-shadow: 0 6px 20px rgba(0, 0, 0, .22); }
+
+/* drawer */
+.side { background: var(--ground); border: 0; }
+.sidetop { border-bottom: .5px solid var(--line); }
+.sadd { border-radius: 14px; background: var(--accent); color: var(--on-accent); }
+.sitem { margin: 1px 8px; border-radius: 10px; width: calc(100% - 16px); padding: 10px 12px; }
+.sitem.on { background: var(--paper); box-shadow: var(--shadow); color: var(--accent); }
+
+/* sheets, dialogs, toast */
+.modal { background: rgba(0, 0, 0, .38); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.modal .box { border: 0; border-radius: 22px; box-shadow: 0 20px 60px rgba(0, 0, 0, .3); }
+.sheetm .box.sheetbox { border-top: 0; border-radius: 22px 22px 0 0; }
+.sheetm .box.sheetbox::before { content: ""; display: block; width: 36px; height: 5px; border-radius: 99px; background: var(--line); margin: -4px auto 10px; }
+#toast { border-radius: 14px; background: rgba(28, 28, 30, .92); color: #fff; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: 0 10px 30px rgba(0, 0, 0, .25); }
+html[data-mode=dark] #toast { background: rgba(58, 58, 60, .92); }
+
+/* units and little labels */
+.u { border-radius: 99px; }
+.offbar { border-radius: 12px; margin: 10px 14px 0; border: 0; }
+.alldone { border-radius: 14px; }
+.trow .tfront { background: var(--paper); }
+.menupop, details.menu .menupop { border-radius: 14px; border: 0; box-shadow: 0 10px 30px rgba(0, 0, 0, .18); }
+/* the counter sits in a card now: a little smaller so the widest numbers still fit */
+.counterbox .big { font-size: min(10rem, 40vw); padding-inline: 16px; }
+.counterbox .big.l5 { font-size: min(7.6rem, 30vw); }
+.counterbox .big.l6 { font-size: min(6.4rem, 25vw); }
+.counterbox .big.l7 { font-size: min(5.4rem, 21vw); }
+/* Apple layer, second pass: sentence-case labels, soft notices, the invite card, rankings in a card, quieter links */
+body.in-app label:not(.check):not(.chip):not(.blk):not(.daychip) { text-transform: none; letter-spacing: 0; font-size: .85rem; font-weight: 600; color: var(--soft); }
+.counterbox .sub { border: 0; }
+.counterbox .sub > span { border: 0; text-transform: none; letter-spacing: 0; font-size: .82rem; font-weight: 600; color: var(--soft); padding: 12px 16px 0; }
+.counterbox .sub > span:first-child { color: var(--ink); font-weight: 700; }
+.linkbtn { text-decoration: none; color: var(--accent); font-weight: 650; }
+.tag { border: 0; background: var(--track); border-radius: 99px; padding: 1px 9px; }
+.lb li.me .tag { background: var(--accent); color: var(--on-accent); }
+.tag.verified { background: var(--sig-bg); color: var(--sig-text); }
+.tag.rejected, .tag.removed { background: var(--err-bg); }
+.flagnote, .notice, .special, .err, .invleft { border: 0; border-radius: 12px; }
+html[dir=rtl] .err { border: 0; }
+.notice { background: var(--cell); }
+.err { padding: 12px 14px; }
+.link { border: 0; border-radius: 12px; }
+.code { border: 0; }
+.foldbody > .code, .foldbody > .link, .foldbody > .muted, .foldbody > .row, .foldbody > .note { margin-inline: 16px; }
+.foldbody > .row:last-child { margin-bottom: 16px; }
+.invleft { margin: 12px 16px 0; }
+.invsrc { margin-inline: 16px; }
+/* rankings sit in one rounded card */
+.tab-rank .lb, .tab-qabila .lb.upline { margin: 0 14px 12px; background: var(--paper); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+.lb .rank { border: 0 !important; }
+.earned:not(.static) { width: calc(100% - 28px); box-sizing: border-box; }
+.myhead + .stats, body.in-app main > .stats { border: 0; }

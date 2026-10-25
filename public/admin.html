@@ -18,7 +18,7 @@
     .bar2 { display: flex; gap: 8px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
     .bar2 input { flex: 1; min-width: 180px; }
     /* every field on the admin page looks like one, whatever its type (date, url, untyped text, text areas) */
-    #panel input:not([type=checkbox]):not([type=radio]):not([type=hidden]), #panel textarea, #panel select { width: 100%; box-sizing: border-box; font: inherit; padding: 10px; border: 2px solid var(--ink); border-radius: 0; background: var(--cell); color: var(--ink); }
+    #panel input:not([type=checkbox]):not([type=radio]):not([type=hidden]), #panel textarea, #panel select { width: 100%; box-sizing: border-box; font: inherit; padding: 10px; border: 1px solid var(--line); border-radius: 10px; border-radius: 0; background: var(--cell); color: var(--ink); }
     #panel textarea { resize: vertical; }
     [hidden] { display: none !important; }
     .amenu summary { cursor: pointer; font-weight: 700; padding: 8px 12px; border: 1.5px solid var(--ink); display: inline-block; list-style: none; }
@@ -43,6 +43,9 @@
     .msg { margin: 10px 0; padding: 10px 12px; background: var(--sig-bg); border-inline-start: 4px solid var(--sig); font-weight: 600; overflow-wrap: anywhere; }
     .empty { color: var(--soft); padding: 14px 0; }
     .chip { margin: 2px 4px 2px 0; }
+      .wrap { border-inline: 0; }
+    .hd { border-bottom: .5px solid var(--line) !important; background: var(--glass); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); position: sticky; top: 0; z-index: 5; }
+    #panel table { background: var(--paper); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
   </style>
 </head>
 <body>
