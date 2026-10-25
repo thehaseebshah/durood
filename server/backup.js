@@ -10,6 +10,7 @@ import { db, getSetting, setSetting } from './db.js';
 export function backupNow(dir = process.env.BACKUP_DIR, keep = Number(process.env.BACKUP_KEEP) || 3) {
   if (!dir) throw new Error('BACKUP_DIR is not set');
   mkdirSync(dir, { recursive: true, mode: 0o700 });
+  try { chmodSync(dir, 0o700); for (const f of readdirSync(dir)) chmodSync(path.join(dir, f), 0o600); } catch { /* not ours to change */ } // folders and copies made before this rule
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('.', '').replace('T', '-').replace('Z', ''); // to the millisecond, so two backups never collide
   const file = path.join(dir, `seerah-quest-${stamp}.db`), tmp = `${file}.partial`;
   // never start a copy that cannot fit: a full volume stops the app, not only the backup
