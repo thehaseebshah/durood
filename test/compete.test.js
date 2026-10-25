@@ -159,3 +159,19 @@ test('special days: Fridays automatically, other days added by the admin; a bonu
   await api('DELETE', `/api/admin/special-days/${dayOf()}`, { headers: admin });
   assert.equal(specialToday(dayOf())?.nameEn === '12 Rabi ul Awwal', false);
 });
+
+test('a member below the top 50 of the people board still sees their own rank and total', async () => {
+  const { logDurood } = await import('../server/game.js');
+  const ids = [];
+  for (let i = 0; i < 52; i++) ids.push((await signup(`deep_${i}`)).token);
+  const uidOf = (u) => db.prepare('SELECT id FROM users WHERE username = ?').get(u).id;
+  for (let i = 0; i < 52; i++) logDurood(uidOf(`deep_${i}`), 2000 - i * 10, `deep-rid-${i}-xxxx`);
+  const last = await api('GET', '/api/leaderboard?type=users&period=all', { token: ids[51] });
+  assert.ok(!last.rows.some((r) => r.me));
+  assert.equal(last.you.score, 2000 - 510);
+  assert.ok(last.you.rank >= 52);
+  const wk = await api('GET', '/api/leaderboard?type=users&period=week', { token: ids[51] });
+  assert.equal(wk.you.score, 2000 - 510);
+  const top = await api('GET', '/api/leaderboard?type=users&period=all', { token: ids[0] });
+  assert.equal(top.you, undefined); // already on the board
+});

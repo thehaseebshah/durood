@@ -857,7 +857,21 @@ export function leaderboard(userId, type, period) {
     }
     return all(`SELECT username, city, id uid, avatar_v av, display_name dn, total score FROM users u WHERE ${VISIBLE} AND total > 0 ORDER BY total DESC LIMIT 50`).map(person);
   });
-  return { rows: withMe(rows, me), weekStart: wk };
+  const out = withMe(rows, me);
+  // a member below the top 50 still sees where they stand (people boards only; worked out live, it is one aggregate)
+  if (type === 'users' && !out.some((r) => r.me)) {
+    const u = one(`SELECT u.id, u.total FROM users u WHERE u.id = ? AND ${VISIBLE}`, userId);
+    if (u) {
+      let score = u.total, rank;
+      if (period === 'week' || period === 'challenge') {
+        const [from, to] = period === 'week' ? [wk, '9999-12-31'] : [chFrom, chTo];
+        score = one('SELECT COALESCE(SUM(count), 0) n FROM daily WHERE user_id = ? AND day >= ? AND day <= ?', userId, from, to).n;
+        rank = 1 + one(`SELECT COUNT(*) n FROM (SELECT d.user_id FROM daily d JOIN users u ON u.id = d.user_id WHERE d.day >= ? AND d.day <= ? AND ${VISIBLE} GROUP BY d.user_id HAVING SUM(d.count) > ?)`, from, to, score).n;
+      } else rank = 1 + one(`SELECT COUNT(*) n FROM users u WHERE ${VISIBLE} AND u.total > ?`, score).n;
+      if (score > 0) return { rows: out, you: { rank, score }, weekStart: wk };
+    }
+  }
+  return { rows: out, weekStart: wk };
 }
 
 /**
