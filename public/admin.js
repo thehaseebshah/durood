@@ -6,6 +6,9 @@ const human = (n) => { const a = Math.abs(n); return a >= 1e7 ? `${Math.round(a 
 const pktToday = () => new Date(Date.now() + 5 * 3600e3).toISOString().slice(0, 10);
 const date = (t) => new Date(t).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Karachi' });
 const store = (k, v) => { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch { /* private mode */ } };
+// the same device token the app keeps: this browser can still sign in when strangers have locked the account with wrong guesses
+const deviceGet = () => { try { return localStorage.getItem('device'); } catch { return null; } };
+const deviceSet = (v) => { try { localStorage.setItem('device', v); } catch { /* private mode */ } };
 const load = (k) => { try { return sessionStorage.getItem(k) || ''; } catch { return ''; } };
 let KEY = load('adminKey'), TOKEN = load('adminToken'), ME = null, showKey = false;
 const can = (p) => !!ME?.can.includes(p);
@@ -272,9 +275,10 @@ document.addEventListener('click', async (ev) => {
   if (id === 'save') { KEY = $('#key').value.trim(); TOKEN = ''; store('adminKey', KEY); await enter(); if (!ME) { KEY = ''; store('adminKey', null); notice = 'That key was not accepted.'; } return render(); }
   if (id === 'login') {
     try {
-      const r = await fetch('/api/admin/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: $('#aid').value, password: $('#apw').value }) });
+      const r = await fetch('/api/admin/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: $('#aid').value, password: $('#apw').value, device: deviceGet() || undefined }) });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(data.error === 'rate_limited' ? 'Too many tries. Wait a few minutes.' : 'Wrong username or password, or this account is not an admin.');
+      if (data.device) deviceSet(data.device);
       TOKEN = data.token; KEY = ''; store('adminToken', TOKEN); store('adminKey', null); await enter();
     } catch (e) { notice = e.message; }
     return render();

@@ -87,6 +87,8 @@ function applyLang() {
   document.title = t('app');
 }
 
+// a device token: sign-in from this phone keeps working when strangers have locked the account with wrong guesses
+const keepDevice = (r) => { if (r?.device) ls.set('device', r.device); };
 function setSession(token, me) {
   S.token = token; S.me = me; S.lang = me.lang;
   ls.set('token', token); ls.set('lang', me.lang); ls.del('ref');
@@ -1469,13 +1471,13 @@ app.addEventListener('submit', async (ev) => {
   btn.disabled = true;
   try {
     if (kind === 'login') {
-      const r = await api('/login', 'POST', { id: f.id, password: f.password });
-      setSession(r.token, r.me);
+      const r = await api('/login', 'POST', { id: f.id, password: f.password, device: ls.get('device') || undefined });
+      keepDevice(r); setSession(r.token, r.me);
       draw();
     } else if (kind === 'register') {
       if (!f.cityId) throw new Error('city_required');
       const r = await api('/register', 'POST', { ...f, invite: (f.invite || '').trim(), lang: S.lang });
-      setSession(r.token, r.me);
+      keepDevice(r); setSession(r.token, r.me);
       draw();
     } else if (kind === 'waitlist') {
       await api('/waitlist', 'POST', f);
@@ -1487,7 +1489,7 @@ app.addEventListener('submit', async (ev) => {
       const r = await api('/password/reset', 'POST', { token: S.resetToken, password: f.password });
       S.resetToken = ''; S.authMode = 'login';
       history.replaceState(null, '', '/');
-      setSession(r.token, r.me); toast(t('reset_done'));
+      keepDevice(r); setSession(r.token, r.me); toast(t('reset_done'));
       draw();
     } else if (kind === 'settings') {
       S.me = await api('/me', 'PATCH', { dailyGoal: Number(f.dailyGoal), ...(f.cityId ? { cityId: Number(f.cityId) } : {}), email: f.email, ...(f.password ? { password: f.password } : {}), reminderTime: f.reminderTime || '' });

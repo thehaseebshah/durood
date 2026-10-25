@@ -136,6 +136,21 @@ export function award(userId, code, fresh = []) {
   return true;
 }
 
+// badges that rest on a durood total, which an edit can lower: logging a big number and editing it down must not keep them
+const DUROOD_BADGES = ['recruit1', 'recruit5', 'recruit25', 'd1k', 'd10k', 'd100k', 'd1m', 'group10k', 'group100k', 'group1m', 'caravan10k', 'caravan100k', 'caravan1m', 'caravan10m'];
+function revokeDuroodBadges(userId) {
+  const held = all(`SELECT code FROM badges WHERE user_id = ? AND code IN (${DUROOD_BADGES.map(() => '?').join(',')})`, userId, ...DUROOD_BADGES);
+  if (!held.length) return;
+  const s = stats(userId);
+  for (const { code } of held) {
+    if (BADGES[code](s)) continue;
+    run('DELETE FROM badges WHERE user_id = ? AND code = ?', userId, code);
+    run("DELETE FROM feed_events WHERE user_id = ? AND kind = 'badge' AND ref = ?", userId, code);
+    const ev = one("SELECT xp FROM events WHERE user_id = ? AND kind = 'milestone' AND ref = ?", userId, code);
+    if (ev) { run("DELETE FROM events WHERE user_id = ? AND kind = 'milestone' AND ref = ?", userId, code); run('UPDATE users SET xp = xp - ? WHERE id = ?', ev.xp, userId); }
+  }
+}
+
 /** `extra` carries numbers that are expensive to work out for everyone (the caravan streak, city podiums). */
 export function evalBadges(userId, fresh, extra = {}) {
   const s = { ...stats(userId), ...extra };
@@ -396,7 +411,7 @@ export function setHidden(username, hidden) {
 /**
  * Changes one of the member's own entries from today or yesterday. Nothing is overwritten: the ledger gets a reversing
  * entry for the old number and a replacement entry for the new one, so the whole history stays on record.
- * Quest rewards whose condition no longer holds are taken back (revokeQuests); so are the inviter's referral reward and invite quest when the total falls back under referralMin (revokeReferral); badges already earned are not. A day can't be edited down to nothing.
+ * Quest rewards whose condition no longer holds are taken back (revokeQuests); so are the inviter's referral reward and invite quest when the total falls back under referralMin (revokeReferral), and durood badges no longer met, for the member and the groups above them (revokeDuroodBadges). A day can't be edited down to nothing.
  */
 export function editEntry(userId, entryId, newCount, ridIn) {
   if (!Number.isInteger(newCount) || newCount < 1 || newCount > CFG.maxSingle) throw new HttpError(400, 'bad_count');
@@ -411,6 +426,7 @@ export function editEntry(userId, entryId, newCount, ridIn) {
     if (one("SELECT 1 FROM entries WHERE ref_id = ? AND kind = 'reverse'", e.id)) throw new HttpError(409, 'entry_superseded');
     const today = dayOf(), yesterday = dayStr(dayNum(today) - 1);
     if (e.day !== today && e.day !== yesterday) throw new HttpError(403, 'edit_window');
+    if (getSetting(`week_closed:${weekStart(e.day)}`)) throw new HttpError(403, 'edit_window'); // a week whose leagues and city podium are decided is final
     const delta = newCount - e.count;
     if (delta === 0) throw new HttpError(400, 'no_change');
     const dayTotal = one('SELECT count FROM daily WHERE user_id = ? AND day = ?', userId, e.day).count;
@@ -427,7 +443,13 @@ export function editEntry(userId, entryId, newCount, ridIn) {
       bumpDay(e.day, delta);
     }
     evaluateFlags(userId, e.day);
-    if (delta < 0) { revokeQuests(userId, e.day); revokeReferral(userId); }
+    if (delta < 0) {
+      revokeQuests(userId, e.day); revokeReferral(userId);
+      // durood badges no longer met are taken back, for the member and for everyone whose group total this number counted in
+      const touched = [userId, ...all('SELECT ancestor_id id FROM ancestors WHERE user_id = ? AND depth > 0', userId).map((r) => r.id),
+        ...all('SELECT cm.user_id id FROM caravan_members cm WHERE cm.caravan_id = (SELECT caravan_id FROM caravan_members WHERE user_id = ?)', userId).map((r) => r.id)];
+      for (const id of new Set(touched)) revokeDuroodBadges(id);
+    }
   });
   if (!duplicate) recordChallenge();
   return { duplicate };
@@ -452,7 +474,7 @@ export function history(userId) {
       edits.unshift({ at: e.created_at, from: prev.count, to: e.count });
       e = prev;
     }
-    const day = days.get(r.day) ?? { day: r.day, total: 0, editable: r.day === today || r.day === yesterday, entries: [] };
+    const day = days.get(r.day) ?? { day: r.day, total: 0, editable: (r.day === today || r.day === yesterday) && !getSetting(`week_closed:${weekStart(r.day)}`), entries: [] };
     day.entries.push({ id: r.id, count: r.count, at: r.created_at, original: e.count, edits });
     day.total = totals.get(r.day) ?? 0; // from the daily total, so a cut-off list still shows the right number
     days.set(r.day, day);
@@ -501,8 +523,10 @@ const quizOf = (l) => { try { return l.questions ? JSON.parse(l.questions) : [];
 /** What members may see: the questions and options, never the answers. */
 export const publicQuiz = (l) => quizOf(l).map(({ answer, ...q }) => q);
 
+// a lecture scheduled for a later week can't be watched, answered or claimed before its week (the id is easy to guess)
+const liveLecture = (lectureId) => one('SELECT * FROM lectures WHERE id = ? AND (week_start IS NULL OR week_start <= ?)', lectureId, weekStart());
 export function startLecture(userId, lectureId) {
-  const l = one('SELECT * FROM lectures WHERE id = ?', lectureId);
+  const l = liveLecture(lectureId);
   if (!l) throw new HttpError(404, 'not_found');
   run('INSERT OR IGNORE INTO lecture_starts (user_id, lecture_id, started_at) VALUES (?,?,?)', userId, lectureId, Date.now());
   return { minSeconds: l.min_seconds };
@@ -510,8 +534,8 @@ export function startLecture(userId, lectureId) {
 
 /** Marks which answers are wrong (by position) but never reveals the right ones, so a member can think again and retry. */
 export function answerQuiz(userId, lectureId, answers) {
-  const l = one('SELECT * FROM lectures WHERE id = ?', lectureId);
-  if (!l) throw new HttpError(404, 'not_found');
+  const l = liveLecture(lectureId);
+  if (!l || !one('SELECT 1 FROM lecture_starts WHERE user_id = ? AND lecture_id = ?', userId, lectureId)) throw new HttpError(404, 'not_found'); // answered while watching
   const quiz = quizOf(l);
   if (!quiz.length) throw new HttpError(400, 'no_quiz');
   if (!Array.isArray(answers) || answers.length !== quiz.length) throw new HttpError(400, 'bad_answers');
@@ -522,7 +546,7 @@ export function answerQuiz(userId, lectureId, answers) {
 export const quizPassed = (userId, lectureId) => !!one('SELECT 1 FROM lecture_quiz WHERE user_id = ? AND lecture_id = ?', userId, lectureId);
 
 export function completeLecture(userId, lectureId) {
-  const l = one('SELECT * FROM lectures WHERE id = ?', lectureId);
+  const l = liveLecture(lectureId);
   const s = one('SELECT started_at FROM lecture_starts WHERE user_id = ? AND lecture_id = ?', userId, lectureId);
   if (!l || !s) throw new HttpError(404, 'not_found');
   if (Date.now() - s.started_at < l.min_seconds * 1000) throw new HttpError(400, 'too_soon');

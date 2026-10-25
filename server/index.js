@@ -10,7 +10,7 @@ import * as caravanApi from './caravan.js';
 import * as profile from './profile.js';
 import * as admins from './admins.js';
 import { USERNAME, isReserved, handleTaken as handleTakenBy } from './handles.js';
-import { HttpError, hashPassword, checkPassword, signToken, verifyToken, rateLimit, lockedOut, recordFailure, forgiveFailure, clearFailures, clientIp, sameSecret } from './auth.js';
+import { HttpError, hashPassword, checkPassword, signToken, verifyToken, rateLimit, lockedOut, recordFailure, forgiveFailure, clearFailures, clientIp, rateIp, sameSecret, signDevice, deviceUser } from './auth.js';
 import { auditAsync } from './audit.js';
 import * as access from './access.js';
 import { sendMail, resetEmail, confirmEmail, inviteEmail, baseUrl } from './mail.js';
@@ -124,11 +124,15 @@ route('POST', '/api/admin/login', { auth: false }, async ({ body, ip }) => {
   const id = String(body.id || '').trim().toLowerCase().slice(0, 40); // trimmed like adminLogin does, so " owner" is not a fresh budget
   const uid = one('SELECT id FROM users WHERE username = ?', id)?.id;
   const keys = [`adminloginfail:${ip}:${id}`, `adminloginfail:${id}`];  // per caller, and per account unless the caller signed this admin in before
-  if (lockedOut(keys[0], 8) || (lockedOut(keys[1], 8) && !knownAddress(uid, ip))) throw new HttpError(429, 'rate_limited');
-  keys.forEach((k) => recordFailure(k, 900e3));                         // counted before the slow check, taken back on success
-  const r = await admins.adminLogin(id, body.password);
-  keys.forEach(forgiveFailure); rememberAddress(uid, ip);
-  return r;
+  const known = knownAddress(uid, ip) || (!!uid && deviceUser(body.device) === uid);
+  if (lockedOut(keys[0], 8) || (lockedOut(keys[1], 8) && !known)) throw new HttpError(429, 'rate_limited');
+  return oneAtATime(ip, async () => {
+    keys.forEach((k) => recordFailure(k, 900e3));                       // counted before the slow check, taken back on success
+    let r;
+    try { r = await admins.adminLogin(id, body.password, { priority: known }); } catch (e) { if (e.code !== 'bad_login') keys.forEach(forgiveFailure); throw e; }
+    keys.forEach(forgiveFailure); rememberAddress(uid, ip);
+    return { ...r, device: deviceUser(body.device) === uid ? body.device : signDevice(uid) };
+  });
 });
 route('GET', '/api/admin/me', { auth: false, admin: true }, ({ admin }) => ({ role: admin.role, actor: admin.actor, username: admin.username, can: [...admins.CAN[admin.role]] }));
 route('GET', '/api/admin/admins', { auth: false, admin: true }, () => ({ admins: admins.listAdmins(), roles: admins.ROLES }));
@@ -195,7 +199,7 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
 
   const inviteRaw = body.invite ?? body.referral;
   if (access.INVITE_ONLY() && !String(inviteRaw || '').trim()) throw new HttpError(400, 'invite_required');
-  const pass = await hashPassword(password);
+  const pass = await oneAtATime(ip, () => hashPassword(password));
   const { id, confirmToken } = tx(() => {
     // resolve again inside the transaction so a code can't be used past its limit by two people at once
     let r = null;
@@ -222,10 +226,19 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
   });
   // a confirmation link goes out but never blocks sign-in: it tells us which addresses actually work
   sendMail(confirmEmail(email, `${baseUrl()}/?confirm=${confirmToken}`));
-  return { token: tokenFor(id), me: getMe(id) };
+  return { token: tokenFor(id), me: getMe(id), device: signDevice(id) };
 });
 
 let dummyHash = null;
+// a few password checks at a time per caller on the routes anyone can reach, so a single address can't fill the shared queue
+// (a few, not one: many phones share one mobile-network address)
+const slowNow = new Map();
+async function oneAtATime(ip, fn) {
+  const n = slowNow.get(ip) || 0;
+  if (n >= 3) throw new HttpError(429, 'rate_limited');
+  slowNow.set(ip, n + 1);
+  try { return await fn(); } finally { const m = slowNow.get(ip) - 1; if (m > 0) slowNow.set(ip, m); else slowNow.delete(ip); }
+}
 // addresses that recently signed each account in (kept in memory, five per account, 30 days)
 const knownAddresses = new Map();
 const knownAddress = (uid, ip) => !!uid && (knownAddresses.get(uid)?.get(ip) || 0) > Date.now() - 30 * 86400e3;
@@ -250,14 +263,20 @@ route('POST', '/api/login', { auth: false }, async ({ body, ip }) => {
   // addresses is stopped. An address that signed this account in before keeps working, so a stranger can't lock the member out.
   const acct = u ? u.id : ident.toLowerCase().slice(0, 80);
   const keys = [`loginfail:${ip}:${acct}`, `loginfail:${acct}`];
-  if (lockedOut(keys[0], 10) || (lockedOut(keys[1], 10) && !knownAddress(u?.id, ip))) throw new HttpError(429, 'rate_limited');
-  keys.forEach((k) => recordFailure(k, 600e3)); // counted before the slow check so parallel guesses can't all slip past the lock
-  dummyHash ??= await hashPassword('timing-equaliser');
-  const ok = await checkPassword(password, u && !u.deleted_at ? u.pass : dummyHash); // the same work whether or not the account exists
-  if (!u || u.deleted_at || !ok) throw new HttpError(401, 'bad_login');
-  keys.forEach(forgiveFailure); rememberAddress(u.id, ip);
-  if (u.suspended) throw new HttpError(403, 'suspended');
-  return { token: tokenFor(u.id), me: getMe(u.id) };
+  const known = !!u && (knownAddress(u.id, ip) || deviceUser(body.device) === u.id); // this phone or address signed the member in before
+  if (lockedOut(keys[0], 10) || (lockedOut(keys[1], 10) && !known)) throw new HttpError(429, 'rate_limited');
+  return oneAtATime(ip, async () => {
+    keys.forEach((k) => recordFailure(k, 600e3)); // counted before the slow check so parallel guesses can't all slip past the lock
+    let ok;
+    try {
+      dummyHash ??= await hashPassword('timing-equaliser');
+      ok = await checkPassword(password, u && !u.deleted_at ? u.pass : dummyHash, { priority: known }); // the same work whether or not the account exists
+    } catch (e) { keys.forEach(forgiveFailure); throw e; } // "busy" is not a wrong password
+    if (!u || u.deleted_at || !ok) throw new HttpError(401, 'bad_login');
+    keys.forEach(forgiveFailure); rememberAddress(u.id, ip);
+    if (u.suspended) throw new HttpError(403, 'suspended');
+    return { token: tokenFor(u.id), me: getMe(u.id), device: deviceUser(body.device) === u.id ? body.device : signDevice(u.id) };
+  });
 });
 
 route('GET', '/api/public', { auth: false }, () => publicStats());
@@ -355,13 +374,13 @@ route('POST', '/api/password/reset', { auth: false }, async ({ body, ip }) => {
   const password = String(body.password || '');
   if (password.length < 6 || password.length > 128) throw new HttpError(400, 'bad_password');
   const userId = useToken(body.token, 'reset');
-  const pass = await hashPassword(password);
+  const pass = await oneAtATime(ip, () => hashPassword(password));
   tx(() => {
     run('UPDATE users SET pass = ?, token_ver = token_ver + 1 WHERE id = ?', pass, userId); // old sessions stop working
     run("UPDATE tokens SET used_at = ? WHERE user_id = ? AND kind = 'reset' AND used_at IS NULL", Date.now(), userId);
   });
   clearFailures(`loginfail:${userId}`); clearFailures(`pwfail:${userId}`); rememberAddress(userId, ip); // whoever reset by email is the member
-  return { token: tokenFor(userId), me: getMe(userId) };
+  return { token: tokenFor(userId), me: getMe(userId), device: signDevice(userId) };
 });
 
 route('POST', '/api/sessions/revoke', ({ user }) => {
@@ -419,7 +438,11 @@ route('GET', '/api/team', ({ user }) => teamView(user));
 route('GET', '/api/lectures', ({ user }) => ({ lectures: feedApi.lectureList(user), circleUrl: CFG.circleUrl, circleXp: CFG.circleXp }));
 route('POST', '/api/lectures/:id/quiz', ({ user, params, body }) => {
   rateLimit(`quiz:${user}`, 60, 60e3);
-  return answerQuiz(user, Number(params.id), body.answers);
+  // a few checks per lecture per half hour: enough to think again, too few to find the answers by trying every option
+  if (!Array.isArray(body.answers) || lockedOut(`quizl:${user}:${params.id}`, 3)) throw new HttpError(429, 'rate_limited');
+  const r = answerQuiz(user, Number(params.id), body.answers);
+  if (!r.passed) recordFailure(`quizl:${user}:${params.id}`, 1800e3);
+  return r;
 });
 route('POST', '/api/lectures/:id/start', ({ user, params }) => startLecture(user, Number(params.id)));
 route('POST', '/api/lectures/:id/complete', ({ user, params }) => {
@@ -493,8 +516,9 @@ route('POST', '/api/admin/waitlist/:id', adm, async ({ params, body }) => {
   return r;
 });
 route('GET', '/api/admin/members', adm, ({ query, admin }) => {
-  const members = access.searchMembers(query.get('q') || '');
-  if (admins.can(admin.role, 'reset_link')) return { members }; // owners and organisers help members back into their accounts, so they see how to reach them
+  const contacts = admins.can(admin.role, 'reset_link'); // owners and organisers help members back into their accounts, so they see how to reach them
+  const members = access.searchMembers(query.get('q') || '', { contacts });
+  if (contacts) return { members };
   const mask = (v) => (v ? `${String(v).slice(0, 2)}•••${String(v).slice(-2)}` : v);
   return { members: members.map((m) => ({ ...m, email: mask(m.email), phone: mask(m.phone) })) }; // a moderator needs neither
 });
@@ -594,7 +618,7 @@ async function handleApi(req, res, url) {
   let params;
   try { params = Object.fromEntries(route_.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])])); } catch { throw new HttpError(400, 'bad_path'); }
   const ip = clientIp(req);
-  const ctx = { query: url.searchParams, params, ip, body: {}, user: null };
+  const ctx = { query: url.searchParams, params, ip: rateIp(ip), body: {}, user: null }; // the allowlist below checks the exact address
 
   if (route_.admin) {
     const allow = (process.env.ADMIN_IP_ALLOWLIST || '').split(',').map((x) => x.trim()).filter(Boolean);

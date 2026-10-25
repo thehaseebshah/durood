@@ -129,6 +129,8 @@ export function cancelPending(userId, { username, caravanId }) {
 
 /** Leaving hands the caravan to the longest-standing member, and closes it when nobody is left. */
 function removeMember(caravanId, userId) {
+  const was = one('SELECT joined_at FROM caravan_members WHERE user_id = ? AND caravan_id = ?', userId, caravanId);
+  if (was) run('INSERT INTO caravan_past (caravan_id, user_id, joined_at, left_at) VALUES (?,?,?,?)', caravanId, userId, was.joined_at, Date.now());
   run('DELETE FROM caravan_members WHERE user_id = ? AND caravan_id = ?', userId, caravanId);
   const c = one('SELECT owner_id FROM caravans WHERE id = ?', caravanId);
   if (!c) return;
@@ -139,6 +141,7 @@ function removeMember(caravanId, userId) {
 function dissolve(caravanId) {
   run('DELETE FROM caravan_invites WHERE caravan_id = ?', caravanId);
   run('DELETE FROM caravan_members WHERE caravan_id = ?', caravanId);
+  run('DELETE FROM caravan_past WHERE caravan_id = ?', caravanId);
   run('DELETE FROM caravans WHERE id = ?', caravanId);
 }
 export function leave(userId) {
@@ -204,15 +207,19 @@ export function streakStatus(caravanId, today = dayOf()) {
   if (members.length < 3) v = { active: false, size: members.length, streak: 0, today: 0, missing: [] };
   else {
     const from = dayStr(dayNum(today) - 60);
-    const did = new Map(); // day -> set of members who recited, counted only from the day they joined
-    const byId = new Map(members.map((m) => [m.id, m]));
-    for (const r of all(`SELECT d.user_id, d.day FROM daily d WHERE d.user_id IN (SELECT cm.user_id FROM caravan_members cm WHERE cm.caravan_id = ?) AND d.day >= ? AND d.count > 0`, caravanId, from)) {
-      const m = byId.get(r.user_id);
-      if (!m || m.joined > r.day) continue;
+    // members who have left still count, for and against, on the days they belonged: removing those who missed days can't mend the past
+    const past = all(`SELECT p.user_id id, p.joined_at, p.left_at FROM caravan_past p JOIN users u ON u.id = p.user_id WHERE p.caravan_id = ? AND p.left_at >= ? AND u.held = 0`,
+      caravanId, Date.parse(from + 'T00:00:00Z') - 86400e3).map((p) => ({ id: p.id, joined: dayOf(p.joined_at), left: dayOf(p.left_at) }));
+    const spans = [...members.map((m) => ({ id: m.id, joined: m.joined, left: null })), ...past];
+    const belongs = (s, d) => s.joined <= d && (s.left === null || d < s.left);
+    const did = new Map(); // day -> set of members who recited on a day they belonged
+    const ids = [...new Set(spans.map((s) => s.id))];
+    for (const r of all(`SELECT d.user_id, d.day FROM daily d WHERE d.user_id IN (${ids.map(() => '?').join(',')}) AND d.day >= ? AND d.count > 0`, ...ids, from)) {
+      if (!spans.some((s) => s.id === r.user_id && belongs(s, r.day))) continue;
       if (!did.has(r.day)) did.set(r.day, new Set());
       did.get(r.day).add(r.user_id);
     }
-    const met = (d) => { const size = members.filter((m) => m.joined <= d).length; return size >= 3 && (did.get(d)?.size || 0) * 2 >= size; };
+    const met = (d) => { const size = new Set(spans.filter((s) => belongs(s, d)).map((s) => s.id)).size; return size >= 3 && (did.get(d)?.size || 0) * 2 >= size; };
     let streak = 0, d = today;
     if (met(d)) streak = 1;
     for (let i = 1; i <= 60; i++) { d = dayStr(dayNum(today) - i); if (!met(d)) break; streak += 1; }

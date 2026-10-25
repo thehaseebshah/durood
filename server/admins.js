@@ -36,11 +36,11 @@ export const ADMIN_PERMS = {
 
 const DUMMY = { hash: null };
 /** Username and password of a member who holds a role. Returns a session that lasts 8 hours and ends if the password changes or the role is taken away. */
-export async function adminLogin(ident, password) {
+export async function adminLogin(ident, password, { priority = false } = {}) {
   const id = String(ident ?? '').trim();
   const u = one('SELECT id, username, pass, suspended, deleted_at, admin_role, token_ver FROM users WHERE username = ?', id);
   DUMMY.hash ??= await hashPassword('timing-equaliser');
-  const ok = await checkPassword(String(password ?? ''), u && !u.deleted_at ? u.pass : DUMMY.hash); // the same work whether or not the account exists
+  const ok = await checkPassword(String(password ?? ''), u && !u.deleted_at ? u.pass : DUMMY.hash, { priority }); // the same work whether or not the account exists
   if (!u || u.deleted_at || !ok || !u.admin_role || u.suspended) throw new HttpError(401, 'bad_login'); // one answer for "no such admin" and "wrong password"
   return { token: signAdminToken(u.id, u.token_ver), username: u.username, role: u.admin_role };
 }

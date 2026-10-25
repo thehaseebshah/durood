@@ -521,6 +521,14 @@ CREATE TABLE IF NOT EXISTS caravan_members (
   joined_at  INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS caravan_members_caravan ON caravan_members(caravan_id, joined_at);
+-- who was in a caravan and when they left, so removing members who missed days can't rewrite the caravan's past streak
+CREATE TABLE IF NOT EXISTS caravan_past (
+  caravan_id INTEGER NOT NULL,
+  user_id    INTEGER NOT NULL,
+  joined_at  INTEGER NOT NULL,
+  left_at    INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS caravan_past_caravan ON caravan_past(caravan_id, left_at);
 CREATE TABLE IF NOT EXISTS caravan_invites (
   caravan_id INTEGER NOT NULL REFERENCES caravans(id),
   user_id    INTEGER NOT NULL REFERENCES users(id),

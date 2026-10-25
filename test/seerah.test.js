@@ -94,7 +94,7 @@ test('lecture comments need a passed quiz, one per lecture; replies are short, c
   const post = (u, text) => api('POST', `/api/lectures/${lec.id}/comment`, { token: u.token, body: { text } });
   assert.equal((await post(a, 'Early')).error, 'quiz_first');
   assert.equal((await api('GET', '/api/lectures', { token: a.token })).lectures.find((l) => l.id === lec.id).canComment, false);
-  for (const u of [a, b]) await api('POST', `/api/lectures/${lec.id}/quiz`, { token: u.token, body: { answers: [0, 0] } });
+  for (const u of [a, b]) { await api('POST', `/api/lectures/${lec.id}/start`, { token: u.token }); await api('POST', `/api/lectures/${lec.id}/quiz`, { token: u.token, body: { answers: [0, 0] } }); }
   assert.equal((await post(a, 'see https://example.com')).error, 'no_links');
   assert.equal((await post(a, 'x'.repeat(281))).error, 'text_too_long');
   const mine = await post(a, 'Beautiful lesson');

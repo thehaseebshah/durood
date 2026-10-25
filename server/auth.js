@@ -31,10 +31,12 @@ const SECRET = loadSecret();
 const SCRYPT_MAX = 2, SCRYPT_QUEUE = 40;
 let scryptBusy = 0;
 const scryptWaiting = [];
-async function limitedScrypt(pw, salt) {
+// a member signing in from a device or address that signed them in before goes to the front, and is never turned away as busy,
+// so a flood of strangers' guesses can't keep returning members out
+async function limitedScrypt(pw, salt, priority = false) {
   if (scryptBusy >= SCRYPT_MAX) {
-    if (scryptWaiting.length >= SCRYPT_QUEUE) throw new HttpError(503, 'busy');
-    await new Promise((resolve) => scryptWaiting.push(resolve));
+    if (!priority && scryptWaiting.length >= SCRYPT_QUEUE) throw new HttpError(503, 'busy');
+    await new Promise((resolve) => (priority ? scryptWaiting.unshift(resolve) : scryptWaiting.push(resolve)));
   }
   scryptBusy++;
   try { return await scrypt(pw, salt, 32); } finally { scryptBusy--; scryptWaiting.shift()?.(); }
@@ -46,9 +48,9 @@ export async function hashPassword(pw) {
   return `${salt.toString('hex')}:${key.toString('hex')}`;
 }
 
-export async function checkPassword(pw, stored) {
+export async function checkPassword(pw, stored, { priority = false } = {}) {
   const [salt, key] = stored.split(':');
-  const got = await limitedScrypt(pw, Buffer.from(salt, 'hex'));
+  const got = await limitedScrypt(pw, Buffer.from(salt, 'hex'), priority);
   return crypto.timingSafeEqual(got, Buffer.from(key, 'hex'));
 }
 
@@ -108,6 +110,35 @@ export function clientIp(req) {
     if (parts.length >= hops) return parts[parts.length - hops];
   }
   return req.socket.remoteAddress;
+}
+
+/**
+ * The address used for rate limits and lockouts: IPv6 by its /64 (one home or phone line gets a whole /64, so counting single
+ * addresses would give one caller billions of fresh budgets); IPv4, also when written as ::ffff:a.b.c.d, as it is.
+ */
+export function rateIp(ip) {
+  const s = String(ip || '');
+  const v4 = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(s);
+  if (v4) return v4[1];
+  if (!s.includes(':')) return s;
+  const [head, tail = ''] = s.split('::');
+  const h = head ? head.split(':') : [], t = tail ? tail.split(':') : [];
+  const groups = s.includes('::') ? [...h, ...Array(Math.max(0, 8 - h.length - t.length)).fill('0'), ...t] : h;
+  return `${groups.slice(0, 4).map((g) => (parseInt(g, 16) || 0).toString(16)).join(':')}::/64`;
+}
+
+/**
+ * A device token, given at sign-in and kept by the app: a later sign-in from that device skips the account's lock (the password is
+ * still checked), so strangers' wrong guesses can't lock a member out of their own phone. It grants nothing on its own.
+ */
+export function signDevice(userId) {
+  const body = `${userId}.${crypto.randomBytes(9).toString('base64url')}`;
+  return `${body}.${crypto.createHmac('sha256', SECRET).update(`device:${body}`).digest('base64url')}`;
+}
+export function deviceUser(token) {
+  const [id, nonce, sig] = String(token ?? '').split('.');
+  if (!id || !nonce || !sig) return null;
+  return sameSecret(sig, crypto.createHmac('sha256', SECRET).update(`device:${id}.${nonce}`).digest('base64url')) ? Number(id) : null;
 }
 
 /** Constant-time comparison for secrets of any length. */

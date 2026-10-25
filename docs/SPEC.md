@@ -305,4 +305,11 @@ The shared `ADMIN_KEY` still works and acts as an owner. Keep it for emergencies
 - The offline cache stores pages under `/` only, so reset and confirm links never stay on the device. Signing out clears unsaved taps and drafts, and stops push notifications on that device.
 - The app's code is read-only for the user it runs as. In production, reset and confirm links are masked in console mail logs.
 - When a caravan owner is suspended, the owner role passes to the longest-standing active member, and the suspended person stays a plain member, also after they return. A caravan with no other active member is left as it is.
+- Sign-in hands the app a device token. A later sign-in from that device skips the account's lock (the password is still checked), on any network. IPv6 callers are counted by their /64. Each address may run at most three password checks at once. Returning members' checks go to the front of the queue and are never refused as busy. A "busy" refusal no longer counts as a wrong password.
+- A week whose leagues and city podium are decided can't be edited, so a promotion can't be won with a number that is edited away afterwards.
+- Editing a number down also takes back the durood badges (and their points) it no longer supports: the member's own, and the group badges of their inviters and their caravan.
+- Lecture quiz answers are checked only for a lecture the member has opened, of this week or earlier, and at most three wrong checks per lecture per half hour.
+- The caravan streak counts members who left on the days they belonged, so removing those who missed days can't extend the streak backwards.
+- Moderators' member search doesn't match email or phone, so masked details can't be found by searching.
+- Photos: the image data is walked byte by byte and ends at the first end-of-image marker; anything else inside or behind it is refused. Database and backup files are readable by the app alone.
 - **Still open:** phone numbers are not verified. Someone who signs up with a salik's number before the salik does can request that salik's murabbi; the murabbi's yes is the only safeguard. The fix is a WhatsApp or SMS one-time code, which needs a messaging provider.
