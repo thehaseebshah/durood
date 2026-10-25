@@ -1,0 +1,30 @@
+{
+  "appId": "app.seerahquest",
+  "appName": "Seerah Quest",
+  "webDir": "www",
+  "server": {
+    "url": "https://seerah-quest-qa.fly.dev",
+    "cleartext": false,
+    "allowNavigation": [
+      "seerah-quest-qa.fly.dev"
+    ]
+  },
+  "backgroundColor": "#0c0e2b",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0c0e2b"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 600,
+      "backgroundColor": "#0c0e2b",
+      "showSpinner": false,
+      "launchAutoHide": true
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0c0e2b",
+      "overlaysWebView": false
+    }
+  }
+}

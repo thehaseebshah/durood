@@ -1685,5 +1685,18 @@ async function boot() {
   if (urlInvite || params.get('reset') || confirmToken) history.replaceState(null, '', '/');
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
+// ---- inside the Android app: the back button closes what is open, then goes to Home, and only then leaves ----------------------
+// (a no-op in a browser: there is no window.Capacitor there)
+const nativeApp = window.Capacitor?.isNativePlatform?.() ? window.Capacitor.Plugins?.App : null;
+if (nativeApp) {
+  document.documentElement.classList.add('native');
+  nativeApp.addListener('backButton', () => {
+    if (S.player) { stopPlayerTimer(); S.player = null; return draw(); }
+    if (S.profile) { S.profile = null; return draw(); }
+    if (S.editing) { S.editing = null; return draw(); }
+    if (S.token && S.tab !== 'home') return enterTab('home');
+    nativeApp.exitApp();
+  });
+}
 if (!S.token) loadGeo();
 boot();

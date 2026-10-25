@@ -102,3 +102,7 @@ To restore: stop the app, then replace the database **and remove its write-ahead
     cp /data/backups/seerah-quest-<stamp>.db /data/durood.db
 
 Start the app and run `npm run audit`: it must report no problems.
+
+## Android app
+
+`android-app/` holds a small Android wrapper that opens the live site. See `android-app/README.md` to build the APK. The wrapper loads the address in `android-app/capacitor.config.json` (the QA server by default); rebuild with `node build.mjs https://your.server` for production.

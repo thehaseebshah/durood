@@ -1,0 +1,4 @@
+// Also looks in Google's copy of Maven Central, which doesn't answer "429 Too Many Requests" to a first big download.
+allprojects { buildscript { repositories { maven { url 'https://maven-central.storage-download.googleapis.com/maven2/' } } } }
+settingsEvaluated { settings -> settings.pluginManagement.repositories { maven { url 'https://maven-central.storage-download.googleapis.com/maven2/' } } }
+allprojects { repositories { maven { url 'https://maven-central.storage-download.googleapis.com/maven2/' } } }
