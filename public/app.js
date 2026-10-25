@@ -346,13 +346,13 @@ function sidebar() {
 }
 function shell() {
   const tabs = ['home', 'feed', 'rank'];
-  const fab = !['settings'].includes(S.tab);
+  const fab = !['settings', 'home'].includes(S.tab);
   return `
   <a class="skip" href="#main">${t('skip_to')}</a>
   ${sidebar()}
   <header class="hd"><span class="row"><button class="pill icon burger" data-act="drawer" aria-label="${esc(t('menu'))}" aria-expanded="${S.drawer}" aria-controls="side">${uiIcon('menu', 18, 2)}</button><span class="ptitle">${t('nav_' + S.tab)}</span></span>
     <span class="row"><span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button></span></header>
-  <main id="main" tabindex="-1" class="wrap tab-${S.tab}${Date.now() - (S.enterAt || 0) < 900 ? ' enter' : ''}"><h1 class="sr">${t('nav_' + S.tab)}</h1><div class="ltitle" aria-hidden="true">${t('nav_' + S.tab)}</div>${S.offlineMode || outbox().length ? `<div class="offbar" role="status">${uiIcon('refresh', 14, 2)} ${S.offlineMode ? t('offline_bar') : ''} ${outbox().length ? t('outbox_n')(fmt(outbox().reduce((n, x) => n + x.count, 0))) : ''}</div>` : ''}${view()}</main>
+  <main id="main" tabindex="-1" class="wrap tab-${S.tab}${fab ? ' fabpad' : ''}${Date.now() - (S.enterAt || 0) < 900 ? ' enter' : ''}"><h1 class="sr">${t('nav_' + S.tab)}</h1><div class="ltitle" aria-hidden="true">${t('nav_' + S.tab)}</div>${S.offlineMode || outbox().length ? `<div class="offbar" role="status">${uiIcon('refresh', 14, 2)} ${S.offlineMode ? t('offline_bar') : ''} ${outbox().length ? t('outbox_n')(fmt(outbox().reduce((n, x) => n + x.count, 0))) : ''}</div>` : ''}${view()}</main>
   <nav class="tabs" aria-label="${esc(t('app'))}">${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" ${S.tab === k ? 'aria-current="page"' : ''} data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}
     <button class="${['caravan', 'qabila', 'tasks', 'people', 'progress', 'settings'].includes(S.tab) ? 'on' : ''}" data-act="drawer" aria-label="${esc(t('menu'))}">${uiIcon('menu', 22, 1.7)}<em>${t('nav_browse')}</em>${S.me.caravanInvites || S.me.caravanRequests || S.bh?.roles?.requests ? '<i class="pip" aria-hidden="true"></i>' : ''}</button></nav>
   ${fab ? `<button class="fab" data-act="addsheet" aria-label="${esc(t(S.tab === 'tasks' ? 'own_new' : 'add_durood'))}" title="${esc(t(S.tab === 'tasks' ? 'own_new' : 'add_durood'))}">${uiIcon('plus', 28, 2.4)}</button>` : ''}
@@ -408,7 +408,8 @@ function addSheet() {
   </div></div>`;
 }
 
-const bar = (pct) => `<div class="bar"><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div>`;
+// any progress at all shows a sliver, so a small start never looks like an empty, broken bar
+const bar = (pct) => `<div class="bar"><i style="width:${pct > 0 ? Math.max(2, Math.min(100, pct)) : 0}%"></i></div>`;
 
 // ---- Today: the counter, then everything to do today in folding sections -------------------------------------------------------
 // Seerat Circle: part of Sunnah & Seerah until the member has joined one (then only the teacher claim remains, on Me)
@@ -494,13 +495,13 @@ function challengeCard(m) {
   if (!c || c.state === 'waiting') return '';
   const pct = Math.min(100, (c.total / c.target) * 100);
   const head = `<div class="chead"><span>${uiIcon('star', 14, 2)} ${t('challenge_title')}</span><span>${c.state === 'running' || c.state === 'over' ? t('day_of')(c.dayIndex, c.days) : ''}</span></div>`;
-  const tot = `<div class="ctotal"><b>${fmt(c.total)}</b><span>${t('of')} ${U(c.target, 'durood')}</span></div><div class="chuman">${human(c.total)} ${t('of')} ${human(c.target)}</div>`;
+  const tot = `<div class="ctotal"><b>${fmt(c.total)}</b><span>${t('of')} ${N(human(c.target))}${unit('durood')}</span></div>`;
   const markPct = c.state === 'running' ? ((c.dayIndex - 1) / c.days) * 100 : 0;
   const barEl = `<div class="cbar">${bar(pct)}${c.state === 'running' && markPct > 0 ? `<span class="pace" style="inset-inline-start:${markPct}%" title="plan"></span>` : ''}</div>`;
   let body = '';
   if (c.state === 'running') {
     const gap = c.gap;
-    const status = gap === 0 ? t('on_plan') : gap > 0 ? t('ahead')(human(gap)) : t('behind')(human(gap));
+    const status = gap === 0 && c.dayIndex === 1 ? t('first_day')(human(c.today), human(c.neededToday)) : gap === 0 ? t('on_plan') : gap > 0 ? t('ahead')(human(gap)) : t('behind')(human(gap));
     const proj = c.projectedTotal == null ? t('plan_each_day')(human(c.plannedPerDay))
       : t('projected')(human(c.projectedTotal), Math.round((c.projectedTotal / c.target) * 100), c.days);
     body = `<div class="cells">${cell(c.neededToday, t('needed_today'), 'durood')}${cell(c.today, t('reported_today'), 'durood')}<div><b>${c.daysLeft}</b><span>${t('days_left')}</span></div></div>

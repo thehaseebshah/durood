@@ -395,3 +395,11 @@ The member app, sign-in and admin share one stylesheet; its last section restyle
 ## 38. Undo a just-added number
 
 `POST /api/log` returns the new `entryId`; the "saved" toast offers Undo, which edits that entry to 0. An entry edited to 0 is removed: only its reversing row is written, it leaves the history, the quests and badges it paid are taken back as with any edit down, and if the member's total returns to 0 they stop counting as active in the trees above them. Negative numbers are refused.
+
+## 39. Design review pass (iOS conventions)
+
+- The floating + is hidden on Today (the add box is on the page); pages that show it keep 84px under their content so it never sits on the last row.
+- Units read as quiet coloured words (durood green, points amber, days/people grey), one size, not pills.
+- Compete scope is a scrolling row of chips; only the time/metric switch is a segmented control.
+- The challenge card states its total once ("4,000 of 10 crore durood"); on day one it shows the day's share instead of "Exactly on plan". Any progress shows at least a sliver of bar.
+- The goal bar lines up with the card's text, the star stays inside the card; the add sheet keeps today's total small so the field comes first; the tap counter's buttons sit inside the card; the streak sits in a pill like the bell; the frosted header is more opaque.
