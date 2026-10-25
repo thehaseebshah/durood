@@ -773,3 +773,5 @@ main.enter :is(.lb li, .trow, .q):nth-child(n+6), main.enter > .fold:nth-of-type
 /* offline: a quiet bar while the app shows the last known numbers or holds durood to send */
 .offbar { display: flex; gap: 8px; align-items: center; padding: 9px 20px; font-size: .82rem; font-weight: 600; background: #fff2d6; color: #6b4500; border-bottom: 1px solid var(--line); animation: unfold .3s ease-out; }
 html[data-mode=dark] .offbar { background: #2f2508; color: #ffcf6b; }
+.shake { animation: shake .4s cubic-bezier(.36, .07, .19, .97); border-color: var(--err) !important; }
+@keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }

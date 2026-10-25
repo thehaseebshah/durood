@@ -369,7 +369,7 @@ function fold(k, title, meta, body, openByDefault = true) {
 function logBox() {
   return `<div class="numbox">
     <label for="manual">${t('enter_total')}</label>
-    <div class="row"><input type="number" id="manual" inputmode="numeric" min="1" placeholder="${t('count_ph')}" dir="ltr"><button class="blk addbtn" data-act="manual"><span>${t('add')}</span><b class="ar">→</b></button></div>
+    <div class="row"><input type="number" id="manual" inputmode="numeric" enterkeyhint="done" min="1" placeholder="${t('count_ph')}" dir="ltr"><button class="blk addbtn" data-act="manual"><span>${t('add')}</span><b class="ar">→</b></button></div>
     <div class="quick presets">${[100, 500, 1000].map((n) => `<button class="chip" data-act="fill" data-n="${n}">${N('+' + fmt(n))}</button>`).join('')}</div>
     <div class="hint">${t('quick_hint')}</div>
   </div>
@@ -1663,7 +1663,8 @@ app.addEventListener('click', async (ev) => {
   if (act === 'taptoggle') { S.tapOpen = !S.tapOpen; return draw(); }
   if (act === 'fill') { const f = $('#manual'); f.value = (Number(f.value) || 0) + Number(el.dataset.n); f.focus(); return; }
   if (act === 'manual') {
-    const n = Number($('#manual').value);
+    const box = $('#manual'), n = Number(box.value);
+    if (!Number.isInteger(n) || n < 1) { box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake'); haptic('light'); box.focus(); return; } // nothing to add yet
     if (await submitLog(n)) { S.sheet = null; draw(); } // the + sheet closes once the number is saved
     return;
   }
@@ -2089,6 +2090,9 @@ app.addEventListener('change', async (ev) => {
 
 // the suggestion list works from the keyboard: arrows move, Enter picks, Escape closes
 app.addEventListener('keydown', (ev) => {
+  // the keyboard's Enter / Go adds the durood typed in, and saves (or Escape cancels) a history edit
+  if (ev.key === 'Enter' && ev.target.id === 'manual') { ev.preventDefault(); ev.target.closest('.numbox')?.querySelector('[data-act=manual]')?.click(); return; }
+  if (ev.target.id === 'editval' && (ev.key === 'Enter' || ev.key === 'Escape')) { ev.preventDefault(); $(ev.key === 'Enter' ? '[data-act=editsave]' : '[data-act=editx]')?.click(); return; }
   const box = ev.target.closest('[data-city]'), opt = ev.target.closest('li[role=option]');
   if (box && ev.key === 'ArrowDown') { box.closest('.cityfield').querySelector('li[role=option]')?.focus(); ev.preventDefault(); }
   if (opt) {

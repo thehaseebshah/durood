@@ -70,6 +70,9 @@ try {
     await page.waitForTimeout(1600);
     await page.locator('[data-act=celebrateX]').click().catch(() => {});
     ok((await page.locator('#big').textContent()).trim() === '150', 'counter shows 150');
+    await page.fill('#manual', '10'); await page.press('#manual', 'Enter'); await page.waitForTimeout(1600);
+    await page.locator('[data-act=celebrateX]').click().catch(() => {});
+    ok((await page.locator('#big').textContent()).trim() === '160', 'Enter in the durood box adds it');
     ok(await page.locator('.u-durood').count() > 0 && await page.locator('.u-pts').count() > 0, 'numbers carry durood / pts units');
     ok(!(await overflowX(page)), 'Today has no sideways scroll on a phone');
     // pull to refresh
