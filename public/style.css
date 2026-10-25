@@ -1098,3 +1098,6 @@ html[data-mode=dark] .tab-settings .notice { background: #2f2508; color: #ffd98a
   body.in-app .hd { padding-inline: calc((100vw - var(--side) - var(--col)) / 2 - 8px); }
 }
 .cvname + .muted.padx { padding-inline: 0; margin-top: 2px; } /* the owner line sits under the caravan name, same left edge */
+/* Me: the newest badges sit in the Badges row itself (no separate strip that opened the same list) */
+.minibadges { display: inline-flex; gap: 4px; margin-inline-end: 10px; vertical-align: middle; }
+.minibadges svg { width: 22px; height: 22px; }
