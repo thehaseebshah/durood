@@ -101,3 +101,12 @@ test('the Arabic durood only uses letters the cut-down Amiri font holds (else ru
   const missing = [...new Set([...I18N.en.durood, ...I18N.ur.durood])].filter((c) => c.trim() && !held.has(c));
   assert.deepEqual(missing, [], 'the durood text changed: add its letters to scripts/fonts/durood-chars.txt and run scripts/make-fonts.sh');
 });
+
+test('the offline cache installs only what every member needs: Urdu text and fonts and the durood font are kept on use, never fetched ahead', () => {
+  const sw = fs.readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');
+  const shell = sw.match(/const SHELL = \[([^\]]*)\]/)[1];
+  assert.doesNotMatch(shell, /i18n-ur|nastaliq|amiri/);
+  const onUse = sw.match(/const ON_USE = \[([^\]]*)\]/)[1];
+  for (const f of ['i18n-ur.js', 'nastaliq-ur-400', 'nastaliq-ur-700', 'amiri-durood']) assert.match(onUse, new RegExp(f));
+  for (const f of fs.readdirSync(new URL('../public/fonts/', import.meta.url))) assert.ok(shell.includes(f) || onUse.includes(f), `${f} is in neither list, so it never works offline`);
+});
