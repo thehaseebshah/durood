@@ -338,3 +338,47 @@ test('task points: full by the deadline, less each day late, less for every dead
   assert.equal((await api('PUT', `/api/assignments/${d}/due`, { token: me.token, body: { day: '2020-01-01' } })).error, 'already_done');
   assert.deepEqual(audit().problems, []);
 });
+
+test('majalis: nine to start, pick one or none, propose one for an admin to approve, and a weekly Majlis board', async () => {
+  process.env.MAJLIS_MIN_ACTIVE = '1';
+  const a = await signup('mj_a'), b2 = await signup('mj_b');
+  const list = await api('GET', '/api/majalis', { token: a.token });
+  assert.deepEqual(list.majalis.slice(0, 9).map((m) => m.name), ['Shabab', 'Ilm e Deen', 'Jamiaat', 'Tameeraat', 'Seerat', 'Islaah', 'Atfaal', 'Qabail', 'Aamilah']);
+  const shabab = list.majalis.find((m) => m.name === 'Shabab').id, seerat = list.majalis.find((m) => m.name === 'Seerat').id;
+  assert.equal((await api('PUT', '/api/me/majlis', { token: a.token, body: { id: shabab } })).me.majlis.name, 'Shabab');
+  await api('PUT', '/api/me/majlis', { token: b2.token, body: { id: seerat } });
+  await log(a, 300); await log(b2, 100);
+  const board = await api('GET', '/api/leaderboard?type=majalis&metric=total', { token: a.token });
+  assert.deepEqual(board.rows.slice(0, 2).map((r) => [r.username, r.score, r.me]), [['Shabab', 300, true], ['Seerat', 100, false]]);
+  // propose: waits for an admin; the proposer joins it once approved
+  assert.equal((await api('POST', '/api/majalis', { token: b2.token, body: { name: 'Shabab' } })).error, 'majlis_taken');
+  const p = await api('POST', '/api/majalis', { token: b2.token, body: { name: 'Nashr o Ishaat', nameUr: 'نشر و اشاعت' } });
+  assert.equal(p.proposal.status, 'pending');
+  assert.ok(!p.majalis.some((m) => m.name === 'Nashr o Ishaat'));
+  assert.equal((await api('POST', '/api/majalis', { token: b2.token, body: { name: 'Another' } })).error, 'majlis_pending');
+  const K = { 'x-admin-key': 'test-admin', 'content-type': 'application/json' };
+  const pending = (await (await fetch(base + '/api/admin/majalis', { headers: K })).json()).majalis.find((m) => m.status === 'pending');
+  await fetch(base + `/api/admin/majalis/${pending.id}`, { method: 'POST', headers: K, body: JSON.stringify({ action: 'approve' }) });
+  assert.equal((await api('GET', '/api/me', { token: b2.token })).majlis.name, 'Seerat'); // already had one: not moved
+  assert.ok((await api('GET', '/api/majalis', { token: a.token })).majalis.some((m) => m.name === 'Nashr o Ishaat'));
+  await api('PUT', '/api/me/majlis', { token: a.token, body: { id: null } });
+  assert.equal((await api('GET', '/api/me', { token: a.token })).majlis, null);
+  delete process.env.MAJLIS_MIN_ACTIVE;
+});
+
+test('team tags: a masul sorts razakars into #teams, gives a whole team a task, and tags go when the link goes', async () => {
+  const m = await signup('tt_masul'), r1 = await signup('tt_r1'), r2 = await signup('tt_r2');
+  for (const r of [r1, r2]) await api('PUT', '/api/burhan/masul', { token: r.token, body: { username: 'tt_masul' } });
+  assert.deepEqual((await api('PUT', '/api/burhan/razakars/tt_r1/tags', { token: m.token, body: { tags: ['#Stage', 'food'] } })).tags, ['stage', 'food']);
+  await api('PUT', '/api/burhan/razakars/tt_r2/tags', { token: m.token, body: { tags: ['stage'] } });
+  assert.equal((await api('PUT', '/api/burhan/razakars/tt_r2/tags', { token: m.token, body: { tags: ['a'] } })).error, 'bad_tag');
+  assert.equal((await api('PUT', '/api/burhan/razakars/tt_r2/tags', { token: r1.token, body: { tags: ['x1'] } })).status, 404); // not their razakar
+  const list = await api('GET', '/api/burhan/razakars', { token: m.token });
+  assert.deepEqual(list.tags, [{ tag: 'food', n: 1 }, { tag: 'stage', n: 2 }]);
+  assert.equal((await api('POST', '/api/assignments', { token: m.token, body: { team: '#stage', kind: 'task', title: 'Set up the stage', dueDay: dayOf() } })).count, 2);
+  assert.equal((await api('GET', '/api/burhan', { token: r2.token })).assignments[0].title, 'Set up the stage');
+  assert.equal((await api('POST', '/api/assignments', { token: m.token, body: { team: 'nobody', kind: 'task', title: 'x', dueDay: dayOf() } })).error, 'empty_team');
+  await api('DELETE', '/api/burhan/masul', { token: r1.token });
+  assert.deepEqual((await api('GET', '/api/burhan/razakars', { token: m.token })).tags, [{ tag: 'stage', n: 1 }]);
+  assert.deepEqual(audit().problems, []);
+});

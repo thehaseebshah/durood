@@ -177,22 +177,23 @@ export function setMasul(userId, username) {
   tx(() => {
     if (one('SELECT COUNT(*) n FROM masul_links WHERE masul_id = ? AND razakar_id != ?', m.id, userId).n >= 200) throw new HttpError(409, 'masul_full');
     const cur = one('SELECT masul_id FROM masul_links WHERE razakar_id = ?', userId);
-    if (cur && cur.masul_id !== m.id) endAll(userId);
+    if (cur && cur.masul_id !== m.id) { endAll(userId); dropTags(userId); }
     run(`INSERT INTO masul_links (razakar_id, masul_id, created_at) VALUES (?,?,?) ON CONFLICT(razakar_id) DO UPDATE SET masul_id = excluded.masul_id`, userId, m.id, Date.now());
     run("DELETE FROM burhan_notices WHERE user_id = ? AND kind = 'removed'", userId);
   });
   return masulState(userId);
 }
+const dropTags = (razakarId) => run('DELETE FROM team_tags WHERE razakar_id = ?', razakarId);
 const endAll = (razakarId) => run('UPDATE assignments SET ended_at = ? WHERE razakar_id = ? AND masul_id != razakar_id AND ended_at IS NULL', Date.now(), razakarId); // the member's own tasks stay
 /** A masul removes a razakar who named them (anyone can name a masul, so the masul must be able to say no). Their open work ends. */
 export function removeRazakar(masulId, username) {
   const r = one('SELECT u.id FROM users u JOIN masul_links l ON l.razakar_id = u.id WHERE u.username = ? AND l.masul_id = ?', String(username), masulId);
   if (!r) throw new HttpError(404, 'not_found');
-  tx(() => { endAll(r.id); run('DELETE FROM masul_links WHERE razakar_id = ?', r.id); run("DELETE FROM burhan_views WHERE subject_id = ? AND kind = 'masul'", r.id); notify(r.id, 'removed', masulId); });
+  tx(() => { endAll(r.id); dropTags(r.id); run('DELETE FROM masul_links WHERE razakar_id = ?', r.id); run("DELETE FROM burhan_views WHERE subject_id = ? AND kind = 'masul'", r.id); notify(r.id, 'removed', masulId); });
   return { ok: true };
 }
 export function clearMasul(userId) {
-  tx(() => { endAll(userId); run('DELETE FROM masul_links WHERE razakar_id = ?', userId); run("DELETE FROM burhan_views WHERE subject_id = ? AND kind = 'masul'", userId); });
+  tx(() => { endAll(userId); dropTags(userId); run('DELETE FROM masul_links WHERE razakar_id = ?', userId); run("DELETE FROM burhan_views WHERE subject_id = ? AND kind = 'masul'", userId); });
   return { ok: true };
 }
 export function masulState(userId) {
@@ -292,6 +293,30 @@ export function answerDue(masulId, id, accept) {
   return { ok: true };
 }
 
+// ---- team tags: a masul sorts their razakars into sub-teams (#shabab_lahore, #stage) and can give a whole team a task -----------
+const TAG = /^[\p{L}\p{N}_]{2,24}$/u, TAGS_MAX = 5;
+const cleanTag = (raw) => String(raw ?? '').trim().replace(/^#+/, '').toLowerCase().replace(/\s+/g, '_');
+export function setTags(masulId, username, tags) {
+  const r = one('SELECT u.id FROM users u JOIN masul_links l ON l.razakar_id = u.id WHERE u.username = ? AND l.masul_id = ? AND u.deleted_at IS NULL', String(username ?? ''), masulId);
+  if (!r) throw new HttpError(404, 'not_found');
+  const list = [...new Set((Array.isArray(tags) ? tags : []).map(cleanTag).filter(Boolean))];
+  if (list.length > TAGS_MAX || list.some((x) => !TAG.test(x))) throw new HttpError(400, 'bad_tag');
+  tx(() => {
+    run('DELETE FROM team_tags WHERE masul_id = ? AND razakar_id = ?', masulId, r.id);
+    for (const x of list) run('INSERT INTO team_tags (masul_id, razakar_id, tag) VALUES (?,?,?)', masulId, r.id, x);
+  });
+  return { tags: list };
+}
+const tagsOf = (masulId, razakarId) => all('SELECT tag FROM team_tags WHERE masul_id = ? AND razakar_id = ? ORDER BY tag', masulId, razakarId).map((x) => x.tag);
+export const masulTags = (masulId) => all('SELECT tag, COUNT(*) n FROM team_tags WHERE masul_id = ? GROUP BY tag ORDER BY tag', masulId);
+/** One task (or routine) for every razakar in the team. */
+export function assignTeam(masulId, rawTag, fields) {
+  const tag = cleanTag(rawTag);
+  const ids = all('SELECT t.razakar_id id FROM team_tags t JOIN masul_links l ON l.razakar_id = t.razakar_id AND l.masul_id = t.masul_id JOIN users u ON u.id = t.razakar_id WHERE t.masul_id = ? AND t.tag = ? AND u.deleted_at IS NULL', masulId, tag);
+  if (!ids.length) throw new HttpError(404, 'empty_team');
+  return tx(() => ({ count: ids.map(({ id }) => insertAssignment(masulId, id, fields)).length }));
+}
+
 export function addAssignment(masulId, razakarUsername, fields) {
   const r = one('SELECT u.id FROM users u JOIN masul_links l ON l.razakar_id = u.id WHERE u.username = ? AND l.masul_id = ? AND u.deleted_at IS NULL', String(razakarUsername ?? ''), masulId);
   if (!r) throw new HttpError(403, 'not_your_razakar');
@@ -313,11 +338,12 @@ function insertAssignment(byId, forId, { kind, title, weekday, dueDay }) {
     if (!dueDay) throw new HttpError(400, 'due_required'); // every task has a deadline: a commitment to a day
     due = checkDay(dueDay);
   }
-  return tx(() => {
+  const write = () => {
     if (one('SELECT COUNT(*) n FROM assignments WHERE razakar_id = ? AND ended_at IS NULL', forId).n >= ACTIVE_MAX) throw new HttpError(429, 'too_many_assignments');
     const res = run('INSERT INTO assignments (masul_id, razakar_id, kind, title, weekday, due_day, created_at) VALUES (?,?,?,?,?,?,?)', byId, forId, kind, t, wd, due, Date.now());
     return { id: Number(res.lastInsertRowid) };
-  });
+  };
+  return db.isTransaction ? write() : tx(write); // a team assignment already runs inside one transaction
 }
 export function endAssignment(masulId, id) {
   if (!run('UPDATE assignments SET ended_at = ? WHERE id = ? AND masul_id = ? AND ended_at IS NULL', Date.now(), id, masulId).changes) throw new HttpError(404, 'not_found');
@@ -400,7 +426,7 @@ export function razakarReport(masulId, username) {
   const u = livePerson(r.id), today = dayOf();
   // what the masul gave, and what the razakar set themselves (the masul can see but not change those)
   const items = all('SELECT * FROM assignments WHERE razakar_id = ? AND masul_id IN (?, razakar_id) AND ended_at IS NULL ORDER BY kind DESC, id', r.id, masulId).map((a) => assignmentOut(a, today));
-  return { username: u.username, city: u.city, joined: u.created_day, progress: generalProgress(r.id), assignments: items };
+  return { username: u.username, city: u.city, joined: u.created_day, progress: generalProgress(r.id), assignments: items, tags: tagsOf(masulId, r.id), allTags: masulTags(masulId).map((x) => x.tag) };
 }
 export function razakarList(masulId) {
   const today = dayOf();
@@ -409,7 +435,7 @@ export function razakarList(masulId) {
     const tasks = items.filter((i) => i.kind === 'task'), routines = items.filter((i) => i.kind === 'routine');
     const due = routines.reduce((n, i) => n + i.last4.due, 0), done = routines.reduce((n, i) => n + i.last4.done, 0);
     const g = generalProgress(u.id);
-    return { username: u.username, avatar: avatarUrl(u.id, u.av), city: u.city, openTasks: tasks.filter((t) => !t.done).length, overdue: tasks.filter((t) => t.overdue).length, asks: tasks.filter((t) => t.askedDay && !t.own).length,
+    return { username: u.username, avatar: avatarUrl(u.id, u.av), city: u.city, openTasks: tasks.filter((t) => !t.done).length, overdue: tasks.filter((t) => t.overdue).length, asks: tasks.filter((t) => t.askedDay && !t.own).length, tags: tagsOf(masulId, u.id),
       routinePercent: due ? Math.round((done / due) * 100) : null, duroodWeek: g.durood.week, streak: g.streak };
   });
 }

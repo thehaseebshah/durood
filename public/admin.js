@@ -27,7 +27,7 @@ let tab = 'challenge';
 let notice = '';
 const TABS = [['challenge', 'Challenge', 'status'], ['invites', 'Invite codes', 'organise'], ['waitlist', 'Waitlist', 'organise'], ['flags', 'Flagged totals', 'moderate'], ['members', 'Members', 'members'], ['moderation', 'Moderation', 'moderate'], ['news', 'News', 'organise'], ['feed', 'Feed', 'feed'], ['exports', 'Exports', 'organise'], ['burhan', 'Al-Burhan', 'moderate'], ['admins', 'Admins', 'manage_admins']];
 let EDITION = 'public'; // the Al-Burhan tab exists only in the internal edition
-const tabOk = ([k, , p]) => (k === 'burhan' && EDITION !== 'internal' ? false : p === 'feed' ? can('organise') || can('moderate') : can(p));
+const tabOk = ([k, , p]) => (k === 'burhan' ? EDITION === 'internal' && (can('moderate') || can('organise')) : p === 'feed' ? can('organise') || can('moderate') : can(p));
 
 // what an error code means, in words an organiser can act on
 const ADMIN_ERR = {
@@ -134,9 +134,15 @@ const views = {
         <td>${i.kind === 'post' && !i.photoUrl ? '<span class="muted">photo deleted</span>' : i.status === 'removed' ? `<button class="chip solid" data-a="restore2" data-kind="${esc(i.kind)}" data-id="${i.id}">Restore</button>` : `<button class="chip" data-a="keep2" data-kind="${esc(i.kind)}" data-id="${i.id}" title="The reports were not justified: clear them and take it off this list">Keep</button> <button class="chip" data-a="remove2" data-kind="${esc(i.kind)}" data-id="${i.id}">Remove</button>`}</td></tr>`).join('')}</table>` : '<p class="empty">Nothing reported.</p>'}` : ''}`;
   },
   async burhan() {
+    const { majalis } = can('organise') ? await api('GET', '/majalis') : { majalis: [] };
+    const majlisPart = can('organise') ? `<h3>Majalis</h3>
+      <p class="muted">Al-Burhan's departments. Members pick one under Me and can propose a new one; approve the proposals that are real departments. The proposer joins a majlis once it is approved.</p>
+      <table><tr><th>Majlis</th><th>Urdu</th><th>Members</th><th>Status</th><th>Proposed by</th><th></th></tr>${majalis.map((m) => `<tr><td>${esc(m.name)}</td><td dir="rtl">${esc(m.name_ur)}</td><td>${fmt(m.members)}</td><td>${esc(m.status)}</td><td>${esc(m.proposer || '—')}</td>
+        <td>${m.status === 'pending' ? `<button class="chip solid" data-a="mjyes" data-id="${m.id}">Approve</button> <button class="chip" data-a="mjno" data-id="${m.id}">Reject</button>` : ''}</td></tr>`).join('')}</table>` : '';
+    if (!can('moderate')) return majlisPart;
     const { murabbi, masul } = await api('GET', '/burhan-links');
     const stage = { waiting: 'murabbi not on the app yet', confirm: 'salik to confirm', pending: 'murabbi to accept', active: 'active: reports shared' };
-    return `<p class="muted">Phone numbers are not verified, so a wrong murabbi can be found through someone else's number. Check links that look wrong and break them. Breaking a link stops all sharing at once; either side can link again.</p>
+    return `${majlisPart}<h3>Links</h3><p class="muted">Phone numbers are not verified, so a wrong murabbi can be found through someone else's number. Check links that look wrong and break them. Breaking a link stops all sharing at once; either side can link again.</p>
       <h3>Murabbi links</h3>
       ${murabbi.length ? `<table><tr><th>Salik</th><th>Murabbi</th><th>Name in Mamulaat</th><th>Stage</th><th>Since</th><th></th></tr>${murabbi.map((l) => `<tr><td>${esc(l.salik)}</td><td>${esc(l.murabbi || '—')}</td><td>${esc(l.name)}</td><td>${esc(stage[l.stage])}</td><td>${date(l.at)}</td><td><button class="chip" data-a="bhbreak" data-k="murabbi" data-u="${esc(l.salik)}">Break</button></td></tr>`).join('')}</table>` : '<p class="empty">No murabbi links yet.</p>'}
       <h3>Masul links</h3>
@@ -322,6 +328,8 @@ document.addEventListener('click', (ev) => {
     circleset: async () => { const r = await api('POST', '/circle', { url: $('#ciurl').value }); say(r.circleUrl ? 'Circle link saved. Members now see it on Home.' : 'Circle link removed: the card is hidden.'); },
     teachyes: async () => { await api('POST', `/circle-teachers/${d.u}`, { action: 'approve' }); say(`${d.u} confirmed as a circle teacher (+1,000 points).`); },
     teachno: async () => { await api('POST', `/circle-teachers/${d.u}`, { action: 'reject' }); say(`${d.u}'s request was turned down. They can ask again.`); },
+    mjyes: async () => { const r = await api('POST', `/majalis/${d.id}`, { action: 'approve' }); say(`${r.name} approved.`); },
+    mjno: async () => { if (!confirm('Reject this majlis?')) return; const r = await api('POST', `/majalis/${d.id}`, { action: 'reject' }); say(`${r.name} rejected.`); },
     keep2: async () => { await api('POST', `/content/${d.kind}/${d.id}`, { action: 'restore' }); say('Kept, and its reports cleared.'); },
     specialdel: async () => { await api('DELETE', `/special-days/${d.day}`); say('Removed.'); },
     remove2: async () => { await api('POST', `/content/${d.kind}/${d.id}`, { action: 'remove' }); say('Removed.'); },

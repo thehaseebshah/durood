@@ -31,6 +31,7 @@ export const ADMIN_PERMS = {
   'GET /api/admin/circle': 'organise', 'POST /api/admin/circle': 'organise',
   'GET /api/admin/special-days': 'organise', 'POST /api/admin/special-days': 'organise', 'DELETE /api/admin/special-days/:day': 'organise',
   'GET /api/admin/lectures': 'organise', 'POST /api/admin/lectures': 'organise', 'PUT /api/admin/lectures/:id': 'organise', 'DELETE /api/admin/lectures/:id': 'organise',
+  'GET /api/admin/majalis': 'organise', 'POST /api/admin/majalis/:id': 'organise',
   'GET /api/admin/burhan-links': 'moderate', 'DELETE /api/admin/burhan-links/:kind/:username': 'moderate',
   'GET /api/admin/audit': 'audit', 'GET /api/admin/status': 'status',
   'GET /api/admin/me': 'status',

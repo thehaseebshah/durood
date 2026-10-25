@@ -55,13 +55,49 @@ const $ = (s) => document.querySelector(s);
 const app = $('#app');
 
 let toastTimer;
-function toast(msg, badge) {
+function toast(msg, badge, action) {
   const el = $('#toast');
-  el.innerHTML = (badge ? `<span class="tbadge">${badgeSvg(badge, true, 44)}</span>` : '') + `<span>${esc(msg)}</span>`;
+  el.innerHTML = (badge ? `<span class="tbadge">${badgeSvg(badge, true, 44)}</span>` : '') + `<span>${esc(msg)}</span>` + (action ? `<button class="tact" type="button">${esc(action.label)}</button>` : '');
+  el.classList.toggle('withact', !!action);
+  if (action) el.querySelector('.tact').onclick = () => { el.classList.remove('show'); action.run(); };
   el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+  toastTimer = setTimeout(() => el.classList.remove('show'), action ? 5000 : 3200);
 }
+
+// ---- feel: vibration, sound, motion (each can be turned off in Settings; motion follows the phone's "reduce motion") -----------------
+const prefs = (() => { try { return JSON.parse(ls.get('feel') || '{}'); } catch { return {}; } })();
+const setPref = (k, v) => { prefs[k] = v; ls.set('feel', JSON.stringify(prefs)); };
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const HAPTICS = { tap: 8, light: 10, done: [12, 40, 18], round: [30, 50, 30], hundred: [60, 60, 60, 60, 90] };
+function haptic(kind = 'tap') { if (prefs.vibrate !== false) try { navigator.vibrate?.(HAPTICS[kind] ?? 10); } catch { /* not supported */ } }
+let audio = null;
+function sound(kind = 'tap') {
+  if (prefs.sound === false) return;
+  try {
+    audio ||= new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === 'suspended') audio.resume();
+    const tone = (freq, at, dur, vol = 0.05, type = 'sine') => {
+      const o = audio.createOscillator(), g = audio.createGain(), t0 = audio.currentTime + at;
+      o.type = type; o.frequency.setValueAtTime(freq, t0);
+      g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vol, t0 + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g).connect(audio.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+    };
+    if (kind === 'tap') tone(1500, 0, 0.04, 0.035, 'triangle');                 // a soft bead click
+    else if (kind === 'round') { tone(880, 0, 0.18, 0.05); tone(1320, 0.09, 0.22, 0.04); }
+    else if (kind === 'hundred') { tone(660, 0, 0.25, 0.05); tone(880, 0.12, 0.25, 0.05); tone(1320, 0.24, 0.4, 0.05); }
+    else if (kind === 'done') { tone(740, 0, 0.12, 0.045); tone(1110, 0.07, 0.18, 0.04); }
+  } catch { /* no audio */ }
+}
+// numbers that change roll to their new value
+function rollNumber(el, from, to) {
+  if (!el || from === to || reduceMotion()) return;
+  const t0 = performance.now(), dur = 450;
+  const step = (now) => { const k = Math.min(1, (now - t0) / dur), e = 1 - (1 - k) ** 3; el.textContent = fmt(Math.round(from + (to - from) * e)); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+// grey blocks while a page loads, instead of "…"
+const skel = (n = 3) => `<div class="skel" aria-busy="true" aria-label="…">${Array.from({ length: n }, (_, i) => `<i style="width:${[92, 70, 84, 60][i % 4]}%"></i>`).join('')}</div>`;
 
 async function api(path, method = 'GET', body) {
   let res;
@@ -302,6 +338,7 @@ function shell() {
     <button class="${['caravan', 'qabila', 'tasks', 'people', 'progress', 'settings'].includes(S.tab) ? 'on' : ''}" data-act="drawer" aria-label="${esc(t('menu'))}">${uiIcon('menu', 22, 1.7)}<em>${t('nav_browse')}</em>${S.me.caravanInvites || S.me.caravanRequests || S.bh?.roles?.requests ? '<i class="pip" aria-hidden="true"></i>' : ''}</button></nav>
   ${fab ? `<button class="fab" data-act="addsheet" aria-label="${esc(t('add_durood'))}" title="${esc(t('add_durood'))}">${uiIcon('plus', 28, 2.4)}</button>` : ''}
   ${S.sheet === 'add' ? addSheet() : ''}
+  ${S.sheet === 'resched' ? reschedSheet() : ''}
   ${S.player ? playerModal() : ''}
   ${S.bhDetail ? detailModal() : ''}
   ${S.profile ? profileModal() : ''}
@@ -368,7 +405,7 @@ function home() {
   ].join('');
 
   // Sunnah & Seerah: today's Sunnah, this week's lecture, today's reflection
-  let seerah = '<p class="muted center">…</p>', seerahMeta = '';
+  let seerah = skel(), seerahMeta = '';
   if (f) {
     const lec = f.lectures.length ? f.lectures.map(lectureCard).join('') : `<div class="fcard"><h3>${uiIcon('book', 14, 2)} ${t('lectures')}</h3><p class="muted">${t('no_lectures')}</p></div>`;
     seerah = `${sunnahCard(f.today)}${lec}${reflectionCard(f.reflection)}`;
@@ -665,7 +702,7 @@ function feedList(items) {
 }
 function feedView() {
   const f = S.feed;
-  if (!f) return '<p class="muted center">…</p>';
+  if (!f) return skel();
   // posting happens on Today; the feed is for reading what everyone shared
   return `<button class="rowlink" data-act="tab" data-tab="home"><span>${uiIcon('pen', 14, 2)} ${t('feed_share')}</span><b class="ar">→</b></button>
     <div class="stream">${f.items.length ? feedList(f.items) : `<p class="muted center">${t('feed_empty')}</p>`}</div>
@@ -676,7 +713,7 @@ function feedView() {
 const TIER_KEYS = ['bronze', 'silver', 'gold', 'diamond'];
 function leagueView() {
   const L = S.board.data;
-  if (!L) return '<p class="muted center">…</p>';
+  if (!L) return skel();
   const name = t('tier_' + TIER_KEYS[L.tier]);
   const head = `<div class="leaguehead"><b>${uiIcon('bolt', 16, 2)} ${t('league_title')} · ${name}</b><small>${t('league_days')(L.daysLeft)}</small></div>`;
   const last = L.last ? `<p class="note">${t('league_last_' + L.last.result)(L.last.rank)}</p>` : '';
@@ -689,12 +726,12 @@ function leagueView() {
 
 function rank() {
   const b = S.board, rows = b.data?.rows;
-  const grp = ['caravans', 'trees', 'cities'].includes(b.type);
-  const list = b.type === 'league' ? leagueView() : !rows ? '<p class="muted center">…</p>' : rows.length ? `<ul class="lb">${rows.map((r) => `
+  const grp = ['caravans', 'trees', 'cities', 'majalis'].includes(b.type);
+  const list = b.type === 'league' ? leagueView() : !rows ? skel() : rows.length ? `<ul class="lb">${rows.map((r) => `
     <li class="${r.me ? 'me' : ''}"><span class="rank">${r.rank}</span>${r.avatar !== undefined ? av(r, 34) : ''}
-      <span class="name">${esc(r.name ?? r.username)}${r.me ? ` <em class="tag">${t(b.type === 'caravans' ? 'cv_yours' : 'you')}</em>` : ''}<small>${r.city ? `${esc(r.city)}` : ''}${grp ? `${r.city ? ' · ' : ''}${fmt(r.members)} ${t('members')}${b.metric === 'average' ? ` · ${fmt(r.active)} ${t('active')}` : ''}` : ''}</small></span>
+      <span class="name">${esc(r.name ?? (r.nameUr ? pick(r.username, r.nameUr) : r.username))}${r.me ? ` <em class="tag">${t(b.type === 'caravans' ? 'cv_yours' : 'you')}</em>` : ''}<small>${r.city ? `${esc(r.city)}` : ''}${grp ? `${r.city ? ' · ' : ''}${fmt(r.members)} ${t('members')}${b.metric === 'average' ? ` · ${fmt(r.active)} ${t('active')}` : ''}` : ''}</small></span>
       <span class="score">${grp && b.metric === 'growth' && r.score > 0 ? '+' : ''}${fmt(r.score)}</span></li>`).join('')}</ul>` : `<p class="muted center">${t(b.type === 'cities' ? 'empty_cities' : 'empty_board')}</p>`;
-  const kinds = [['users', 'rk_people'], ['league', 'rk_league'], ['caravans', 'rk_caravans'], ['trees', 'rk_trees'], ['cities', 'rk_cities']];
+  const kinds = [['users', 'rk_people'], ['league', 'rk_league'], ['caravans', 'rk_caravans'], ['trees', 'rk_trees'], ['cities', 'rk_cities'], ...(inBurhan() ? [['majalis', 'rk_majalis']] : [])];
   const note = b.type === 'league' ? '' : grp ? `${t('rk_note_' + b.type)} ${t('cv_note_' + b.metric)}` : (b.period === 'challenge' ? t('challenge_note') : '');
   return `
   ${challengeCard(S.me)}
@@ -707,6 +744,7 @@ function rank() {
   ${list}
   ${note ? `<p class="note">${note}</p>` : ''}
   ${b.type === 'cities' ? `<p class="note">${t('cities_min')(b.data?.minActive || 5)}</p>` : ''}
+  ${b.type === 'majalis' ? `<p class="note">${t('majalis_min')(b.data?.minActive || 3)}</p>` : ''}
   <p class="note">${t('self_reported')}</p>
   <p class="note">${t('reminder_note')}</p>`;
 }
@@ -758,7 +796,7 @@ function cvHome(cv) {
 }
 function caravan() {
   const cv = S.cv;
-  return `${!cv ? '<p class="muted center">…</p>' : cv.caravan ? cvHome(cv) : cvJoinOrCreate(cv)}
+  return `${!cv ? skel() : cv.caravan ? cvHome(cv) : cvJoinOrCreate(cv)}
   <button class="rowlink" data-act="tab" data-tab="qabila"><span>${uiIcon('nodes', 14, 2)} ${t('cv_vs_qabila')}</span><b class="ar">→</b></button>`;
 }
 
@@ -783,7 +821,7 @@ function qabila() {
 
 function historyBlock() {
   const h = S.history;
-  if (!h) return '<p class="muted center">…</p>';
+  if (!h) return skel();
   const time = (at) => new Date(at).toLocaleTimeString(S.lang === 'ur' ? 'en-GB' : 'en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Karachi' });
   if (!h.days.length) return `<p class="note first">${t('hist_empty')}</p>`;
   return h.days.map((d) => `
@@ -817,11 +855,27 @@ function progress() {
     <div class="row wrapx"><a class="chip" href="${esc(m.circleUrl)}" target="_blank" rel="noopener">${t('circle_open')} ↗</a>
     ${m.badges.includes('circle') ? `<span class="ok">✓ ${t('circle_done')}</span>` : `<button class="chip" data-act="circle">${t('circle_claim')}</button>`}</div>
     <p class="muted">${t('teach_text')}</p><div class="row wrapx">${teachButton()}</div>`, !m.badges.includes('circle_teacher')) : ''}
-  ${inBurhan() ? fold('guides', t('guides_title'), (S.bh?.notices || []).length ? '•' : '', burhanMe() || '<p class="muted center">…</p>') : ''}
+  ${inBurhan() ? fold('majlis', t('majlis_title'), m.majlis ? esc(pick(m.majlis.name, m.majlis.nameUr)) : '', majlisBox(), !m.majlis) : ''}
+  ${inBurhan() ? fold('guides', t('guides_title'), (S.bh?.notices || []).length ? '•' : '', burhanMe() || skel()) : ''}
   ${fold('points', t('points_title'), '', `<ul class="how">${t('points_list').map((x) => `<li>${x}</li>`).join('')}</ul>`, false)}
   ${fold('history', t('hist_title'), '', `<p class="note first">${t('hist_hint')}</p>${historyBlock()}`)}
   ${fold('badges', t('badges'), N(`${m.badges.length}`), `${BADGE_FAMILIES.map(([fam, list]) => `<h3>${t('fam_' + fam)}</h3>
   <div class="badges">${list.slice().sort((x, y) => m.badges.includes(y) - m.badges.includes(x)).map((c) => { const got = m.badges.includes(c); return `<div class="badge ${got ? 'got' : ''}" title="${esc(t('badge')[c][1])}">${badgeSvg(c, got)}<b>${esc(t('badge')[c][0])}</b><span>${esc(t('badge')[c][1])}</span></div>`; }).join('')}</div>`).join('')}`)}`;
+}
+
+// the member's majlis: pick one, or propose a new one for an admin to approve
+function majlisBox() {
+  const d = S.majalis;
+  if (!d) { if (!S.majalisLoading) { S.majalisLoading = true; api('/majalis').then((r) => { S.majalis = r; }).catch(() => {}).finally(() => { S.majalisLoading = false; draw(); }); } return skel(); }
+  const prop = d.proposal;
+  return `<p class="muted">${t('majlis_text')}</p>
+    <div class="row"><select id="mj-pick" aria-label="${esc(t('majlis_title'))}"><option value="">${t('majlis_none')}</option>${d.majalis.map((x) => `<option value="${x.id}" ${d.mine?.id === x.id ? 'selected' : ''}>${esc(pick(x.name, x.nameUr))} (${fmt(x.members)})</option>`).join('')}</select>
+    <button class="chip solid" data-act="majlisset">${t('majlis_save')}</button></div>
+    ${prop ? `<p class="note">${prop.status === 'pending' ? t('majlis_waiting')(esc(prop.name)) : t('majlis_refused')(esc(prop.name))}</p>` : ''}
+    ${prop?.status === 'pending' ? '' : `<details class="pdetails"><summary>${t('majlis_propose')}</summary>
+      <form novalidate data-form="majlisnew"><input name="name" type="text" maxlength="40" placeholder="${esc(t('majlis_propose_ph'))}" aria-label="${esc(t('majlis_propose_ph'))}" dir="auto">
+      <input name="nameUr" type="text" maxlength="40" placeholder="${esc(t('majlis_propose_ur'))}" aria-label="${esc(t('majlis_propose_ur'))}" dir="rtl">
+      <button class="chip solid" type="submit">${t('majlis_send')}</button></form></details>`}`;
 }
 
 // teaching a Seerat Circle: asked for once, confirmed by an organiser, then paid
@@ -886,6 +940,10 @@ function settings() {
   <h3>${t('appearance')}</h3>
   <label class="padx">${t('language')}</label>
   <div class="seg"><button class="${S.lang === 'en' ? 'on' : ''}" data-act="setlang" data-l="en">English</button><button class="${S.lang === 'ur' ? 'on' : ''}" data-act="setlang" data-l="ur">اردو</button></div>
+  <label class="padx">${t('feel_sound')}</label>
+  <div class="seg"><button class="${prefs.sound === false ? '' : 'on'}" data-act="setfeel" data-k="sound" data-v="1">${t('on_word')}</button><button class="${prefs.sound === false ? 'on' : ''}" data-act="setfeel" data-k="sound" data-v="0">${t('off_word')}</button></div>
+  <label class="padx">${t('feel_vibrate')}</label>
+  <div class="seg"><button class="${prefs.vibrate === false ? '' : 'on'}" data-act="setfeel" data-k="vibrate" data-v="1">${t('on_word')}</button><button class="${prefs.vibrate === false ? 'on' : ''}" data-act="setfeel" data-k="vibrate" data-v="0">${t('off_word')}</button></div>
   <label class="padx">${t('display')}</label>
   <div class="seg"><button class="${isDark() ? '' : 'on'}" data-act="setmode" data-m="light">${t('mode_light')}</button><button class="${isDark() ? 'on' : ''}" data-act="setmode" data-m="dark">${t('mode_dark_name')}</button></div>
 
@@ -953,6 +1011,47 @@ const asgLabel = (a) => a.kind === 'routine' ? t('every')(wdName(a.weekday)) : a
 const pkDay = (plus = 0) => new Date(Date.now() + 5 * 3600e3 + plus * 864e5).toISOString().slice(0, 10);
 const dueInput = (id, name = 'dueDay', value = pkDay(3)) => `<input id="${id}" type="date" name="${name}" min="${pkDay()}" value="${esc(value)}" required dir="ltr">`;
 
+// the doer's own row, after Todoist: a round checkbox on the left, swipe right to complete, swipe left to reschedule, ⋯ for the rest
+const CHECK_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle class="ring" cx="12" cy="12" r="10"/><path class="tick" d="M7 12.5l3.2 3.2L17 9"/></svg>';
+function taskRow(a) {
+  const isTask = a.kind === 'task';
+  const done = isTask ? a.done : a.doneToday;
+  const tickable = isTask || a.dueToday;
+  const giver = a.from ? ` · ${t('from_masul')(esc(a.from))}` : '';
+  let meta;
+  if (!isTask) meta = a.dueToday || !a.last4.due ? '' : t('routine_stats')(a.last4.done, a.last4.due);
+  else if (a.done) meta = `${t('done_on')(N(esc(a.doneOn)))}${a.xpEarned != null ? ` · ${t('points_gained')(fmt(a.xpEarned))}` : ''}`;
+  else meta = [a.daysLate ? `<span class="bad">${t('days_late')(a.daysLate)}</span>` : '', a.extensions ? t('moved_n')(a.extensions) : '',
+    a.xpNow != null ? (a.xpNow < a.xpFull ? t('pts_now_less')(a.xpNow, a.xpFull) : t('pts_now')(a.xpNow)) : '', a.askedDay ? t('asked_for')(N(esc(a.askedDay))) : ''].filter(Boolean).join(' · ');
+  const canResched = isTask && !a.done && (a.own || !a.askedDay);
+  const menu = `<details class="menu"><summary aria-label="${esc(t('more_actions'))}" title="${esc(t('more_actions'))}">⋯</summary><div class="menupop">
+      ${canResched ? `<button data-act="resched" data-id="${a.id}">${uiIcon('flag', 16, 2)} ${t(a.own ? 'move_date' : 'ask_date')}</button>` : ''}
+      ${tickable && done ? `<button data-act="atick" data-id="${a.id}" data-done="0">${t('undo')}</button>` : ''}
+      ${a.own ? `<button data-act="endown" data-id="${a.id}" class="danger">✕ ${t('end_assign')}</button>` : ''}
+      ${!canResched && !a.own && !(tickable && done) ? `<span class="muted">${t('from_masul')(esc(a.from || ''))}</span>` : ''}</div></details>`;
+  return `<div class="trow ${done ? 'd' : ''} ${a.daysLate ? 'late' : ''}" data-swipe="${a.id}" data-can-done="${tickable && !done ? 1 : 0}" data-can-move="${canResched ? 1 : 0}">
+    <div class="swipebg"><span class="sw-done">${uiIcon('check', 20, 2.4)} ${t('mark_done')}</span><span class="sw-move">${t(a.own ? 'move_date' : 'ask_date')} ${uiIcon('flag', 20, 2)}</span></div>
+    <div class="tfront">
+      <button class="tcheck ${done ? 'on' : ''}" ${tickable ? '' : 'disabled'} data-act="atick" data-id="${a.id}" data-done="${done ? 0 : 1}" role="checkbox" aria-checked="${done}" aria-label="${esc(a.title)}">${CHECK_SVG}</button>
+      <span class="ttext"><span class="ttitle">${esc(a.title)}</span><small>${asgLabel(a)}${giver}</small>${meta ? `<small class="tmeta">${meta}</small>` : ''}</span>
+      ${menu}
+    </div></div>`;
+}
+
+// the reschedule sheet: quick days, or a date; your own you move, one from your masul you ask for
+function reschedSheet() {
+  const a = (S.bh?.assignments || []).find((x) => x.id === S.reschedId);
+  if (!a) return '';
+  const opts = [['today', pkDay(0)], ['tomorrow', pkDay(1)], ['in_3_days', pkDay(3)], ['next_week', pkDay(7)]].filter(([, d]) => d !== a.dueDay);
+  return `<div class="modal sheetm"><div class="box sheetbox" aria-label="${esc(t(a.own ? 'move_date' : 'ask_date'))}">
+    <div class="row between"><b class="sheettitle">${t(a.own ? 'move_date' : 'ask_date')}</b><button class="chip" data-act="sheetx">${t('close')}</button></div>
+    <p class="padx muted">${esc(a.title)} · ${t('due')(N(esc(a.dueDay || '')))}</p>
+    <div class="reschopts">${opts.map(([k, d]) => `<button class="rowlink" data-act="reschpick" data-day="${d}"><span>${t('rs_' + k)}</span><b>${N(esc(d))}</b></button>`).join('')}</div>
+    <div class="row padx duerow">${dueInput('resch-day', 'day', pkDay(2))}<button class="chip solid" data-act="reschpick">${t(a.own ? 'save' : 'ask_send')}</button></div>
+    <p class="padx hint">${t(a.own ? 'move_warn' : 'ask_warn')}</p>
+  </div></div>`;
+}
+
 function assignRow(a, mode) { // mode: 'mine' (the doer: ticks, moves or asks), 'masul' (can end and move what they gave), 'view' (murabbi)
   const isTask = a.kind === 'task';
   let state;
@@ -985,7 +1084,7 @@ function assignRow(a, mode) { // mode: 'mine' (the doer: ticks, moves or asks), 
 function burhanToday() {
   const b = S.bh;
   if (!b || (!b.today.length && !(b.mamulaat && b.mamulaat.today != null))) return '';
-  return `${b.today.map((a) => assignRow(a, 'mine')).join('')}
+  return `${b.today.map(taskRow).join('')}
   ${b.mamulaat && b.mamulaat.today != null ? `<button class="rowlink" data-act="tab" data-tab="progress"><span>${t('mam_title')}</span><b>${b.mamulaat.today}%</b></button>` : ''}`;
 }
 
@@ -1030,22 +1129,93 @@ function burhanMe() {
 
 function burhanCaravan() {
   const b = S.bh;
-  if (!b) return '<p class="muted center">…</p>';
+  if (!b) return skel();
   const sa = S.bhLists?.saaliks || [], ra = S.bhLists?.razakars || [], rq = S.bhLists?.requests || [];
   const loading = !S.bhLists && (b.roles.saaliks || b.roles.razakars || b.roles.requests);
-  if (loading) return '<p class="muted center">…</p>';
+  if (loading) return skel();
   const reqs = rq.map((r) => `<div class="circlecard"><b>${esc(r.username)}</b>${r.city ? ` · ${esc(r.city)}` : ''}<p class="muted">${t('request_text')}</p><div class="row"><button class="blk fill1" data-act="bhaccept" data-u="${esc(r.username)}"><span>${t('accept')}</span><b class="ar">→</b></button><button class="chip" data-act="bhdecline" data-u="${esc(r.username)}">${t('decline')}</button></div></div>`).join('');
   const saliks = sa.length ? `<ul class="lb">${sa.map((x) => `<li><button class="rowbtn" data-act="opensaalik" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('durood_week')(fmt(x.duroodWeek))}${x.mamulaatToday == null ? '' : ` · ${t('mam_short')} ${x.mamulaatToday}%`}</small></span><span class="score">${fmt(x.duroodToday)}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('saaliks_none')}</p>`;
-  const razakars = ra.length ? `<ul class="lb">${ra.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.asks ? ` · <b>${t('asks_n')(x.asks)}</b>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${x.routinePercent}%`}</small></span><span class="score">${fmt(x.duroodWeek)}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('razakars_none')}</p>`;
+  const allTags = S.bhLists?.tags || [], tf = S.teamFilter && allTags.some((x) => x.tag === S.teamFilter) ? S.teamFilter : null;
+  const shown = tf ? ra.filter((x) => (x.tags || []).includes(tf)) : ra;
+  const chips = allTags.length ? `<div class="chips tagbar"><button class="chip ${tf ? '' : 'solid'}" data-act="teamf" data-tag="">${t('team_all')} ${N(String(ra.length))}</button>${allTags.map((x) => `<button class="chip ${tf === x.tag ? 'solid' : ''}" data-act="teamf" data-tag="${esc(x.tag)}">#${esc(x.tag)} ${N(String(x.n))}</button>`).join('')}</div>` : (ra.length ? `<p class="hint padx">${t('team_hint')}</p>` : '');
+  const teamForm = tf ? assignForm('teamassign', t('team_assign')(esc(tf))) : '';
+  const razakars = ra.length ? `${chips}${teamForm}<ul class="lb">${shown.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.asks ? ` · <b>${t('asks_n')(x.asks)}</b>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${x.routinePercent}%`}${(x.tags || []).length ? `<span class="tagline">${x.tags.map((g) => `<em class="ttag">#${esc(g)}</em>`).join(' ')}</span>` : ''}</small></span><span class="score">${fmt(x.duroodWeek)}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('razakars_none')}</p>`;
   return `${rq.length ? fold('preq', t('requests_title'), N(String(rq.length)), reqs) : ''}
   ${fold('psaliks', t('saaliks_title'), N(String(sa.length)), saliks)}
   ${fold('prazakars', t('razakars_title'), N(String(ra.length)), razakars)}`;
 }
 
+// the masul's form for giving a task or routine, to one razakar ('assign') or a whole team ('teamassign')
+function assignForm(name, title) {
+  const f = S.assignForm || { kind: 'task' };
+  return `<form novalidate data-form="${name}" class="assign"><b>${title}</b>
+      <div class="seg thin"><button type="button" class="${f.kind === 'task' ? 'on' : ''}" data-act="assignkind" data-k="task">${t('task_word')}</button><button type="button" class="${f.kind === 'routine' ? 'on' : ''}" data-act="assignkind" data-k="routine">${t('routine_word')}</button></div>
+      <input type="text" name="title" maxlength="80" aria-label="${esc(t('assign_ph'))}" placeholder="${esc(t('assign_ph'))}" dir="auto">
+      ${f.kind === 'routine'
+        ? `<label for="${name}-wd">${t('weekday_word')}</label><select id="${name}-wd" name="weekday">${t('weekdays').map((n, i) => `<option value="${i}" ${i === 5 ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`
+        : `<label for="${name}-due">${t('due_word')}</label>${dueInput(`${name}-due`)}`}
+      <button class="blk" type="submit"><span>${t('assign_btn')}</span><b class="ar">→</b></button></form>`;
+}
+// a razakar's team tags, edited by their masul
+function tagEditor(r) {
+  const tags = r.tags || [];
+  return `<div class="tagedit"><b>${t('team_tags')}</b>
+    <div class="chips">${tags.map((g) => `<span class="chip ttagchip">#${esc(g)} <button class="linkbtn" data-act="tagdel" data-tag="${esc(g)}" aria-label="${esc(t('end_assign'))} #${esc(g)}">✕</button></span>`).join('')}</div>
+    <div class="row"><input id="tag-new" type="text" maxlength="25" list="tag-list" autocomplete="off" autocapitalize="off" placeholder="${esc(t('team_add_ph'))}" aria-label="${esc(t('team_add_ph'))}" dir="auto"><button class="chip solid" data-act="tagadd">${t('add')}</button></div>
+    <datalist id="tag-list">${(r.allTags || []).filter((g) => !tags.includes(g)).map((g) => `<option value="#${esc(g)}">`).join('')}</datalist>
+    <small class="muted">${t('team_hint')}</small></div>`;
+}
+
+// ticking a task: the circle fills, the row settles, then the server is told; undo for five seconds
+async function tickTask(id, done, row) {
+  if (done && row) { row.classList.add('completing'); haptic('done'); sound('done'); await new Promise((r) => setTimeout(r, reduceMotion() ? 0 : 420)); }
+  try {
+    const r = await api(`/assignments/${id}/tick`, 'POST', { done });
+    await loadBurhan(); await refreshMe(); draw();
+    if (done) toast(r.xpGained ? `${t('task_done')} · ${t('points_gained')(fmt(r.xpGained))}` : t('task_done'), null, { label: t('undo'), run: () => tickTask(id, false) });
+  } catch (e) { row?.classList.remove('completing'); toast(errText(e)); }
+}
+
+// ---- swiping a task row: right completes, left reschedules (touch and mouse), like Todoist ---------------------------------------
+{
+  let sw = null;
+  const end = (commit) => {
+    if (!sw) return;
+    const { row, front, dx } = sw; sw = null;
+    const w = row.offsetWidth, rtl = document.documentElement.dir === 'rtl', fwd = rtl ? -dx : dx;
+    front.style.transition = 'transform .2s ease'; front.style.transform = '';
+    row.classList.remove('sw-right', 'sw-left');
+    if (!commit || Math.abs(dx) < w * 0.33) return;
+    if (fwd > 0 && row.dataset.canDone === '1') tickTask(Number(row.dataset.swipe), true, row);
+    else if (fwd < 0 && row.dataset.canMove === '1') { S.reschedId = Number(row.dataset.swipe); S.sheet = 'resched'; draw(); }
+  };
+  document.addEventListener('pointerdown', (ev) => {
+    const row = ev.target.closest('.trow[data-swipe]');
+    if (!row || ev.target.closest('button, summary, .menupop, a, input')) return;
+    sw = { row, front: row.querySelector('.tfront'), x: ev.clientX, y: ev.clientY, dx: 0, locked: null, id: ev.pointerId };
+  });
+  document.addEventListener('pointermove', (ev) => {
+    if (!sw || ev.pointerId !== sw.id) return;
+    const dx = ev.clientX - sw.x, dy = ev.clientY - sw.y;
+    if (sw.locked === null && Math.abs(dx) + Math.abs(dy) > 8) sw.locked = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+    if (sw.locked !== 'x') return;
+    const rtl = document.documentElement.dir === 'rtl', fwd = rtl ? -dx : dx;
+    if ((fwd > 0 && sw.row.dataset.canDone !== '1') || (fwd < 0 && sw.row.dataset.canMove !== '1')) return;
+    sw.dx = dx;
+    sw.front.style.transition = 'none'; sw.front.style.transform = `translateX(${dx}px)`;
+    sw.row.classList.toggle('sw-right', fwd > 0); sw.row.classList.toggle('sw-left', fwd < 0);
+    sw.row.classList.toggle('sw-armed', Math.abs(dx) >= sw.row.offsetWidth * 0.33);
+  });
+  document.addEventListener('pointerup', () => end(true));
+  document.addEventListener('pointercancel', () => end(false));
+  // close an open ⋯ menu when tapping elsewhere
+  document.addEventListener('click', (ev) => { for (const d of document.querySelectorAll('details.menu[open]')) if (!d.contains(ev.target)) d.removeAttribute('open'); });
+}
+
 // ---- Tasks: your own tasks and routines and the ones your masul gives you, like a Todoist list ------------------------------------
 function tasksPage() {
   const b = S.bh;
-  if (!b) return '<p class="muted center">…</p>';
+  if (!b) return skel();
   const f = S.ownForm || { kind: 'task' };
   const list = b.assignments, routines = list.filter((a) => a.kind === 'routine'), tasks = list.filter((a) => a.kind === 'task');
   const open = tasks.filter((a) => !a.done), done = tasks.filter((a) => a.done);
@@ -1058,10 +1228,10 @@ function tasksPage() {
       <button class="blk" type="submit"><span>${t('own_add')}</span><b class="ar">→</b></button>
       <p class="hint">${b.masul || (b.murabbi && b.murabbi.stage === 'active') ? t('own_seen_by') : t('own_private')}</p></form>`;
   return `${fold('tnew', t('own_new'), '', form, !list.length)}
-  ${fold('ttoday', t('today'), N(String(b.today.length)), b.today.length ? b.today.map((a) => assignRow(a, 'mine')).join('') : `<p class="muted padx">${t('tasks_none_today')}</p>`)}
-  ${fold('ttasks', t('tasks_open'), N(String(open.length)), open.length ? open.map((a) => assignRow(a, 'mine')).join('') : `<p class="muted padx">${t('tasks_none')}</p>`)}
-  ${fold('troutines', t('routines_title'), N(String(routines.length)), routines.length ? routines.map((a) => assignRow(a, 'mine')).join('') : `<p class="muted padx">${t('routines_none')}</p>`)}
-  ${done.length ? fold('tdone', t('tasks_done'), N(String(done.length)), done.map((a) => assignRow(a, 'mine')).join(''), false) : ''}`;
+  ${fold('ttoday', t('today'), N(String(b.today.length)), b.today.length ? b.today.map(taskRow).join('') : `<p class="muted padx">${t('tasks_none_today')}</p>`)}
+  ${fold('ttasks', t('tasks_open'), N(String(open.length)), open.length ? open.map(taskRow).join('') : `<p class="muted padx">${t('tasks_none')}</p>`)}
+  ${fold('troutines', t('routines_title'), N(String(routines.length)), routines.length ? routines.map(taskRow).join('') : `<p class="muted padx">${t('routines_none')}</p>`)}
+  ${done.length ? fold('tdone', t('tasks_done'), N(String(done.length)), done.map(taskRow).join(''), false) : ''}`;
 }
 
 function progressGrid(g) {
@@ -1096,13 +1266,8 @@ function detailModal() {
     ${progressGrid(r.progress)}
     <b>${t('assigned_view')}</b>
     ${r.assignments.length ? r.assignments.map((a) => assignRow(a, 'masul')).join('') : `<p class="muted">${t('none_assigned')}</p>`}
-    <form novalidate data-form="assign" class="assign"><b>${t('assign_new')}</b>
-      <div class="seg thin"><button type="button" class="${f.kind === 'task' ? 'on' : ''}" data-act="assignkind" data-k="task">${t('task_word')}</button><button type="button" class="${f.kind === 'routine' ? 'on' : ''}" data-act="assignkind" data-k="routine">${t('routine_word')}</button></div>
-      <input type="text" name="title" maxlength="80" aria-label="${esc(t('assign_ph'))}" placeholder="${esc(t('assign_ph'))}" dir="auto">
-      ${f.kind === 'routine'
-        ? `<label for="a-wd">${t('weekday_word')}</label><select id="a-wd" name="weekday">${t('weekdays').map((n, i) => `<option value="${i}" ${i === 5 ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`
-        : `<label for="a-due">${t('due_word')}</label>${dueInput('a-due')}`}
-      <button class="blk" type="submit"><span>${t('assign_btn')}</span><b class="ar">→</b></button></form>
+    ${tagEditor(r)}
+    ${assignForm('assign', t('assign_new'))}
   </div></div>`;
 }
 
@@ -1187,23 +1352,25 @@ function draw() {
   app.innerHTML = S.me ? shell() : S.offline ? offlineView() : S.intro !== null ? introView() : authView();
   restoreFields(keep);
   enhanceModal();
+  if (S.rollFrom != null && S.me) { rollNumber($('#big'), S.rollFrom + S.pending, S.me.today + S.pending); S.rollFrom = null; }
 }
 
 const boardUrl = (b) => (b.type === 'users' ? `/leaderboard?type=users&period=${b.period}`
   : b.type === 'league' ? '/league'
-  : b.type === 'cities' ? `/leaderboard?type=cities&metric=${b.metric}`
+  : b.type === 'cities' || b.type === 'majalis' ? `/leaderboard?type=${b.type}&metric=${b.metric}`
   : b.metric === 'total' ? `/leaderboard?type=${b.type}&period=week` : `/leaderboard?type=${b.type}&metric=${b.metric}`);
 async function loadFeed() { S.feed = await api('/feed'); S.learn = { lectures: S.feed.lectures }; S.feedSeen = S.feed.seenAt; }
 async function loadBurhanLists() {
   if (!S.bh || !(S.bh.roles.saaliks || S.bh.roles.razakars || S.bh.roles.requests)) return;
-  S.bhLists = { saaliks: S.bh.roles.saaliks ? (await api('/burhan/saaliks')).saaliks : [], razakars: S.bh.roles.razakars ? (await api('/burhan/razakars')).razakars : [], requests: S.bh.roles.requests ? (await api('/burhan/requests')).requests : [] };
+  S.bhLists = { saaliks: S.bh.roles.saaliks ? (await api('/burhan/saaliks')).saaliks : [], razakars: S.bh.roles.razakars ? (await api('/burhan/razakars')).razakars : [], tags: S.bh.roles.razakars ? (await api('/burhan/tags')).tags : [], requests: S.bh.roles.requests ? (await api('/burhan/requests')).requests : [] };
 }
 async function enterTab(tab) {
   if (tab === 'me') tab = 'progress'; // older links
   if (tab === 'burhan') tab = 'tasks'; // the old Al-Burhan page became Tasks, My people and Me
   if (['tasks', 'people'].includes(tab) && !inBurhan()) tab = 'home';
   S.tab = tab; S.drawer = false;
-  draw();
+  // pages cross-fade and slide, where the browser can (Chrome and Android's WebView); otherwise they just change
+  if (document.startViewTransition && !reduceMotion()) document.startViewTransition(() => draw()); else draw();
   window.scrollTo(0, 0);
   try {
     if (tab === 'rank') { S.board.data = null; draw(); S.board.data = await api(boardUrl(S.board)); }
@@ -1240,7 +1407,9 @@ async function submitLog(count) {
     for (let attempt = 0; ; attempt++) {
       try {
         const res = await api('/log', 'POST', { count, rid });
+        S.rollFrom = S.me.today; // the counter rolls up to the new number
         S.me = res.me;
+        haptic('done'); sound('done');
         celebrate(res);
         return true;
       } catch (e) {
@@ -1321,7 +1490,14 @@ app.addEventListener('click', async (ev) => {
     S.pending += act === 'tap' ? 1 : Number(el.dataset.n);
     ls.set('pending', S.pending);
     liveHome();
-    if (act === 'tap') navigator.vibrate?.(8);
+    if (act === 'tap') {
+      // a tasbih feel: a light tick on every count, a stronger one at each 33, and a chime at each 100
+      const n = S.pending, kind = n % 100 === 0 ? 'hundred' : n % 33 === 0 ? 'round' : 'tap';
+      haptic(kind); sound(kind);
+      el.classList.remove('tapping'); void el.offsetWidth; el.classList.add('tapping');
+      const pend = $('#pend'); if (pend) { pend.classList.remove('bump'); void pend.offsetWidth; pend.classList.add('bump'); }
+      if (kind !== 'tap') el.classList.add(kind === 'hundred' ? 'glow100' : 'glow33'), setTimeout(() => el.classList.remove('glow33', 'glow100'), 700);
+    }
     return;
   }
   if (act === 'preset') { S.pending = 0; ls.set('pending', 0); return draw(); }
@@ -1446,11 +1622,14 @@ app.addEventListener('click', async (ev) => {
   }
   if (act === 'bhunlink') { if (!confirm(t('unlink_ask'))) return; try { await api('/burhan/murabbi', 'DELETE'); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
   if (act === 'bhmasulclear') { if (!confirm(t('unlink_ask'))) return; try { await api('/burhan/masul', 'DELETE'); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
-  if (act === 'atick') {
+  if (act === 'atick') { el.closest('details')?.removeAttribute('open'); return tickTask(Number(el.dataset.id), el.dataset.done === '1', el.closest('.trow')); }
+  if (act === 'resched') { el.closest('details')?.removeAttribute('open'); S.reschedId = Number(el.dataset.id); S.sheet = 'resched'; return draw(); }
+  if (act === 'reschpick') {
+    const a = (S.bh?.assignments || []).find((x) => x.id === S.reschedId), day = el.dataset.day || $('#resch-day')?.value;
+    if (!a || !day) return;
     try {
-      const r = await api(`/assignments/${el.dataset.id}/tick`, 'POST', { done: el.dataset.done === '1' });
-      if (r.xpGained) toast(t('points_gained')(fmt(r.xpGained)));
-      await loadBurhan(); await refreshMe(); draw();
+      if (a.own) await api(`/assignments/${a.id}/due`, 'PUT', { day }); else await api(`/assignments/${a.id}/due-request`, 'POST', { day });
+      S.sheet = null; S.reschedId = null; toast(a.own ? t('rs_moved')(day) : t('ask_sent')); haptic('light'); await loadBurhan();
     } catch (e) { toast(errText(e)); }
     return;
   }
@@ -1494,6 +1673,22 @@ app.addEventListener('click', async (ev) => {
   }
   if (act === 'bhnotice') { try { await api(`/burhan/notices/${el.dataset.k}`, 'DELETE'); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
   if (act === 'assignkind') { S.assignForm = { kind: el.dataset.k }; return draw(); }
+  if (act === 'majlisset') {
+    try { const r = await api('/me/majlis', 'PUT', { id: $('#mj-pick').value || null }); S.me = r.me; S.majalis = { majalis: r.majalis, mine: r.mine, proposal: r.proposal }; toast(t('saved')); draw(); } catch (e) { toast(errText(e)); }
+    return;
+  }
+  if (act === 'setfeel') { setPref(el.dataset.k, el.dataset.v === '1'); if (el.dataset.v === '1') { haptic('round'); sound('round'); } return draw(); }
+  if (act === 'teamf') { S.teamFilter = el.dataset.tag || null; S.assignForm = { kind: 'task' }; return draw(); }
+  if (act === 'tagadd' || act === 'tagdel') {
+    const d = S.bhDetail, cur = d?.data?.tags || [];
+    const next = act === 'tagadd' ? [...cur, ($('#tag-new')?.value || '').trim()].filter(Boolean) : cur.filter((g) => g !== el.dataset.tag);
+    try {
+      d.data.tags = (await api(`/burhan/razakars/${encodeURIComponent(d.username)}/tags`, 'PUT', { tags: next })).tags;
+      const r = await api('/burhan/razakars'); S.bhLists = { ...S.bhLists, razakars: r.razakars, tags: r.tags };
+      draw(); $('#tag-new')?.focus();
+    } catch (e) { toast(errText(e)); }
+    return;
+  }
   if (act === 'ownkind') { S.ownForm = { kind: el.dataset.k }; return draw(); }
   if (act === 'endown') { if (!confirm(t('end_own_ask'))) return; try { await api(`/assignments/${el.dataset.id}`, 'DELETE'); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
   if (act === 'endassign') {
@@ -1670,13 +1865,21 @@ app.addEventListener('submit', async (ev) => {
       if (!f.cityId) throw new Error('city_required');
       S.me = await api('/me', 'PATCH', { cityId: Number(f.cityId) });
       toast(t('saved')); draw();
+    } else if (kind === 'teamassign') {
+      const k = (S.assignForm || {}).kind || 'task';
+      const r = await api('/assignments', 'POST', { team: S.teamFilter, kind: k, title: f.title, ...(k === 'routine' ? { weekday: Number(f.weekday) } : { dueDay: f.dueDay }) });
+      const rl = await api('/burhan/razakars'); S.bhLists = { ...S.bhLists, razakars: rl.razakars, tags: rl.tags };
+      form.reset(); toast(t('team_given')(r.count)); draw();
+    } else if (kind === 'majlisnew') {
+      S.majalis = await api('/majalis', 'POST', { name: f.name, nameUr: f.nameUr });
+      toast(t('saved')); draw();
     } else if (kind === 'owntask') {
       const k = (S.ownForm || {}).kind || 'task';
       S.bh = await api('/tasks', 'POST', { kind: k, title: f.title, ...(k === 'routine' ? { weekday: Number(f.weekday) } : f.dueDay ? { dueDay: f.dueDay } : {}) });
       form.reset(); toast(t('saved')); draw();
     } else if (kind === 'assign') {
       const k = (S.assignForm || {}).kind || 'task';
-      await api('/assignments', 'POST', { razakar: S.bhDetail.username, kind: k, title: f.title, ...(k === 'routine' ? { weekday: Number(f.weekday) } : f.dueDay ? { dueDay: f.dueDay } : {}) });
+      await api('/assignments', 'POST', { razakar: S.bhDetail.username, kind: k, title: f.title, ...(k === 'routine' ? { weekday: Number(f.weekday) } : { dueDay: f.dueDay }) });
       S.bhDetail.data = await api(`/burhan/razakars/${encodeURIComponent(S.bhDetail.username)}`);
       S.bhLists = { ...S.bhLists, razakars: (await api('/burhan/razakars')).razakars };
       toast(t('saved')); draw();
@@ -1701,7 +1904,7 @@ app.addEventListener('submit', async (ev) => {
       logout(false); S.authMode = 'login'; draw(); toast(t('deleted'));
     }
   } catch (e) {
-    if (kind === 'settings' || kind === 'delete' || kind === 'citysave' || kind === 'profile' || kind === 'password' || kind === 'phone' || kind === 'cvcreate' || kind === 'cvrename' || kind === 'assign' || kind === 'owntask') { toast(errText(e)); btn.disabled = false; }
+    if (kind === 'settings' || kind === 'delete' || kind === 'citysave' || kind === 'profile' || kind === 'password' || kind === 'phone' || kind === 'cvcreate' || kind === 'cvrename' || kind === 'assign' || kind === 'owntask' || kind === 'majlisnew' || kind === 'teamassign') { toast(errText(e)); btn.disabled = false; }
     else { S.error = errText(e); draw(); }
   }
 });

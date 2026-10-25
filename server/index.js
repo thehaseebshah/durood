@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { db, tx, getSetting } from './db.js';
 import * as burhan from './burhan.js';
+import * as majlis from './majlis.js';
 import * as caravanApi from './caravan.js';
 import * as profile from './profile.js';
 import * as admins from './admins.js';
@@ -168,6 +169,9 @@ route('GET', '/api/admin/log', { auth: false, admin: true }, () => ({ log: profi
 // ---- Al-Burhan edition: murabbi, masul, mamulaat, tasks and routines (404 in the public edition) ----------------------------------
 const B = (fn) => (ctx) => { burhan.guard(); return fn(ctx); };
 route('GET', '/api/burhan', B(({ user }) => burhan.burhanState(user)));
+route('GET', '/api/majalis', B(({ user }) => majlis.listMajalis(user)));
+route('PUT', '/api/me/majlis', B(({ user, body }) => { majlis.setMajlis(user, body.id); return { ...majlis.listMajalis(user), me: getMe(user) }; }));
+route('POST', '/api/majalis', B(({ user, body }) => { rateLimit(`mj:${user}`, 5, 86400e3); majlis.proposeMajlis(user, body.name, body.nameUr); return majlis.listMajalis(user); }));
 route('POST', '/api/burhan/murabbi', B(async ({ user }) => { rateLimit(`bm:${user}`, 6, 3600e3); return { murabbi: await burhan.activateMurabbi(user) }; }));
 route('POST', '/api/burhan/murabbi/confirm', B(({ user }) => ({ murabbi: burhan.confirmMurabbi(user) })));
 route('DELETE', '/api/burhan/murabbi', B(({ user }) => burhan.unlinkMurabbi(user)));
@@ -176,7 +180,9 @@ route('POST', '/api/burhan/requests/:username', B(({ user, params, body }) => bu
 route('PUT', '/api/burhan/masul', B(({ user, body }) => { rateLimit(`bms:${user}`, 20, 3600e3); return { masul: burhan.setMasul(user, body.username) }; }));
 route('DELETE', '/api/burhan/masul', B(({ user }) => burhan.clearMasul(user)));
 route('GET', '/api/burhan/usernames', B(({ user, query }) => { rateLimit(`bu:${user}`, 60, 60e3); return { usernames: burhan.searchUsernames(query.get('q'), user) }; }));
-route('POST', '/api/assignments', B(({ user, body }) => { rateLimit(`as:${user}`, 60, 3600e3); return burhan.addAssignment(user, body.razakar, body); }));
+route('POST', '/api/assignments', B(({ user, body }) => { rateLimit(`as:${user}`, 60, 3600e3); return body.team ? burhan.assignTeam(user, body.team, body) : burhan.addAssignment(user, body.razakar, body); }));
+route('PUT', '/api/burhan/razakars/:username/tags', B(({ user, params, body }) => burhan.setTags(user, params.username, body.tags)));
+route('GET', '/api/burhan/tags', B(({ user }) => ({ tags: burhan.masulTags(user) })));
 route('POST', '/api/tasks', B(({ user, body }) => { rateLimit(`as:${user}`, 60, 3600e3); burhan.addOwnAssignment(user, body); return burhan.burhanState(user); })); // your own task or routine
 route('DELETE', '/api/assignments/:id', B(({ user, params }) => burhan.endAssignment(user, Number(params.id))));
 route('POST', '/api/assignments/:id/tick', B(({ user, params, body }) => burhan.tickAssignment(user, Number(params.id), body.done !== false)));
@@ -190,7 +196,7 @@ route('POST', '/api/assignments/:id/due-request', B(({ user, params, body }) => 
 route('POST', '/api/assignments/:id/due-answer', B(({ user, params, body }) => burhan.answerDue(user, Number(params.id), body.accept === true)));
 route('GET', '/api/burhan/saaliks', B(async ({ user }) => { rateLimit(`bsl:${user}`, 120, 3600e3); return { saaliks: await burhan.saalikList(user) }; }));
 route('GET', '/api/burhan/saaliks/:username', B(({ user, params }) => { rateLimit(`bsr:${user}`, 120, 3600e3); return burhan.saalikReport(user, params.username); }));
-route('GET', '/api/burhan/razakars', B(({ user }) => ({ razakars: burhan.razakarList(user) })));
+route('GET', '/api/burhan/razakars', B(({ user }) => ({ razakars: burhan.razakarList(user), tags: burhan.masulTags(user) })));
 route('GET', '/api/burhan/razakars/:username', B(({ user, params }) => burhan.razakarReport(user, params.username)));
 route('DELETE', '/api/burhan/razakars/:username', B(({ user, params }) => burhan.removeRazakar(user, params.username)));
 route('DELETE', '/api/burhan/saaliks/:username', B(({ user, params }) => burhan.dropSaalik(user, params.username)));
@@ -462,6 +468,7 @@ route('GET', '/api/leaderboard', ({ user, query }) => {
   const period = p === 'all' ? 'all' : p === 'challenge' ? 'challenge' : 'week';
   const metric = query.get('metric');
   if (t === 'cities') return compete.cityBoard(user, metric === 'average' || metric === 'growth' ? metric : 'total');
+  if (t === 'majalis') { burhan.guard(); return majlis.majlisBoard(user, metric === 'average' || metric === 'growth' ? metric : 'total'); }
   if (type === 'caravans') return caravanApi.board(user, period, metric === 'average' || metric === 'growth' ? metric : 'total');
   if (type === 'trees' && (metric === 'average' || metric === 'growth')) return qabilaBoard(user, metric);
   return leaderboard(user, type, period);
@@ -611,6 +618,8 @@ route('GET', '/api/admin/special-days', adm, () => ({ days: listSpecialDays() })
 route('POST', '/api/admin/special-days', adm, ({ body }) => setSpecialDay(body));
 route('DELETE', '/api/admin/special-days/:day', adm, ({ params }) => deleteSpecialDay(params.day));
 // Al-Burhan oversight: phone numbers are not verified, so a moderator must be able to see who follows whom and break a wrong link
+route('GET', '/api/admin/majalis', { auth: false, admin: true }, () => { burhan.guard(); return { majalis: majlis.adminMajalis() }; });
+route('POST', '/api/admin/majalis/:id', { auth: false, admin: true }, ({ params, body, admin }) => { burhan.guard(); const r = majlis.decideMajlis(params.id, body.action === 'approve'); profile.logAdmin(`majlis-${body.action === 'approve' ? 'approve' : 'reject'}`, r.name, '', admin.actor); return r; });
 route('GET', '/api/admin/burhan-links', { auth: false, admin: true }, () => { burhan.guard(); return burhan.adminLinks(); });
 route('DELETE', '/api/admin/burhan-links/:kind/:username', { auth: false, admin: true }, ({ params, admin }) => {
   burhan.guard();

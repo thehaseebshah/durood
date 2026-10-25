@@ -519,6 +519,12 @@ CREATE TABLE IF NOT EXISTS burhan_views (
 addCol('murabbi_links', 'salik_ok', 'INTEGER NOT NULL DEFAULT 0');       // the salik confirmed the person they were shown
 addCol('murabbi_links', 'murabbi_ok', 'INTEGER NOT NULL DEFAULT 0');      // that person accepted. Nothing is shared until both are 1
 addCol('assignments', 'extensions', 'INTEGER NOT NULL DEFAULT 0');        // times the deadline was pushed later at the doer's wish: each one lowers the points
+db.exec(`CREATE TABLE IF NOT EXISTS team_tags (              -- a masul's own sub-teams for their razakars: #tags
+  masul_id   INTEGER NOT NULL REFERENCES users(id),
+  razakar_id INTEGER NOT NULL REFERENCES users(id),
+  tag        TEXT NOT NULL,
+  PRIMARY KEY (masul_id, razakar_id, tag)
+)`);
 db.exec(`CREATE TABLE IF NOT EXISTS due_requests (               -- a razakar asks their masul to move a task's deadline
   assignment_id INTEGER PRIMARY KEY REFERENCES assignments(id),
   day           TEXT NOT NULL,

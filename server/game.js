@@ -132,7 +132,7 @@ export function rebuildDayTotals() {
 }
 
 /** Side effects that must not run inside a write transaction (push messages) hook in here. */
-export const hooks = { milestone: null, badge: null, inTx: null, profileExtra: null };
+export const hooks = { milestone: null, badge: null, inTx: null, profileExtra: null, majlis: null };
 /** Functions that run first when an account is deleted (leave the caravan, remove the profile picture...). */
 export const deleteHooks = [];
 
@@ -766,6 +766,7 @@ export function getMe(userId) {
     circleUrl: circleUrl(), circleTeach: teachStatus(u.id), reminderTime: u.reminder_time, special: specialToday(), league: u.league,
     unreadNews: one('SELECT COUNT(*) n FROM announcements WHERE created_at > ?', u.news_seen_at).n,
     ...(hooks.profileExtra?.(userId) || { caravan: null, caravanInvites: 0, caravanRequests: 0 }), // caravan summary (caravan.js)
+    majlis: hooks.majlis?.(userId) ?? null, // Al-Burhan department (majlis.js)
   };
 }
 
