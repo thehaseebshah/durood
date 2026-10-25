@@ -37,8 +37,10 @@ const EMAIL = { test: (e) => typeof e === 'string' && e.length <= 254 && EMAIL_R
  * Any international number. `cc` (a country code like "GB") lets a member type their national number: the country's calling
  * code is put in front and a leading 0 dropped. Pakistani 03xx numbers keep working without a country.
  */
+// Urdu phones often type Urdu (۰-۹) or Arabic (٠-٩) digits; a number is a number whichever script it is typed in
+const asciiDigits = (s) => String(s || '').replace(/[\u0660-\u0669\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) & 0xF));
 export function normalizePhone(raw, cc) {
-  let p = String(raw || '').replace(/[\s\-.]/g, '').replace(/^(\+\d{1,3})\(0\)/, '$1').replace(/[()]/g, ''); // "+44 (0)7911…": the trunk 0 in brackets is not part of the number
+  let p = asciiDigits(raw).replace(/[\s\-.]/g, '').replace(/^(\+\d{1,3})\(0\)/, '$1').replace(/[()]/g, ''); // "+44 (0)7911…": the trunk 0 in brackets is not part of the number
   if (p.startsWith('00')) p = '+' + p.slice(2);
   if (!p.startsWith('+')) {
     const dial = cc && geo.dialOf(cc);
@@ -297,7 +299,7 @@ route('POST', '/api/login', { auth: false }, async ({ body, ip }) => {
   const ident = String(body.id || '').trim().slice(0, 254);
   const password = String(body.password || '');
   // the identifier is read by its shape, never with OR: an email, a phone number or a username
-  const phone = /^\+?[\d\s\-().]{7,}$/.test(ident) ? normalizePhone(ident) : null;
+  const phone = /^\+?[\d\s\-().]{7,}$/.test(asciiDigits(ident)) ? normalizePhone(ident) : null; // Urdu or Arabic digits count as digits
   const u = ident.includes('@') ? one('SELECT id, pass, suspended, deleted_at FROM users WHERE email = ?', ident.toLowerCase())
     : phone ? one('SELECT id, pass, suspended, deleted_at FROM users WHERE phone = ?', phone)
     : one('SELECT id, pass, suspended, deleted_at FROM users WHERE username = ?', ident);

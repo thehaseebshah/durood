@@ -116,3 +116,12 @@ test('a malformed stored password is a wrong password, not a crash', async () =>
   assert.equal(await checkPassword('wrong', good), false);
   assert.equal(await checkPassword(null, good), false);
 });
+
+test('phone numbers typed in Urdu (۰-۹) or Arabic (٠-٩) digits work for sign-up and login', async () => {
+  const r = await signup('udigits', '۰۳۰۷۸۸۸۱۲۳۴');
+  assert.ok(r.token, `registered: ${JSON.stringify(r)}`);
+  assert.equal((await api('GET', '/api/me', { token: r.token })).phone, '+923078881234');
+  const login = await api('POST', '/api/login', { body: { id: '٠٣٠٧٨٨٨١٢٣٤', password: 'secret1' } });
+  assert.ok(login.token, 'logs in with the same number in Arabic digits');
+  assert.equal((await api('POST', '/api/register', { body: { username: 'udigits2', email: 'udigits2@x.pk', phone: '03078881234', password: 'secret1', cityId: 1172451, invite: 'TESTFOUND' } })).error, 'account_exists', 'the same number in Western digits is the same number');
+});
