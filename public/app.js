@@ -346,7 +346,7 @@ function sidebar() {
 }
 function shell() {
   const tabs = ['home', 'feed', 'rank'];
-  const fab = !['settings', 'home'].includes(S.tab);
+  const fab = !['settings', 'home', 'qabila', 'caravan', 'people'].includes(S.tab); // pages with their own main button (invite, join) keep it clear
   return `
   <a class="skip" href="#main">${t('skip_to')}</a>
   ${sidebar()}

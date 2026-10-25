@@ -398,7 +398,7 @@ The member app, sign-in and admin share one stylesheet; its last section restyle
 
 ## 39. Design review pass (iOS conventions)
 
-- The floating + is hidden on Today (the add box is on the page); pages that show it keep 84px under their content so it never sits on the last row.
+- The floating + is hidden on Today (the add box is on the page) and on Caravan, Qabila and My people (their own invite/join buttons come first); pages that show it keep 84px under their content so it never sits on the last row.
 - Units read as quiet coloured words (durood green, points amber, days/people grey), one size, not pills.
 - Compete scope is a scrolling row of chips; only the time/metric switch is a segmented control.
 - The challenge card states its total once ("4,000 of 10 crore durood"); on day one it shows the day's share instead of "Exactly on plan". Any progress shows at least a sliver of bar.
