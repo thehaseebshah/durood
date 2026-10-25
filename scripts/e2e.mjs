@@ -51,6 +51,10 @@ try {
     await page.locator('[data-act=mode][data-mode=register], [data-mode=register]').first().click().catch(() => {});
     await page.waitForTimeout(300);
     ok(await page.locator('form[data-form=register]').count() === 1, 'sign-up form shows');
+    await page.click('form[data-form=register] button[type=submit]'); await page.waitForTimeout(500);
+    ok(await page.evaluate(() => document.activeElement?.name === 'invite'), 'an empty sign-up points at the first empty field');
+    await page.fill('[name=invite]', 'E2ECODE'); await page.click('form[data-form=register] button[type=submit]'); await page.waitForTimeout(500);
+    ok(await page.evaluate(() => document.activeElement?.name === 'username'), '...then the next one');
     await page.close();
   }
 

@@ -1978,7 +1978,10 @@ app.addEventListener('submit', async (ev) => {
       keepDevice(r); setSession(r.token, r.me);
       draw();
     } else if (kind === 'register') {
-      if (!f.cityId) throw new Error('city_required');
+      // checked top to bottom, so the message is about the first field that needs attention
+      const missing = [['invite', 'invite_required'], ['username', 'bad_username'], ['email', 'bad_email'], ['phone', 'bad_phone'], ['cityId', 'city_required'], ['password', 'bad_password']]
+        .find(([k]) => !String(f[k] || '').trim() || (k === 'password' && f[k].length < 6));
+      if (missing) throw new Error(missing[1]);
       const r = await api('/register', 'POST', { ...f, invite: (f.invite || '').trim(), lang: S.lang });
       keepDevice(r); setSession(r.token, r.me);
       draw();
@@ -2045,7 +2048,14 @@ app.addEventListener('submit', async (ev) => {
     }
   } catch (e) {
     if (kind === 'settings' || kind === 'delete' || kind === 'citysave' || kind === 'profile' || kind === 'password' || kind === 'phone' || kind === 'cvcreate' || kind === 'cvrename' || kind === 'assign' || kind === 'owntask' || kind === 'majlisnew' || kind === 'teamassign' || kind === 'inviter') { toast(errText(e)); btn.disabled = false; }
-    else { S.error = errText(e); draw(); }
+    else {
+      S.error = errText(e); draw();
+      // point at the field the message is about
+      const FIELD = { invite_required: 'invite', bad_invite: 'invite', invite_revoked: 'invite', invite_used: 'invite', invite_full: 'invite', public_full: 'invite',
+        bad_username: 'username', username_taken: 'username', bad_email: 'email', bad_phone: 'phone', account_exists: 'email', city_required: 'city', bad_password: 'password' };
+      const name = FIELD[e.message], el = name && app.querySelector(`form[data-form="${kind}"] ${name === 'city' ? '[data-city]' : `[name="${name}"]`}`);
+      if (el) { el.setAttribute('aria-invalid', 'true'); el.classList.add('shake'); el.scrollIntoView({ block: 'center', behavior: reduceMotion() ? 'auto' : 'smooth' }); el.focus({ preventScroll: true }); }
+    }
   }
 });
 
