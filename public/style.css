@@ -1070,3 +1070,4 @@ html[data-mode=dark] .tab-settings .notice { background: #2f2508; color: #ffd98a
 .stats span .u { display: block; margin: 1px 0 0; }
 /* Me: the name is a heading under the large title, not a second large title */
 .tab-progress .uname { font-size: 1.55rem; letter-spacing: -.5px; }
+.unitnote .u { margin: 0 .1em; }

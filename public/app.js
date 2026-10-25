@@ -918,7 +918,7 @@ function progress() {
   return `<div class="myhead small"><div class="mybig">${av(m, 56, false)}</div><div><div class="uname">${esc(m.username)}</div><div class="muted">${t('level')} ${m.level} · ${esc(title)}</div></div></div>
   <div class="stats">${cell(m.week, t('week'), 'durood')}${cell(m.total, t('total'), 'durood')}${cell(m.bestStreak, t('best_streak'), 'days')}</div>
   <div class="lvl"><div class="row between"><span>${uiIcon('bolt', 14, 1.9)} ${t('level')} ${m.level} · ${esc(title)}</span><b>${N(`${fmt(m.xp)} / ${fmt(m.next)}`)}${unit('pts')}</b></div>${bar(m.pct)}
-    <p class="unitnote">${unit('durood')} ${unit('pts')} ${t('units_note')}</p>
+    <p class="unitnote">${t('units_note')(unit('durood'), unit('pts'))}</p>
     <div class="row between muted" style="margin-top:6px"><span title="${esc(t('shield_hint'))}">${uiIcon('shield', 14, 1.9)} ${m.shields} ${t('shields_word')}</span><button class="linkbtn" data-act="goleague">${t('league_title')}: ${t('tier_' + TIER_KEYS[m.league || 0])}</button></div></div>
   ${m.badges.length ? `<button class="earned" data-act="fold" data-k="badges" aria-label="${esc(t('badges'))}">${m.badges.slice(-6).reverse().map((c) => `<span title="${esc(t('badge')[c][0])}">${badgeSvg(c, true)}</span>`).join('')}${m.badges.length > 6 ? `<b>+${m.badges.length - 6}</b>` : ''}</button>` : ''}
   ${fold('badges', t('badges'), N(`${m.badges.length} / ${BADGE_FAMILIES.reduce((n, [, l]) => n + l.length, 0)}`), `${BADGE_FAMILIES.map(([fam, list]) => `<h3>${t('fam_' + fam)}</h3>
