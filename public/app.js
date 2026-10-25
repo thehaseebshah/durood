@@ -811,7 +811,7 @@ function uplineBlock(tm) {
 }
 
 // ---- caravans: a group you create and name, joined by invitation or by asking ----------------------------------------------------
-const cvRow = (r, extra = '') => `<li>${av(r, 34)}<span class="name">${esc(r.username)}${r.owner ? ` <em class="tag">${t('cv_owner')}</em>` : ''}<small>${r.city ? `${esc(r.city)} · ` : ''}${t('this_week')} ${U(r.week, 'durood')}${r.today ? ` · ${t('cv_today')}` : ''}</small></span><span class="score">${U(r.total, 'durood')}</span>${extra}</li>`;
+const cvRow = (r, extra = '') => `<li>${av(r, 34)}<span class="name">${esc(r.username)}${r.owner ? ` <em class="tag">${t('cv_owner')}</em>` : ''}<small>${r.city ? `${esc(r.city)} · ` : ''}${t('this_week')} ${U(r.week, 'durood')}${r.today ? ` <span class="didtoday" role="img" aria-label="${esc(t('cv_today'))}" title="${esc(t('cv_today'))}">${uiIcon('check', 12, 2.6)}</span>` : ''}</small></span><span class="score">${U(r.total, 'durood')}</span>${extra}</li>`;
 function cvJoinOrCreate(cv) {
   return `<h3 class="first-d">${t('caravan_title')}</h3>
   <p class="muted">${t('cv_intro')}</p>

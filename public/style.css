@@ -1087,3 +1087,14 @@ html[data-mode=dark] .tab-settings .notice { background: #2f2508; color: #ffd98a
 .reschopts .rowlink { border: 0 !important; border-top: .5px solid var(--line) !important; }
 .reschopts .rowlink:last-child { border-bottom: .5px solid var(--line) !important; }
 .sheetbox .duerow { margin-top: 14px; }
+/* every sheet shares one header: grabber on phones, title, and a green text Close (not a grey pill) */
+.modal.msheet > .box > .row.between:first-child .chip, .modal.msheet > .box > .row.between:first-child button.chip { background: none; color: var(--accent); font-weight: 600; padding-inline: 4px; box-shadow: none; }
+@media (max-width: 600px) { .modal.msheet > .box::before { content: ""; display: block; width: 36px; height: 5px; border-radius: 99px; background: var(--line); margin: -4px auto 10px; } }
+/* caravan rows: "recited today" is a small green check, so the sub-line stays on one line */
+.didtoday { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); color: var(--on-accent); vertical-align: -3px; margin-inline-start: 2px; }
+/* wide screens: the top bar's buttons line up with the content column, not the window edge */
+@media (min-width: 1024px) {
+  body.in-app { --col: min(760px, 100vw - var(--side) - 48px); }
+  body.in-app .hd { padding-inline: calc((100vw - var(--side) - var(--col)) / 2 - 8px); }
+}
+.cvname + .muted.padx { padding-inline: 0; margin-top: 2px; } /* the owner line sits under the caravan name, same left edge */
