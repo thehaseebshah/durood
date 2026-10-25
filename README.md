@@ -13,6 +13,7 @@ npm start            # http://localhost:3000
 npm test             # API tests (in-memory DB)
 npm run fuzz         # malformed input on every API route; no route may answer 5xx
 npm run stress       # 60 members at once (logs, retries, undos, reads); then the ledger audit must be clean
+npm run test:dates   # the unit tests with the clock moved to tricky moments (Pakistan midnight into a Monday, end of day, New Year)
 npm run e2e          # browser test of the whole app (needs Playwright with Chromium)
 ```
 

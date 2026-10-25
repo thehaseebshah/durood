@@ -390,7 +390,7 @@ The member app, sign-in and admin share one stylesheet; its last section restyle
 - **Streak nudge**: with a streak running and nothing recited today, Today says so; after 6 pm Pakistan time it says the streak ends at midnight.
 - **Empty states**: an empty list shows a soft round icon and one kind line.
 - **Large titles**: each page opens with a large title; the small one fades into the frosted header after 40px of scrolling.
-- **Checks**: `npm test` (API), `npm run fuzz` (malformed input on every route, no 5xx), `npm run stress` (60 members at once, then a clean audit), `npm run e2e` (the whole app in a browser, English, Urdu, dark, desktop, the admin page, and axe-core WCAG A/AA rules on every page). CI runs all four.
+- **Checks**: `npm test` (API), `npm run fuzz` (malformed input on every route, no 5xx), `npm run stress` (60 members at once, then a clean audit), `npm run test:dates` (the unit tests with the clock just after Pakistan midnight into a Monday, at the end of a day, and at New Year), `npm run e2e` (the whole app in a browser, English, Urdu, dark, desktop, the admin page, and axe-core WCAG A/AA rules on every page). CI runs all four.
 
 ## 38. Undo a just-added number
 
