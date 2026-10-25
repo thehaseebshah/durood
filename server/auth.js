@@ -49,9 +49,12 @@ export async function hashPassword(pw) {
 }
 
 export async function checkPassword(pw, stored, { priority = false } = {}) {
-  const [salt, key] = stored.split(':');
-  const got = await limitedScrypt(pw, Buffer.from(salt, 'hex'), priority);
-  return crypto.timingSafeEqual(got, Buffer.from(key, 'hex'));
+  // a stored value that isn't a salt:key pair (an erased account, a hand-made row) is a wrong password, after the same work, never a crash
+  const m = /^([0-9a-f]{16,}):([0-9a-f]{32,})$/.exec(String(stored ?? ''));
+  const got = await limitedScrypt(String(pw ?? ''), Buffer.from(m ? m[1] : '00'.repeat(16), 'hex'), priority);
+  if (!m) return false;
+  const want = Buffer.from(m[2], 'hex');
+  return got.length === want.length && crypto.timingSafeEqual(got, want);
 }
 
 const TOKEN_DAYS = 90;

@@ -107,3 +107,12 @@ test('deleting an account erases its Al-Burhan data, written text and push devic
   for (const t of ['murabbi_links', 'mamulaat_days', 'push_subs']) assert.equal(db.prepare(`SELECT COUNT(*) n FROM ${t} WHERE user_id = ?`).get(id).n, 0, t);
   assert.equal(db.prepare('SELECT body FROM reflections WHERE user_id = ?').get(id).body, '');
 });
+
+test('a malformed stored password is a wrong password, not a crash', async () => {
+  const { checkPassword, hashPassword } = await import('../server/auth.js');
+  for (const bad of ['x', '', null, undefined, 'zz:zz', 'abcd:', ':abcd', '00'.repeat(16) + ':' + '11'.repeat(10)]) assert.equal(await checkPassword('secret1', bad), false);
+  const good = await hashPassword('secret1');
+  assert.equal(await checkPassword('secret1', good), true);
+  assert.equal(await checkPassword('wrong', good), false);
+  assert.equal(await checkPassword(null, good), false);
+});
