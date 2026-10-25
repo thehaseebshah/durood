@@ -18,7 +18,7 @@ check('manifest and service worker served', (await fetch(URL_ + '/manifest.webma
 check('public meter', typeof (await call('GET', '/api/public')).json.total === 'number');
 
 const id = `smoke_${Date.now().toString(36)}`.slice(0, 20);
-const reg = await call('POST', '/api/register', { body: { username: id, email: `${id}@example.com`, phone: `+9230${String(Date.now()).slice(-8)}`, password: 'smoke-test-1', invite: process.env.SMOKE_CODE } });
+const reg = await call('POST', '/api/register', { body: { username: id, email: `${id}@example.com`, phone: `+9230${String(Date.now()).slice(-8)}`, password: 'smoke-test-1', cityId: 1172451, invite: process.env.SMOKE_CODE } }); // Lahore: every member picks a city
 check('register with the founders code', reg.status === 200 && !!reg.json.token, reg.json.error || '');
 const token = reg.json.token;
 if (token) {
