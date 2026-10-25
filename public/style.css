@@ -1101,3 +1101,6 @@ html[data-mode=dark] .tab-settings .notice { background: #2f2508; color: #ffd98a
 /* Me: the newest badges sit in the Badges row itself (no separate strip that opened the same list) */
 .minibadges { display: inline-flex; gap: 4px; margin-inline-end: 10px; vertical-align: middle; }
 .minibadges svg { width: 22px; height: 22px; }
+/* the country picker matches the other fields (it kept the old 2px black frame) */
+.phonerow select { border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); min-height: 46px; }
+body.in-app main .phonerow select { background: var(--cell); border-color: transparent; }
