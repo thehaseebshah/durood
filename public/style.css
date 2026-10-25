@@ -960,3 +960,9 @@ body.in-app [data-act=logout].blk { margin: 12px 14px 0 !important; width: calc(
 body.in-app [data-act=logout].blk b { display: none; }
 .tab-caravan .lb { margin: 0 14px 12px; background: var(--paper); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
 .reschopts .rowlink b { color: var(--soft); font-weight: 600; }
+/* secondary text stays readable (4.5:1 or better on white and on the grey ground); the active tab's icon is bolder, as on iOS */
+:root:not([data-mode=dark]) { --soft: #6a6a6f; }
+html:not([data-mode=dark]) { --soft: #6a6a6f; }
+nav.tabs button.on svg { stroke-width: 2.3; }
+.chip, .seg button, .sitem, .rowlink, nav.tabs button { -webkit-tap-highlight-color: transparent; }
+.chip:active, .seg button:active { transform: scale(.97); }
