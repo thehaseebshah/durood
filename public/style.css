@@ -25,13 +25,15 @@ html[data-mode=dark] {
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; background: var(--paper); color: var(--ink); }
-body { font: 14px/1.5 'Inter', Helvetica, Arial, system-ui, sans-serif; padding-bottom: 86px; }
+body { font: 14px/1.5 'Inter', 'Salawat', Helvetica, Arial, system-ui, sans-serif; padding-bottom: 86px; }
 /* Inter first: it has no Arabic glyphs, so Urdu letters fall through to Nastaliq while every digit stays Inter, identical to English */
 html[lang=ur] body { font-family: 'Inter', 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', serif; line-height: 1.95; }
 html[lang=ur] button, html[lang=ur] input { font-family: inherit; line-height: 1.7; }
 @font-face { font-family: 'Inter'; src: url('/fonts/inter-latin.woff2') format('woff2'); font-weight: 100 900; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 @font-face { font-family: 'Noto Nastaliq Urdu'; src: url('/fonts/nastaliq-400.woff2') format('woff2'); font-weight: 400 500; font-display: swap; unicode-range: U+0600-06FF, U+0750-077F, U+200C-200E, U+2010-2011, U+204F, U+25CC, U+FB50-FDFF, U+FE70-FEFF; }
 @font-face { font-family: 'Noto Nastaliq Urdu'; src: url('/fonts/nastaliq-700.woff2') format('woff2'); font-weight: 600 800; font-display: swap; unicode-range: U+0600-06FF, U+0750-077F, U+200C-200E, U+2010-2011, U+204F, U+25CC, U+FB50-FDFF, U+FE70-FEFF; }
+/* ﷺ only: Latin fonts have no glyph for it, so English text borrows Amiri's (already used for the Arabic durood) */
+@font-face { font-family: 'Salawat'; src: url('/fonts/amiri-arabic.woff2') format('woff2'); font-display: swap; unicode-range: U+FDFA; }
 @font-face { font-family: 'Amiri'; src: url('/fonts/amiri-arabic.woff2') format('woff2'); font-display: swap; unicode-range: U+0600-06FF, U+200C-200E, U+2010-2011, U+204F, U+25CC, U+FB50-FDFF, U+FE70-FEFF; }
 .arabic { font-family: 'Amiri', 'Noto Nastaliq Urdu', serif; line-height: 2.1; }
 a { color: inherit; }
@@ -797,7 +799,7 @@ input[aria-invalid=true], select[aria-invalid=true] { border-color: var(--err) !
   --ground: #f2f2f7; --paper: #ffffff; --ink: #1c1c1e; --soft: #8a8a8e; --hair: rgba(60, 60, 67, .12); --line: rgba(60, 60, 67, .14);
   --track: #e9e9ee; --cell: #f2f2f7; --accent: #00875a; --on-accent: #ffffff; --sig-bg: #e6f6ee; --tint: #c9eedb;
   --glass: rgba(249, 249, 251, .88); --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 4px 16px rgba(0, 0, 0, .05);
-  --radius: 16px; --rounded: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+  --radius: 16px; --rounded: ui-rounded, 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Inter', 'Salawat', system-ui, sans-serif;
 }
 html[data-mode=dark] {
   --ground: #000000; --paper: #1c1c1e; --ink: #f2f2f7; --soft: #98989f; --hair: rgba(84, 84, 88, .5); --line: rgba(84, 84, 88, .55);
@@ -805,7 +807,7 @@ html[data-mode=dark] {
   --glass: rgba(28, 28, 30, .86); --shadow: 0 1px 2px rgba(0, 0, 0, .4);
 }
 html, body { background: var(--ground); }
-body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', Helvetica, Arial, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Salawat', Helvetica, Arial, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
 html[lang=ur] body { font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', -apple-system, 'Inter', serif; }
 body.in-app .wrap { border-inline: 0; background: transparent; }
 

@@ -256,6 +256,7 @@ async function enter() { // find out who the server thinks we are
 function signOut(msg = '') { TOKEN = ''; KEY = ''; ME = null; store('adminToken', null); store('adminKey', null); notice = msg; showKey = false; render(); }
 
 async function render() {
+  document.body.classList.toggle('out', !ME);
   bar();
   $('#tabs').innerHTML = ME ? TABS.filter(tabOk).map(([k, l]) => `<button class="${k === tab ? 'on' : ''}" data-tab="${k}">${l}</button>`).join('') : '';
   if (!ME) { $('#audit').innerHTML = ''; $('#panel').innerHTML = (notice ? `<div class="msg">${esc(notice)}</div>` : '') + '<p class="empty">Sign in with your member username and password. Admin roles are given by the owner.</p>'; notice = ''; return; }
