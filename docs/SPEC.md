@@ -412,3 +412,7 @@ The member app, sign-in and admin share one stylesheet; its last section restyle
 ## 40. A phone with a wrong clock
 
 Every reply carries the server's time (the HTTP `Date` header). When the phone's clock is more than two minutes off, the app shifts its own idea of "now" by the difference, so Today's date, deadlines offered when moving a task, the weekday picker, the evening streak nudge and "3h ago" all follow the server. Timers and animations keep the phone's clock. The e2e run opens the app with the phone a week fast and checks the date shown.
+
+## 41. Page weight
+
+English text is in `public/i18n.js`; Urdu text is in `public/i18n-ur.js` and is fetched only when Urdu is in use (before the first screen for Urdu members, or when switching in Settings), so English pages skip about 15 KB. English is always present as the fallback. Fonts load only where they are shown (Nastaliq for Urdu, Amiri for the Arabic durood; ﷺ in English uses a 1.6 KB cut of Amiri) and are cached for a year. The e2e run checks that an English Today downloads neither the Urdu text nor an Urdu or Arabic font.

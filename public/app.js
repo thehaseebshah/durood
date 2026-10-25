@@ -7,6 +7,8 @@ const ls = {
   del: (k) => { try { localStorage.removeItem(k); } catch { /* ignore */ } },
 };
 
+// Urdu text is a separate file, fetched only when Urdu is in use (English pages skip ~15 KB)
+const loadUr = () => (I18N.ur ? Promise.resolve() : import('./i18n-ur.js').then((m) => { I18N.ur = m.UR.ur; }));
 const params = new URLSearchParams(location.search);
 const urlInvite = params.get('invite') || params.get('ref');
 if (urlInvite) ls.set('ref', urlInvite.trim());
@@ -36,10 +38,11 @@ const S = {
   draft: null,
   error: '',
 };
+if (S.lang === 'ur') await loadUr().catch(() => {}); // before the first screen, so an Urdu member never sees English first
 
 const MILESTONES = [10_000, 100_000, 1_000_000, 10_000_000, 100_000_000];   // referral tree
 
-const t = (k) => I18N[S.lang][k] ?? I18N.en[k] ?? k;
+const t = (k) => (I18N[S.lang] || I18N.en)[k] ?? I18N.en[k] ?? k;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const fmt = (n) => (n == null ? '—' : Number(n).toLocaleString('en-US'));
 // Pakistan counts in lakh and crore; numerals stay ASCII (Inter) in both languages
@@ -124,12 +127,12 @@ async function api(path, method = 'GET', body) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     if (res.status === 401 && S.token && data.error === 'unauthorized') logout(false);
-    if (res.status === 403 && data.error === 'suspended' && S.token) { logout(false); S.error = I18N[S.lang].err.suspended; draw(); }
+    if (res.status === 403 && data.error === 'suspended' && S.token) { logout(false); S.error = (I18N[S.lang] || I18N.en).err.suspended; draw(); }
     throw new Error(data.error || 'server_error');
   }
   return data;
 }
-const errText = (e) => I18N[S.lang].err[e.message] || t('err').server_error;
+const errText = (e) => (I18N[S.lang] || I18N.en).err[e.message] || t('err').server_error;
 
 function applyLang() {
   document.documentElement.lang = S.lang;
@@ -1430,6 +1433,7 @@ function offlineView() {
 }
 
 function draw() {
+  if (S.lang === 'ur' && !I18N.ur) { loadUr().then(draw, () => { S.lang = 'en'; draw(); }); return; } // switching to Urdu: wait for its text (offline and never loaded: stay in English)
   applyLang();
   if (!S.me) loadLive();
   if (S.me) checkCelebrate();
@@ -2151,12 +2155,12 @@ async function toAvatarDataUrl(file) {
 app.addEventListener('change', async (ev) => {
   const pic = ev.target.closest('input[data-avatar]');
   if (pic && pic.files[0]) {
-    try { S.me = await api('/me/avatar', 'POST', { image: await toAvatarDataUrl(pic.files[0]) }); toast(t('saved')); } catch (e) { toast(e.message === 'bad_image' ? I18N[S.lang].err.bad_image : errText(e)); }
+    try { S.me = await api('/me/avatar', 'POST', { image: await toAvatarDataUrl(pic.files[0]) }); toast(t('saved')); } catch (e) { toast(e.message === 'bad_image' ? (I18N[S.lang] || I18N.en).err.bad_image : errText(e)); }
     return draw();
   }
   const el = ev.target.closest('input[data-photo]');
   if (!el || !el.files[0]) return;
-  try { S.draft = await toJpegDataUrl(el.files[0]); S.draftKind = el.dataset.photo; draw(); } catch (e) { toast(I18N[S.lang].err.bad_image); }
+  try { S.draft = await toJpegDataUrl(el.files[0]); S.draftKind = el.dataset.photo; draw(); } catch (e) { toast((I18N[S.lang] || I18N.en).err.bad_image); }
 });
 
 // the suggestion list works from the keyboard: arrows move, Enter picks, Escape closes

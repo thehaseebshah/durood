@@ -320,10 +320,11 @@ try {
   {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
     const page = await ctx.newPage(); const fonts = [];
-    page.on('response', (r) => { if (r.url().includes('/fonts/')) fonts.push(r.url().split('/').pop()); });
+    const urText = []; page.on('response', (r) => { if (r.url().includes('/fonts/')) fonts.push(r.url().split('/').pop()); if (r.url().includes('i18n-ur')) urText.push(r.url()); });
     await page.goto(B + '/manifest.webmanifest'); await page.evaluate((t) => { localStorage.setItem('token', t); localStorage.setItem('intro', '1'); localStorage.setItem('lang', 'en'); }, host.token); // a page with no text of its own, so only Today's fonts are counted
     await page.goto(B + '/'); await page.waitForTimeout(1800);
     ok(!fonts.some((f) => /nastaliq|amiri/.test(f)), `English Today loads only light fonts (${fonts.join(', ')})`);
+    ok(urText.length === 0, 'English Today does not download the Urdu text');
     await ctx.close();
   }
 

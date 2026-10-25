@@ -4,7 +4,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const src = fs.readFileSync(new URL('../public/i18n.js', import.meta.url), 'utf8');
+// the English table and the Urdu table live in two files (Urdu loads on demand); spliced back into one object literal for the scanner
+const enSrc = fs.readFileSync(new URL('../public/i18n.js', import.meta.url), 'utf8');
+const urSrc = fs.readFileSync(new URL('../public/i18n-ur.js', import.meta.url), 'utf8');
+const src = enSrc.replace(/\n\};\s*$/, '\n') + urSrc.slice(urSrc.indexOf('{') + 1);
+const loadI18N = async () => { const { I18N } = await import('../public/i18n.js'); const { UR } = await import('../public/i18n-ur.js'); return { ...I18N, ...UR }; };
 
 /** A tiny scanner: walks the object literal and records every key under its path, so duplicates inside one object are found. */
 function scanKeys(text) {
@@ -50,7 +54,7 @@ test('English and Urdu have the same keys, in the main table and in the error ta
 });
 
 test('every translation key the app uses exists, and function-vs-string usage matches', async () => {
-  const { I18N } = await import('../public/i18n.js');
+  const I18N = await loadI18N();
   const app = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8') + fs.readFileSync(new URL('../public/admin.js', import.meta.url), 'utf8');
   const used = new Map();
   for (const m of app.matchAll(/\bt\('([\w]+)'\)(\()?/g)) used.set(m[1], (used.get(m[1]) || false) || !!m[2]);
@@ -64,7 +68,7 @@ test('every translation key the app uses exists, and function-vs-string usage ma
 });
 
 test('every error code a member can trigger has a message in both languages', async () => {
-  const { I18N } = await import('../public/i18n.js');
+  const I18N = await loadI18N();
   const codes = new Set();
   for (const f of fs.readdirSync(new URL('../server/', import.meta.url))) {
     if (!f.endsWith('.js')) continue;
@@ -78,7 +82,7 @@ test('every error code a member can trigger has a message in both languages', as
 });
 
 test('every error code only an administrator can trigger has a plain message on the admin page (no raw codes like "bad_date")', async () => {
-  const { I18N } = await import('../public/i18n.js');
+  const I18N = await loadI18N();
   const codes = new Set();
   for (const f of fs.readdirSync(new URL('../server/', import.meta.url))) {
     if (!f.endsWith('.js')) continue;

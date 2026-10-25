@@ -1,6 +1,6 @@
 // App-shell cache so the app opens offline; API calls always go to the network.
-const CACHE = 'quest-v5';
-const SHELL = ['/', '/app.js', '/style.css', '/i18n.js', '/icons.js', '/fonts/amiri-arabic.woff2', '/fonts/inter-latin.woff2', '/fonts/salawat.woff2', '/fonts/nastaliq-400.woff2', '/fonts/nastaliq-700.woff2', '/icons/icon-512.png', '/privacy.html', '/manifest.webmanifest', '/icons/icon-192.png'];
+const CACHE = 'quest-v6';
+const SHELL = ['/', '/app.js', '/style.css', '/i18n.js', '/i18n-ur.js', '/icons.js', '/fonts/amiri-arabic.woff2', '/fonts/inter-latin.woff2', '/fonts/salawat.woff2', '/fonts/nastaliq-400.woff2', '/fonts/nastaliq-700.woff2', '/icons/icon-512.png', '/privacy.html', '/manifest.webmanifest', '/icons/icon-192.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
