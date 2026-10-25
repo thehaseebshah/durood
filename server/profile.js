@@ -1,5 +1,5 @@
 // Profile: display name, a one-line bio, a profile picture, a password change and a change of WhatsApp number.
-import { mkdirSync, writeFileSync, renameSync, unlinkSync, readFileSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, renameSync, unlinkSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { db, tx } from './db.js';
 import { HttpError, avatarUrl, avatarSig, hashPassword, checkPassword, sameSecret } from './auth.js';
@@ -64,7 +64,6 @@ export function avatarFile(id, v, sig) {
   const f = avatarPath(id, v);
   return existsSync(f) ? f : null;
 }
-export const readAvatar = (f) => readFileSync(f);
 deleteHooks.push((userId) => { const v = one('SELECT avatar_v v FROM users WHERE id = ?', userId)?.v; if (v > 0) rm(avatarPath(userId, v)); });
 
 // ---- password and phone -------------------------------------------------------------------------------------------------------------

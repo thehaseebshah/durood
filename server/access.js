@@ -30,10 +30,6 @@ export function inviteSources(userId) {
   return { start: CAP.start, level: CAP.perLevel * (level - 1), active: CAP.perActive * active, streak: CAP.perStreak * weeks,
     next: { level: level + 1, levelXp: 100 * level ** 2, streak: CAP.streakDays * (weeks + 1) } };
 }
-export function inviteCap(userId) {
-  const s = inviteSources(userId);
-  return s.start + s.level + s.active + s.streak;
-}
 export const invitesUsed = (userId) => one('SELECT COUNT(*) n FROM users WHERE referrer_id = ?', userId).n;
 export function inviteStatus(userId) {
   const { next, ...from } = inviteSources(userId);
