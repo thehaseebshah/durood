@@ -111,6 +111,27 @@ try {
     await page.close();
   }
 
+  // ---- no signal: durood is kept on the phone and sent once back online; the app opens offline on the last numbers --------------
+  {
+    const off = await register('e2e_offline');
+    const page = await open(off.token);
+    await page.waitForTimeout(1500); // let the service worker cache the app
+    await page.context().setOffline(true);
+    await page.fill('#manual', '40'); await page.click('[data-act=manual]'); await page.waitForTimeout(3500); // two retries, then queued
+    ok((await page.evaluate(() => JSON.parse(localStorage.getItem('outbox') || '[]').length)) === 1, 'offline durood waits in the outbox');
+    ok((await page.locator('#big').textContent()).trim() === '40', 'the counter shows it straight away');
+    ok(await page.locator('.offbar').count() === 1, 'the offline bar shows');
+    await page.reload(); await page.waitForTimeout(1200);
+    ok(await page.locator('#big').count() === 1, 'the app opens offline on the last known numbers');
+    await page.context().setOffline(false);
+    await page.evaluate(() => dispatchEvent(new Event('online'))); await page.waitForTimeout(1500);
+    ok((await api('GET', '/api/me', null, off.token)).today === 40, 'back online, the durood reaches the server once');
+    ok((await page.evaluate(() => localStorage.getItem('outbox'))) === null, 'the outbox is empty again');
+    await page.evaluate(() => dispatchEvent(new Event('online'))); await page.waitForTimeout(800);
+    ok((await api('GET', '/api/me', null, off.token)).today === 40, 'sending again does not double count');
+    await page.close();
+  }
+
   // ---- every page, both languages, dark mode, desktop: renders, no sideways scroll, no errors -----------------------
   for (const [lang, mode, w] of [['en', 'light', 390], ['ur', 'light', 390], ['en', 'dark', 390], ['en', 'light', 1280]]) {
     await api('PATCH', '/api/me', { lang }, host.token);

@@ -372,3 +372,7 @@ Joining a Seerat Circle is self-declared and pays 300 once (badge "Circle Member
 - **Tasks**: no duplicate Today list; open tasks sorted by deadline; the + button adds a task here.
 - **Settings**: Language and display first; Security and Delete account folded.
 - **Motion**: bars grow from their last value, newly finished quests pop, the header flame jumps when the streak grows, earned points float up, the daily goal bursts (with chime and vibration), level and badge cards wait until that settles, rows rise in when a page opens, and pulling down at the top refreshes the page. All of it is off under reduced motion.
+
+## 34. Offline durood
+
+Durood added with no connection is kept on the phone (`outbox` in local storage, each entry with its request id) and shown on the counter at once. It is sent when the connection returns (the `online` event, every 20 seconds, at start, and after any successful log); the request id makes a resend count once. If the server refuses an entry (e.g. the daily limit) the member is told and it is dropped. The member's last data is cached so the app opens offline on their last numbers, with a quiet bar saying so; it is cleared on sign-out.

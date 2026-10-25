@@ -148,7 +148,7 @@ function logout(render = true, byUser = false) {
   S.bh = null; S.bhDetail = null; S.bhLists = null; S.profile = null;
   // nothing of one member's is left for the next person on a shared phone
   S.pending = 0; ls.del('pending'); S.draft = null; S.draftKind = null; S.reflDraft = ''; S.cDraft = {}; S.threads = {}; S.history = null; S.editing = null;
-  S.token = null; S.me = null; ls.del('token');
+  S.token = null; S.me = null; ls.del('token'); ls.del('meCache'); cachedMe = null;
   S.tab = 'home'; S.team = S.cv = S.learn = S.feed = S.board.data = null;
   if (render) draw();
 }
@@ -342,7 +342,7 @@ function shell() {
   ${sidebar()}
   <header class="hd"><span class="row"><button class="pill icon burger" data-act="drawer" aria-label="${esc(t('menu'))}" aria-expanded="${S.drawer}" aria-controls="side">${uiIcon('menu', 18, 2)}</button><span class="ptitle">${t('nav_' + S.tab)}</span></span>
     <span class="row"><span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button></span></header>
-  <main id="main" tabindex="-1" class="wrap tab-${S.tab}${Date.now() - (S.enterAt || 0) < 900 ? ' enter' : ''}"><h1 class="sr">${t('nav_' + S.tab)}</h1>${view()}</main>
+  <main id="main" tabindex="-1" class="wrap tab-${S.tab}${Date.now() - (S.enterAt || 0) < 900 ? ' enter' : ''}"><h1 class="sr">${t('nav_' + S.tab)}</h1>${S.offlineMode || outbox().length ? `<div class="offbar" role="status">${uiIcon('refresh', 14, 2)} ${S.offlineMode ? t('offline_bar') : ''} ${outbox().length ? t('outbox_n')(fmt(outbox().reduce((n, x) => n + x.count, 0))) : ''}</div>` : ''}${view()}</main>
   <nav class="tabs" aria-label="${esc(t('app'))}">${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" ${S.tab === k ? 'aria-current="page"' : ''} data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}
     <button class="${['caravan', 'qabila', 'tasks', 'people', 'progress', 'settings'].includes(S.tab) ? 'on' : ''}" data-act="drawer" aria-label="${esc(t('menu'))}">${uiIcon('menu', 22, 1.7)}<em>${t('nav_browse')}</em>${S.me.caravanInvites || S.me.caravanRequests || S.bh?.roles?.requests ? '<i class="pip" aria-hidden="true"></i>' : ''}</button></nav>
   ${fab ? `<button class="fab" data-act="addsheet" aria-label="${esc(t(S.tab === 'tasks' ? 'own_new' : 'add_durood'))}" title="${esc(t(S.tab === 'tasks' ? 'own_new' : 'add_durood'))}">${uiIcon('plus', 28, 2.4)}</button>` : ''}
@@ -1409,6 +1409,7 @@ function draw() {
   enhanceModal();
   if (S.rollFrom != null && S.me) { rollNumber($('#big'), S.rollFrom + S.pending, S.me.today + S.pending); S.rollFrom = null; }
   afterDraw();
+  cacheMe();
 }
 
 // ---- motion after each render: bars grow from where they were, quests just finished pop, the streak flame jumps,
@@ -1532,9 +1533,11 @@ async function submitLog(count) {
         S.fx = { pts: res.xpGained, goal: hit }; res.goalHit = hit;
         haptic('done'); sound('done');
         celebrate(res);
+        if (outbox().length) setTimeout(flushOutbox, 0); // the connection is back: send what was kept offline too
         return true;
       } catch (e) {
         if (e.message === 'network' && attempt < 2) { await new Promise((r) => setTimeout(r, 800 * (attempt + 1))); continue; }
+        if (e.message === 'network') { queueLog(count, rid); return true; } // no signal: kept on the phone, sent later with the same id
         toast(errText(e));
         return false;
       }
@@ -2181,17 +2184,61 @@ app.addEventListener('input', (ev) => {
   }, 350);
 });
 
+// ---- no signal: durood added offline waits on the phone (with its request id) and is sent once the connection is back -------------
+// The id makes every resend count once. The last copy of the member's own data is kept so the app opens without a connection.
+const outbox = () => { try { return JSON.parse(ls.get('outbox') || '[]'); } catch { return []; } };
+const setOutbox = (list) => (list.length ? ls.set('outbox', JSON.stringify(list)) : ls.del('outbox'));
+function queueLog(count, rid) {
+  setOutbox([...outbox(), { count, rid, uid: S.me.id, at: Date.now() }]);
+  S.rollFrom = S.me.today;
+  S.me = { ...S.me, today: S.me.today + count, total: S.me.total + count, week: S.me.week + count }; // shown now, confirmed when sent
+  S.offlineMode = true; haptic('done'); toast(t('queued')(fmt(count)));
+}
+let flushing = false;
+async function flushOutbox() {
+  const list = outbox();
+  if (flushing || !list.length || !S.me) return;
+  flushing = true;
+  let sent = 0;
+  try {
+    for (const item of list) {
+      if (item.uid !== S.me.id) { setOutbox(outbox().filter((x) => x.rid !== item.rid)); continue; } // another account's, from before a sign-out
+      try {
+        const res = await api('/log', 'POST', { count: item.count, rid: item.rid });
+        S.me = res.me; sent += res.added || 0;
+      } catch (e) {
+        if (e.message === 'network') return; // still no signal: try again later
+        toast(errText(e)); // refused (e.g. the daily limit): dropped, the member is told
+      }
+      setOutbox(outbox().filter((x) => x.rid !== item.rid));
+    }
+    S.offlineMode = false;
+    if (sent) toast(t('queued_sent')(fmt(sent)));
+  } finally { flushing = false; if (S.me) draw(); }
+}
+setInterval(() => { if (outbox().length && navigator.onLine !== false) flushOutbox(); }, 20_000);
+let cachedMe = null;
+function cacheMe() { if (S.me && S.me !== cachedMe) { cachedMe = S.me; ls.set('meCache', JSON.stringify(S.me)); } }
+
 // ---- boot -----------------------------------------------------------------------
-window.addEventListener('online', () => { if (S.offline) refreshMe().then(() => { S.offline = false; draw(); initBurhan(); }).catch(() => {}); });
+window.addEventListener('online', () => {
+  if (S.offline || S.offlineMode) refreshMe().then(() => { S.offline = false; S.offlineMode = false; draw(); initBurhan(); flushOutbox(); }).catch(() => {});
+  else flushOutbox();
+});
+window.addEventListener('offline', () => { if (S.me) { S.offlineMode = true; draw(); } });
 async function boot() {
   applyLang();
   if (S.ref) api(`/invite-check?code=${encodeURIComponent(S.ref)}`).then((r) => { if (r.valid && r.from) { S.refName = r.from; if (!S.me) draw(); } }).catch(() => {});
   if (S.resetToken) logout(false); // a reset link always starts from signed-out
   if (S.token) {
-    try { await refreshMe(); } catch (e) { if (e.message === 'network') S.offline = true; /* a bad token logs out inside api(); a lost connection keeps the session and says so */ }
+    try { await refreshMe(); } catch (e) {
+      // a bad token logs out inside api(); with no connection the app opens on the member's last known numbers, if this phone has them
+      if (e.message === 'network') { try { S.me = JSON.parse(ls.get('meCache')); } catch { S.me = null; } if (S.me) S.offlineMode = true; else S.offline = true; }
+    }
   }
   draw();
   initBurhan();
+  if (!S.offlineMode) flushOutbox();
   const confirmToken = params.get('confirm');
   if (confirmToken) {
     try { await api('/email/confirm', 'POST', { token: confirmToken }); toast(t('email_confirmed')); if (S.token) await refreshMe().then(draw); } catch (e) { toast(errText(e)); }

@@ -770,3 +770,6 @@ main.enter :is(.lb li, .trow, .q):nth-child(n+6), main.enter > .fold:nth-of-type
 .sheet .numbox .row, .sheet .numbox .hint, .sheet .tapopen { margin-inline: 20px; }
 #manual::-webkit-inner-spin-button, #manual::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 #manual { -moz-appearance: textfield; appearance: textfield; }
+/* offline: a quiet bar while the app shows the last known numbers or holds durood to send */
+.offbar { display: flex; gap: 8px; align-items: center; padding: 9px 20px; font-size: .82rem; font-weight: 600; background: #fff2d6; color: #6b4500; border-bottom: 1px solid var(--line); animation: unfold .3s ease-out; }
+html[data-mode=dark] .offbar { background: #2f2508; color: #ffcf6b; }
