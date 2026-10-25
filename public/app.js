@@ -415,7 +415,7 @@ function startCard(m) {
     [!!m.caravan, 'st_caravan', 'caravan'],
     [m.team.direct > 0, 'st_invite', 'qabila'],
     ...(m.canLinkInviter ? [[false, 'st_inviter', 'qabila']] : []),
-    [m.badges.includes('circle') || !m.circleUrl, 'st_circle', 'home'],
+    ...(m.circleUrl ? [[m.badges.includes('circle'), 'st_circle', 'home']] : []),
   ];
   const left = steps.filter(([ok]) => !ok).length;
   if (!left) return '';
