@@ -5,7 +5,7 @@ WORKDIR /app
 COPY package.json ./
 COPY server ./server
 COPY public ./public
-COPY scripts/backup.mjs scripts/make-admin.mjs ./scripts/
+COPY scripts/backup.mjs scripts/make-admin.mjs scripts/seed-sunnahs.mjs ./scripts/
 # /data is the persistent volume (database, photos, backups); the app runs as an unprivileged user who can't rewrite its own code
 RUN mkdir -p /data && chown -R node:node /data
 USER node
