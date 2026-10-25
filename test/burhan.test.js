@@ -382,3 +382,26 @@ test('team tags: a masul sorts razakars into #teams, gives a whole team a task, 
   assert.deepEqual((await api('GET', '/api/burhan/razakars', { token: m.token })).tags, [{ tag: 'stage', n: 1 }]);
   assert.deepEqual(audit().problems, []);
 });
+
+test('routines can fall on several weekdays (Saturday and Sunday, or every day)', async () => {
+  const me = await signup('wd_me');
+  const today = new Date(`${dayOf()}T00:00:00Z`).getUTCDay(), other = [(today + 2) % 7, (today + 4) % 7];
+  const add = (title, body) => api('POST', '/api/tasks', { token: me.token, body: { kind: 'routine', title, ...body } });
+  assert.equal((await add('None', { weekdays: [] })).error, 'bad_weekday');
+  assert.equal((await add('Bad', { weekdays: [1, 9] })).error, 'bad_weekday');
+  await add('Weekend-ish', { weekdays: [today, (today + 1) % 7] });
+  await add('Not today', { weekdays: other });
+  await add('Every day', { weekdays: [0, 1, 2, 3, 4, 5, 6] });
+  await add('Old style', { weekday: today });
+  const st = await api('GET', '/api/burhan', { token: me.token });
+  const by = (t) => st.assignments.find((a) => a.title === t);
+  assert.deepEqual(by('Weekend-ish').weekdays, [today, (today + 1) % 7].sort((a, b) => a - b));
+  assert.equal(by('Weekend-ish').dueToday, true);
+  assert.equal(by('Not today').dueToday, false);
+  assert.equal(by('Every day').weekdays.length, 7);
+  assert.equal(by('Old style').dueToday, true);
+  assert.equal((await api('POST', `/api/assignments/${by('Not today').id}/tick`, { token: me.token })).error, 'not_today');
+  assert.equal((await api('POST', `/api/assignments/${by('Weekend-ish').id}/tick`, { token: me.token })).xpGained, 5);
+  assert.deepEqual(st.today.map((a) => a.title).sort(), ['Every day', 'Old style', 'Weekend-ish']);
+  assert.deepEqual(audit().problems, []);
+});

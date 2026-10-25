@@ -1005,7 +1005,15 @@ const wdName = (d) => t('weekdays')[d];
 const mamulaatBars = (m) => !m ? '' : `<div class="mam"><div class="row between"><b>${t('mam_title')}</b><span class="muted">${m.average == null ? '' : t('mam_avg')(m.average)}</span></div>
   <div class="bars" aria-label="${esc(t('mam_title'))}">${m.series.map((x) => `<i title="${esc(x.day)}${x.percent == null ? '' : ` · ${x.percent}%`}" class="${x.percent == null ? 'none' : ''}" style="height:${x.percent == null ? 6 : Math.max(6, x.percent)}%"></i>`).join('')}</div>
   <div class="muted">${m.today == null ? t('mam_none_today') : t('mam_today')(m.today)}</div></div>`;
-const asgLabel = (a) => a.kind === 'routine' ? t('every')(wdName(a.weekday)) : a.dueDay ? t('due')(N(esc(a.dueDay))) : t('task_word');
+const wdList = (a) => a.weekdays || (a.weekday == null ? [] : [a.weekday]);
+// "Every day", "Every Friday", or "Every Sat, Sun" (the week starts on Monday here, as in Pakistan)
+const daysLabel = (days) => days.length === 7 ? t('every_day') : days.length === 1 ? t('every')(wdName(days[0])) : t('every')([1, 2, 3, 4, 5, 6, 0].filter((d) => days.includes(d)).map((d) => t('weekdays_short')[d]).join(', '));
+const asgLabel = (a) => a.kind === 'routine' ? daysLabel(wdList(a)) : a.dueDay ? t('due')(N(esc(a.dueDay))) : t('task_word');
+// the days a routine falls on: seven buttons (Monday first) and "Every day"
+const dayPicker = (id, picked = [new Date(Date.now() + 5 * 3600e3).getUTCDay()]) => `<fieldset class="daypick" id="${id}"><legend>${t('weekdays_pick')}</legend>
+  <div class="chips">${[1, 2, 3, 4, 5, 6, 0].map((d) => `<label class="chip daychip"><input type="checkbox" name="wd" value="${d}" ${picked.includes(d) ? 'checked' : ''}><span>${esc(t('weekdays_short')[d])}</span></label>`).join('')}
+  <button type="button" class="chip" data-act="everyday" data-for="${id}">${t('every_day')}</button></div></fieldset>`;
+const pickedDays = (form) => [...form.querySelectorAll('input[name=wd]:checked')].map((x) => Number(x.value));
 
 // a deadline input defaulting to a few days ahead (Pakistan time), never before today
 const pkDay = (plus = 0) => new Date(Date.now() + 5 * 3600e3 + plus * 864e5).toISOString().slice(0, 10);
@@ -1152,7 +1160,7 @@ function assignForm(name, title) {
       <div class="seg thin"><button type="button" class="${f.kind === 'task' ? 'on' : ''}" data-act="assignkind" data-k="task">${t('task_word')}</button><button type="button" class="${f.kind === 'routine' ? 'on' : ''}" data-act="assignkind" data-k="routine">${t('routine_word')}</button></div>
       <input type="text" name="title" maxlength="80" aria-label="${esc(t('assign_ph'))}" placeholder="${esc(t('assign_ph'))}" dir="auto">
       ${f.kind === 'routine'
-        ? `<label for="${name}-wd">${t('weekday_word')}</label><select id="${name}-wd" name="weekday">${t('weekdays').map((n, i) => `<option value="${i}" ${i === 5 ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`
+        ? dayPicker(`${name}-wd`, [5])
         : `<label for="${name}-due">${t('due_word')}</label>${dueInput(`${name}-due`)}`}
       <button class="blk" type="submit"><span>${t('assign_btn')}</span><b class="ar">→</b></button></form>`;
 }
@@ -1223,7 +1231,7 @@ function tasksPage() {
       <div class="seg thin"><button type="button" class="${f.kind === 'task' ? 'on' : ''}" data-act="ownkind" data-k="task">${t('task_word')}</button><button type="button" class="${f.kind === 'routine' ? 'on' : ''}" data-act="ownkind" data-k="routine">${t('routine_word')}</button></div>
       <input type="text" name="title" maxlength="80" aria-label="${esc(t('own_ph'))}" placeholder="${esc(t('own_ph'))}" dir="auto">
       ${f.kind === 'routine'
-        ? `<label for="o-wd">${t('weekday_word')}</label><select id="o-wd" name="weekday">${t('weekdays').map((n, i) => `<option value="${i}" ${i === new Date().getDay() ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>`
+        ? dayPicker('o-wd')
         : `<label for="o-due">${t('due_word')}</label>${dueInput('o-due')}`}
       <button class="blk" type="submit"><span>${t('own_add')}</span><b class="ar">→</b></button>
       <p class="hint">${b.masul || (b.murabbi && b.murabbi.stage === 'active') ? t('own_seen_by') : t('own_private')}</p></form>`;
@@ -1678,6 +1686,7 @@ app.addEventListener('click', async (ev) => {
     return;
   }
   if (act === 'setfeel') { setPref(el.dataset.k, el.dataset.v === '1'); if (el.dataset.v === '1') { haptic('round'); sound('round'); } return draw(); }
+  if (act === 'everyday') { const box = $(`#${el.dataset.for}`); const all = [...box.querySelectorAll('input[name=wd]')]; const on = !all.every((x) => x.checked); all.forEach((x) => { x.checked = on; }); return; }
   if (act === 'teamf') { S.teamFilter = el.dataset.tag || null; S.assignForm = { kind: 'task' }; return draw(); }
   if (act === 'tagadd' || act === 'tagdel') {
     const d = S.bhDetail, cur = d?.data?.tags || [];
@@ -1867,7 +1876,7 @@ app.addEventListener('submit', async (ev) => {
       toast(t('saved')); draw();
     } else if (kind === 'teamassign') {
       const k = (S.assignForm || {}).kind || 'task';
-      const r = await api('/assignments', 'POST', { team: S.teamFilter, kind: k, title: f.title, ...(k === 'routine' ? { weekday: Number(f.weekday) } : { dueDay: f.dueDay }) });
+      const r = await api('/assignments', 'POST', { team: S.teamFilter, kind: k, title: f.title, ...(k === 'routine' ? { weekdays: pickedDays(form) } : { dueDay: f.dueDay }) });
       const rl = await api('/burhan/razakars'); S.bhLists = { ...S.bhLists, razakars: rl.razakars, tags: rl.tags };
       form.reset(); toast(t('team_given')(r.count)); draw();
     } else if (kind === 'majlisnew') {
@@ -1875,11 +1884,11 @@ app.addEventListener('submit', async (ev) => {
       toast(t('saved')); draw();
     } else if (kind === 'owntask') {
       const k = (S.ownForm || {}).kind || 'task';
-      S.bh = await api('/tasks', 'POST', { kind: k, title: f.title, ...(k === 'routine' ? { weekday: Number(f.weekday) } : f.dueDay ? { dueDay: f.dueDay } : {}) });
+      S.bh = await api('/tasks', 'POST', { kind: k, title: f.title, ...(k === 'routine' ? { weekdays: pickedDays(form) } : f.dueDay ? { dueDay: f.dueDay } : {}) });
       form.reset(); toast(t('saved')); draw();
     } else if (kind === 'assign') {
       const k = (S.assignForm || {}).kind || 'task';
-      await api('/assignments', 'POST', { razakar: S.bhDetail.username, kind: k, title: f.title, ...(k === 'routine' ? { weekday: Number(f.weekday) } : { dueDay: f.dueDay }) });
+      await api('/assignments', 'POST', { razakar: S.bhDetail.username, kind: k, title: f.title, ...(k === 'routine' ? { weekdays: pickedDays(form) } : { dueDay: f.dueDay }) });
       S.bhDetail.data = await api(`/burhan/razakars/${encodeURIComponent(S.bhDetail.username)}`);
       S.bhLists = { ...S.bhLists, razakars: (await api('/burhan/razakars')).razakars };
       toast(t('saved')); draw();

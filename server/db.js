@@ -518,7 +518,9 @@ CREATE TABLE IF NOT EXISTS burhan_views (
 `);
 addCol('murabbi_links', 'salik_ok', 'INTEGER NOT NULL DEFAULT 0');       // the salik confirmed the person they were shown
 addCol('murabbi_links', 'murabbi_ok', 'INTEGER NOT NULL DEFAULT 0');      // that person accepted. Nothing is shared until both are 1
-addCol('assignments', 'extensions', 'INTEGER NOT NULL DEFAULT 0');        // times the deadline was pushed later at the doer's wish: each one lowers the points
+addCol('assignments', 'extensions', 'INTEGER NOT NULL DEFAULT 0');
+addCol('assignments', 'days', 'INTEGER');                                 // routines: the weekdays it falls on, bit 0 = Sunday ... bit 6 = Saturday
+db.exec("UPDATE assignments SET days = 1 << weekday WHERE kind = 'routine' AND days IS NULL AND weekday IS NOT NULL"); // routines from before: their one day        // times the deadline was pushed later at the doer's wish: each one lowers the points
 db.exec(`CREATE TABLE IF NOT EXISTS team_tags (              -- a masul's own sub-teams for their razakars: #tags
   masul_id   INTEGER NOT NULL REFERENCES users(id),
   razakar_id INTEGER NOT NULL REFERENCES users(id),

@@ -213,6 +213,10 @@ export const searchUsernames = (q, userId) => {
 const TITLE_MAX = 80, ACTIVE_MAX = 30;
 const LINK = /(https?:\/\/|www\.)/i;
 const weekdayOf = (day) => new Date(`${day}T00:00:00Z`).getUTCDay();
+// a routine can fall on several weekdays (Saturday and Sunday, or every day)
+const maskOf = (a) => a.days ?? (a.weekday == null ? 0 : 1 << a.weekday);
+const onDay = (a, day) => (maskOf(a) & (1 << weekdayOf(day))) !== 0;
+const daysOf = (mask) => [0, 1, 2, 3, 4, 5, 6].filter((d) => mask & (1 << d));
 const checkDay = (raw) => {
   const d = String(raw ?? '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || Number.isNaN(Date.parse(`${d}T00:00:00Z`))) throw new HttpError(400, 'bad_day');
@@ -324,23 +328,25 @@ export function addAssignment(masulId, razakarUsername, fields) {
 }
 /** A member's own task or routine: "assigned" by themselves. Their masul and murabbi see it with the rest; only they can change it. */
 export const addOwnAssignment = (userId, fields) => insertAssignment(userId, userId, fields);
-function insertAssignment(byId, forId, { kind, title, weekday, dueDay }) {
+function insertAssignment(byId, forId, { kind, title, weekday, weekdays, dueDay }) {
   const t = String(title ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
   if (!t) throw new HttpError(400, 'empty_text');
   if ([...t].length > TITLE_MAX) throw new HttpError(400, 'text_too_long');
   if (LINK.test(t)) throw new HttpError(400, 'no_links');
   if (kind !== 'task' && kind !== 'routine') throw new HttpError(400, 'bad_kind');
-  let wd = null, due = null;
+  let wd = null, due = null, mask = null;
   if (kind === 'routine') {
-    wd = Number(weekday);
-    if (!Number.isInteger(wd) || wd < 0 || wd > 6) throw new HttpError(400, 'bad_weekday');
+    const list = Array.isArray(weekdays) ? weekdays : [weekday];
+    if (!list.length || list.some((x) => !Number.isInteger(Number(x)) || Number(x) < 0 || Number(x) > 6)) throw new HttpError(400, 'bad_weekday');
+    mask = list.reduce((m, x) => m | (1 << Number(x)), 0);
+    wd = daysOf(mask)[0];
   } else {
     if (!dueDay) throw new HttpError(400, 'due_required'); // every task has a deadline: a commitment to a day
     due = checkDay(dueDay);
   }
   const write = () => {
     if (one('SELECT COUNT(*) n FROM assignments WHERE razakar_id = ? AND ended_at IS NULL', forId).n >= ACTIVE_MAX) throw new HttpError(429, 'too_many_assignments');
-    const res = run('INSERT INTO assignments (masul_id, razakar_id, kind, title, weekday, due_day, created_at) VALUES (?,?,?,?,?,?,?)', byId, forId, kind, t, wd, due, Date.now());
+    const res = run('INSERT INTO assignments (masul_id, razakar_id, kind, title, weekday, days, due_day, created_at) VALUES (?,?,?,?,?,?,?,?)', byId, forId, kind, t, wd, mask, due, Date.now());
     return { id: Number(res.lastInsertRowid) };
   };
   return db.isTransaction ? write() : tx(write); // a team assignment already runs inside one transaction
@@ -354,7 +360,7 @@ export function tickAssignment(razakarId, id, done = true) {
   const a = one('SELECT * FROM assignments WHERE id = ? AND razakar_id = ? AND ended_at IS NULL', id, razakarId);
   if (!a) throw new HttpError(404, 'not_found');
   const today = dayOf();
-  if (a.kind === 'routine' && weekdayOf(today) !== a.weekday) throw new HttpError(400, 'not_today');
+  if (a.kind === 'routine' && !onDay(a, today)) throw new HttpError(400, 'not_today');
   let xp = 0;
   tx(() => {
     if (done) {
@@ -374,7 +380,7 @@ function routineStats(a, today) {
   let due = 0, done = 0;
   for (let n = start; n <= dayNum(today); n++) {
     const d = dayStr(n);
-    if (weekdayOf(d) !== a.weekday) continue;
+    if (!onDay(a, d)) continue;
     if (ticks.has(d)) { due++; done++; } else if (d < today) due++;
   }
   return { due, done, doneToday: ticks.has(today) };
@@ -383,7 +389,7 @@ function assignmentOut(a, today) {
   const base = { id: a.id, kind: a.kind, title: a.title, own: a.masul_id === a.razakar_id };
   if (a.kind === 'routine') {
     const st = routineStats(a, today);
-    return { ...base, weekday: a.weekday, dueToday: weekdayOf(today) === a.weekday, doneToday: st.doneToday, last4: { due: st.due, done: st.done } };
+    return { ...base, weekday: a.weekday, weekdays: daysOf(maskOf(a)), dueToday: onDay(a, today), doneToday: st.doneToday, last4: { due: st.due, done: st.done } };
   }
   const t = one('SELECT day FROM assignment_ticks WHERE assignment_id = ? ORDER BY day LIMIT 1', a.id);
   const earned = t && one("SELECT xp FROM events WHERE user_id = ? AND kind = 'task' AND ref = ?", a.razakar_id, String(a.id));
