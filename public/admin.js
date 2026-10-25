@@ -8,7 +8,7 @@ const date = (t) => new Date(t).toLocaleString('en-GB', { dateStyle: 'medium', t
 let KEY = sessionStorage.getItem('adminKey') || '';
 let tab = 'challenge';
 let notice = '';
-const TABS = [['challenge', 'Challenge'], ['invites', 'Invite codes'], ['waitlist', 'Waitlist'], ['flags', 'Flagged totals'], ['members', 'Members'], ['news', 'News'], ['feed', 'Feed'], ['exports', 'Exports']];
+const TABS = [['challenge', 'Challenge'], ['invites', 'Invite codes'], ['waitlist', 'Waitlist'], ['flags', 'Flagged totals'], ['members', 'Members'], ['moderation', 'Moderation'], ['news', 'News'], ['feed', 'Feed'], ['exports', 'Exports']];
 
 async function api(method, path, body) {
   const res = await fetch('/api/admin' + path, { method, headers: { 'content-type': 'application/json', 'x-admin-key': KEY }, body: body ? JSON.stringify(body) : undefined });
@@ -119,6 +119,26 @@ const views = {
         <td>${esc(f.reason)}<br><span class="muted">${esc(f.day)} · ${esc(f.detail)}</span></td><td>${fmt(f.total)}</td>
         <td>${f.status === 'open' ? `<button class="chip solid" data-a="flclear" data-id="${f.id}">Release</button><button class="chip" data-a="flconfirm" data-id="${f.id}">Keep held</button>` : `<span class="pillbox">${esc(f.status)}</span>`}</td></tr>`).join('')}</table>` : `<p class="empty">No ${status} flags.</p>`}`;
   },
+  async moderation() {
+    const q = window.__mq || '', filter = window.__mf || 'photos', cq = window.__cq || '';
+    const [{ profiles }, { caravans }, { log }] = await Promise.all([api('GET', `/profiles?q=${encodeURIComponent(q)}&filter=${filter}`), api('GET', `/caravans?q=${encodeURIComponent(cq)}`), api('GET', '/log')]);
+    const thumb = (p) => p.avatar ? `<img src="${esc(p.avatar)}" width="64" height="64" style="border-radius:50%;object-fit:cover;background:#ddd" alt="">` : '<span class="muted">no photo</span>';
+    return `<h3>Pictures and names</h3>
+      <p class="muted">Every member sees profile pictures, names and one-line bios. Remove what should not be there. The member can add a new one; to stop a repeat offender, suspend them in Members.</p>
+      <div class="inline"><div><label>Search username, name, bio or city</label><input id="mq" value="${esc(q)}"></div>
+        ${[['photos', 'With a photo'], ['text', 'With a name or line'], ['all', 'Everyone']].map(([k, l]) => `<button class="chip ${k === filter ? 'solid' : ''}" data-a="mfilter" data-f="${k}">${l}</button>`).join('')}<button class="chip solid" data-a="msearch">Search</button></div>
+      ${profiles.length ? `<table><tr><th>Photo</th><th>Member</th><th>Name and line</th><th></th></tr>${profiles.map((p) => `<tr><td>${thumb(p)}</td>
+        <td><b>${esc(p.username)}</b>${p.suspended ? ' <span class="pillbox bad">SUSPENDED</span>' : ''}<br><span class="muted">${esc(p.city)} · ${esc(p.joined)}${p.avatarAt ? `<br>photo ${date(p.avatarAt)}` : ''}</span></td>
+        <td>${esc(p.displayName) || '<span class="muted">no name</span>'}<br><span class="muted">${esc(p.bio)}</span></td>
+        <td>${p.avatar ? `<button class="chip" data-a="rmavatar" data-u="${esc(p.username)}">Remove photo</button>` : ''}${p.displayName || p.bio ? `<button class="chip" data-a="clearprofile" data-u="${esc(p.username)}">Clear name and line</button>` : ''}</td></tr>`).join('')}</table>` : '<p class="empty">Nothing matches.</p>'}
+      <h3>Caravans</h3>
+      <div class="inline"><div><label>Search caravan name or owner</label><input id="cq" value="${esc(cq)}"></div><button class="chip solid" data-a="csearch">Search</button></div>
+      ${caravans.length ? `<table><tr><th>Caravan</th><th>Owner</th><th>Members</th><th></th></tr>${caravans.map((c) => `<tr><td><b>${esc(c.name)}</b><br><span class="muted">${date(c.created_at)}</span></td><td>${esc(c.owner)}</td>
+        <td>${fmt(c.members)}<br><span class="muted">${esc(c.sample || '')}${c.members > 6 ? ', …' : ''}</span></td>
+        <td><button class="chip" data-a="cvrename" data-id="${c.id}" data-n="${esc(c.name)}">Rename</button><button class="chip" data-a="cvdelete" data-id="${c.id}" data-n="${esc(c.name)}">Delete</button></td></tr>`).join('')}</table>` : '<p class="empty">No caravans.</p>'}
+      <h3>Recent moderation actions</h3>
+      ${log.length ? `<table><tr><th>When</th><th>Action</th><th>Target</th><th>Detail</th></tr>${log.map((l) => `<tr><td>${date(l.at)}</td><td>${esc(l.action)}</td><td>${esc(l.target)}</td><td class="muted">${esc(l.detail)}</td></tr>`).join('')}</table>` : '<p class="empty">Nothing yet.</p>'}`;
+  },
   async members() {
     const q = window.__q || '';
     const { members } = await api('GET', `/members?q=${encodeURIComponent(q)}`);
@@ -190,6 +210,13 @@ document.addEventListener('click', (ev) => {
     flfilter: async () => { window.__fl = d.s; },
     flclear: () => api('POST', `/flags/${d.id}`, { action: 'clear' }),
     flconfirm: () => api('POST', `/flags/${d.id}`, { action: 'confirm' }),
+    msearch: async () => { window.__mq = $('#mq').value; },
+    mfilter: async () => { window.__mf = d.f; window.__mq = $('#mq')?.value || ''; },
+    csearch: async () => { window.__cq = $('#cq').value; },
+    rmavatar: async () => { if (!confirm(`Remove ${d.u}'s picture?`)) return; await api('POST', `/members/${d.u}`, { action: 'remove-avatar' }); say('Picture removed.'); },
+    clearprofile: async () => { if (!confirm(`Remove ${d.u}'s picture, name and line?`)) return; await api('POST', `/members/${d.u}`, { action: 'clear-profile' }); say('Cleared.'); },
+    cvrename: async () => { const n = prompt('New name for this caravan (3-20 letters, numbers or _):', d.n); if (!n || n === d.n) return; await api('PUT', `/caravans/${d.id}`, { name: n }); say('Renamed.'); },
+    cvdelete: async () => { if (!confirm(`Delete the caravan "${d.n}"? Its members stay in the app but leave the caravan.`)) return; await api('DELETE', `/caravans/${d.id}`); say('Deleted.'); },
     search: async () => { window.__q = $('#q').value; },
     suspend: () => api('POST', `/members/${d.u}`, { action: 'suspend' }),
     unsuspend: () => api('POST', `/members/${d.u}`, { action: 'unsuspend' }),

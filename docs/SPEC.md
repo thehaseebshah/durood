@@ -274,3 +274,7 @@ Earlier sections define a caravan as "a member plus the people they invited dire
 - **WhatsApp number change:** needs the password, uses the same country-aware number rules as sign-up, must be unused, at most 3 changes a day (failed tries do not count). The number is still not verified. The member's murabbi link and Mamulaat numbers are cleared, since they were matched to the old number.
 - **Backups:** pictures live in `UPLOAD_DIR`, which the database backup does not include (see docs/DEPLOY.md).
 - The JPEG cleaner is now stricter for every upload, Sunnah photos included: only the tables, frame header and scan data are kept.
+
+## 23. Admin moderation tab
+
+The admin page has a **Moderation** tab: (1) *Pictures and names*: members with a photo (newest first), with a name or line, or everyone, with a search by username, name, bio or city; each row can have its picture removed or its name and line cleared. (2) *Caravans*: search by caravan or owner name, rename (same name rules and name space) or delete (members stay in the app and leave the caravan). (3) *Recent moderation actions*: a log of picture and profile removals, caravan renames and deletes, hiding or removing feed content, suspending, unsuspending and hiding members, with what was cleared. Failed actions are not logged. The log is `admin_log`; it is not shown to members. API: `GET /api/admin/profiles`, `GET/PUT/DELETE /api/admin/caravans`, `GET /api/admin/log`.

@@ -158,3 +158,41 @@ test('changing the WhatsApp number needs the password, is unique, normalised per
   assert.ok(other.token);
   assert.deepEqual(audit().problems, []);
 });
+
+test('admin moderation: find pictures and names, remove them, rename or delete a caravan, and every action is logged', async () => {
+  const a = await signup('md_a'), b = await signup('md_b'), c = await signup('md_c');
+  await upload(a, jpeg());
+  await api('PUT', '/api/me/profile', { token: a.token, body: { displayName: 'Offensive Name', bio: 'a bad line' } });
+  await api('PUT', '/api/me/profile', { token: b.token, body: { displayName: 'Just A Name' } });
+  const list = async (q = '') => (await api('GET', `/api/admin/profiles${q}`, { headers: admin })).profiles;
+  assert.deepEqual((await list('?filter=photos')).map((p) => p.username).slice(0, 1), ['md_a'], 'newest pictures first');
+  assert.ok((await list('?filter=photos')).every((p) => p.avatar));
+  assert.ok((await list('?filter=text')).some((p) => p.username === 'md_b'));
+  assert.ok(!(await list('?filter=text')).some((p) => p.username === 'md_c'), 'no name, no line, no picture: not in this list');
+  assert.deepEqual((await list('?filter=all&q=Offensive')).map((p) => p.username), ['md_a'], 'search finds names too');
+  assert.deepEqual((await list('?filter=all&q=%25')).length >= 0, true, 'wildcards in a search are harmless');
+  assert.equal((await api('GET', '/api/admin/profiles', { token: a.token })).status, 403, 'members cannot use it');
+  // remove just the picture, then clear the rest
+  assert.equal((await api('POST', '/api/admin/members/md_a', { headers: admin, body: { action: 'remove-avatar' } })).ok, true);
+  assert.equal((await api('GET', '/api/me', { token: a.token })).avatar, null);
+  assert.equal((await api('GET', '/api/me', { token: a.token })).displayName, 'Offensive Name', 'only the picture went');
+  await api('POST', '/api/admin/members/md_a', { headers: admin, body: { action: 'clear-profile' } });
+  assert.equal((await api('GET', '/api/me', { token: a.token })).displayName, '');
+  // caravans: rename and delete
+  const mk = await api('POST', '/api/caravan', { token: b.token, body: { name: 'md_bad_name' } });
+  const id = mk.id;
+  assert.equal((await api('GET', '/api/admin/caravans?q=bad_name', { headers: admin })).caravans[0].owner, 'md_b');
+  assert.equal((await api('PUT', `/api/admin/caravans/${id}`, { headers: admin, body: { name: 'md_c' } })).error, 'caravan_name_taken', "a member's username");
+  assert.equal((await api('PUT', `/api/admin/caravans/${id}`, { headers: admin, body: { name: 'x' } })).error, 'bad_caravan_name');
+  assert.equal((await api('PUT', `/api/admin/caravans/${id}`, { headers: admin, body: { name: 'md_good_name' } })).name, 'md_good_name');
+  assert.equal((await api('GET', '/api/caravan', { token: b.token })).caravan.name, 'md_good_name');
+  assert.equal((await api('DELETE', `/api/admin/caravans/${id}`, { headers: admin })).ok, true);
+  assert.equal((await api('GET', '/api/caravan', { token: b.token })).caravan, null);
+  assert.equal((await api('POST', '/api/admin/content/reflection/999999', { headers: admin, body: { action: 'remove' } })).status, 404, 'a failed action is not logged');
+  const log = (await api('GET', '/api/admin/log', { headers: admin })).log;
+  const kinds = log.map((l) => l.action);
+  for (const k of ['remove-avatar', 'clear-profile', 'rename-caravan', 'delete-caravan']) assert.ok(kinds.includes(k), k);
+  assert.ok(log.find((l) => l.action === 'clear-profile').detail.includes('Offensive Name'), 'the log keeps what was cleared');
+  assert.ok(log.find((l) => l.action === 'rename-caravan').detail.includes('md_good_name'));
+  assert.ok(c.token);
+});

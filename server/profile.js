@@ -46,7 +46,7 @@ export function setAvatar(userId, imageB64) {
     const f = avatarPath(userId, v), tmp = `${f}.tmp`;
     writeFileSync(tmp, data, { mode: 0o600 });
     renameSync(tmp, f);
-    run('UPDATE users SET avatar_v = ? WHERE id = ?', v, userId);
+    run('UPDATE users SET avatar_v = ?, avatar_at = ? WHERE id = ?', v, Date.now(), userId);
     if (cur > 0) rm(avatarPath(userId, cur));
     return { avatar: avatarUrl(userId, v) };
   });
@@ -107,4 +107,21 @@ export function publicProfile(username) {
   if (!u) throw new HttpError(404, 'not_found');
   const cv = one('SELECT c.name FROM caravan_members cm JOIN caravans c ON c.id = cm.caravan_id WHERE cm.user_id = ?', u.id);
   return { username: u.username, displayName: u.display_name, bio: u.bio, avatar: avatarUrl(u.id, u.avatar_v), city: u.city, joined: u.created_day, caravan: cv?.name ?? null };
+}
+
+// ---- moderation (admin) ---------------------------------------------------------------------------------------------------------------
+/** Every moderation action is written down: who or what it touched, and what the admin did. */
+export const logAdmin = (action, target, detail = '') => { run('INSERT INTO admin_log (at, action, target, detail) VALUES (?,?,?,?)', Date.now(), action, String(target).slice(0, 80), String(detail).slice(0, 300)); };
+export const adminLog = (limit = 40) => db.prepare('SELECT at, action, target, detail FROM admin_log ORDER BY id DESC LIMIT ?').all(limit);
+
+/** Pictures and names to look at: newest pictures first, or members with a name or line, or a search by username, name, bio or city. */
+export function adminProfiles({ q = '', filter = 'photos' } = {}) {
+  const s = String(q).trim().slice(0, 40);
+  const like = `%${s.replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
+  const where = [s ? "(u.username LIKE ? ESCAPE '\\' OR u.display_name LIKE ? ESCAPE '\\' OR u.bio LIKE ? ESCAPE '\\' OR u.city LIKE ? ESCAPE '\\')" : '1=1',
+    filter === 'photos' ? 'u.avatar_v > 0' : filter === 'text' ? "(u.display_name != '' OR u.bio != '')" : '1=1', 'u.deleted_at IS NULL'].join(' AND ');
+  const args = s ? [like, like, like, like] : [];
+  const order = filter === 'photos' ? 'COALESCE(u.avatar_at, 0) DESC, u.id DESC' : 'u.id DESC';
+  return db.prepare(`SELECT u.id, u.username, u.display_name, u.bio, u.avatar_v, u.avatar_at, u.city, u.created_day, u.suspended FROM users u WHERE ${where} ORDER BY ${order} LIMIT 60`).all(...args)
+    .map((u) => ({ username: u.username, displayName: u.display_name, bio: u.bio, avatar: avatarUrl(u.id, u.avatar_v), avatarAt: u.avatar_at, city: u.city, joined: u.created_day, suspended: !!u.suspended }));
 }

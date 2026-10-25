@@ -301,8 +301,23 @@ export function board(userId, period = 'week', metric = 'total') {
 }
 
 // ---- administration ---------------------------------------------------------------------------------------------------------------------
-export const adminList = () => all(`SELECT c.id, c.name, u.username owner, c.created_at,
-    (SELECT COUNT(*) FROM caravan_members cm WHERE cm.caravan_id = c.id) members FROM caravans c JOIN users u ON u.id = c.owner_id ORDER BY c.id DESC LIMIT 200`);
+export const adminList = (q = '') => {
+  const like = `%${String(q).trim().slice(0, 30).replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
+  return all(`SELECT c.id, c.name, u.username owner, c.created_at,
+    (SELECT COUNT(*) FROM caravan_members cm WHERE cm.caravan_id = c.id) members,
+    (SELECT GROUP_CONCAT(x.username, ', ') FROM (SELECT m.username FROM caravan_members cm JOIN users m ON m.id = cm.user_id WHERE cm.caravan_id = c.id ORDER BY cm.joined_at LIMIT 6) x) sample
+    FROM caravans c JOIN users u ON u.id = c.owner_id WHERE c.name LIKE ? ESCAPE '\\' OR u.username LIKE ? ESCAPE '\\' ORDER BY c.id DESC LIMIT 200`, like, like);
+};
+/** An admin renames a caravan (an offensive name, say). The same name rules and name space apply. */
+export function adminRename(id, rawName) {
+  const name = cleanName(rawName);
+  return tx(() => {
+    if (!one('SELECT 1 FROM caravans WHERE id = ?', id)) throw new HttpError(404, 'not_found');
+    if (handleTaken(name, { exceptCaravanId: id })) throw new HttpError(409, 'caravan_name_taken');
+    run('UPDATE caravans SET name = ? WHERE id = ?', name, id);
+    return { ok: true, name };
+  });
+}
 export function adminDelete(id) {
-  return tx(() => { if (!one('SELECT 1 FROM caravans WHERE id = ?', id)) throw new HttpError(404, 'not_found'); dissolve(id); return { ok: true }; });
+  return tx(() => { const c = one('SELECT name FROM caravans WHERE id = ?', id); if (!c) throw new HttpError(404, 'not_found'); dissolve(id); return { ok: true, name: c.name }; });
 }

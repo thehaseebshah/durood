@@ -115,8 +115,11 @@ route('POST', '/api/caravan/cancel', ({ user, body }) => ({ ...caravanApi.cancel
 route('POST', '/api/caravan/leave', ({ user }) => ({ ...caravanApi.leave(user), view: caravanApi.view(user), me: getMe(user) }));
 route('POST', '/api/caravan/remove', ({ user, body }) => ({ ...caravanApi.removeByOwner(user, body.username), view: caravanApi.view(user) }));
 route('GET', '/api/caravan/search', ({ user, query }) => { rateLimit(`cvs:${user}`, 60, 60e3); return { usernames: caravanApi.searchInvitees(user, query.get('q')), caravans: caravanApi.searchCaravans(query.get('q')) }; });
-route('GET', '/api/admin/caravans', { auth: false, admin: true }, () => ({ caravans: caravanApi.adminList() }));
-route('DELETE', '/api/admin/caravans/:id', { auth: false, admin: true }, ({ params }) => caravanApi.adminDelete(Number(params.id)));
+route('GET', '/api/admin/caravans', { auth: false, admin: true }, ({ query }) => ({ caravans: caravanApi.adminList(query.get('q') || '') }));
+route('PUT', '/api/admin/caravans/:id', { auth: false, admin: true }, ({ params, body }) => { const old = one('SELECT name FROM caravans WHERE id = ?', Number(params.id)); const r = caravanApi.adminRename(Number(params.id), body.name); profile.logAdmin('rename-caravan', old?.name, `to ${r.name}`); return r; });
+route('DELETE', '/api/admin/caravans/:id', { auth: false, admin: true }, ({ params }) => { const r = caravanApi.adminDelete(Number(params.id)); profile.logAdmin('delete-caravan', r.name); return { ok: true }; });
+route('GET', '/api/admin/profiles', { auth: false, admin: true }, ({ query }) => ({ profiles: profile.adminProfiles({ q: query.get('q') || '', filter: query.get('filter') || 'photos' }) }));
+route('GET', '/api/admin/log', { auth: false, admin: true }, () => ({ log: profile.adminLog(60) }));
 
 // ---- Al-Burhan edition: murabbi, masul, mamulaat, tasks and routines (404 in the public edition) ----------------------------------
 const B = (fn) => (ctx) => { burhan.guard(); return fn(ctx); };
@@ -427,7 +430,7 @@ route('POST', '/api/report', ({ user, body }) => {
 
 route('POST', '/api/admin/sunnahs', { auth: false, admin: true }, ({ body }) => ({ days: sunnah.addSunnahs(body.sunnahs ?? body) }));
 route('GET', '/api/admin/reported', { auth: false, admin: true }, () => ({ items: feedApi.reportedContent() }));
-route('POST', '/api/admin/content/:kind/:id', { auth: false, admin: true }, ({ params, body }) => feedApi.moderateContent(params.kind, Number(params.id), body.action));
+route('POST', '/api/admin/content/:kind/:id', { auth: false, admin: true }, ({ params, body }) => { const r = feedApi.moderateContent(params.kind, Number(params.id), body.action); profile.logAdmin(`content-${body.action}`, `${params.kind}:${params.id}`); return r; });
 route('GET', '/api/admin/prompts', { auth: false, admin: true }, () => ({ prompts: feedApi.listPrompts() }));
 route('POST', '/api/admin/prompts', { auth: false, admin: true }, ({ body }) => feedApi.setPrompt(body));
 route('GET', '/api/news', ({ user }) => news.listNews(user));
@@ -451,8 +454,8 @@ route('POST', '/api/admin/waitlist/:id', adm, async ({ params, body }) => {
 route('GET', '/api/admin/members', adm, ({ query }) => ({ members: access.searchMembers(query.get('q') || '') }));
 route('POST', '/api/admin/members/:username', adm, ({ params, body }) => {
   const a = body.action;
-  if (a === 'suspend' || a === 'unsuspend') return access.setSuspended(params.username, a === 'suspend', !!body.branch);
-  if (a === 'hide' || a === 'unhide') return setHidden(params.username, a === 'hide');
+  if (a === 'suspend' || a === 'unsuspend') { const r = access.setSuspended(params.username, a === 'suspend', !!body.branch); profile.logAdmin(body.branch ? `${a}-branch` : a, params.username); return r; }
+  if (a === 'hide' || a === 'unhide') { const r = setHidden(params.username, a === 'hide'); profile.logAdmin(a, params.username); return r; }
   if (a === 'reset-link') {
     const u = one('SELECT id FROM users WHERE username = ? AND deleted_at IS NULL', params.username);
     if (!u) throw new HttpError(404, 'not_found');
@@ -461,8 +464,10 @@ route('POST', '/api/admin/members/:username', adm, ({ params, body }) => {
   if (a === 'remove-avatar' || a === 'clear-profile') {
     const u = one('SELECT id FROM users WHERE username = ? AND deleted_at IS NULL', params.username);
     if (!u) throw new HttpError(404, 'not_found');
+    const before = one('SELECT display_name, bio FROM users WHERE id = ?', u.id);
     profile.removeAvatar(u.id);
     if (a === 'clear-profile') run("UPDATE users SET display_name = '', bio = '' WHERE id = ?", u.id); // for an offensive name or line
+    profile.logAdmin(a, params.username, a === 'clear-profile' ? `name "${before.display_name}", bio "${before.bio}"` : 'picture removed');
     return { ok: true };
   }
   throw new HttpError(400, 'bad_action');
