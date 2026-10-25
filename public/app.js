@@ -495,7 +495,7 @@ function challengeCard(m) {
   if (!c || c.state === 'waiting') return '';
   const pct = Math.min(100, (c.total / c.target) * 100);
   const head = `<div class="chead"><span>${uiIcon('star', 14, 2)} ${t('challenge_title')}</span><span>${c.state === 'running' || c.state === 'over' ? t('day_of')(c.dayIndex, c.days) : ''}</span></div>`;
-  const tot = `<div class="ctotal"><b>${fmt(c.total)}</b><span>${t('of')} ${N(human(c.target))}${unit('durood')}</span></div>`;
+  const tot = `<div class="ctotal"><b>${fmt(c.total)}</b><span dir="auto">${t('of')} ${human(c.target)}${unit('durood')}</span></div>`;
   const markPct = c.state === 'running' ? ((c.dayIndex - 1) / c.days) * 100 : 0;
   const barEl = `<div class="cbar">${bar(pct)}${c.state === 'running' && markPct > 0 ? `<span class="pace" style="inset-inline-start:${markPct}%" title="plan"></span>` : ''}</div>`;
   let body = '';
@@ -596,7 +596,7 @@ const QUEST_UNIT = { goal: 'durood', weekgoal: 'durood', special: 'durood', days
 function quest(q, dim) {
   return `<div class="q ${q.done ? 'd' : ''} ${dim ? 'dim' : ''}" data-q="${q.id}">
     <span class="bx"></span>
-    <span class="t">${q.id === 'streak' ? `${uiIcon('flame', 14, 2)} ${t('q_streak')(q.streakDay)}` : t('q_' + q.id)} <em>${t(q.period === 'day' ? 'daily' : 'weekly')}</em><small>${q.goal > 1 ? `${N(`${fmt(q.cur)} / ${fmt(q.goal)}`)}${unit(QUEST_UNIT[q.id] || 'durood')}` : ''}</small></span>
+    <span class="t">${q.id === 'streak' ? `${uiIcon('flame', 14, 2)} ${t('q_streak')(q.streakDay)}` : t('q_' + q.id)}<small>${t(q.period === 'day' ? 'daily' : 'weekly')}${q.goal > 1 ? ` · ${N(`${fmt(q.cur)} / ${fmt(q.goal)}`)}${unit(QUEST_UNIT[q.id] || 'durood')}` : ''}</small></span>
     <span class="qxp" title="${esc(t('q_reward'))}">${N(`+${fmt(q.xp)}`)}${unit('pts')}</span>
   </div>`;
 }
