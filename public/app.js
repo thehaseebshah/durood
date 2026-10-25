@@ -149,7 +149,7 @@ function logout(render = true, byUser = false) {
   // nothing of one member's is left for the next person on a shared phone
   S.pending = 0; ls.del('pending'); S.draft = null; S.draftKind = null; S.reflDraft = ''; S.cDraft = {}; S.threads = {}; S.history = null; S.editing = null;
   S.token = null; S.me = null; ls.del('token'); ls.del('meCache'); cachedMe = null;
-  S.tab = 'home'; S.team = S.cv = S.learn = S.feed = S.board.data = null;
+  S.tab = 'home'; S.team = S.cv = S.learn = S.feed = S.board.data = null; boardCache.clear();
   if (render) draw();
 }
 
@@ -1460,6 +1460,7 @@ async function loadBurhanLists() {
   if (!S.bh || !(S.bh.roles.saaliks || S.bh.roles.razakars || S.bh.roles.requests)) return;
   S.bhLists = { saaliks: S.bh.roles.saaliks ? (await api('/burhan/saaliks')).saaliks : [], razakars: S.bh.roles.razakars ? (await api('/burhan/razakars')).razakars : [], tags: S.bh.roles.razakars ? (await api('/burhan/tags')).tags : [], requests: S.bh.roles.requests ? (await api('/burhan/requests')).requests : [] };
 }
+const boardCache = new Map();
 async function enterTab(tab) {
   if (tab === 'me') tab = 'progress'; // older links
   if (tab === 'burhan') tab = 'tasks'; // the old Al-Burhan page became Tasks, My people and Me
@@ -1469,14 +1470,20 @@ async function enterTab(tab) {
   if (document.startViewTransition && !reduceMotion()) document.startViewTransition(() => draw()); else draw();
   window.scrollTo(0, 0);
   try {
-    if (tab === 'rank') { S.board.data = null; draw(); S.board.data = await api(boardUrl(S.board)); }
+    if (tab === 'rank') { // the last copy of a board shows at once while a fresh one loads; a reply for a board no longer chosen is ignored
+      const url = boardUrl(S.board);
+      S.board.data = boardCache.get(url) || null; draw();
+      const d = await api(url); boardCache.set(url, d);
+      if (boardUrl(S.board) !== url) return;
+      S.board.data = d;
+    }
     if (inBurhan() && ['home', 'tasks', 'people', 'progress'].includes(tab)) loadBurhan().then(async () => { if (tab === 'people') { await loadBurhanLists(); S.bhLists ||= { saaliks: [], razakars: [], requests: [] }; if (S.tab === 'people') draw(); } });
     if (tab === 'home') { await loadFeed(); return S.tab === 'home' && draw(); }
     if (tab === 'caravan') S.cv = await api('/caravan');
     if (tab === 'qabila') S.team = await api('/team');
     if (tab === 'progress') S.history = await api('/history');
     if (tab === 'feed') {
-      S.feed = null; draw();
+      if (!S.feed) draw(); // the feed already on screen stays while the newest loads
       await loadFeed();
       draw();
       await api('/news/seen', 'POST');
