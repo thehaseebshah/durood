@@ -32,11 +32,26 @@
     .amenu summary { cursor: pointer; font-weight: 700; padding: 8px 12px; border: 1.5px solid var(--ink); display: inline-block; list-style: none; }
     .amenu summary::-webkit-details-marker { display: none; }
     .amenu summary::after { content: ' ▾'; }
+    .amenu summary { border: 0; border-radius: 99px; background: var(--track); padding: 8px 14px; font-weight: 600; }
     .amenu[open] > div { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
     .amenu [data-a=memdel] { color: var(--err); border-color: var(--err); }
     .tabs2 { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
     .tabs2 button { background: none; border: 0; padding: 12px 10px; flex: 1 0 auto; font-weight: 700; color: var(--soft); border-bottom: 4px solid transparent; white-space: nowrap; }
     .tabs2 button.on { color: var(--ink); border-bottom-color: var(--sig); }
+    /* one scrolling row of tabs, never a ragged second line */
+    .tabs2 { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+    .tabs2::-webkit-scrollbar { display: none; }
+    .tabs2 button { flex: 1 0 auto; padding-inline: 7px; }
+    @media (max-width: 900px) { .tabs2 { -webkit-mask-image: linear-gradient(to right, #000 85%, transparent); mask-image: linear-gradient(to right, #000 85%, transparent); } }
+    /* phones: each table row becomes a card, so no column runs off the edge */
+    @media (max-width: 640px) {
+      #panel table, #panel tbody, #panel tr, #panel td { display: block; width: auto; }
+      #panel table { background: none; box-shadow: none; }
+      #panel tr:first-child:has(th) { display: none; }
+      #panel thead { display: none; }
+      #panel tr { background: var(--paper); border-radius: 14px; box-shadow: var(--shadow); padding: 10px 14px; margin-bottom: 10px; }
+      #panel td { border: 0 !important; padding: 3px 0 !important; }
+    }
     .panel { padding: 0 20px 20px; }
     .panel h3 { margin-inline: -20px; }
     table { width: 100%; border-collapse: collapse; font-size: .84rem; margin-top: 8px; }
