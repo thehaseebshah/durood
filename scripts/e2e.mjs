@@ -316,6 +316,18 @@ try {
     ok(found.size === 0, `no WCAG A/AA violations on any page, light or dark${found.size ? ': ' + [...found].slice(0, 6).map(([k, w]) => `${w} ${k}`).join('; ') : ''}`);
   }
 
+  // ---- A phone whose clock is a week fast still shows the server's day (the app corrects by the server's Date header) ----
+  {
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await page.clock.install({ time: new Date(Date.now() + 7 * 864e5) });
+    await page.goto(B + '/'); await page.evaluate((t) => { localStorage.setItem('token', t); localStorage.setItem('intro', '1'); localStorage.setItem('lang', 'en'); }, host.token);
+    await page.goto(B + '/'); await page.waitForTimeout(1200);
+    const want = new Date(new Date(Date.now() + 5 * 3600e3).toISOString().slice(0, 10) + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+    const shown = await page.evaluate(() => document.querySelector('.counterbox .sub span')?.textContent);
+    ok(shown === want, `a phone with a wrong clock still shows today's date (${shown})`);
+    await page.close();
+  }
+
   // ---- Design consistency: no element draws the old hard 1.5px+ ink-coloured frame (every page, the sign-up form, the add sheet) ----
   {
     const frames = new Set();

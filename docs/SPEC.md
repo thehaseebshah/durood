@@ -408,3 +408,7 @@ The member app, sign-in and admin share one stylesheet; its last section restyle
 - Feed actions keep a gap between icon and label, and the first icon lines up with the post text. In a caravan the owner's remove column is kept on every row, so the scores line up.
 - Navigation has one menu control per screen size: on phones the Browse tab opens the menu (no header button); on wide screens the header button is a sidebar icon labelled "Show/Hide sidebar".
 - Second review pass: the challenge tiles use lakh/crore like the rest of the card; list scores and their units share one right edge; Settings says Light/Dark and uses a gear icon; the goal bar's star is hidden at 0; the invite buttons share one height; Move deadline shows every option as a date ("Wed 28 Oct") with hairline dividers.
+
+## 40. A phone with a wrong clock
+
+Every reply carries the server's time (the HTTP `Date` header). When the phone's clock is more than two minutes off, the app shifts its own idea of "now" by the difference, so Today's date, deadlines offered when moving a task, the weekday picker, the evening streak nudge and "3h ago" all follow the server. Timers and animations keep the phone's clock. The e2e run opens the app with the phone a week fast and checks the date shown.

@@ -107,6 +107,10 @@ function rollNumber(el, from, to) {
 // grey blocks while a page loads, instead of "…"
 const skel = (n = 3) => `<div class="skel" aria-busy="true" aria-label="…">${Array.from({ length: n }, (_, i) => `<i style="width:${[92, 70, 84, 60][i % 4]}%"></i>`).join('')}</div>`;
 
+// the phone's clock can be wrong; every reply carries the server's time, so calendar days and "3h ago" follow the server
+let skew = 0;
+const serverNow = () => Date.now() + skew;
+const noteServerTime = (res) => { const d = Date.parse(res.headers.get('date') || ''); if (d) { const s = d - Date.now(); skew = Math.abs(s) > 120e3 ? s : 0; } }; // the header is to the second; small drift is ignored
 async function api(path, method = 'GET', body) {
   let res;
   try {
@@ -116,6 +120,7 @@ async function api(path, method = 'GET', body) {
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch { throw new Error('network'); }
+  noteServerTime(res);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     if (res.status === 401 && S.token && data.error === 'unauthorized') logout(false);
@@ -442,7 +447,7 @@ function home() {
   const notices = [
     m.hiddenFromRanks ? `<div class="flagnote">${t(m.flagState === 'decided' ? 'flagged_decided' : 'flagged')}</div>` : '',
     // a running streak and nothing yet today: a gentle nudge (stronger in the evening, Pakistan time)
-    m.streak > 0 && !m.today ? `<div class="streaknudge ${new Date(Date.now() + 5 * 3600e3).getUTCHours() >= 18 ? 'late' : ''}">${uiIcon('flame', 16, 2)} ${t(new Date(Date.now() + 5 * 3600e3).getUTCHours() >= 18 ? 'streak_nudge_late' : 'streak_nudge')(m.streak)}</div>` : '',
+    m.streak > 0 && !m.today ? `<div class="streaknudge ${new Date(serverNow() + 5 * 3600e3).getUTCHours() >= 18 ? 'late' : ''}">${uiIcon('flame', 16, 2)} ${t(new Date(serverNow() + 5 * 3600e3).getUTCHours() >= 18 ? 'streak_nudge_late' : 'streak_nudge')(m.streak)}</div>` : '',
     m.special ? `<div class="special">${uiIcon('star', 14, 2)} ${t('special_banner')(esc(pick(m.special.nameEn, m.special.nameUr)))}</div>` : '',
     m.caravanInvites ? `<button class="rowlink" data-act="tab" data-tab="caravan"><span>${uiIcon('caravan', 14, 2)} ${t('cv_home_invited')(m.caravanInvites)}</span><b class="ar">→</b></button>` : '',
     m.caravanRequests ? `<button class="rowlink" data-act="tab" data-tab="caravan"><span>${uiIcon('caravan', 14, 2)} ${t('cv_requests_home')(m.caravanRequests)}</span><b class="ar">→</b></button>` : '',
@@ -644,7 +649,7 @@ function profileModal() {
 // ---- the feed ---------------------------------------------------------------------------------------------------
 const pick = (en, ur) => (S.lang === 'ur' && ur) || en;
 function ago(at) {
-  const m = Math.max(0, Math.round((Date.now() - at) / 60000));
+  const m = Math.max(0, Math.round((serverNow() - at) / 60000));
   return m < 1 ? t('ago_now') : m < 60 ? t('ago_m')(m) : m < 1440 ? t('ago_h')(Math.floor(m / 60)) : t('ago_d')(Math.floor(m / 1440));
 }
 // the author's own post, hidden after reports or by a moderator: say so, rather than let it look live
@@ -1086,13 +1091,13 @@ function dayWords(day) {
 }
 const asgLabel = (a) => a.kind === 'routine' ? daysLabel(wdList(a)) : a.dueDay ? t('due')(dayWords(a.dueDay)) : t('task_word');
 // the days a routine falls on: seven buttons (Monday first) and "Every day"
-const dayPicker = (id, picked = [new Date(Date.now() + 5 * 3600e3).getUTCDay()]) => `<fieldset class="daypick" id="${id}"><legend>${t('weekdays_pick')}</legend>
+const dayPicker = (id, picked = [new Date(serverNow() + 5 * 3600e3).getUTCDay()]) => `<fieldset class="daypick" id="${id}"><legend>${t('weekdays_pick')}</legend>
   <div class="chips">${[1, 2, 3, 4, 5, 6, 0].map((d) => `<label class="chip daychip"><input type="checkbox" name="wd" value="${d}" ${picked.includes(d) ? 'checked' : ''}><span>${esc(t('weekdays_short')[d])}</span></label>`).join('')}
   <button type="button" class="chip" data-act="everyday" data-for="${id}">${t('every_day')}</button></div></fieldset>`;
 const pickedDays = (form) => [...form.querySelectorAll('input[name=wd]:checked')].map((x) => Number(x.value));
 
 // a deadline input defaulting to a few days ahead (Pakistan time), never before today
-const pkDay = (plus = 0) => new Date(Date.now() + 5 * 3600e3 + plus * 864e5).toISOString().slice(0, 10);
+const pkDay = (plus = 0) => new Date(serverNow() + 5 * 3600e3 + plus * 864e5).toISOString().slice(0, 10);
 const dueInput = (id, name = 'dueDay', value = pkDay(3)) => `<input id="${id}" type="date" name="${name}" min="${pkDay()}" value="${esc(value)}" required dir="ltr">`;
 
 // the doer's own row, after Todoist: a round checkbox on the left, swipe right to complete, swipe left to reschedule, ⋯ for the rest
