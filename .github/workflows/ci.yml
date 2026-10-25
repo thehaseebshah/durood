@@ -11,3 +11,15 @@ jobs:
         with:
           node-version: 22
       - run: npm test
+      # malformed input on every API route: no route may answer 5xx
+      - run: npm run fuzz
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Playwright is only needed here, so it is installed for the run and never added to the app's dependencies
+      - run: npm install --no-save playwright@1.48.2 && npx playwright install --with-deps chromium
+      - run: npm run e2e
