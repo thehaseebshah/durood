@@ -77,6 +77,13 @@ try {
     await page.fill('#manual', '10'); await page.press('#manual', 'Enter'); await page.waitForTimeout(1600);
     await page.locator('[data-act=celebrateX]').click().catch(() => {});
     ok((await page.locator('#big').textContent()).trim() === '160', 'Enter in the durood box adds it');
+    // count by tapping: five taps, then add them
+    await page.click('[data-act=taptoggle]'); await page.waitForTimeout(300);
+    for (let i = 0; i < 5; i++) { await page.click('[data-act=tap]'); await page.waitForTimeout(60); }
+    ok((await page.locator('#pend').textContent()).trim() === '5', 'taps are counted before adding');
+    await page.click('[data-act=submitp]'); await page.waitForTimeout(1500);
+    await page.locator('[data-act=celebrateX]').click().catch(() => {});
+    ok((await api('GET', '/api/me', null, host.token)).today === 165, 'tapped durood is added once');
     ok(await page.locator('.u-durood').count() > 0 && await page.locator('.u-pts').count() > 0, 'numbers carry durood / pts units');
     ok(!(await overflowX(page)), 'Today has no sideways scroll on a phone');
     // today's sunnah: tick it, then post a photo (made in the page: a canvas drawn and handed to the file input)
