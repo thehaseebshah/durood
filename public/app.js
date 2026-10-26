@@ -1269,7 +1269,9 @@ function burhanCaravan() {
   const shown = tf ? ra.filter((x) => (x.tags || []).includes(tf)) : ra;
   const chips = allTags.length ? `<div class="chips tagbar"><button class="chip ${tf ? '' : 'solid'}" data-act="teamf" data-tag="">${t('team_all')} ${N(String(ra.length))}</button>${allTags.map((x) => `<button class="chip ${tf === x.tag ? 'solid' : ''}" data-act="teamf" data-tag="${esc(x.tag)}">#${esc(x.tag)} ${N(String(x.n))}</button>`).join('')}</div>` : (ra.length ? `<p class="hint padx">${t('team_hint')}</p>` : '');
   const teamForm = tf ? assignForm('teamassign', t('team_assign')(esc(tf))) : '';
-  const razakars = ra.length ? `${chips}${teamForm}<ul class="lb">${shown.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(cityName(x.city))} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.asks ? ` · <b>${t('asks_n')(x.asks)}</b>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${N(`${x.routinePercent}%`)}`}${(x.tags || []).length ? `<span class="tagline">${x.tags.map((g) => `<em class="ttag">#${esc(g)}</em>`).join(' ')}</span>` : ''}</small></span><span class="score">${U(x.duroodWeek, 'durood')}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('razakars_none')}</p>`;
+  // "everyone I lead": the same task form, for all of this masul's razakars at once (shown when no team is picked)
+  const everyoneBox = !ra.length || tf ? '' : `<button class="rowlink" data-act="assignall" aria-expanded="${!!S.assignAll}"><span>${t('assign_everyone_btn')}</span><b class="ar">${S.assignAll ? '↑' : '→'}</b></button>${S.assignAll ? assignForm('everyoneassign', t('assign_everyone')(ra.length)) : ''}`;
+  const razakars = ra.length ? `${chips}${teamForm}${everyoneBox}<ul class="lb">${shown.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(cityName(x.city))} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.asks ? ` · <b>${t('asks_n')(x.asks)}</b>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${N(`${x.routinePercent}%`)}`}${(x.tags || []).length ? `<span class="tagline">${x.tags.map((g) => `<em class="ttag">#${esc(g)}</em>`).join(' ')}</span>` : ''}</small></span><span class="score">${U(x.duroodWeek, 'durood')}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('razakars_none')}</p>`;
   return `${rq.length ? fold('preq', t('requests_title'), N(String(rq.length)), reqs) : ''}
   ${fold('psaliks', t('saaliks_title'), N(String(sa.length)), saliks)}
   ${fold('prazakars', t('razakars_title'), N(String(ra.length)), razakars)}`;
@@ -1923,6 +1925,7 @@ app.addEventListener('click', async (ev) => {
   if (act === 'setfeel') { setPref(el.dataset.k, el.dataset.v === '1'); if (el.dataset.v === '1') { haptic('round'); sound('round'); } return draw(); }
   if (act === 'everyday') { const box = $(`#${el.dataset.for}`); const all = [...box.querySelectorAll('input[name=wd]')]; const on = !all.every((x) => x.checked); all.forEach((x) => { x.checked = on; }); return; }
   if (act === 'teamf') { S.teamFilter = el.dataset.tag || null; S.assignForm = { kind: 'task' }; return draw(); }
+  if (act === 'assignall') { S.assignAll = !S.assignAll; S.assignForm = { kind: 'task' }; return draw(); }
   if (act === 'tagadd' || act === 'tagdel') {
     const d = S.bhDetail, cur = d?.data?.tags || [];
     const next = act === 'tagadd' ? [...cur, ($('#tag-new')?.value || '').trim()].filter(Boolean) : cur.filter((g) => g !== el.dataset.tag);
@@ -2115,11 +2118,16 @@ app.addEventListener('submit', async (ev) => {
       if (!f.cityId) throw new Error('city_required');
       S.me = await api('/me', 'PATCH', { cityId: Number(f.cityId) });
       toast(t('saved')); draw();
+    } else if (kind === 'everyoneassign') {
+      const k = (S.assignForm || {}).kind || 'task';
+      const r = await api('/assignments', 'POST', { everyone: true, kind: k, title: f.title, ...(k === 'routine' ? { weekdays: pickedDays(form) } : { dueDay: f.dueDay }) });
+      const rl = await api('/burhan/razakars'); S.bhLists = { ...S.bhLists, razakars: rl.razakars, tags: rl.tags };
+      form.reset(); S.assignAll = false; toast(r.skipped ? `${t('team_given')(r.count)} · ${t('team_skipped')(r.skipped)}` : t('team_given')(r.count)); draw();
     } else if (kind === 'teamassign') {
       const k = (S.assignForm || {}).kind || 'task';
       const r = await api('/assignments', 'POST', { team: S.teamFilter, kind: k, title: f.title, ...(k === 'routine' ? { weekdays: pickedDays(form) } : { dueDay: f.dueDay }) });
       const rl = await api('/burhan/razakars'); S.bhLists = { ...S.bhLists, razakars: rl.razakars, tags: rl.tags };
-      form.reset(); toast(t('team_given')(r.count)); draw();
+      form.reset(); toast(r.skipped ? `${t('team_given')(r.count)} \u00b7 ${t('team_skipped')(r.skipped)}` : t('team_given')(r.count)); draw();
     } else if (kind === 'inviter') {
       const r = await api('/me/inviter', 'POST', { username: f.username });
       S.me = r.me; S.team = await api('/team'); toast(t('who_invited_done')(r.inviter)); haptic('done'); draw();

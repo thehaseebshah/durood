@@ -206,6 +206,15 @@ try {
     const rep = await api('GET', '/api/burhan/razakars/e2e_kid', null, host.token);
     ok(JSON.stringify(rep).includes('Bring the banner') && rep.assignments?.some?.((x) => x.title === 'Bring the banner' && x.done), 'the razakar completes it and the masul sees it done');
     await kp.close();
+    // "Everyone I lead": one task for all of the masul's razakars from My people, without picking a team
+    const ep = await open(host.token); await go(ep, 'people');
+    await ep.click('[data-act=assignall]'); await ep.waitForTimeout(400);
+    const due2 = new Date(Date.now() + 5 * 3600e3 + 3 * 864e5).toISOString().slice(0, 10);
+    await ep.fill('form[data-form=everyoneassign] input[name=title]', 'Everyone: read one page');
+    await ep.fill('form[data-form=everyoneassign] input[type=date]', due2);
+    await ep.click('form[data-form=everyoneassign] button[type=submit]'); await ep.waitForTimeout(1000);
+    ok((await api('GET', '/api/burhan', null, kid.token)).assignments.some((x) => x.title === 'Everyone: read one page'), 'the masul gives a task to everyone they lead in one step');
+    await ep.close();
   }
 
   // ---- reflection, a lecture, the daily goal and the language from Settings ------------------------------------------------------

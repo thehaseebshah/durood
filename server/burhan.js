@@ -312,12 +312,29 @@ export function setTags(masulId, username, tags) {
 }
 const tagsOf = (masulId, razakarId) => all('SELECT tag FROM team_tags WHERE masul_id = ? AND razakar_id = ? ORDER BY tag', masulId, razakarId).map((x) => x.tag);
 export const masulTags = (masulId) => all('SELECT tag, COUNT(*) n FROM team_tags WHERE masul_id = ? GROUP BY tag ORDER BY tag', masulId);
+/** One task (or routine) for each of these razakars. Someone who already has the maximum of active assignments is skipped (and counted),
+ *  so one full member cannot stop the rest from getting it; anything wrong with the task itself still stops everything. */
+function giveMany(masulId, ids, fields) {
+  return tx(() => {
+    let count = 0, skipped = 0;
+    for (const id of ids) {
+      try { insertAssignment(masulId, id, fields); count++; } catch (e) { if (e instanceof HttpError && e.code === 'too_many_assignments') skipped++; else throw e; }
+    }
+    return { count, skipped };
+  });
+}
 /** One task (or routine) for every razakar in the team. */
 export function assignTeam(masulId, rawTag, fields) {
   const tag = cleanTag(rawTag);
   const ids = all('SELECT t.razakar_id id FROM team_tags t JOIN masul_links l ON l.razakar_id = t.razakar_id AND l.masul_id = t.masul_id JOIN users u ON u.id = t.razakar_id WHERE t.masul_id = ? AND t.tag = ? AND u.deleted_at IS NULL', masulId, tag);
   if (!ids.length) throw new HttpError(404, 'empty_team');
-  return tx(() => ({ count: ids.map(({ id }) => insertAssignment(masulId, id, fields)).length }));
+  return giveMany(masulId, ids.map((x) => x.id), fields);
+}
+/** One task (or routine) for every razakar this masul leads. */
+export function assignEveryone(masulId, fields) {
+  const ids = all('SELECT u.id FROM masul_links l JOIN users u ON u.id = l.razakar_id WHERE l.masul_id = ? AND u.deleted_at IS NULL', masulId);
+  if (!ids.length) throw new HttpError(404, 'empty_team');
+  return giveMany(masulId, ids.map((x) => x.id), fields);
 }
 
 export function addAssignment(masulId, razakarUsername, fields) {

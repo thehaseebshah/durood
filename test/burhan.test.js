@@ -383,6 +383,28 @@ test('team tags: a masul sorts razakars into #teams, gives a whole team a task, 
   assert.deepEqual(audit().problems, []);
 });
 
+test('everyone I lead: one task for all of a masul\'s razakars; a full member is skipped, not the whole batch; others\' people are untouched', async () => {
+  const m = await signup('ev_masul'), other = await signup('ev_other'), r1 = await signup('ev_r1'), r2 = await signup('ev_r2'), r3 = await signup('ev_r3'), stranger = await signup('ev_stranger');
+  for (const r of [r1, r2, r3]) await api('PUT', '/api/burhan/masul', { token: r.token, body: { username: 'ev_masul' } });
+  await api('PUT', '/api/burhan/masul', { token: stranger.token, body: { username: 'ev_other' } });
+  const give = (token, extra = {}) => api('POST', '/api/assignments', { token, body: { kind: 'task', title: 'Read one page', dueDay: dayOf(), ...extra } });
+  assert.equal((await give(other.token, { everyone: true, title: 'x' })).count, 1, 'a masul with one razakar gives it to that one');
+  assert.equal((await give(m.token, { everyone: true, title: '  ' })).error, 'empty_text', 'a bad task still stops everything');
+  const all3 = await give(m.token, { everyone: true });
+  assert.deepEqual([all3.count, all3.skipped], [3, 0], 'all three razakars get it, with no tags needed');
+  for (const r of [r1, r2, r3]) assert.ok((await api('GET', '/api/burhan', { token: r.token })).assignments.some((a) => a.title === 'Read one page'));
+  assert.ok(!(await api('GET', '/api/burhan', { token: stranger.token })).assignments.some((a) => a.title === 'Read one page'), 'another masul\'s razakar is not touched');
+  // r3 is full (30 active): the other two still get the next one, and the answer says one was skipped
+  for (let i = 0; i < 29; i++) await give(m.token, { razakar: 'ev_r3', title: `Filler ${i}` });
+  const next = await give(m.token, { everyone: true, title: 'Second task' });
+  assert.deepEqual([next.count, next.skipped], [2, 1]);
+  assert.ok((await api('GET', '/api/burhan', { token: r1.token })).assignments.some((a) => a.title === 'Second task'));
+  assert.ok(!(await api('GET', '/api/burhan', { token: r3.token })).assignments.some((a) => a.title === 'Second task'), 'the full member did not get it');
+  const noOne = await signup('ev_nobody');
+  assert.equal((await give(noOne.token, { everyone: true })).error, 'empty_team');
+  assert.deepEqual(audit().problems, []);
+});
+
 test('routines can fall on several weekdays (Saturday and Sunday, or every day)', async () => {
   const me = await signup('wd_me');
   const today = new Date(`${dayOf()}T00:00:00Z`).getUTCDay(), other = [(today + 2) % 7, (today + 4) % 7];

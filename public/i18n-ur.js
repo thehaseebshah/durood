@@ -16,7 +16,7 @@ export const UR = {
     every_day: 'روزانہ', weekdays_pick: 'ان دنوں', weekdays_short: ['اتوار', 'پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ'],
     more_actions: 'مزید', task_done: 'مکمل', rs_today: 'آج', rs_tomorrow: 'کل', rs_in_3_days: '3 دن میں', rs_next_week: 'اگلے ہفتے', rs_moved: (d) => `${d} پر منتقل`,
     feel_sound: 'آوازیں (گنتی کی ٹک، گھنٹی)', feel_vibrate: 'وائبریشن',
-    team_all: 'سب', team_tags: 'ٹیمیں', team_add_ph: 'ٹیم شامل کریں، مثلاً #stage', team_hint: 'اپنے رضاکاروں کو #ٹیگ سے ٹیموں میں بانٹیں۔ یہ صرف آپ دیکھتے ہیں۔', team_assign: (tg) => `#${tg} کو کام یا معمول دیں`, team_given: (n) => `${n} رضاکاروں کو دیا گیا`,
+    team_all: 'سب', team_tags: 'ٹیمیں', team_add_ph: 'ٹیم شامل کریں، مثلاً #stage', team_hint: 'اپنے رضاکاروں کو #ٹیگ سے ٹیموں میں بانٹیں۔ یہ صرف آپ دیکھتے ہیں۔', team_assign: (tg) => `#${tg} کو کام یا معمول دیں`, assign_everyone_btn: 'اپنے تمام رضاکاروں کو کام یا معمول دیں', assign_everyone: (n) => `اپنے تمام ${n} رضاکاروں کو کام یا معمول دیں`, team_skipped: (n) => `${n} کو چھوڑ دیا گیا: ان کے فعال کاموں کی حد پوری ہے`, team_given: (n) => `${n} رضاکاروں کو دیا گیا`,
     majlis_title: 'مجلس', majlis_text: 'البرہان میں آپ کا شعبہ۔ مجالس کی ہر ہفتے شہروں کی طرح درجہ بندی ہوتی ہے۔', majlis_none: 'کوئی مجلس نہیں', majlis_save: 'محفوظ کریں',
     majlis_propose: 'نئی مجلس تجویز کریں', majlis_propose_ph: 'مجلس کا نام', majlis_propose_ur: 'اردو نام (اختیاری)', majlis_send: 'منتظم کو بھیجیں',
     majlis_waiting: (n) => `«${n}» منتظم کی منظوری کی منتظر ہے۔ منظوری پر آپ اس میں شامل ہو جائیں گے۔`, majlis_refused: (n) => `«${n}» منظور نہیں ہوئی۔`, rk_majalis: 'مجالس',

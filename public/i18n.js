@@ -15,7 +15,7 @@ export const I18N = {
     every_day: 'Every day', weekdays_pick: 'On these days', weekdays_short: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     more_actions: 'More', task_done: 'Done', rs_today: 'Today', rs_tomorrow: 'Tomorrow', rs_in_3_days: 'In 3 days', rs_next_week: 'Next week', rs_moved: (d) => `Moved to ${d}`,
     feel_sound: 'Sounds (counter clicks, chimes)', feel_vibrate: 'Vibration',
-    team_all: 'All', team_tags: 'Teams', team_add_ph: 'Add a team, e.g. #stage', team_hint: 'Sort your razakars into teams with #tags. Only you see them.', team_assign: (tg) => `Give #${tg} a task or routine`, team_given: (n) => `Given to ${n} ${n === 1 ? 'razakar' : 'razakars'}`,
+    team_all: 'All', team_tags: 'Teams', team_add_ph: 'Add a team, e.g. #stage', team_hint: 'Sort your razakars into teams with #tags. Only you see them.', team_assign: (tg) => `Give #${tg} a task or routine`, assign_everyone_btn: 'Give everyone you lead a task or routine', assign_everyone: (n) => `Give all ${n} people you lead a task or routine`, team_skipped: (n) => `${n} skipped: already at the limit of active tasks`, team_given: (n) => `Given to ${n} ${n === 1 ? 'razakar' : 'razakars'}`,
     majlis_title: 'Majlis', majlis_text: 'Your department at Al-Burhan. Majalis are ranked each week like cities.', majlis_none: 'No majlis', majlis_save: 'Save',
     majlis_propose: 'Propose a new majlis', majlis_propose_ph: 'Name of the majlis', majlis_propose_ur: 'Name in Urdu (optional)', majlis_send: 'Send to an admin',
     majlis_waiting: (n) => `“${n}” is waiting for an admin to approve it. You join it once it is approved.`, majlis_refused: (n) => `“${n}” was not approved.`, rk_majalis: 'Majalis',
