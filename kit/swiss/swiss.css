@@ -1,0 +1,121 @@
+/* Swiss promo kit: the look of 002 "The full tour" (the app's own identity: white paper, black ink, one green, heavy Inter,
+   a hairline grid, the eight-point star). Paths are relative to kit/swiss/, two folders down like videos/NNN-slug/. */
+@font-face { font-family: 'Inter'; src: url('../../assets/fonts/inter-latin.woff2') format('woff2'); font-weight: 100 900; }
+@font-face { font-family: 'Nastaliq'; src: url('../../assets/fonts/nastaliq-ur-400.woff2') format('woff2'); font-weight: 400; }
+@font-face { font-family: 'Nastaliq'; src: url('../../assets/fonts/nastaliq-ur-700.woff2') format('woff2'); font-weight: 700; }
+@font-face { font-family: 'Amiri'; src: url('../../assets/fonts/amiri.woff2') format('woff2'); }
+@font-face { font-family: 'Salawat'; src: url('../../assets/fonts/salawat.woff2') format('woff2'); unicode-range: U+FDFA; }
+:root { --paper: #ffffff; --ink: #0b0b0b; --soft: #66665f; --hair: #e6e6e0; --sig: #00a86b; --sigt: #007a4d; --tint: #e3f6ed; --arrow: #2ee59d; }
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--paper); }
+body { font-family: 'Inter', 'Salawat', sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+.stage { position: absolute; inset: 0; overflow: hidden; background: var(--paper); }
+canvas { position: absolute; inset: 0; }
+.abs { position: absolute; }
+.w, .fx { will-change: transform, opacity, filter; }
+.w { display: inline-block; }
+.green { color: var(--sig); }
+.ur { font-family: 'Inter', 'Nastaliq', serif; direction: rtl; }
+.ar { font-family: 'Amiri', serif; direction: rtl; }
+.kick { font-weight: 800; font-size: 28px; letter-spacing: 5px; text-transform: uppercase; color: var(--sigt); display: flex; align-items: center; gap: 14px; }
+.star { display: inline-block; position: relative; width: 1em; height: 1em; flex: none; }
+.star i { position: absolute; inset: 14%; background: currentColor; }
+.star i + i { transform: rotate(45deg); }
+.head { font-weight: 900; font-size: 86px; line-height: 1.0; letter-spacing: -3.5px; }
+
+/* captions above the phone, on a white scrim so they read over a zoomed screen */
+#scrim { left: 0; right: 0; top: 0; height: 720px; background: linear-gradient(#fff 0%, rgba(255,255,255,.96) 52%, rgba(255,255,255,0) 100%); pointer-events: none; }
+.cap { left: 80px; right: 80px; top: 150px; }
+.cap .head { margin-top: 14px; }
+.cap .sub { text-align: right; margin-top: 8px; font-size: 46px; line-height: 1.9; color: var(--soft); }
+#bar { left: 80px; right: 80px; top: 60px; height: 8px; display: flex; gap: 6px; }
+#bar i { flex: 1; background: var(--hair); position: relative; overflow: hidden; }
+#bar i b { position: absolute; inset: 0; background: var(--ink); transform-origin: left; transform: scaleX(0); }
+#brand { left: 80px; right: 80px; top: 86px; display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 22px; letter-spacing: 5px; text-transform: uppercase; }
+#brand .ur { letter-spacing: 0; font-size: 30px; font-weight: 700; color: var(--sigt); }
+
+/* the phone: black, square-shouldered, with the app's hard green offset shadow */
+#rig { left: 0; top: 0; width: 1080px; height: 1920px; perspective: 2600px; perspective-origin: 540px 1000px; }
+#phone { position: absolute; left: 0; top: 0; width: 596px; height: 1248px; border-radius: 70px; padding: 18px; background: var(--ink); box-shadow: 30px 30px 0 var(--sig); transform-style: preserve-3d; }
+#scr { position: relative; width: 560px; height: 1212px; border-radius: 54px; overflow: hidden; background: #f2f2f7; isolation: isolate; }
+.slot { position: absolute; inset: 0; overflow: hidden; background: #f2f2f7; }
+.slot .page { position: absolute; left: 0; top: 0; width: 560px; }
+.slot .crop { position: absolute; left: 0; width: 560px; overflow: hidden; }
+.slot .crop img { position: absolute; left: 0; width: 560px; height: 1212px; }
+.slot .view, .slot .alt { position: absolute; left: 0; top: 0; width: 560px; height: 1212px; }
+.spot { position: absolute; border: 4px solid var(--sig); border-radius: 6px; box-shadow: 0 0 0 3000px rgba(11,11,11,.52); pointer-events: none; }
+.cm { position: absolute; width: 30px; height: 30px; border: 0 solid #fff; pointer-events: none; }
+.ring { position: absolute; border: 3px solid var(--sig); border-radius: 8px; pointer-events: none; }
+#ripple { position: absolute; width: 140px; height: 140px; margin: -70px 0 0 -70px; border-radius: 50%; border: 6px solid var(--ink); }
+#offline { position: absolute; inset: 0; background: rgba(255,255,255,.6); display: grid; place-items: center; }
+#offline .chip { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 34px 38px; background: #fff; border: 3px solid var(--ink); box-shadow: 16px 16px 0 var(--sig); width: 470px; }
+#offline .chip b { font-size: 28px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; color: var(--sigt); }
+#offline .chip span { font-size: 70px; font-weight: 900; letter-spacing: -3px; line-height: 1; }
+#offline .chip small { font-size: 24px; color: var(--soft); line-height: 1.35; }
+
+/* callouts: black blocks with a hard green shadow */
+.label { position: absolute; padding: 20px 28px 14px; background: var(--ink); color: #fff; max-width: 760px; box-shadow: 14px 14px 0 var(--sig); }
+.label b { display: block; font-weight: 800; font-size: 38px; line-height: 1.15; letter-spacing: -.5px; }
+.label span { display: block; font-size: 34px; line-height: 1.9; color: var(--arrow); text-align: right; }
+.label i { position: absolute; width: 22px; height: 22px; margin-left: -11px; background: var(--sig); }
+.label.below i { top: -11px; } .label.above i { bottom: -11px; }
+
+/* chapter panels: full-bleed green or black, wiped across */
+.chap { inset: 0; overflow: hidden; }
+.chap.g { background: var(--sig); color: var(--ink); }
+.chap.k { background: var(--ink); color: #fff; }
+.chap .num { position: absolute; left: 60px; top: 230px; font-weight: 900; font-size: 470px; letter-spacing: -24px; line-height: 1; color: transparent; -webkit-text-stroke: 4px #0b0b0b; }
+.chap.k .num { -webkit-text-stroke-color: var(--arrow); }
+.chap .stack { position: absolute; left: 80px; right: 80px; top: 820px; }
+.chap .ttl { font-weight: 900; font-size: 168px; letter-spacing: -8px; line-height: .92; }
+.chap .ttl .w { transform-origin: 0 100%; }
+.chap .rule { height: 10px; width: 320px; background: currentColor; margin: 46px 0 30px; transform-origin: left; }
+.chap.k .rule { background: var(--sig); }
+.chap .tur { font-family: 'Nastaliq', serif; font-weight: 700; font-size: 88px; line-height: 1.7; direction: rtl; text-align: right; }
+.chap.k .tur { color: var(--arrow); }
+.chap .line { font-size: 46px; font-weight: 700; letter-spacing: -1px; margin-top: 18px; }
+.chap .lur { font-size: 42px; line-height: 1.9; direction: rtl; text-align: right; opacity: .8; }
+.chap svg.bigstar { position: absolute; right: -330px; top: 120px; width: 900px; height: 900px; opacity: .22; }
+
+/* opening slams and the sayings near the end: one word or line per full-bleed panel */
+.slam { inset: 0; display: flex; flex-direction: column; justify-content: center; padding: 0 80px; }
+.slam.g { background: var(--sig); color: var(--ink); } .slam.k { background: var(--ink); color: #fff; } .slam.p { background: var(--paper); color: var(--ink); }
+.slam .big { font-weight: 900; font-size: 200px; letter-spacing: -10px; line-height: .9; text-transform: uppercase; }
+.slam .big em { font-style: normal; color: var(--sig); }
+.slam.g .big em { color: #fff; }
+.slam .su { font-size: 64px; line-height: 2; direction: rtl; text-align: right; margin-top: 30px; }
+.slam.k .su { color: var(--arrow); } .slam.g .su { color: var(--ink); } .slam.p .su { color: var(--sigt); }
+.slam .mid { font-weight: 900; font-size: 112px; letter-spacing: -5px; line-height: .98; }
+.slam .mid em { font-style: normal; color: var(--sig); }
+.slam.g .mid em { color: #fff; }
+
+/* 3D decks of screens and the flat mosaics */
+#deck { inset: 0; perspective: 2200px; perspective-origin: 540px 1000px; }
+#deck .card { position: absolute; left: 0; top: 0; width: 520px; height: 1125px; box-shadow: 0 0 0 4px var(--ink), 22px 22px 0 var(--sig); backface-visibility: hidden; background: #fff; }
+#deck .card img { width: 100%; height: 100%; display: block; }
+#deck .tag { position: absolute; left: 0; right: 0; bottom: -100px; text-align: center; font-weight: 900; font-size: 44px; letter-spacing: -1px; }
+#deck .tag span { display: block; font-family: 'Nastaliq', serif; font-size: 34px; color: var(--sigt); }
+#mosaic { inset: 0; }
+#mosaic .tile { position: absolute; left: 0; top: 0; box-shadow: 0 0 0 3px var(--ink), 12px 12px 0 var(--sig); background: #fff; }
+#mosaic .tile img { width: 100%; height: 100%; display: block; }
+
+/* laptop */
+#laptop { left: 90px; top: 800px; width: 900px; height: 700px; perspective: 2000px; perspective-origin: 450px 300px; }
+#lid { position: absolute; left: 0; top: 0; width: 900px; height: 590px; transform-origin: 50% 100%; transform-style: preserve-3d; }
+#lid .bez { position: absolute; inset: 0; border-radius: 22px 22px 4px 4px; background: var(--ink); padding: 22px 22px 34px; box-shadow: 24px 24px 0 var(--sig); }
+#lid img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 4px; display: block; }
+#base { position: absolute; left: -60px; top: 590px; width: 1020px; height: 34px; border-radius: 0 0 26px 26px; background: linear-gradient(#d9d9d3, #a9a9a2); box-shadow: 0 2px 0 var(--ink); }
+
+/* opening and finale */
+#durood { left: 40px; right: 40px; top: 560px; text-align: center; font-size: 104px; line-height: 2.0; }
+#duroodEn { left: 120px; right: 120px; top: 1110px; text-align: center; font-size: 40px; line-height: 1.45; color: var(--soft); }
+#duroodRule { left: 380px; width: 320px; top: 1060px; height: 8px; background: var(--sig); transform-origin: center; }
+.logo { left: 80px; font-weight: 900; font-size: 250px; letter-spacing: -14px; line-height: .86; }
+#logoUr { left: 80px; right: 80px; top: 1170px; font-family: 'Nastaliq', serif; font-weight: 700; font-size: 110px; color: var(--sigt); direction: rtl; text-align: right; }
+#logoTag { left: 80px; top: 1460px; display: flex; gap: 28px; align-items: center; padding: 24px 34px; background: var(--ink); color: #fff; font-weight: 800; font-size: 36px; letter-spacing: 4px; text-transform: uppercase; box-shadow: 14px 14px 0 var(--sig); }
+#logoTag .ur { letter-spacing: 0; font-size: 36px; color: var(--arrow); text-transform: none; }
+#icon { left: 80px; top: 250px; width: 230px; height: 230px; border-radius: 52px; box-shadow: 0 0 0 4px var(--ink), 20px 20px 0 var(--sig); }
+.fbig { left: 80px; right: 80px; font-weight: 900; font-size: 150px; letter-spacing: -8px; line-height: .9; }
+#cta { left: 80px; right: 80px; top: 1340px; display: flex; justify-content: space-between; align-items: center; padding: 34px 40px 22px; background: var(--ink); color: #fff; font-weight: 800; font-size: 46px; box-shadow: 18px 18px 0 var(--sig); }
+#cta .ur { display: block; font-size: 38px; font-weight: 400; line-height: 1.9; text-align: left; color: var(--arrow); }
+#cta b { font-size: 64px; color: var(--arrow); }

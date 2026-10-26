@@ -1,0 +1,48 @@
+<!doctype html>
+<!-- Starter for a new promo on the Swiss kit. Copy it to videos/NNN-slug/scene.html (two folders down, so the ../../ paths
+     work), change the words and the story, check stills (tools/stills.mjs), then render (tools/render.mjs --jobs 4).
+     Every field is described in kit/swiss/README.md. This one runs as is: a short promo of about 50 seconds. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>New promo</title>
+<link rel="stylesheet" href="../../kit/swiss/swiss.css">
+</head>
+<body>
+<script src="../../kit/swiss/engine.js"></script>
+<script>
+const { chapter: C, phone: P } = Promo;
+Promo.run({
+  assets: '../../assets/tour/',                               // captured screens (tools/capture-tour.mjs) and manifest.json
+  brand: { en: 'Seerah Quest', ur: 'سیرت کوئسٹ' },
+  open: {
+    slams: [[1.15, 'g', 'Count<em>.</em>', 'گنیں'], [2.2, 'k', 'Recite<em>.</em>', 'پڑھیں'], [3.25, 'p', 'Rise<em>.</em>', 'آگے بڑھیں'], [4.3, 'g', 'Together<em>.</em>', 'مل کر']],
+    durood: { ar: 'اللّٰهُمَّ صَلِّ عَلٰى مُحَمَّدٍ<br>وَعَلٰى اٰلِ مُحَمَّدٍ', en: 'O Allah, send blessings upon Muhammad ﷺ and upon the family of Muhammad' },
+    logo: { line1: 'Seerah', line2: 'Quest<span class="green">.</span>', ur: 'سیرت کوئسٹ', tag: 'Count together', tagUr: 'مل کر گنیں' },
+  },
+  offline: { title: 'No signal', big: '313 saved', small: 'on this phone, and sent once<br>you are back online' },
+  laptop: 'desktop',
+  mosaic: ['today', 'feed', 'rank-people', 'caravan', 'me', 'qabila', 'rank-league', 'settings', 'today-dark', 'rank-cities', 'today-ur', 'profile'],
+  wall: { en: 'Join us<span class="green">.</span>', ur: 'ہمارے ساتھ شامل ہوں' },
+  finale: { icon: '../../assets/icon-512.png', name: 'Seerah Quest<span class="green">.</span>', ur: 'سیرت کوئسٹ',
+    line: 'Every durood is dedicated to the <span class="green">Seerat Circles</span> across Pakistan.', lineUr: 'ہر درود پاکستان بھر کے سیرت سرکلز کے نام',
+    cta: 'Ask a member for an invite code', ctaUr: 'دعوتی کوڈ کسی رکن سے لیں' },
+  story: [
+    { type: 'open', d: 17.5 },                                // always first: the fixed 17.5 s opening
+    C('01', 'Count', 'گنیں', 'Every durood, counted exactly.', 'ہر درود کی درست گنتی'),
+    P('today', 4.6, ['Count', 'Your durood today.', 'آج کے درود'], [
+      { at: 0.8, key: 'big', en: 'Today’s count and your daily goal', ur: 'آج کی گنتی اور روزانہ کا ہدف', z: 1.45 }]),
+    { type: 'phone', shot: 'burst', d: 4.2, tr: 'cut', seq: { fps: 7, max: 12 }, cap: ['Goal', 'Reach your goal. MashaAllah!', 'ہدف پورا، ماشاءاللہ!'], hit: true, steps: [
+      { at: 2.0, rect: [12, 58, 366, 132], en: 'Goal reached · level up · a new badge', ur: 'ہدف پورا · نیا درجہ · نیا بیج', z: 1.5 }] },
+    C('02', 'Together', 'مل کر', 'Recite with your caravan.', 'کارواں کے ساتھ پڑھیں'),
+    P('caravan', 6.0, ['Together', 'Recite together, as a caravan.', 'کارواں کے ساتھ مل کر پڑھیں'], [
+      { at: 0.5, key: 'karwan', en: 'Caravan streak: everyone, every day', ur: 'کارواں کا سلسلہ: سب، ہر دن', z: 1.8 }]),
+    { type: 'deck', d: 6.0, cards: ['rank-people', 'rank-league', 'rank-cities'], tags: [['People', 'افراد'], ['League', 'لیگ'], ['Cities', 'شہر']], cap: ['Compete', 'Race in goodness.', 'نیکی میں آگے بڑھیں'] },
+    { type: 'say', d: 3.0, c: 'k', en: 'Free. It never asks <em>for money.</em>', ur: 'مفت، کبھی پیسے نہیں مانگتی' },
+    { type: 'wall', d: 5.0 },                                 // the closing mosaic, then:
+    { type: 'final', d: 8.0 },                                // always last
+  ],
+});
+</script>
+</body>
+</html>

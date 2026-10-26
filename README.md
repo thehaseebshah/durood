@@ -16,6 +16,9 @@ This branch holds content only; the app lives on the main branch. PDF guides can
 | `tools/capture-tour.mjs` | The same for every screen, with whole scrolling pages, frame-by-frame animations and measured element positions for spotlights |
 | `tools/render.mjs` | Renders a `scene.html` to MP4 frame by frame (exact timing on any machine); `--jobs 4` splits the work over four browsers |
 | `tools/sfx.mjs` | Synthesises the sound effects from the scene's cue list (no music, no samples) |
+| `tools/stills.mjs` | A contact sheet of stills from a scene, to check a video without rendering it; also prints its timing |
+| `kit/swiss/` | **The Swiss promo kit**: the engine and look of 002, plus a starter page. A new video is one short page with its words and storyboard ([how](kit/swiss/README.md)) |
+| `.claude/skills/promo-video/` | Step-by-step instructions for Claude sessions making the next promo |
 
 ## Videos
 
@@ -43,7 +46,7 @@ node tools/render.mjs videos/001-every-durood-counts
 node tools/render.mjs videos/002-the-full-tour --jobs 4
 ```
 
-A new video: copy a folder to `videos/NNN-slug/`, edit the text (each element's `data-in` / `data-out` say when it appears and leaves) and the timeline at the top of its `<script>`, render. In 002 the whole video is the `STORY` list at the top of the script: chapters, phone segments with their steps (a measured element or a rectangle to zoom to and spotlight, with its English and Urdu callout), decks, sayings.
+**A new video:** copy `kit/swiss/starter.html` to `videos/NNN-slug/scene.html`, write its words and storyboard, check stills with `tools/stills.mjs`, then render with `--jobs 4`. Everything the kit can do is in [kit/swiss/README.md](kit/swiss/README.md). 001 is a standalone scene in its own night-sky style; copy its folder for another video in that look.
 
 ## House rules
 
