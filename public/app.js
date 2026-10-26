@@ -794,7 +794,7 @@ function leagueView() {
   if (!L.joined) return `${head}<p class="muted" style="margin-inline:20px">${t('league_join')(name)}</p>${last}<p class="note">${t('league_rules')}</p>`;
   return `${head}${last}<ul class="lb">${L.rows.map((r) => `
     <li class="${r.me ? 'me' : ''} ${r.up ? 'up' : ''} ${r.down ? 'down' : ''}"><span class="rank">${r.rank}</span>${av(r, 34)}
-      <span class="name">${esc(r.username)}${r.me ? ` <em class="tag">${t('you')}</em>` : ''}<small>${r.up ? t('league_up') : r.down ? t('league_down') : esc(r.city || '')}</small></span>
+      <span class="name">${esc(r.username)}${r.me ? ` <em class="tag">${t('you')}</em>` : ''}<small>${r.up ? t('league_up') : r.down ? t('league_down') : esc(cityName(r.city) || '')}</small></span>
       <span class="score">${U(r.score, 'durood')}</span></li>`).join('')}</ul><p class="note">${t('league_rules')}</p>`;
 }
 
@@ -1356,7 +1356,7 @@ function detailModal() {
   if (d.type === 'saalik') {
     const p = r.profile;
     return `<div class="modal msheet"><div class="box wide">${head}
-      <p class="muted" dir="ltr">${esc(p.phone)} · ${esc(p.email)}<br>${esc(p.city || '')}${p.country ? ` · ${esc(p.country)}` : ''} · ${t('joined')} ${N(esc(p.joined))}</p>
+      <p class="muted" dir="ltr">${esc(p.phone)} · ${esc(p.email)}<br>${esc(cityName(p.city) || '')}${p.country ? ` · ${esc(p.country)}` : ''} · ${t('joined')} ${N(esc(p.joined))}</p>
       ${progressGrid(r.progress)}
       <p class="muted">${t('nav_caravan')}: <b>${r.extra.caravan ? esc(r.extra.caravan) : t('none_word')}</b></p>
       <div class="stats"><div><b>${fmt(r.extra.invited)}</b><span>${t('invited_word')}</span></div><div><b>${fmt(r.extra.qabila)}</b><span>${t('rk_trees')}</span></div><div><b>${fmt(r.extra.badges)}</b><span>${t('badges_word')}</span></div></div>
@@ -1369,7 +1369,7 @@ function detailModal() {
   }
   const f = S.assignForm || { kind: 'task' };
   return `<div class="modal msheet"><div class="box wide">${head}
-    <p class="muted">${esc(r.city || '')} · ${t('joined')} ${N(esc(r.joined))}</p>
+    <p class="muted">${esc(cityName(r.city) || '')} · ${t('joined')} ${N(esc(r.joined))}</p>
     ${progressGrid(r.progress)}
     <b>${t('assigned_view')}</b>
     ${r.assignments.length ? r.assignments.map((a) => assignRow(a, 'masul')).join('') : empty('check', t('none_assigned'))}
@@ -1620,7 +1620,8 @@ async function submitLog(count) {
 
 // ---- events ---------------------------------------------------------------------
 app.addEventListener('click', async (ev) => {
-  const el = ev.target.closest('[data-act]');
+  // a tap anywhere on a ranking row opens that member's profile, like tapping their photo (the photo stays the keyboard's button)
+  const el = ev.target.closest('[data-act]') || ev.target.closest('.lb li')?.querySelector('.avbtn[data-act=profile]');
   if (!el) return;
   const act = el.dataset.act;
 

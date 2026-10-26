@@ -386,6 +386,15 @@ try {
     ok(frames.size === 0, `no old-style hard frames anywhere${frames.size ? ': ' + [...frames].slice(0, 5).join('; ') : ''}`);
   }
 
+  // ---- Rankings: tapping a row anywhere (here its name) opens that member's profile, as tapping the photo does ----------------------
+  {
+    const page = await open(host.token); await go(page, 'rank');
+    const row = page.locator('.lb li:has(.avbtn)').first();
+    await row.locator('.name').click(); await page.waitForTimeout(700);
+    ok(await page.locator('.modal .box.profile').count() === 1, 'tapping a ranking row opens the profile');
+    await page.close();
+  }
+
   // ---- Tap targets: on a phone nothing a finger presses is under 24 px either way (WCAG 2.2 target size), every page with folds open ----
   {
     const small = new Set();
