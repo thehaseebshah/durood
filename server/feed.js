@@ -2,6 +2,7 @@ import { db, tx } from './db.js';
 import { HttpError, photoSig, avatarUrl } from './auth.js';
 import { CFG, dayOf, weekStart, grant, settleQuests, publicQuiz, quizPassed } from './game.js';
 import { cityPodium } from './compete.js';
+import { themeFor } from './reflection-themes.js';
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
@@ -19,12 +20,19 @@ export function setPrompt({ day, text_en, text_ur }) {
   return { ok: true };
 }
 export const listPrompts = () => all('SELECT * FROM prompts ORDER BY day DESC LIMIT 60');
-const promptOut = (p) => p && { day: p.day, textEn: p.text_en, textUr: p.text_ur };
+const promptOut = (p) => p && { day: p.day, textEn: p.text_en, textUr: p.text_ur, themeEn: null, themeUr: null };
+/** The question for a day: the one an administrator wrote, else that day's built-in theme (so it is never just "write something"). */
+export function promptFor(day) {
+  const own = one('SELECT * FROM prompts WHERE day = ?', day);
+  if (own) return promptOut(own);
+  const t = themeFor(day);
+  return { day, textEn: t.qEn, textUr: t.qUr, themeEn: t.en, themeUr: t.ur };
+}
 
 export function reflectionToday(userId) {
   const day = dayOf();
   const mine = one('SELECT * FROM reflections WHERE user_id = ? AND day = ?', userId, day);
-  return { prompt: promptOut(one('SELECT * FROM prompts WHERE day = ?', day)), mine: mine && { id: mine.id, body: mine.body, likes: mine.likes, status: mine.status }, max: REFLECTION_MAX };
+  return { prompt: promptFor(day), mine: mine && { id: mine.id, body: mine.body, likes: mine.likes, status: mine.status }, max: REFLECTION_MAX };
 }
 
 /** Plain text only: control characters out, no links, 1..max characters. */
@@ -232,7 +240,7 @@ export function feed(userId, before = Date.now() + 1) {
       WHERE r.status = 'visible' AND r.created_at < ? AND u.deleted_at IS NULL AND u.suspended = 0
       ORDER BY r.created_at DESC LIMIT ?`, userId, cutoff, FEED_PAGE + 1)) {
     items.push({ type: 'reflection', id: r.id, replies: replyN('reflection', r.id), at: r.created_at, username: r.username, displayName: r.dn, avatar: avatarUrl(r.user_id, r.av), city: r.city, body: r.body, likes: r.likes, liked: !!r.liked, mine: r.user_id === userId,
-      promptEn: r.text_en, promptUr: r.text_ur });
+      promptEn: r.text_en || themeFor(r.day).qEn, promptUr: r.text_en ? r.text_ur : themeFor(r.day).qUr });
   }
   for (const c of all(`SELECT c.id, c.user_id, c.body, c.likes, c.created_at, u.username, u.city, u.avatar_v av, u.display_name dn, l.title_en, l.title_ur,
         EXISTS(SELECT 1 FROM likes k WHERE k.kind = 'comment' AND k.item_id = c.id AND k.user_id = ?) liked

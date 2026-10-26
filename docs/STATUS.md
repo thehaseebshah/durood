@@ -51,6 +51,13 @@ For how the app behaves, read `docs/SPEC.md`. Sections 39 to 47 describe this wo
   - "no result" points to creating one
   - a wildcard no longer lists every caravan
 
+**From the phone screenshots (fixed)**
+- The big counter and the celebration number were cut off on the right at 5 digits (10,000, 9,714): they are now measured after drawing and shrunk to fit, whatever text size the phone uses.
+- The comma touched the next digit and its tail hit the line below; "durood" sat off the baseline next to "Goal 100"; the Seerat Circle buttons touched "Find a circle"; Qabila's intro touched the card below it; "cv_total" showed instead of "Total". All fixed.
+
+**Daily reflection themes (new)**
+- Every day now has a specific reflection question about the Seerah or the Sunnah. An admin's own question still takes priority; otherwise a built-in theme is used: 30 in a cycle, alternating 15 Seerah events and 15 Sunnah practices (e.g. "Seerah · Hudaybiyyah", "Sunnah · Miswak before prayer"), in English and Urdu. See SPEC section 48. **An organiser or scholar should read the list in `server/reflection-themes.js` once**, since it is religious content.
+
 **Urdu**
 - Percentages read "0%", not "%0".
 - The email and phone line in Settings sits on the right.

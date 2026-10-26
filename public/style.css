@@ -1138,3 +1138,9 @@ html[lang=ur] .ccap { letter-spacing: 0; text-transform: none; font-size: .9rem;
 .note + .linkinv, .note + .circlecard, .note + .startcard { margin-top: 14px; }
 /* stat labels that wrap (e.g. "Qabila this week") sit close together, with the unit beneath */
 .stats span { line-height: 1.35; }
+.fcard .head small.theme { display: block; margin-bottom: 4px; font-size: .74rem; font-weight: 600; letter-spacing: .02em; color: var(--sig-text); }
+.fcard .head small.theme b { font-weight: 800; }
+html[lang=ur] .fcard .head small.theme { font-size: .9rem; letter-spacing: 0; }
+/* the day's reflection question is a sentence or two, not a headline */
+.fcard .head.qprompt { font-size: 1.1rem; line-height: 1.55; font-weight: 650; }
+html[lang=ur] .fcard .head.qprompt { font-size: 1.2rem; line-height: 2.1; font-weight: 600; }

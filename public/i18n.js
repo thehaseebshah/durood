@@ -115,7 +115,7 @@ export const I18N = {
     appearance: 'Language and display', display: 'Display', mode_light: 'Light', mode_dark_name: 'Dark',
     nav_feed: 'Feed', feed_empty: 'Nothing here yet. Be the first to post.', more: 'Show more', ann_label: 'Announcement', ms_label: 'Milestone',
     ms_text: (who, badge) => `${who} earned ${badge}`, crore_text: (k) => `${k} crore durood reached together`,
-    reflect_title: 'Daily reflection', reflect_default: 'Write one short thought for today.', reflect_ph: 'Write here (up to 280 characters)', reflect_post: 'Post', reflect_rules: 'Plain text, no links, one a day.',
+    reflect_title: 'Daily reflection', theme_today: 'Today\u2019s theme', reflect_default: 'Write one short thought for today.', reflect_ph: 'Write here (up to 280 characters)', reflect_post: 'Post', reflect_rules: 'Plain text, no links, one a day.',
     lecture_week: 'Lecture of the week', comment_title: 'Your comment', comment_ph: 'Share one thought on this lecture (up to 280 characters)', comment_rules: 'Plain text, no links, one per lecture.', comment_locked: 'Pass the quiz to leave a comment.', comment_locked_watch: 'Watch the lecture to leave a comment.', reply_btn: 'Reply', reply_ph: 'Reply (up to 140 characters)', reply_send: 'Send', reply_limit_note: 'You have used your 3 replies here.', report_ask_reply: 'Report this reply as inappropriate?', q_reflect: 'Write today’s reflection',
     ago_now: 'now', ago_m: (n) => `${n}m`, ago_h: (n) => `${n}h`, ago_d: (n) => `${n}d`,
     rk_people: 'People', rk_caravans: 'Caravans', rk_trees: 'Qabila', rk_note_caravans: 'A caravan is a named group of members.', rk_note_trees: 'A Qabila is everyone under a person, at every level.',

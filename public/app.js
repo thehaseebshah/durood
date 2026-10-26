@@ -713,11 +713,12 @@ function sunnahCard(d) {
 
 function reflectionCard(r) {
   const prompt = r.prompt ? pick(r.prompt.textEn, r.prompt.textUr) : t('reflect_default');
+  const theme = r.prompt?.themeEn ? pick(r.prompt.themeEn, r.prompt.themeUr) : '';
   const body = r.mine
     ? `<div class="reflbody" dir="auto">${esc(r.mine.body)}</div>${hiddenNote(r.mine.status)}<div class="muted">${uiIcon('heart', 14, 2)} ${fmt(r.mine.likes)}</div>`
     : `<textarea id="refl" aria-label="${esc(t('reflect_title'))}" maxlength="${r.max}" rows="3" placeholder="${t('reflect_ph')}" dir="auto">${esc(S.reflDraft || '')}</textarea>
        <div class="row between"><small class="muted">${t('reflect_rules')}</small><button class="chip solid" data-act="reflect">${t('reflect_post')}</button></div>`;
-  return `<div class="fcard"><h3>${uiIcon('pen', 14, 2)} ${t('reflect_title')}</h3><div class="head">${esc(prompt)}</div>${body}</div>`;
+  return `<div class="fcard"><h3>${uiIcon('pen', 14, 2)} ${t('reflect_title')}</h3><div class="head qprompt">${theme ? `<small class="theme">${t('theme_today')}: <b>${esc(theme)}</b></small>` : ''}${esc(prompt)}</div>${body}</div>`;
 }
 
 function lectureCard(x) {

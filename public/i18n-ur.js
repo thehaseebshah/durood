@@ -116,7 +116,7 @@ export const UR = {
     appearance: 'زبان اور ظاہری شکل', display: 'ظاہری شکل', mode_light: 'روشن', mode_dark_name: 'ڈارک',
     nav_feed: 'فیڈ', feed_empty: 'ابھی یہاں کچھ نہیں۔ پہلی پوسٹ آپ کریں۔', more: 'مزید دکھائیں', ann_label: 'اعلان', ms_label: 'سنگِ میل',
     ms_text: (who, badge) => `${who} نے ${badge} حاصل کیا`, crore_text: (k) => `سب نے مل کر ${k} کروڑ درود مکمل کیا`,
-    reflect_title: 'روزانہ تحریر', reflect_default: 'آج کے لیے ایک مختصر بات لکھیں۔', reflect_ph: 'یہاں لکھیں (زیادہ سے زیادہ 280 حروف)', reflect_post: 'پوسٹ کریں', reflect_rules: 'سادہ متن، کوئی لنک نہیں، دن میں ایک۔',
+    reflect_title: 'روزانہ تحریر', theme_today: 'آج کا موضوع', reflect_default: 'آج کے لیے ایک مختصر بات لکھیں۔', reflect_ph: 'یہاں لکھیں (زیادہ سے زیادہ 280 حروف)', reflect_post: 'پوسٹ کریں', reflect_rules: 'سادہ متن، کوئی لنک نہیں، دن میں ایک۔',
     lecture_week: 'ہفتے کا لیکچر', comment_title: 'آپ کا تبصرہ', comment_ph: 'اس لیکچر پر ایک بات لکھیں (زیادہ سے زیادہ 280 حروف)', comment_rules: 'سادہ متن، کوئی لنک نہیں، ہر لیکچر پر ایک۔', comment_locked: 'تبصرے کے لیے پہلے کوئز پاس کریں۔', comment_locked_watch: 'تبصرے کے لیے پہلے لیکچر دیکھیں۔', reply_btn: 'جواب', reply_ph: 'جواب لکھیں (زیادہ سے زیادہ 140 حروف)', reply_send: 'بھیجیں', reply_limit_note: 'آپ یہاں اپنے 3 جواب استعمال کر چکے ہیں۔', report_ask_reply: 'کیا اس جواب کو نامناسب قرار دے کر رپورٹ کریں؟', q_reflect: 'آج کی تحریر لکھیں',
     ago_now: 'ابھی', ago_m: (n) => `${n} منٹ`, ago_h: (n) => `${n} گھنٹے`, ago_d: (n) => `${n} دن`,
     rk_people: 'افراد', rk_caravans: 'کارواں', rk_trees: 'قبیلہ', rk_note_caravans: 'کارواں ارکان کا ایک نام والا گروپ ہے۔', rk_note_trees: 'قبیلہ یعنی ایک شخص کے نیچے ہر سطح کے سب لوگ۔',

@@ -120,7 +120,7 @@ const views = {
         <td>${l.questions.length ? `<details><summary>${l.questions.length} question${l.questions.length === 1 ? '' : 's'}</summary>${l.questions.map((q) => `<p>${esc(q.q_en)}<br>${q.options_en.map((o, i) => (i === q.answer ? `<b>✓ ${esc(o)}</b>` : esc(o))).join(' · ')}</p>`).join('')}</details>` : '—'}</td>
         <td><button class="chip" data-a="lecedit" data-id="${l.id}">Edit</button> <button class="chip" data-a="lecdel" data-id="${l.id}">Delete</button></td></tr>`).join('')}</table>` : '<p class="empty">No lectures yet.</p>'}
       <h3>Question of the day</h3>
-      <p class="muted">Shown above the daily reflection box. A day without a question shows a general prompt.</p>
+      <p class="muted">Shown above the daily reflection box. A day without a question uses a built-in theme (30 of them, such as Gratitude, Patience or Forgiveness, in English and Urdu), so members are never asked something general.</p>
       <div class="inline"><div><label>Day</label><input id="pday" type="date" value="${pktToday()}"></div></div>
       <label>Question (English)</label><input id="ptE" maxlength="200"><label>Question (Urdu, optional)</label><input id="ptU" maxlength="200" dir="rtl">
       <div class="inline"><button class="chip solid" data-a="promptset">Save question</button></div>
