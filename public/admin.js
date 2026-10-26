@@ -36,7 +36,7 @@ const ADMIN_ERR = {
   bad_target: 'The target must be between 10 lakh and 1,000 crore.', bad_news: 'News needs an English title of up to 120 characters.', bad_export: 'That export is not available. Reload the page and try again.',
   not_allowed: 'Your role cannot do that.', rate_limited: 'Too many tries. Wait a few minutes.', not_found: 'That was not found. It may have been removed already.',
   bad_quiz: 'The quiz is not in the right shape: up to 10 questions, each with q_en, 2 to 5 options_en (options_ur the same number, or none) and the answer number (0 is the first option).',
-  bad_lecture: 'Check the YouTube id (11 characters), the English title and the week date.',
+  bad_lecture: 'Check the YouTube id (11 characters) or the Google Drive link (https://drive.google.com/file/d/…), the English title and the week date. On Drive, set sharing to "Anyone with the link".',
   bad_sunnah: 'Each Sunnah needs a day (YYYY-MM-DD) and an English text.', sunnah_in_use: 'Members have already ticked or posted this Sunnah. Edit its text instead of removing it.',
   bad_special: 'A special day needs a date and an English name.', bad_url: 'The link must start with https://',
   photo_gone: 'This photo was already deleted from the server (photos are kept 14 days), so it cannot be shown again.',
@@ -120,7 +120,7 @@ const views = {
         <td>${x.status === 'approved' ? '' : `<button class="chip solid" data-a="teachyes" data-u="${esc(x.username)}">Confirm</button>`} ${x.status === 'pending' ? `<button class="chip" data-a="teachno" data-u="${esc(x.username)}">Not a teacher</button>` : ''}</td></tr>`).join('')}</table>` : '<p class="empty">No requests yet.</p>'}
       <h3>Lecture of the week</h3>
       <p class="muted">Members see the lectures whose week is the current one. Any date in the week works. A quiz is optional: a JSON list like <code>[{"q_en":"Where was the Prophet ﷺ born?","options_en":["Makkah","Madinah"],"answer":0}]</code>.</p>
-      <div class="inline"><div><label>YouTube id (11 characters)</label><input id="lyt" maxlength="11"></div><div><label>Week (any date)</label><input id="lwk" type="date" value="${pktToday()}"></div><div><label>Minimum watch (seconds)</label><input id="lmin" type="number" min="30" value="600"></div><div><label>Points (1 to 200)</label><input id="lxp" type="number" min="1" max="200" value="150"></div></div>
+      <div class="inline"><div><label>YouTube id, or a Google Drive link to a PDF or audio file</label><input id="lyt" maxlength="300" placeholder="dQw4w9WgXcQ or https://drive.google.com/file/d/…/view"></div><div><label>Week (any date)</label><input id="lwk" type="date" value="${pktToday()}"></div><div><label>Minimum watch (seconds)</label><input id="lmin" type="number" min="30" value="600"></div><div><label>Points (1 to 200)</label><input id="lxp" type="number" min="1" max="200" value="150"></div></div>
       <input id="lid" type="hidden" value="">
       <label>Title (English)</label><input id="ltE" maxlength="120"><label>Title (Urdu, optional)</label><input id="ltU" maxlength="120" dir="rtl"><label>Speaker</label><input id="lsp" maxlength="80">
       <label>Quiz (optional JSON)</label><textarea id="lqz" rows="3"></textarea>
@@ -313,7 +313,7 @@ document.addEventListener('click', (ev) => {
     lecedit: async () => {
       const l = (await api('GET', '/lectures')).lectures.find((x) => x.id === Number(d.id));
       if (!l) return;
-      $('#lid').value = l.id; $('#lyt').value = l.youtube_id; $('#lwk').value = l.week_start; $('#lmin').value = l.min_seconds; $('#lxp').value = l.xp;
+      $('#lid').value = l.id; $('#lyt').value = l.youtube_id.startsWith('drive:') ? `https://drive.google.com/file/d/${l.youtube_id.slice(6)}/view` : l.youtube_id; $('#lwk').value = l.week_start; $('#lmin').value = l.min_seconds; $('#lxp').value = l.xp;
       $('#ltE').value = l.title_en; $('#ltU').value = l.title_ur || ''; $('#lsp').value = l.speaker || ''; $('#lqz').value = l.questions.length ? JSON.stringify(l.questions, null, 1) : '';
       $('#lecbtn').textContent = 'Save changes'; $('#lecnew').hidden = false; $('#ltE').focus();
       return 'stay';

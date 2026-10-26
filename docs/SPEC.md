@@ -484,3 +484,9 @@ Also: the big counter and the celebration number are measured after drawing and 
 ## 52. Separate Sunnah and Seerah
 
 - Today now has three folds: **Sunnah** (the day's sunnah), **Seerah** (the week's lectures and the Seerat Circle card) and **Daily reflection**. The sidebar has a **Learn** group with two pages. **Sunnah**: today's sunnah, your own sunnah posts, photos from the community. **Seerah**: this week's lectures, the Seerat Circle card, and earlier weeks' lectures (`GET /api/lectures?past=1`, newest first, 30). The bottom bar stays at four tabs; both pages sit under Browse.
+
+## 53. Reading material on Google Drive
+
+- A lecture's source is either a YouTube id or a **Google Drive share link** (PDF or audio). The admin pastes the link; the server accepts only `https://drive.google.com/file/d/<id>/...` or `.../open?id=<id>`, keeps just the id (stored as `drive:<id>`), and builds the address itself. The page's frame policy allows `drive.google.com`.
+- Members read or play it in Drive's own viewer inside the same player, with an **Open in Google Drive** link. The minimum time, XP, quiz and comments work as for video lectures. Time open is the only measure (Drive gives no page or play events); the quiz is the real check.
+- The admin must set sharing to **Anyone with the link**, or members see "You need access". A very popular file may be throttled by Drive. Not built: separate "material" listing apart from lectures.

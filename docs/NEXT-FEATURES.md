@@ -2,7 +2,7 @@
 
 Nothing here is built yet. Each item says what you asked for, what the app does today, what to build, and the decisions that need an answer first. Sizes are rough: **S** about a day, **M** a few days, **L** a week or more.
 
-Suggested order: 3, 2, 1, 6, 5, then 4.
+All six are built (26 October). Suggested order was 3, 2, 1, 6, 5, then 4.
 
 **Decisions made so far (26 October):**
 - WhatsApp: a member's number is **visible to other members by default**, and a member can choose to hide it (item 2).
@@ -69,7 +69,7 @@ Suggested order: 3, 2, 1, 6, 5, then 4.
 
 ---
 
-## 4. Weekly reading and listening material with a quiz, kept on Google Drive (M)
+## 4. Weekly reading and listening material with a quiz, kept on Google Drive (M) — BUILT 26 Oct (Drive for both PDFs and audio; needs a trial with a real file on a real phone)
 
 **Asked:** the admin can add PDFs (and maybe audio) to the app as the week's reading material, and the quiz is taken from them. **Decided:** keep the files on Google Drive so our server does not store or serve them.
 

@@ -1136,7 +1136,9 @@ function playerModal() {
   const p = S.player, x = p.lecture;
   const left = Math.max(0, x.minSeconds - p.elapsed);
   return `<div class="modal"><div class="box">
-    <iframe src="https://www.youtube-nocookie.com/embed/${esc(x.youtubeId)}?rel=0&playsinline=1" allow="accelerometer; encrypted-media; picture-in-picture" allowfullscreen title="lecture"></iframe>
+    ${x.driveId ? `<iframe src="https://drive.google.com/file/d/${esc(x.driveId)}/preview" allow="autoplay" title="${esc(pick(x.titleEn, x.titleUr))}"></iframe>
+    <a class="linkbtn" href="https://drive.google.com/file/d/${esc(x.driveId)}/view" target="_blank" rel="noopener">${t('open_drive')}</a>`
+      : `<iframe src="https://www.youtube-nocookie.com/embed/${esc(x.youtubeId)}?rel=0&playsinline=1" allow="accelerometer; encrypted-media; picture-in-picture" allowfullscreen title="lecture"></iframe>`}
     <div class="spacer"></div>
     <div class="muted" id="ptimer">${x.done ? `✓ ${t('watched')}` : left ? `${t('watching')} · ${t('min_left')(left)}` : x.quiz?.length && !p.passed && !x.quizPassed ? t('now_quiz') : t('ready_claim')}</div>
     ${bar((p.elapsed / x.minSeconds) * 100).replace('class="bar"', 'class="bar" id="pbar"')}

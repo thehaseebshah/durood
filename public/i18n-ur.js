@@ -12,7 +12,7 @@ export const UR = {
     invited_by: 'آپ کو مدعو کیا', 
     ok_free: 'دستیاب ہے', taken: 'پہلے سے موجود ہے',
     nav_home: 'آج', nav_rank: 'مقابلہ', nav_caravan: 'کارواں', nav_me: 'میں',
-    nav_sunnah: 'سنت', nav_seerah: 'سیرت', grp_learn: 'سیکھیں', sn_more: 'سنت کا صفحہ: تاریخ اور برادری', sr_more: 'سیرت کا صفحہ: پچھلے لیکچر', sn_history: 'آپ کی سنت کی پوسٹیں', sn_history_empty: 'ابھی کچھ پوسٹ نہیں کیا۔ آج کی سنت کی تصویر لگائیں، یہاں نظر آئے گی۔', sn_community: 'برادری سے', sn_community_empty: 'ابھی سنت کی کوئی تصویر نہیں۔', sr_earlier: 'پچھلے لیکچر', sr_earlier_empty: 'ابھی کوئی پچھلا لیکچر نہیں۔', nav_qabila: 'قبیلہ', nav_burhan: 'البرہان', nav_progress: 'میں', nav_tasks: 'کام', nav_people: 'میرے لوگ', nav_settings: 'ترتیبات', nav_browse: 'مزید',
+    nav_sunnah: 'سنت', nav_seerah: 'سیرت', grp_learn: 'سیکھیں', sn_more: 'سنت کا صفحہ: تاریخ اور برادری', sr_more: 'سیرت کا صفحہ: پچھلے لیکچر', sn_history: 'آپ کی سنت کی پوسٹیں', sn_history_empty: 'ابھی کچھ پوسٹ نہیں کیا۔ آج کی سنت کی تصویر لگائیں، یہاں نظر آئے گی۔', sn_community: 'برادری سے', sn_community_empty: 'ابھی سنت کی کوئی تصویر نہیں۔', sr_earlier: 'پچھلے لیکچر', sr_earlier_empty: 'ابھی کوئی پچھلا لیکچر نہیں۔', open_drive: 'گوگل ڈرائیو میں کھولیں', nav_qabila: 'قبیلہ', nav_burhan: 'البرہان', nav_progress: 'میں', nav_tasks: 'کام', nav_people: 'میرے لوگ', nav_settings: 'ترتیبات', nav_browse: 'مزید',
     every_day: 'روزانہ', weekdays_pick: 'ان دنوں', weekdays_short: ['اتوار', 'پیر', 'منگل', 'بدھ', 'جمعرات', 'جمعہ', 'ہفتہ'],
     more_actions: 'مزید', task_done: 'مکمل', rs_today: 'آج', rs_tomorrow: 'کل', rs_in_3_days: '3 دن میں', rs_next_week: 'اگلے ہفتے', rs_moved: (d) => `${d} پر منتقل`,
     feel_sound: 'آوازیں (گنتی کی ٹک، گھنٹی)', feel_vibrate: 'وائبریشن',

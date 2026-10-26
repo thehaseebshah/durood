@@ -655,10 +655,20 @@ route('DELETE', '/api/admin/burhan-links/:kind/:username', { auth: false, admin:
 });
 route('GET', '/api/admin/audit', { auth: false, admin: true }, () => auditAsync());
 route('GET', '/api/admin/status', adm, () => ({ lastAudit: getSetting('last_audit') ? JSON.parse(getSetting('last_audit')) : null, lastBackup: Number(getSetting('last_backup_at', '0')) || null }));
+// a YouTube video id, or a Google Drive share link (a PDF or audio file kept on Drive, not on our server); stored as "drive:<id>"
+function lectureSource(raw) {
+  const v = String(raw || '').trim();
+  if (/^[\w-]{11}$/.test(v)) return v;
+  let u;
+  try { u = new URL(v); } catch { return null; }
+  if (u.protocol !== 'https:' || u.hostname !== 'drive.google.com') return null;
+  const id = u.pathname.match(/^\/file\/(?:u\/\d+\/)?d\/([\w-]{10,80})(?:\/|$)/)?.[1] || u.searchParams.get('id');
+  return id && /^[\w-]{10,80}$/.test(id) ? `drive:${id}` : null;
+}
 // one reading of the lecture form, for adding and for editing
 function lectureFields(body) {
-  const yt = String(body.youtube_id || '').trim();
-  if (!/^[\w-]{11}$/.test(yt) || !String(body.title_en || '').trim()) throw new HttpError(400, 'bad_lecture');
+  const yt = lectureSource(body.youtube_id);
+  if (!yt || !String(body.title_en || '').trim()) throw new HttpError(400, 'bad_lecture');
   const questions = parseQuestions(body.questions);
   if (body.week && (!/^\d{4}-\d{2}-\d{2}$/.test(String(body.week)) || Number.isNaN(Date.parse(`${body.week}T00:00:00Z`)))) throw new HttpError(400, 'bad_lecture');
   return [yt, String(body.title_en).trim(), String(body.title_ur || ''), String(body.speaker || ''),
@@ -757,7 +767,7 @@ function csp(html) {
   return [
     "default-src 'self'", `script-src 'self' ${hashes.join(' ')}`.trim(),
     "style-src 'self' 'unsafe-inline'", "font-src 'self'",
-    "img-src 'self' data: blob:", 'frame-src https://www.youtube-nocookie.com', "connect-src 'self'",
+    "img-src 'self' data: blob:", 'frame-src https://www.youtube-nocookie.com https://drive.google.com', "connect-src 'self'",
     "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'",
   ].join('; ');
 }

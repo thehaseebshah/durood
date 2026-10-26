@@ -111,9 +111,9 @@ These are in `npm test` and `scripts/e2e.mjs`. Each new browser check was confir
 - After a visible change to the app, run `guide:shots` and then `guide:pdf`.
 - The `promos` branch (two promo videos) shares no history with the app and was left separate.
 
-## Next features
+## Next features (all six built, 26 October)
 
-Six requested features (lagging caravan members, WhatsApp button, team tasks by hashtag, weekly reading material with quizzes, separate Seerah and Sunnah pages, repeating 40-day challenges) are written up with what exists today, what to build and the open decisions in `docs/NEXT-FEATURES.md`. None is built yet.
+See `docs/NEXT-FEATURES.md` and SPEC sections 49 to 53: WhatsApp message button with a hide-my-number choice; caravan owner's "Falling behind" list; "Everyone I lead" task assignment; repeatable named and scheduled challenges with a past list; separate Sunnah and Seerah folds and pages; reading material from Google Drive. **Not yet deployed anywhere**, and the Drive viewer needs a trial with a real file on a phone.
 
 ## What is left
 

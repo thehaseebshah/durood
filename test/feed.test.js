@@ -195,3 +195,18 @@ test('caravan mates say MashaAllah on a milestone: once each, never on their own
   const item = (await api('GET', '/api/feed', { token: b.token })).items.find((x) => x.type === 'milestone' && x.id === ev.id);
   assert.equal(item.cheers, 1); assert.equal(item.cheered, true);
 });
+
+test('reading material: a Google Drive link is accepted, stored as an id, and any other address is refused', async () => {
+  const post = (youtube_id) => api('POST', '/api/admin/lectures', { headers: admin, body: { youtube_id, title_en: 'Reading', min_seconds: 30 } });
+  assert.equal((await post('https://drive.google.com/file/d/1AbC_defGhIjKlMnOpQrStUv/view?usp=sharing')).status, 200);
+  assert.equal((await post('https://drive.google.com/open?id=1AbC_defGhIjKlMnOpQrStUv')).status, 200);
+  for (const bad of ['http://drive.google.com/file/d/1AbC_defGhIjKlMnOpQrStUv/view', 'https://evil.example/file/d/1AbC_defGhIjKlMnOpQrStUv/view', 'https://drive.google.com.evil.example/file/d/1AbC_defGhIjKlMnOpQrStUv/view', 'https://drive.google.com/file/d/short/view', 'javascript:alert(1)']) {
+    assert.equal((await post(bad)).error, 'bad_lecture', bad);
+  }
+  const u = await signup('rd_a');
+  const l = (await api('GET', '/api/lectures', { token: u.token })).lectures.filter((x) => x.kind === 'drive');
+  assert.ok(l.length >= 2);
+  assert.equal(l[0].driveId, '1AbC_defGhIjKlMnOpQrStUv');
+  const res = await fetch(base + '/');
+  assert.match(res.headers.get('content-security-policy'), /frame-src https:\/\/www\.youtube-nocookie\.com https:\/\/drive\.google\.com;/);
+});

@@ -206,7 +206,7 @@ export function lectureList(userId, { week = weekStart(), before = null } = {}) 
   return all(`SELECT l.*, EXISTS(SELECT 1 FROM events e WHERE e.user_id = ? AND e.kind = 'lecture' AND e.ref = CAST(l.id AS TEXT)) done
               FROM lectures l WHERE ${before ? 'l.week_start < ?' : 'l.week_start = ?'} ORDER BY l.week_start DESC, l.id DESC LIMIT ${before ? 30 : 20}`, userId, before || week).map((l) => {
     const quiz = publicQuiz(l);
-    return { id: l.id, youtubeId: l.youtube_id, titleEn: l.title_en, titleUr: l.title_ur, speaker: l.speaker, minSeconds: l.min_seconds, xp: l.xp, done: !!l.done,
+    return { id: l.id, youtubeId: l.youtube_id, kind: l.youtube_id.startsWith('drive:') ? 'drive' : 'video', driveId: l.youtube_id.startsWith('drive:') ? l.youtube_id.slice(6) : null, titleEn: l.title_en, titleUr: l.title_ur, speaker: l.speaker, minSeconds: l.min_seconds, xp: l.xp, done: !!l.done,
       week: l.week_start, quiz, quizPassed: quiz.length ? quizPassed(userId, l.id) : null,
       canComment: quiz.length ? quizPassed(userId, l.id) : !!l.done,
       myComment: (() => { const c = one('SELECT id, body, likes, status FROM lecture_comments WHERE lecture_id = ? AND user_id = ?', l.id, userId); return c && { id: c.id, body: c.body, likes: c.likes, status: c.status }; })(),
