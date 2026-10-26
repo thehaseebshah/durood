@@ -417,7 +417,7 @@ try {
     await page.addStyleTag({ content: 'html { font-size: 130% !important; }' });
     for (const tab of ['home', 'feed', 'rank', 'caravan', 'qabila', 'tasks', 'people', 'progress', 'settings']) {
       await go(page, tab);
-      (await page.evaluate(() => [...document.querySelectorAll('main *')].filter((e) => { const b = e.getBoundingClientRect(); return b.width && b.right > innerWidth + 2 && !e.closest('.seg.five, .earned'); })
+      (await page.evaluate(() => [...document.querySelectorAll('main *')].filter((e) => { const b = e.getBoundingClientRect(); return b.width && (b.right > innerWidth + 2 || b.left < -2) && !e.closest('.seg.five, .earned'); })
         .slice(0, 3).map((e) => `${e.tagName.toLowerCase()}.${String(e.className).split(' ')[0]}`))).forEach((x) => past.add(`${tab}: ${x}`));
     }
     ok(past.size === 0, `with large text nothing runs off a small phone${past.size ? ': ' + [...past].slice(0, 6).join('; ') : ''}`);
