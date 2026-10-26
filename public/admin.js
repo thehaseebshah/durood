@@ -41,7 +41,7 @@ const ADMIN_ERR = {
   bad_special: 'A special day needs a date and an English name.', bad_url: 'The link must start with https://',
   photo_gone: 'This photo was already deleted from the server (photos are kept 14 days), so it cannot be shown again.',
   bad_role: 'Pick owner, moderator or organiser.', own_role: 'You cannot change your own role.', last_owner: 'There must always be at least one owner.',
-  member_not_found: 'No active member has that username.', remove_role_first: 'This member holds an admin role. Remove the role first, then delete the account.', bad_challenge: 'Check the start date, the number of days and the target.',
+  member_not_found: 'No active member has that username.', remove_role_first: 'This member holds an admin role. Remove the role first, then delete the account.', challenge_overlap: 'That would overlap the running challenge or one already scheduled.', challenge_past_date: 'A scheduled challenge cannot start in the past.', too_many_plans: 'Twenty scheduled challenges is the limit. Remove one first.', bad_challenge: 'Check the start date, the number of days and the target.',
 };
 async function api(method, path, body) {
   const res = await fetch('/api/admin' + path, { method, headers: { 'content-type': 'application/json', ...(TOKEN ? { 'x-admin-token': TOKEN } : { 'x-admin-key': KEY }) }, body: body ? JSON.stringify(body) : undefined });
@@ -55,7 +55,7 @@ async function run(fn) { try { if ((await fn()) === 'stay') return; } catch (e) 
 
 const views = {
   async challenge() {
-    const { summary: c, series } = await api('GET', '/challenge');
+    const { summary: c, series, plans, past } = await api('GET', '/challenge');
     const planned = c.plannedPerDay;
     const state = { waiting: 'Waiting for the first member', upcoming: `Starts in ${c.startsIn} day(s)`, running: `Day ${c.dayIndex} of ${c.days}`, over: `Day ${c.dayIndex} of ${c.days}: past the deadline, still counting`, done: 'Target reached' }[c.state];
     return `<h3>40-day challenge</h3>
@@ -67,6 +67,15 @@ const views = {
         <div><label>Target (durood)</label><input id="chtarget" type="number" min="1000000" value="${c.target}"></div></div>
       <div class="inline"><label class="check" style="margin:0"><input type="checkbox" id="chclear"> Also forget the crores already recorded</label>
         <button class="chip solid" data-a="chsave">Save</button><button class="chip" data-a="chtoday">Start today</button></div>
+      <div class="inline"><div><label>Name (English, optional)</label><input id="chnE" maxlength="60" value="${esc(c.nameEn || '')}" placeholder="40-day challenge"></div>
+        <div><label>Name (Urdu, optional)</label><input id="chnU" maxlength="60" dir="rtl" value="${esc(c.nameUr || '')}"></div><button class="chip" data-a="chname">Save name</button></div>
+      <h3>Next challenges</h3>
+      <p class="muted">Schedule the next ones ahead of time. On its start day a challenge becomes the running one and the finished one is kept under Past challenges, with its total and top three. Challenges cannot overlap.</p>
+      ${plans.length ? `<table><tr><th>Name</th><th>Starts</th><th>Days</th><th>Target</th><th></th></tr>${plans.map((p) => `<tr><td>${esc(p.nameEn || '(unnamed)')}</td><td>${esc(p.start)}</td><td>${p.days}</td><td>${human(p.target)}</td><td><button class="chip" data-a="planrm" data-id="${p.id}">Remove</button></td></tr>`).join('')}</table>` : '<p class="empty">Nothing scheduled.</p>'}
+      <div class="inline"><div><label>Name (English)</label><input id="pnE" maxlength="60"></div><div><label>Name (Urdu)</label><input id="pnU" maxlength="60" dir="rtl"></div>
+        <div><label>Start date</label><input id="pstart" type="date" min="${pktToday()}"></div><div><label>Days</label><input id="pdays" type="number" min="1" max="365" value="40"></div>
+        <div><label>Target (durood)</label><input id="ptarget" type="number" min="1000000" value="${c.target}"></div><button class="chip solid" data-a="planadd">Schedule</button></div>
+      ${past.length ? `<h3>Past challenges</h3><table><tr><th>#</th><th>Name</th><th>Dates</th><th>Total</th><th>Top</th></tr>${past.map((p) => `<tr><td>${p.n}</td><td>${esc(p.nameEn || '40-day challenge')}</td><td>${esc(p.start)} to ${esc(p.end)}</td><td>${fmt(p.total)} of ${human(p.target)}</td><td>${p.top.map((x) => esc(x.username)).join(', ')}</td></tr>`).join('')}</table>` : ''}
       <h3>Recent days</h3>
       ${series.length ? `<table><tr><th>Day</th><th>Reported</th><th>Plan</th><th>Of plan</th></tr>${series.slice(-14).reverse().map((d) => `<tr><td>${esc(d.day)}</td><td>${fmt(d.total)}</td><td>${fmt(planned)}</td><td>${Math.round((d.total / planned) * 100)}%</td></tr>`).join('')}</table>` : '<p class="empty">Nothing reported yet.</p>'}
       ${c.milestones.length ? `<h3>Crores reached</h3><table><tr><th>Crore</th><th>When</th></tr>${c.milestones.map((m) => `<tr><td>${m.k}</td><td>${date(m.at)}</td></tr>`).join('')}</table>` : ''}`;
@@ -339,6 +348,9 @@ document.addEventListener('click', (ev) => {
     specialdel: async () => { await api('DELETE', `/special-days/${d.day}`); say('Removed.'); },
     remove2: async () => { await api('POST', `/content/${d.kind}/${d.id}`, { action: 'remove' }); say('Removed.'); },
     restore2: async () => { await api('POST', `/content/${d.kind}/${d.id}`, { action: 'restore' }); say('Restored.'); },
+    chname: async () => { await api('PUT', '/challenge/name', { nameEn: $('#chnE').value, nameUr: $('#chnU').value }); say('Name saved.'); },
+    planadd: async () => { await api('POST', '/challenge/plans', { nameEn: $('#pnE').value, nameUr: $('#pnU').value, start: $('#pstart').value, days: Number($('#pdays').value), target: Number($('#ptarget').value) }); say('Scheduled.'); },
+    planrm: async () => { if (!confirm('Remove this scheduled challenge?')) return; await api('DELETE', `/challenge/plans/${d.id}`); say('Removed.'); },
     chtoday: async () => { if (!confirm('Make today day 1 of the challenge?')) return; await api('POST', '/challenge', { start: pktToday() }); say('Day 1 is now today.'); },
     pub: () => api('POST', '/public-code', { enabled: d.v === '1' }),
     pubcap: async () => { await api('POST', '/public-code', { dailyCap: Number($('#pubcap').value) }); say('Daily limit saved.'); },

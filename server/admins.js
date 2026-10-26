@@ -24,7 +24,7 @@ export const ADMIN_PERMS = {
   'POST /api/admin/sunnahs': 'organise', 'GET /api/admin/sunnahs': 'organise', 'DELETE /api/admin/sunnahs/:day': 'organise', 'GET /api/admin/prompts': 'organise', 'POST /api/admin/prompts': 'organise',
   'GET /api/admin/invites': 'organise', 'POST /api/admin/invites': 'organise', 'POST /api/admin/invites/:code/revoke': 'organise', 'POST /api/admin/public-code': 'organise',
   'GET /api/admin/waitlist': 'organise', 'POST /api/admin/waitlist/:id': 'organise',
-  'GET /api/admin/challenge': 'status', 'POST /api/admin/challenge': 'organise',
+  'GET /api/admin/challenge': 'status', 'POST /api/admin/challenge': 'organise', 'POST /api/admin/challenge/plans': 'organise', 'DELETE /api/admin/challenge/plans/:id': 'organise', 'PUT /api/admin/challenge/name': 'organise',
   'GET /api/admin/news': 'organise', 'POST /api/admin/news': 'organise', 'DELETE /api/admin/news/:id': 'organise',
   'GET /api/admin/export': 'organise',
   'GET /api/admin/circle-teachers': 'organise', 'POST /api/admin/circle-teachers/:username': 'organise',

@@ -385,6 +385,7 @@ function shell() {
   ${S.player ? playerModal() : ''}
   ${S.bhDetail ? detailModal() : ''}
   ${S.profile ? profileModal() : ''}
+  ${S.pastCh ? pastModal() : ''}
   ${S.celebrate && !(S.celebrateHold > Date.now()) ? celebrateModal() : ''}
   ${S.me.needsCity ? cityModal() : ''}`;
 }
@@ -499,7 +500,7 @@ function home() {
     `${quests.filter((q) => q.period === 'day').every((q) => q.done) ? `<div class="alldone">${uiIcon('star', 14, 2)} ${t('quests_all_done')}</div>` : ''}${quests.map((q) => quest(q)).join('')}`)}
   ${assigned ? fold('assigned', t('grp_tasks_today'), N(String(S.bh.today.length)), `${assigned}<button class="rowlink" data-act="tab" data-tab="tasks"><span>${t('tasks_all')}</span><b class="ar">→</b></button>`) : ''}
   ${fold('seerah', t('grp_seerah'), seerahMeta, seerah)}
-  ${fold('challenge', t('challenge_title'), '', challengeCard(m), false)}
+  ${fold('challenge', chTitle(m.pub.challenge || {}), '', challengeCard(m), false)}
   <p class="note">${t('reminder_note')}</p>`;
 }
 
@@ -531,11 +532,18 @@ function liveHome() {
   if ($('#pend')) { $('#pend').textContent = fmt(S.pending); $('#submitp').disabled = !S.pending; }
 }
 
+const chTitle = (c) => pick(c.nameEn, c.nameUr) || t('challenge_title');
+function pastModal() {
+  const rows = S.pastCh.rows;
+  return `<div class="modal msheet"><div class="box"><div class="row between"><h3 class="in">${t('ch_past')}</h3><button class="chip" data-act="closepast">${t('close')}</button></div>
+    ${!rows ? '<p class="muted center">…</p>' : rows.map((p) => `<div class="circlecard"><b>${esc(chTitle(p))} · ${N('#' + p.n)}</b><div class="muted">${esc(dayText(p.start, { day: 'numeric', month: 'short', year: 'numeric' }))} – ${esc(dayText(p.end, { day: 'numeric', month: 'short', year: 'numeric' }))}</div>
+      <div>${fmt(p.total)} ${t('of')} ${human(p.target)}${unit('durood')}</div>${p.top.length ? `<div class="muted">${t('ch_top')}: ${p.top.map((x) => esc(x.displayName || x.username)).join(' · ')}</div>` : ''}</div>`).join('')}</div></div>`;
+}
 function challengeCard(m) {
   const c = m.pub.challenge;
   if (!c || c.state === 'waiting') return '';
   const pct = Math.min(100, (c.total / c.target) * 100);
-  const head = `<div class="chead"><span>${uiIcon('star', 14, 2)} ${t('challenge_title')}</span><span>${c.state === 'running' || c.state === 'over' ? t('day_of')(c.dayIndex, c.days) : ''}</span></div>`;
+  const head = `<div class="chead"><span>${uiIcon('star', 14, 2)} ${esc(chTitle(c))}</span><span>${c.state === 'running' || c.state === 'over' ? t('day_of')(c.dayIndex, c.days) : ''}</span></div>`;
   const tot = `<div class="ctotal"><b>${fmt(c.total)}</b><span dir="auto">${t('of')} ${human(c.target)}${unit('durood')}</span></div>`;
   const markPct = c.state === 'running' ? ((c.dayIndex - 1) / c.days) * 100 : 0;
   const barEl = `<div class="cbar">${bar(pct)}${c.state === 'running' && markPct > 0 ? `<span class="pace" style="inset-inline-start:${markPct}%" title="plan"></span>` : ''}</div>`;
@@ -554,7 +562,9 @@ function challengeCard(m) {
   } else if (c.state === 'done') {
     body = `<div class="cstatus ahead">${t('done_msg')(human(c.target))}</div>`;
   }
-  return `<div class="challenge">${head}${tot}${barEl}${body}<div class="cnote">${membersN(m.pub.members)} · ${t('self_reported')}</div></div>`;
+  const next = c.next ? `<div class="cnote">${t('ch_next')(esc(pick(c.next.nameEn, c.next.nameUr) || t('challenge_title')), esc(dayText(c.next.start, { day: 'numeric', month: 'long' })))}</div>` : '';
+  const past = c.pastCount ? `<button class="linkbtn" data-act="pastch">${t('ch_past')} (${fmt(c.pastCount)})</button>` : '';
+  return `<div class="challenge">${head}${tot}${barEl}${body}${next}<div class="cnote">${membersN(m.pub.members)} · ${t('self_reported')}</div>${past}</div>`;
 }
 
 // ---- celebration: each crore reached, and the finish ---------------------------------------------------------------
@@ -620,7 +630,7 @@ async function shareCard() {
     g.fillStyle = sig; const w = (W - 160) * Math.min(1, total / target);
     if (S.lang === 'ur') g.fillRect(W - 80 - w, 1090, w, 36); else g.fillRect(80, 1090, w, 36);
     g.fillStyle = soft; g.font = `600 40px ${family}`;
-    g.fillText(`${human(total)} ${t('of')} ${human(target)} · ${t('challenge_title')}`, left, 1190);
+    g.fillText(`${human(total)} ${t('of')} ${human(target)} · ${chTitle(S.me?.pub?.challenge || {})}`, left, 1190);
   } else {
     g.fillStyle = soft; g.font = `600 44px ${family}`; g.fillText(S.me.username, left, 1190);
   }
@@ -1847,6 +1857,8 @@ app.addEventListener('click', async (ev) => {
     try { S.me = await api('/me', 'PATCH', { hidePhone: v }); ls.set('wanote', '1'); toast(t(v ? 'wa_hidden' : 'saved')); } catch (e) { toast(errText(e)); }
     return draw();
   }
+  if (act === 'pastch') { S.pastCh = { rows: null }; draw(); try { S.pastCh.rows = (await api('/challenges/past')).past; } catch (e) { S.pastCh = null; toast(errText(e)); } return draw(); }
+  if (act === 'closepast') { S.pastCh = null; return draw(); }
   if (act === 'closeprofile') { S.profile = null; return draw(); }
   if (act === 'rmavatar') { try { S.me = await api('/me/avatar', 'DELETE'); toast(t('saved')); } catch (e) { toast(errText(e)); } return draw(); }
   if (act.startsWith('cv')) {

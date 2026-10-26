@@ -668,6 +668,7 @@ export function decideTeach(username, approve) {
 export const CRORE = 10_000_000;
 
 export function challengeConfig() {
+  rollIfDue();
   return {
     start: getSetting('challenge_start'),
     days: Number(getSetting('challenge_days', 40)),
@@ -699,6 +700,78 @@ export function setChallenge({ start, days, target, clearMilestones }) {
   return challengeSummary();
 }
 
+// ---- more than one challenge --------------------------------------------------------------------------------------
+// The running challenge lives in settings (as it always did, and is "Challenge 1" for the one already under way). An admin can
+// schedule the next ones; on a plan's start day the finished challenge is filed away with its result and the plan takes over.
+const dateOk = (d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d)) && !Number.isNaN(Date.parse(d + 'T00:00:00Z'));
+const endOf = (start, days) => dayStr(dayNum(start) + days - 1);
+const forgetMilestones = () => db.prepare("DELETE FROM settings WHERE key LIKE 'ch_m_%' OR key = 'ch_done_at'").run();
+const cleanName = (v) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, 60);
+
+/** Files the running challenge away with its final figures (inside its own days) and returns its number. */
+function archiveCurrent() {
+  const { start, days, target } = { start: getSetting('challenge_start'), days: Number(getSetting('challenge_days', 40)), target: Number(getSetting('challenge_target', CFG.nationalTarget)) };
+  const n = Number(getSetting('challenge_n', 1));
+  if (!start) return n;
+  const end = endOf(start, days);
+  const total = one('SELECT COALESCE(SUM(total), 0) n FROM day_totals WHERE day >= ? AND day <= ?', start, end).n;
+  const top = all(`SELECT u.username, u.display_name dn, SUM(d.count) score FROM daily d JOIN users u ON u.id = d.user_id
+                   WHERE d.day >= ? AND d.day <= ? AND ${VISIBLE} GROUP BY u.id ORDER BY score DESC LIMIT 3`, start, end).map((r) => ({ username: r.username, displayName: r.dn, score: r.score }));
+  db.prepare(`INSERT INTO challenge_past (n, name_en, name_ur, start, days, target, total, reached, done_at, top, archived_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(n, getSetting('challenge_name_en', ''), getSetting('challenge_name_ur', ''), start, days, target, total, Math.floor(total / CRORE), getSetting('ch_done_at') ? Number(getSetting('ch_done_at')) : null, JSON.stringify(top), Date.now());
+  return n;
+}
+function activate(plan) {
+  const n = archiveCurrent() + 1;
+  setSetting('challenge_start', plan.start); setSetting('challenge_days', plan.days); setSetting('challenge_target', plan.target);
+  setSetting('challenge_n', n); setSetting('challenge_name_en', plan.name_en || ''); setSetting('challenge_name_ur', plan.name_ur || '');
+  forgetMilestones();
+  db.prepare('DELETE FROM challenge_plans WHERE id = ?').run(plan.id);
+  nextCheckDay = null;
+}
+let nextCheckDay = null;
+/** On (or after) the start day of the next planned challenge, it becomes the running one. Cheap: looks once a day, and again after an admin change. */
+export function rollIfDue() {
+  const today = dayOf();
+  if (nextCheckDay === today) return;
+  nextCheckDay = today;
+  const plan = one('SELECT * FROM challenge_plans WHERE start <= ? ORDER BY start DESC, id DESC LIMIT 1', today);
+  if (!plan) return;
+  tx(() => {
+    activate(plan);
+    db.prepare('DELETE FROM challenge_plans WHERE start <= ?').run(today); // any earlier plan that was never reached is skipped
+  });
+}
+
+export function planChallenge({ nameEn, nameUr, start, days, target }) {
+  if (!dateOk(start)) throw new HttpError(400, 'bad_date');
+  const d = Number(days ?? 40), t = Number(target ?? CFG.nationalTarget);
+  if (!Number.isInteger(d) || d < 1 || d > 365) throw new HttpError(400, 'bad_days');
+  if (!Number.isInteger(t) || t < 1_000_000 || t > 10_000_000_000) throw new HttpError(400, 'bad_target');
+  if (start < dayOf()) throw new HttpError(400, 'challenge_past_date');
+  const cur = getSetting('challenge_start');
+  const end = endOf(start, d);
+  if (cur && start <= endOf(cur, Number(getSetting('challenge_days', 40)))) throw new HttpError(400, 'challenge_overlap');
+  for (const p of all('SELECT start, days FROM challenge_plans')) if (start <= endOf(p.start, p.days) && end >= p.start) throw new HttpError(400, 'challenge_overlap');
+  if (one('SELECT COUNT(*) n FROM challenge_plans').n >= 20) throw new HttpError(400, 'too_many_plans');
+  db.prepare('INSERT INTO challenge_plans (name_en, name_ur, start, days, target, created_at) VALUES (?,?,?,?,?,?)').run(cleanName(nameEn), cleanName(nameUr), start, d, t, Date.now());
+  nextCheckDay = null;
+  return challengeAdminView();
+}
+export function unplanChallenge(id) {
+  if (!db.prepare('DELETE FROM challenge_plans WHERE id = ?').run(Number(id)).changes) throw new HttpError(404, 'not_found');
+  return challengeAdminView();
+}
+/** Names the running challenge (blank = the default "40-day challenge"). */
+export function nameChallenge({ nameEn, nameUr }) {
+  setSetting('challenge_name_en', cleanName(nameEn)); setSetting('challenge_name_ur', cleanName(nameUr));
+  natCache.at = 0;
+  return challengeAdminView();
+}
+export const challengeAdminView = () => ({ summary: challengeSummary(), series: challengeSeries(), plans: all('SELECT id, name_en nameEn, name_ur nameUr, start, days, target FROM challenge_plans ORDER BY start'), past: pastChallenges() });
+export const pastChallenges = () => all('SELECT n, name_en, name_ur, start, days, target, total, reached, done_at, top FROM challenge_past ORDER BY n DESC LIMIT 50')
+  .map((r) => ({ n: r.n, nameEn: r.name_en, nameUr: r.name_ur, start: r.start, end: endOf(r.start, r.days), days: r.days, target: r.target, total: r.total, reached: r.reached, doneAt: r.done_at, top: JSON.parse(r.top) }));
+
 const milestoneList = (upTo) => {
   const out = [];
   for (let k = 1; k <= upTo; k++) {
@@ -711,7 +784,9 @@ const milestoneList = (upTo) => {
 /** Where the community stands: totals, today's required pace, ahead/behind, and a projection from the recent average. */
 export function challengeSummary(now = Date.now()) {
   const { start, days, target } = challengeConfig();
-  if (!start) return { state: 'waiting', days, target, total: 0, remaining: target, crores: 0, reached: 0, milestones: [] };
+  const extra = { n: Number(getSetting('challenge_n', 1)), nameEn: getSetting('challenge_name_en', ''), nameUr: getSetting('challenge_name_ur', ''),
+    next: one('SELECT name_en nameEn, name_ur nameUr, start, days FROM challenge_plans ORDER BY start LIMIT 1') || null, pastCount: one('SELECT COUNT(*) n FROM challenge_past').n };
+  if (!start) return { ...extra, state: 'waiting', days, target, total: 0, remaining: target, crores: 0, reached: 0, milestones: [] };
   const today = dayOf(now);
   const idx = dayNum(today) - dayNum(start) + 1;                 // 1 on the first day
   const end = dayStr(dayNum(start) + days - 1);
@@ -721,7 +796,7 @@ export function challengeSummary(now = Date.now()) {
   const crores = Math.floor(total / CRORE);
   const milestones = milestoneList(Math.max(crores, Math.floor(target / CRORE)));
   const out = {
-    days, target, start, end, total, today: todayCount, crores, milestones,
+    ...extra, days, target, start, end, total, today: todayCount, crores, milestones,
     reached: milestones.length ? milestones.at(-1).k : 0,
     remaining: Math.max(0, target - total),
     plannedPerDay: Math.round(target / days),

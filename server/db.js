@@ -557,6 +557,31 @@ CREATE TABLE IF NOT EXISTS caravans (
   streak_awarded INTEGER NOT NULL DEFAULT 0,   -- highest caravan-streak badge already given to the members (7, 30)
   total_awarded  INTEGER NOT NULL DEFAULT 0    -- highest caravan-total badge already given (10000, 100000, 1000000)
 );
+-- challenges after the current one: scheduled ahead by an admin, taken up on their start day
+CREATE TABLE IF NOT EXISTS challenge_plans (
+  id         INTEGER PRIMARY KEY,
+  name_en    TEXT NOT NULL DEFAULT '',
+  name_ur    TEXT NOT NULL DEFAULT '',
+  start      TEXT NOT NULL,
+  days       INTEGER NOT NULL,
+  target     INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+-- challenges that have finished, kept with their result
+CREATE TABLE IF NOT EXISTS challenge_past (
+  id          INTEGER PRIMARY KEY,
+  n           INTEGER NOT NULL,
+  name_en     TEXT NOT NULL DEFAULT '',
+  name_ur     TEXT NOT NULL DEFAULT '',
+  start       TEXT NOT NULL,
+  days        INTEGER NOT NULL,
+  target      INTEGER NOT NULL,
+  total       INTEGER NOT NULL,
+  reached     INTEGER NOT NULL DEFAULT 0,
+  done_at     INTEGER,
+  top         TEXT NOT NULL DEFAULT '[]',
+  archived_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS caravan_members (
   user_id    INTEGER PRIMARY KEY REFERENCES users(id),   -- one caravan per member
   caravan_id INTEGER NOT NULL REFERENCES caravans(id),

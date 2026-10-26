@@ -113,7 +113,7 @@ Suggested order: 3, 2, 1, 6, 5, then 4.
 
 ---
 
-## 6. Repeatable 40-day challenges with start and end dates (M)
+## 6. Repeatable 40-day challenges with start and end dates (M) — BUILT 26 Oct
 
 **Asked:** the 40-day challenge is not a one-time thing; admins can create more when one ends, and set start and end dates.
 

@@ -164,7 +164,7 @@ export const I18N = {
     units_note: (d, p) => `Numbers marked ${d} count what you recited. Numbers marked ${p} are points you earned: from durood, quests, sunnah, lectures and tasks. Points raise your level, and your level gives you more invites.`,
     delete_title: 'Delete account', delete_text: 'Your name, phone number and email are erased. The durood you reported stays in the totals, without your name. This cannot be undone.',
     delete_btn: 'Delete my account', delete_confirm: 'Delete your account for good?', deleted: 'Account deleted',
-    challenge_title: '40-day challenge', day_of: (d, n) => `Day ${d} of ${n}`, crore: 'crore', lakh: 'lakh',
+    ch_past: 'Past challenges', ch_top: 'Top', ch_next: (n, d) => `Next: ${n}, starts ${d}`, challenge_title: '40-day challenge', day_of: (d, n) => `Day ${d} of ${n}`, crore: 'crore', lakh: 'lakh',
     needed_today: 'Needed today', reported_today: 'Reported today', days_left: 'Days left',
     ahead: (x) => `Ahead of plan by ${x}`, behind: (x) => `Behind plan by ${x}`, on_plan: 'Exactly on plan', first_day: (a, b) => `Day one: ${a} of today's ${b}`,
     projected: (x, p, n) => `At this pace: ${x} by day ${n} (${p}% of the target)`, plan_each_day: (x) => `Plan: ${x} every day`,
@@ -172,7 +172,7 @@ export const I18N = {
     over_msg: (d, n, left) => `Day ${d} of ${n}. Still counting. ${left} to go.`, done_msg: (x) => `${x} complete. Alhamdulillah.`,
     celebrate_crore: (k) => `${k} crore reached!`, celebrate_done: 'The target is reached!', celebrate_text: (d) => `Together, by day ${d}.`,
     share: 'Share', share_crore: (k, n) => `${k} crore durood reached together on Seerah Quest, day ${n} of the challenge. Join us.`,
-    challenge_board: 'Challenge', challenge_note: 'Covers the 40 days and freezes when they end.', 
+    challenge_board: 'Challenge', challenge_note: 'Covers the challenge days and freezes when they end.', 
     reminder_note: 'Intention reminder: recite for the sake of Allah and His Messenger ﷺ, not for ranking.',
     titles: ['Musafir', 'Talib', 'Zakir', 'Mushtaq', 'Muhib', 'Aashiq', 'Khadim', 'Saalik', 'Arif', 'Muqarrab'],
     badge: {

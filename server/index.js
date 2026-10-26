@@ -20,7 +20,7 @@ import * as news from './news.js';
 import * as feedApi from './feed.js';
 import * as geo from './geo.js';
 import * as compete from './compete.js';
-import { CFG, dayOf, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, parseQuestions, claimCircle, getMe, weekStart, setSpecialDay, deleteSpecialDay, listSpecialDays, circleUrl, setCircleUrl, requestTeach, listTeachRequests, decideTeach, leaderboard, qabilaBoard, teamView, publicStats, linkInviter } from './game.js';
+import { CFG, dayOf, challengeAdminView, planChallenge, unplanChallenge, nameChallenge, pastChallenges, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, parseQuestions, claimCircle, getMe, weekStart, setSpecialDay, deleteSpecialDay, listSpecialDays, circleUrl, setCircleUrl, requestTeach, listTeachRequests, decideTeach, leaderboard, qabilaBoard, teamView, publicStats, linkInviter } from './game.js';
 
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -626,7 +626,11 @@ route('POST', '/api/admin/members/:username', adm, async ({ params, body, admin 
 });
 route('GET', '/api/admin/flags', adm, ({ query }) => ({ flags: listFlags(query.get('status') || 'open') }));
 route('POST', '/api/admin/flags/:id', adm, ({ params, body }) => resolveFlag(Number(params.id), body.action));
-route('GET', '/api/admin/challenge', adm, () => ({ summary: challengeSummary(), series: challengeSeries() }));
+route('GET', '/api/admin/challenge', adm, () => challengeAdminView());
+route('POST', '/api/admin/challenge/plans', adm, ({ body, admin }) => { const r = planChallenge(body); profile.logAdmin('challenge-plan', String(body.start || ''), '', admin.actor); return r; });
+route('DELETE', '/api/admin/challenge/plans/:id', adm, ({ params, admin }) => { const r = unplanChallenge(params.id); profile.logAdmin('challenge-unplan', params.id, '', admin.actor); return r; });
+route('PUT', '/api/admin/challenge/name', adm, ({ body }) => nameChallenge(body));
+route('GET', '/api/challenges/past', ({ }) => ({ past: pastChallenges() }));
 route('POST', '/api/admin/challenge', adm, ({ body }) => ({ summary: setChallenge({ start: body.start, days: body.days, target: body.target, clearMilestones: !!body.clearMilestones }) }));
 route('GET', '/api/admin/news', adm, () => ({ items: db.prepare('SELECT * FROM announcements ORDER BY id DESC LIMIT 50').all() }));
 route('POST', '/api/admin/news', adm, ({ body }) => news.postNews(body));
