@@ -658,13 +658,16 @@ function profileModal() {
     <div class="pbig">${av(p, 96, false)}</div>
     ${p.displayName ? `<div class="pname" dir="auto">${esc(p.displayName)}</div>` : ''}
     ${p.bio ? `<p class="pbio" dir="auto">${esc(p.bio)}</p>` : ''}
-    <p class="muted center">${p.city ? `${esc(cityName(p.city))} · ` : ''}${t('member_since')} ${esc(/^\d{4}-\d{2}-\d{2}$/.test(p.joined || '') ? new Date(`${p.joined}T00:00:00Z`).toLocaleDateString(S.lang === 'ur' ? 'ur-PK' : 'en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : p.joined || '')}${p.caravan ? ` · ${esc(p.caravan)}` : ''}</p>
+    <p class="muted center">${p.city ? `${esc(cityName(p.city))} · ` : ''}${t('member_since')} ${esc(dayText(p.joined, SINCE))}${p.caravan ? ` · ${esc(p.caravan)}` : ''}</p>
     ${p.level ? `<div class="stats flat">${p.total != null ? cell(p.total, t('total'), 'durood') : ''}${cell(p.streak, t('streak_l'))}${cell(p.level, t('level'))}</div>` : ''}
     ${p.badges?.length ? `<div class="earned static">${p.badges.filter((c) => t('badge')[c]).map((c) => `<span title="${esc(t('badge')[c][0])}">${badgeSvg(c, true)}</span>`).join('')}</div>` : ''}</div></div>`;
 }
 
 // ---- the feed ---------------------------------------------------------------------------------------------------
 const pick = (en, ur) => (S.lang === 'ur' && ur) || en;
+// a stored day ('2026-10-25') in the member's language: { day: 'numeric', month: 'short' } -> '25 Oct'; anything else is shown as it is
+const dayText = (d, o) => (/^\d{4}-\d{2}-\d{2}$/.test(d || '') ? new Date(`${d}T00:00:00Z`).toLocaleDateString(S.lang === 'ur' ? 'ur-PK' : 'en-GB', { ...o, timeZone: 'UTC' }) : d || '');
+const SINCE = { month: 'long', year: 'numeric' };
 function ago(at) {
   const m = Math.max(0, Math.round((serverNow() - at) / 60000));
   return m < 1 ? t('ago_now') : m < 60 ? t('ago_m')(m) : m < 1440 ? t('ago_h')(Math.floor(m / 60)) : t('ago_d')(Math.floor(m / 1440));
@@ -919,7 +922,7 @@ function historyBlock() {
   const time = (at) => new Date(at).toLocaleTimeString(S.lang === 'ur' ? 'en-GB' : 'en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Karachi' });
   if (!h.days.length) return `<p class="note first">${t('hist_empty')}</p>`;
   return h.days.map((d) => `
-    <div class="hday"><span>${d.day === h.today ? t('today') : d.day === h.yesterday ? t('yesterday') : N(esc(d.day))}</span><b>${U(d.total, 'durood')}</b></div>
+    <div class="hday"><span>${d.day === h.today ? t('today') : d.day === h.yesterday ? t('yesterday') : esc(dayText(d.day, { weekday: 'short', day: 'numeric', month: 'short' }))}</span><b>${U(d.total, 'durood')}</b></div>
     ${d.entries.map((e) => `
       <div class="hrow ${S.editing === e.id ? 'ed' : ''}">
         <span class="hc">${fmt(e.count)}</span>
@@ -1095,7 +1098,7 @@ async function loadBurhan() {
 }
 const wdName = (d) => t('weekdays')[d];
 const mamulaatBars = (m) => !m ? '' : `<div class="mam"><div class="row between"><b>${t('mam_title')}</b><span class="muted">${m.average == null ? '' : t('mam_avg')(m.average)}</span></div>
-  <div class="bars" aria-label="${esc(t('mam_title'))}">${m.series.map((x) => `<i title="${esc(x.day)}${x.percent == null ? '' : ` · \u2066${x.percent}%\u2069`}" class="${x.percent == null ? 'none' : ''}" style="height:${x.percent == null ? 6 : Math.max(6, x.percent)}%"></i>`).join('')}</div>
+  <div class="bars" aria-label="${esc(t('mam_title'))}">${m.series.map((x) => `<i title="${esc(dayText(x.day, { weekday: 'short', day: 'numeric', month: 'short' }))}${x.percent == null ? '' : ` · \u2066${x.percent}%\u2069`}" class="${x.percent == null ? 'none' : ''}" style="height:${x.percent == null ? 6 : Math.max(6, x.percent)}%"></i>`).join('')}</div>
   <div class="muted">${m.today == null ? t('mam_none_today') : t('mam_today')(m.today)}</div></div>`;
 const wdList = (a) => a.weekdays || (a.weekday == null ? [] : [a.weekday]);
 // "Every day", "Every Friday", or "Every Sat, Sun" (the week starts on Monday here, as in Pakistan)
@@ -1356,12 +1359,12 @@ function detailModal() {
   if (d.type === 'saalik') {
     const p = r.profile;
     return `<div class="modal msheet"><div class="box wide">${head}
-      <p class="muted" dir="ltr">${esc(p.phone)} · ${esc(p.email)}<br>${esc(cityName(p.city) || '')}${p.country ? ` · ${esc(p.country)}` : ''} · ${t('joined')} ${N(esc(p.joined))}</p>
+      <p class="muted" dir="ltr">${esc(p.phone)} · ${esc(p.email)}<br>${esc(cityName(p.city) || '')}${p.country ? ` · ${esc(p.country)}` : ''} · ${t('joined')} ${esc(dayText(p.joined, SINCE))}</p>
       ${progressGrid(r.progress)}
       <p class="muted">${t('nav_caravan')}: <b>${r.extra.caravan ? esc(r.extra.caravan) : t('none_word')}</b></p>
       <div class="stats"><div><b>${fmt(r.extra.invited)}</b><span>${t('invited_word')}</span></div><div><b>${fmt(r.extra.qabila)}</b><span>${t('rk_trees')}</span></div><div><b>${fmt(r.extra.badges)}</b><span>${t('badges_word')}</span></div></div>
       ${r.extra.badgeList?.length ? `<p class="chips">${r.extra.badgeList.map((c) => `<span class="tag">${esc((t('badge')[c] || [c])[0])}</span>`).join(' ')}</p>` : ''}
-      ${r.extra.reflections?.length ? `<b>${t('reflect_title')}</b>${r.extra.reflections.map((x) => `<div class="reflbody" dir="auto"><small class="muted">${N(esc(x.day))}</small><br>${esc(x.body)}</div>`).join('')}` : ''}
+      ${r.extra.reflections?.length ? `<b>${t('reflect_title')}</b>${r.extra.reflections.map((x) => `<div class="reflbody" dir="auto"><small class="muted">${esc(dayText(x.day, { weekday: 'short', day: 'numeric', month: 'short' }))}</small><br>${esc(x.body)}</div>`).join('')}` : ''}
       ${mamulaatBars(r.mamulaat)}${r.mamulaat.stale ? `<small class="muted">${t('mam_stale')}</small>` : ''}
       ${r.masul ? `<p class="muted">${t('masul_word')}: <b>${esc(r.masul)}</b></p>` : ''}
       ${r.assignments.length ? `<b>${t('assigned_view')}</b>${r.assignments.map((a) => assignRow(a, 'view')).join('')}` : ''}
@@ -1369,7 +1372,7 @@ function detailModal() {
   }
   const f = S.assignForm || { kind: 'task' };
   return `<div class="modal msheet"><div class="box wide">${head}
-    <p class="muted">${esc(cityName(r.city) || '')} · ${t('joined')} ${N(esc(r.joined))}</p>
+    <p class="muted">${esc(cityName(r.city) || '')} · ${t('joined')} ${esc(dayText(r.joined, SINCE))}</p>
     ${progressGrid(r.progress)}
     <b>${t('assigned_view')}</b>
     ${r.assignments.length ? r.assignments.map((a) => assignRow(a, 'masul')).join('') : empty('check', t('none_assigned'))}
