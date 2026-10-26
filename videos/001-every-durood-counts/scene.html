@@ -1,0 +1,197 @@
+<!doctype html>
+<!-- Promo 001 "Every durood counts" — 1080x1920, 31 s. Rendered frame by frame by tools/render.mjs (window.seek(t) draws time t).
+     Open it in a browser to preview: it plays in real time, click to restart. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Every durood counts</title>
+<style>
+@font-face { font-family: 'Inter'; src: url('../../assets/fonts/inter-latin.woff2') format('woff2'); font-weight: 100 900; }
+@font-face { font-family: 'Nastaliq'; src: url('../../assets/fonts/nastaliq-ur-400.woff2') format('woff2'); font-weight: 400; }
+@font-face { font-family: 'Nastaliq'; src: url('../../assets/fonts/nastaliq-ur-700.woff2') format('woff2'); font-weight: 700; }
+@font-face { font-family: 'Amiri'; src: url('../../assets/fonts/amiri-durood.woff2') format('woff2'); }
+@font-face { font-family: 'Salawat'; src: url('../../assets/fonts/salawat.woff2') format('woff2'); unicode-range: U+FDFA; }
+:root { --ink: #0b0b0b; --paper: #ffffff; --soft: #66665f; --line: #dcdcd6; --sig: #00a86b; --sig-text: #007a4d; --sig-bg: #e3f6ed; }
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--paper); }
+body { font-family: 'Inter', 'Salawat', sans-serif; color: var(--ink); }
+.stage { position: absolute; inset: 0; overflow: hidden; }
+.layer { position: absolute; inset: 0; will-change: transform, opacity; }
+.ur { font-family: 'Inter', 'Nastaliq', serif; direction: rtl; }
+.star { display: inline-block; position: relative; width: 1em; height: 1em; }
+.star i { position: absolute; inset: 14%; border: .09em solid currentColor; }
+.star i + i { transform: rotate(45deg); }
+.star.fill i { background: currentColor; }
+
+/* the green rule across the top, as the app header */
+.topbar { position: absolute; left: 0; right: 0; top: 0; height: 18px; background: var(--sig); transform-origin: left; }
+.brand { position: absolute; top: 92px; left: 80px; right: 80px; display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 30px; letter-spacing: 4px; text-transform: uppercase; }
+.brand .ur { font-size: 34px; letter-spacing: 0; font-weight: 700; }
+
+/* captions above the phone */
+.cap { position: absolute; left: 80px; right: 80px; top: 190px; }
+.kick { color: var(--sig-text); font-weight: 800; font-size: 30px; letter-spacing: 4px; text-transform: uppercase; display: flex; align-items: center; gap: 16px; }
+.kick .star { color: var(--sig); font-size: 34px; }
+.head { font-weight: 900; font-size: 92px; line-height: 1.02; letter-spacing: -3px; margin-top: 18px; }
+.sub { font-size: 50px; line-height: 1.9; margin-top: 14px; color: var(--soft); text-align: right; }
+
+/* phone */
+.phone { position: absolute; left: 220px; top: 640px; width: 640px; height: 1334px; background: #0b0b0b; border-radius: 70px; padding: 22px; box-shadow: 28px 28px 0 var(--sig-bg); }
+.phone .scr { position: relative; width: 596px; height: 1290px; border-radius: 50px; overflow: hidden; background: #f2f2f7; }
+.phone img { position: absolute; left: 0; top: 0; width: 596px; height: 1290px; }
+.ripple { position: absolute; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 6px solid #fff; opacity: 0; z-index: 2; }
+.plus { position: absolute; font-weight: 900; font-size: 64px; color: var(--sig); opacity: 0; z-index: 4; text-shadow: 0 0 0 #fff; }
+
+/* scene 1: the durood */
+.s1 .ar { position: absolute; left: 60px; right: 60px; top: 640px; font-family: 'Amiri', serif; font-size: 104px; line-height: 2; text-align: center; direction: rtl; }
+.s1 .ar span { display: inline-block; }
+.s1 .tr { position: absolute; left: 100px; right: 100px; top: 1170px; text-align: center; font-size: 40px; line-height: 1.45; color: var(--soft); }
+.s1 .k { position: absolute; left: 0; right: 0; top: 520px; text-align: center; justify-content: center; }
+
+/* scene 2: one -> ten */
+.s2 .nums { position: absolute; left: 0; right: 0; top: 420px; display: flex; justify-content: center; align-items: center; gap: 40px; font-weight: 900; font-size: 420px; letter-spacing: -20px; line-height: 1; font-variant-numeric: tabular-nums; }
+.s2 .arrow { font-size: 160px; color: var(--sig); letter-spacing: 0; }
+.s2 .ten { color: var(--sig); }
+.s2 .q { position: absolute; left: 80px; right: 80px; top: 960px; font-size: 66px; font-weight: 800; line-height: 1.15; letter-spacing: -1.5px; }
+.s2 .qur { position: absolute; left: 80px; right: 80px; top: 1250px; font-size: 52px; line-height: 2; text-align: right; color: var(--ink); }
+.s2 .src { position: absolute; left: 80px; top: 1530px; font-size: 32px; font-weight: 700; color: var(--sig-text); letter-spacing: 2px; text-transform: uppercase; }
+
+/* scene 7: call to action */
+.s7 .icon { position: absolute; left: 50%; top: 330px; width: 300px; height: 300px; margin-left: -150px; border-radius: 68px; box-shadow: 18px 18px 0 var(--sig-bg); }
+.s7 .name { position: absolute; left: 0; right: 0; top: 700px; text-align: center; font-weight: 900; font-size: 120px; letter-spacing: -4px; }
+.s7 .nameur { position: absolute; left: 0; right: 0; top: 840px; text-align: center; font-size: 84px; font-weight: 700; direction: rtl; font-family: 'Nastaliq', serif; color: var(--sig-text); }
+.s7 .goal { position: absolute; left: 80px; right: 80px; top: 1080px; border-top: 5px solid var(--ink); border-bottom: 1.5px solid var(--ink); display: grid; grid-template-columns: 1fr 1fr; }
+.s7 .goal div { padding: 26px 0 22px; }
+.s7 .goal div + div { border-left: 1.5px solid var(--ink); padding-left: 32px; }
+.s7 .goal b { display: block; font-weight: 900; font-size: 92px; letter-spacing: -3px; line-height: 1; font-variant-numeric: tabular-nums; }
+.s7 .goal span { font-size: 30px; font-weight: 700; color: var(--soft); text-transform: uppercase; letter-spacing: 2px; }
+.s7 .cta { position: absolute; left: 80px; right: 80px; top: 1380px; background: var(--ink); color: #fff; padding: 36px 40px; display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 46px; }
+.s7 .cta b { color: #2ee59d; }
+.s7 .ctaur { position: absolute; left: 80px; right: 80px; top: 1530px; font-size: 46px; line-height: 2; text-align: right; color: var(--soft); }
+.s7 .foot { position: absolute; left: 80px; right: 80px; top: 1680px; font-size: 30px; line-height: 1.4; color: var(--soft); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="topbar" id="topbar"></div>
+  <div class="brand" id="brand"><span>Seerah Quest</span><span class="ur">سیرت کوئسٹ</span></div>
+
+  <section class="layer s1" id="s1">
+    <div class="kick k"><span class="star fill"><i></i><i></i></span>Durood Shareef</div>
+    <div class="ar" dir="rtl" lang="ar"><span>اللّٰهُمَّ</span> <span>صَلِّ</span> <span>عَلٰى</span> <span>مُحَمَّدٍ</span><br><span>وَعَلٰى</span> <span>اٰلِ</span> <span>مُحَمَّدٍ</span></div>
+    <div class="tr">O Allah, send blessings upon Muhammad ﷺ<br>and upon the family of Muhammad</div>
+  </section>
+
+  <section class="layer s2" id="s2">
+    <div class="nums"><span id="one">1</span><span class="arrow" id="arr">→</span><span class="ten" id="ten">10</span></div>
+    <div class="q" id="q">“Whoever sends one durood upon me, Allah sends ten blessings upon him.”</div>
+    <div class="qur ur" id="qur">جو مجھ پر ایک بار درود بھیجے، اللہ اس پر دس رحمتیں بھیجتا ہے۔</div>
+    <div class="src" id="src">Sahih Muslim 408</div>
+  </section>
+
+  <!-- scenes 3 to 6 share one caption slot and one phone -->
+  <section class="layer" id="caps">
+    <div class="cap" data-c="0"><div class="kick"><span class="star fill"><i></i><i></i></span>Count</div><div class="head">Tap for each durood.</div><div class="sub ur">ہر درود پر ٹیپ کریں</div></div>
+    <div class="cap" data-c="1"><div class="kick"><span class="star fill"><i></i><i></i></span>Together</div><div class="head">Recite with your caravan.</div><div class="sub ur">اپنے کارواں کے ساتھ درود پڑھیں</div></div>
+    <div class="cap" data-c="2"><div class="kick"><span class="star fill"><i></i><i></i></span>Compete</div><div class="head">Race in goodness, every week.</div><div class="sub ur">ہر ہفتے نیکی میں آگے بڑھیں</div></div>
+    <div class="cap" data-c="3"><div class="kick"><span class="star fill"><i></i><i></i></span>Grow</div><div class="head">Streaks, levels, badges.</div><div class="sub ur">سلسلہ، درجے اور بیجز</div></div>
+  </section>
+  <div class="phone" id="phone"><div class="scr" id="scr">
+    <img id="tapimg" alt="">
+    <img data-s="1" src="../../assets/shots/caravan.png" alt="">
+    <img data-s="2" src="../../assets/shots/rank.png" alt="">
+    <img data-s="3" src="../../assets/shots/me.png" alt="">
+    <div class="ripple" id="ripple"></div>
+  </div></div>
+  <div class="plus" id="plus">+1</div>
+
+  <section class="layer s7" id="s7">
+    <img class="icon" src="../../assets/icon-512.png" alt="">
+    <div class="name">Seerah Quest</div>
+    <div class="nameur">سیرت کوئسٹ</div>
+    <div class="goal"><div><b>10 crore</b><span>durood together</span></div><div><b>40 days</b><span>one challenge</span></div></div>
+    <div class="cta"><span>Ask a member for an invite</span><b>→</b></div>
+    <div class="ctaur ur">کسی رکن سے دعوت لیں اور آج ہی شامل ہوں</div>
+    <div class="foot">Every durood is dedicated to the work of the Seerat Circles across Pakistan.</div>
+  </section>
+</div>
+
+<script>
+// ---- timeline (seconds) ----------------------------------------------------------------------------------
+const DURATION = 31;
+const T = { s1: [0, 4.6], s2: [4.6, 10], phone: [10, 26.4], s7: [26.4, 31] };
+const CAPS = [[10, 14.6], [14.6, 18.6], [18.6, 22.6], [22.6, 26.4]]; // tap, caravan, compete, grow
+const TAPS = 12, TAP0 = 11.2, TAP_EVERY = 0.24;                       // taps start once the phone has landed
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const outCubic = (x) => 1 - Math.pow(1 - x, 3);
+const outBack = (x) => { const c = 1.6; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const inCubic = (x) => x * x * x;
+const $ = (s) => document.querySelector(s), $$ = (s) => [...document.querySelectorAll(s)];
+const set = (el, o, tf = '') => { el.style.opacity = o; el.style.transform = tf; el.style.visibility = o > 0.001 ? 'visible' : 'hidden'; };
+// a scene fades/slides in over `fin` s from its start and out over `fout` s before its end
+const life = (t, [a, b], fin = 0.5, fout = 0.4) => ({ i: outCubic(prog(t, a, a + fin)), o: inCubic(prog(t, b - fout, b)), on: t >= a && t < b });
+
+const tapSrc = (i) => `../../assets/shots/tap-${String(i).padStart(2, '0')}.jpg`;
+for (let i = 0; i <= TAPS; i++) new Image().src = tapSrc(i);
+
+function seek(t) {
+  // top rule draws in, brand fades in, both leave for the closing card
+  $('#topbar').style.transform = `scaleX(${outCubic(prog(t, 0, 0.8))})`;
+  const end = life(t, T.s7);
+  set($('#brand'), prog(t, 0.3, 0.9) * (1 - end.i), `translateY(${(1 - outCubic(prog(t, 0.3, 0.9))) * -20}px)`);
+
+  // 1. the durood, word by word
+  const s1 = life(t, T.s1);
+  set($('#s1'), s1.on ? 1 - s1.o : 0, `translateY(${-60 * s1.o}px)`);
+  set($('#s1 .k'), prog(t, 0.2, 0.7));
+  $$('#s1 .ar span').forEach((w, i) => { const p = outCubic(prog(t, 0.5 + i * 0.28, 1.0 + i * 0.28)); set(w, p, `translateY(${(1 - p) * 40}px)`); });
+  const tr = outCubic(prog(t, 2.6, 3.2)); set($('#s1 .tr'), tr, `translateY(${(1 - tr) * 24}px)`);
+
+  // 2. one -> ten, then the hadith
+  const s2 = life(t, T.s2);
+  set($('#s2'), s2.on ? 1 - s2.o : 0, `translateY(${-60 * s2.o}px)`);
+  const a = T.s2[0];
+  set($('#one'), outCubic(prog(t, a + 0.1, a + 0.5)), `scale(${0.6 + 0.4 * outBack(prog(t, a + 0.1, a + 0.6))})`);
+  set($('#arr'), prog(t, a + 0.6, a + 0.9), `translateX(${(1 - outCubic(prog(t, a + 0.6, a + 1))) * -60}px)`);
+  set($('#ten'), outCubic(prog(t, a + 0.9, a + 1.3)), `scale(${0.5 + 0.5 * outBack(prog(t, a + 0.9, a + 1.5))})`);
+  for (const [id, d] of [['#q', 1.6], ['#qur', 2.4], ['#src', 3.0]]) { const p = outCubic(prog(t, a + d, a + d + 0.6)); set($(id), p, `translateY(${(1 - p) * 30}px)`); }
+
+  // 3-6. the phone rises, its screen changes with each caption
+  const ph = life(t, T.phone, 0.9, 0.5);
+  set($('#phone'), ph.on ? 1 : 0, `translateY(${(1 - ph.i) * 1300 + ph.o * 1300}px) rotate(${(1 - ph.i) * 4}deg)`);
+  CAPS.forEach((r, i) => {
+    const c = life(t, r, 0.45, 0.3), el = $(`.cap[data-c="${i}"]`);
+    set(el, c.on ? c.i * (1 - c.o) : 0, `translateX(${(1 - c.i) * 70 - c.o * 70}px)`);
+    if (i > 0) { const s = life(t, [r[0] - 0.15, i === 3 ? T.phone[1] + 1 : r[1] + 0.25], 0.45, 0.01); set($(`img[data-s="${i}"]`), s.on ? s.i : 0, `translateY(${(1 - s.i) * 120}px)`); }
+  });
+  // real counting: one screenshot per tap, a ripple on the button and a +1 floating off it
+  const k = clamp(Math.floor((t - TAP0) / TAP_EVERY) + 1, 0, TAPS);
+  const img = $('#tapimg'); const src = tapSrc(t < TAP0 ? 0 : k); if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+  const sc = 90 * 596 / 390; // the capture scrolled Today by 90 px (tools/capture.mjs)
+  const since = t - TAP0 - (k - 1) * TAP_EVERY, tapping = t >= TAP0 && k <= TAPS && since < TAP_EVERY + 0.3 && t < CAPS[0][1];
+  const rp = prog(since, 0, 0.32);
+  set($('#ripple'), tapping ? 0.85 * (1 - rp) : 0, `scale(${0.4 + rp * 1.6})`);
+  $('#ripple').style.left = '298px'; $('#ripple').style.top = `${1091 - sc}px`;
+  const fp = prog(since, 0, 0.5);
+  set($('#plus'), tapping ? 1 - fp : 0, `translateY(${-fp * 150}px)`);
+  $('#plus').style.left = '720px'; $('#plus').style.top = `${640 + 22 + 1091 - sc - 90}px`;
+
+  // 7. closing card
+  set($('#s7'), end.i, '');
+  $$('#s7 > *').forEach((el, i) => { const p = outCubic(prog(t, T.s7[0] + 0.15 + i * 0.16, T.s7[0] + 0.7 + i * 0.16)); set(el, p, `translateY(${(1 - p) * 40}px)`); });
+}
+window.DURATION = DURATION; window.seek = seek;
+window.ready = Promise.all([document.fonts.ready, ...$$('img').filter((i) => i.src).map((i) => i.decode().catch(() => {}))]);
+
+// preview: play in real time unless driven by the renderer
+if (!navigator.webdriver) {
+  let t0 = performance.now();
+  document.addEventListener('click', () => { t0 = performance.now(); });
+  const frame = () => { seek(((performance.now() - t0) / 1000) % DURATION); requestAnimationFrame(frame); };
+  requestAnimationFrame(frame);
+} else seek(0);
+</script>
+</body>
+</html>
