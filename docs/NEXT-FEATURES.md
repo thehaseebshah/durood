@@ -2,7 +2,12 @@
 
 Nothing here is built yet. Each item says what you asked for, what the app does today, what to build, and the decisions that need an answer first. Sizes are rough: **S** about a day, **M** a few days, **L** a week or more.
 
-Suggested order: 3 (smallest gap, maybe nothing to build), 1, 6, 5, 2, then 4 (largest).
+Suggested order: 3, 2, 1, 6, 5, then 4.
+
+**Decisions made so far (26 October):**
+- WhatsApp: a member's number is **visible to other members by default**, and a member can choose to hide it (item 2).
+- Team tasks: add an **"Everyone I lead"** option (item 3).
+- Reading material: **store the PDFs and audio on Google Drive, not on our server**, to avoid hosting cost (item 4).
 
 ---
 
@@ -25,62 +30,69 @@ Suggested order: 3 (smallest gap, maybe nothing to build), 1, 6, 5, 2, then 4 (l
 
 ---
 
-## 2. A WhatsApp button on every profile (S to M, mostly privacy decisions)
+## 2. A WhatsApp button on every profile (S)
 
 **Asked:** each profile has a button letting anyone message that person on WhatsApp, since we already hold everyone's number.
 
-**Today:** we hold a phone number for everyone, but the privacy notice (`public/privacy.html`) promises that only owners and organisers see it (and a linked murabbi in the Al-Burhan edition). No member can see another member's number, and the profile sheet shows none. A button for everyone breaks that promise: tapping it reveals the number.
+**Decided:** the number is **visible by default** (we are one community and mostly know each other). A member who does not want to be contacted can **hide their number** in Settings. Hiding is the exception, not something members must opt into.
 
-**Why this needs care:** anyone could contact anyone, including women and young members, with no way to refuse. Members signed up under the current privacy notice. There is no "block a member" feature yet.
+**Today:** we hold a phone number for everyone. No member can see another's number, and the profile sheet shows none. The privacy notice (`public/privacy.html`) currently says the opposite of the new behaviour (only organisers see numbers). It needs a one-line change to match when this ships; that is not a blocker.
 
-**Recommended build:**
-- **Opt-in, off by default:** a Settings switch, "Let other members message me on WhatsApp". The button appears on a profile only if that member switched it on.
-- The button opens `https://wa.me/<number>` through a signed-in server redirect (`/api/wa/<username>`), rate-limited and logged, so numbers never sit in page data or in the member list API where a script could harvest them.
-- Update the privacy notice, the sign-up wording and the Settings text to match. Existing members get a one-time prompt rather than being switched on.
-- Admins can switch it off for a member after a report.
-- The stored number may not be on WhatsApp (the sign-up says "WhatsApp or phone number"): say so gracefully if the chat does not open.
+**Build:**
+- A **"Hide my number from other members"** switch in Settings (off by default). The button appears on a profile unless that member has hidden their number.
+- The button opens `https://wa.me/<number>` through a signed-in server redirect (`/api/wa/<username>`), so numbers are not in the public member data where a script could collect them in bulk. The redirect is rate-limited and logged.
+- If someone's number is not on WhatsApp the chat will simply not open; say so gently.
+- Admins can hide a number on a member's behalf after a complaint.
 
-**Decide:** opt-in for everyone (recommended), or only between people who share a caravan, Qabila or Al-Burhan link, or open to all. Whether to build a "block" button at the same time (recommended, and Google Play's user-generated-content rules expect one).
+**Worth adding, not required:**
+- Show the "hide my number" choice **on the sign-up form** as well, so a person who wants privacy can choose it before their number is ever visible.
+- A **one-time notice to existing members** ("Other members can now message you on WhatsApp. Hide your number?") so nobody finds out by surprise.
+- A **block member** button (hide my profile and number from this one person). Google Play expects a way to block when members can contact each other.
 
 ---
 
-## 3. A masul gives one task to many people by team hashtag (S, may already be done)
+## 3. A masul gives one task to many people by team hashtag (S)
 
 **Asked:** a masul can assign a single task to many people at once using the team hashtags.
 
 **Today, already built for one hashtag at a time.** A masul tags each razakar on **My people** (up to 5 tags each, such as `#shabab_lahore`). Tapping a tag in the filter row shows **"Give this team a task"**, which creates the task (or routine) for every razakar with that tag in one step. (`assignTeam` in `server/burhan.js`; tested.)
 
-**So what is missing? Please say which of these you mean:**
-- Choose **several hashtags at once** (everyone in `#lahore` or `#stage`), with nobody given the task twice.
-- A **"Everyone I lead"** choice.
-- **Hand-pick** people from a checklist.
-- The tag filter is easy to miss: make "assign to a team" its own obvious button.
-- See a team task as **one item** ("12 of 20 done") and edit or remove it for everyone at once. Today each person gets an independent copy.
+**Decided to add:** an **"Everyone I lead"** option, giving the task to all of the masul's razakars at once.
 
-**Build:** whichever of the above you choose; the multi-tag and "everyone" versions are small. The grouped view needs a "batch id" stored with each copy.
+**Still open (say if you want any of these):**
+- Choose **several hashtags at once** (everyone in `#lahore` or `#stage`), with nobody given the task twice.
+- **Hand-pick** people from a checklist.
+- Make "assign to a team" its own obvious button (the tag filter is easy to miss).
+- See a team task as **one item** ("12 of 20 done") and edit or remove it for everyone at once. Today each person gets an independent copy; this needs a "batch id" stored with each copy.
+
+**Build:** a small chooser at the top of the assign form: *One person / A team (#tag) / Everyone I lead*, using the same task form and the same rules (a deadline is required, plain text, no links).
 
 ---
 
-## 4. Weekly reading and listening material with a quiz (L)
+## 4. Weekly reading and listening material with a quiz, kept on Google Drive (M)
 
-**Asked:** the admin can add PDFs (and maybe audio) to the app as the week's reading material, and the quiz is taken from them.
+**Asked:** the admin can add PDFs (and maybe audio) to the app as the week's reading material, and the quiz is taken from them. **Decided:** keep the files on Google Drive so our server does not store or serve them.
 
-**Today:** only watching: a lecture is a YouTube video with a minimum watch time, an XP reward, and a quiz the admin writes; the reward is paid after the quiz is passed.
+**Today:** only watching. A lecture is a YouTube video with a minimum watch time, an XP reward, and a quiz the admin writes; the reward is paid after the quiz is passed.
 
-**Build:** a "material" type beside lectures:
-- Admin uploads a **PDF or audio file** (mp3 or m4a) with a title in English and Urdu, the week it belongs to, XP, and the quiz questions (reuse the lecture quiz screens and rules).
-- Members read the PDF in the app or play the audio; the quiz is the proof of reading. Audio can also require a minimum listening time, like lectures. A PDF cannot be checked for being read, so only the quiz counts.
-- It appears in the week's section next to the lecture and in the quests.
+**How Drive fits.** The admin uploads the file to Google Drive, sets it to "Anyone with the link can view", and pastes the link into the admin page. The app takes only the file's ID from the link and builds the address itself (members never see an admin-typed address, and only Drive addresses are accepted). Members read or play it inside the app in Drive's own viewer, the same way lectures play in YouTube's. This removes the hard parts of hosting files ourselves: no upload code, no storage cost, no backups, no seeking support for audio.
 
-**Things that make this the biggest item:**
-- **Uploads:** the server accepts photos as small base64 posts (400 KB). PDFs and audio need real streaming uploads with size caps (suggest PDF up to 15 MB, audio up to 40 MB), format checks and rate limits.
-- **Storage:** files live on the server's disk (QA about 1 GB, production 3 GB) and **the nightly backup does not include uploaded files** (`server/backup.js` says so). Audio fills the disk quickly; needs a plan (cap per file, delete old weeks, or a separate backup).
-- **Audio playback** needs HTTP range support (seeking) which the static file server does not have yet; without it audio will not seek on iPhones.
-- Serve PDFs inline with a locked-down policy so a malicious PDF cannot run anything.
-- Offline: optionally cache the current week's file on the phone.
-- Copyright is the admin's responsibility; say so on the upload screen.
+**Build:**
+- A **"material"** type beside lectures: title in English and Urdu, the week it belongs to, XP, the Drive link, and a quiz (reuse the lecture quiz screens and rules). It shows with the week's lecture and in the quests.
+- The member opens the PDF or plays the audio in the app (Drive viewer in a frame; the page's security policy gets one new allowed address, `drive.google.com`) with an "Open in Drive" link as a fallback.
+- An admin **"Test preview"** button and a plain reminder: "set sharing to Anyone with the link, or members will see *You need access*".
+- Old weeks stay available in a list.
 
-**Decide:** upload to our server (recommended, simplest for members) or let admins paste a link (cheaper, but members leave the app). Maximum file sizes. Whether old weeks stay readable.
+**Limits to know about:**
+- **We cannot tell whether a PDF or audio was actually read or heard.** Drive's viewer is Google's page, so we get no play time or page events. The quiz is the only proof (it would have been for a PDF on our own server too). Lectures on YouTube keep their minimum watch time.
+- **Drive can throttle a very popular file** ("Sorry, you can't view or download this file at this time") if many people open it in a short time. A weekly file opened by a few hundred members should be fine; a few thousand might hit it. Keeping the link type pluggable lets us move to another host later without redoing the feature.
+- It works in the Android app's web view and in browsers, but **needs trying with a real file on a real phone before we rely on it.**
+- The file is reachable by anyone who has the link, not only members. Fine for community material; copyright is the admin's responsibility.
+- No offline reading.
+
+**Audio alternative worth considering:** upload audio to YouTube as an unlisted video (a still picture with the sound). It then works **today** as an ordinary lecture, with the minimum listening time and the quiz, and YouTube has no throttling. PDFs would be the only new thing. Drive for PDFs plus YouTube for audio may be the most reliable mix.
+
+**Decide:** Drive for both, or Drive for PDFs and YouTube for audio. Whether old weeks stay readable.
 
 ---
 
