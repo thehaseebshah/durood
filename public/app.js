@@ -121,8 +121,11 @@ async function api(path, method = 'GET', body) {
       method,
       headers: { 'Content-Type': 'application/json', ...(S.token && { Authorization: `Bearer ${S.token}` }) },
       body: body ? JSON.stringify(body) : undefined,
+      // a weak signal can hold a request open for minutes: give up and treat it as no signal. Reads and sends with a
+      // request id (safe to repeat) wait 12 s, so a durood goes to the outbox; other writes 30 s
+      signal: AbortSignal.timeout?.(method === 'GET' || body?.rid ? 12_000 : 30_000),
     });
-  } catch { throw new Error('network'); }
+  } catch (e) { throw Object.assign(new Error('network'), { slow: e?.name === 'TimeoutError' }); }
   noteServerTime(res);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -1599,8 +1602,8 @@ async function submitLog(count) {
         if (outbox().length) setTimeout(flushOutbox, 0); // the connection is back: send what was kept offline too
         return true;
       } catch (e) {
-        if (e.message === 'network' && attempt < 2) { await new Promise((r) => setTimeout(r, 800 * (attempt + 1))); continue; }
-        if (e.message === 'network') { queueLog(count, rid); return true; } // no signal: kept on the phone, sent later with the same id
+        if (e.message === 'network' && attempt < 2 && !e.slow) { await new Promise((r) => setTimeout(r, 800 * (attempt + 1))); continue; }
+        if (e.message === 'network') { queueLog(count, rid); return true; } // no signal, or one that hung: kept on the phone, sent later with the same id
         toast(errText(e));
         return false;
       }
@@ -1639,7 +1642,7 @@ app.addEventListener('click', async (ev) => {
         S.me = r.me; S.history = r.history; S.editing = null;
         toast(t('saved')); return draw();
       } catch (e) {
-        if (e.message === 'network' && attempt < 2) { await new Promise((ok) => setTimeout(ok, 800 * (attempt + 1))); continue; }
+        if (e.message === 'network' && attempt < 2 && !e.slow) { await new Promise((ok) => setTimeout(ok, 800 * (attempt + 1))); continue; }
         toast(errText(e)); el.disabled = false; return;
       }
     }

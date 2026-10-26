@@ -247,6 +247,26 @@ try {
     await page.close();
   }
 
+  // ---- a signal that carries nothing: a send that hangs is given up after 12 s and kept on the phone, then sent once -------------
+  {
+    const slow = await register('e2e_hang');
+    const page = await open(slow.token);
+    const held = [];
+    await page.route('**/api/log', (r) => { held.push(r); }); // never answered, like a stalled mobile connection
+    const t0 = Date.now();
+    await page.fill('#manual', '25'); await page.click('[data-act=manual]');
+    await page.waitForFunction(() => JSON.parse(localStorage.getItem('outbox') || '[]').length === 1, null, { timeout: 20000 }).catch(() => {});
+    const waited = Date.now() - t0;
+    ok((await page.evaluate(() => JSON.parse(localStorage.getItem('outbox') || '[]').length)) === 1, `a hung send goes to the outbox (after ${Math.round(waited / 1000)} s)`);
+    ok(waited < 16000, 'without waiting through retries that would hang too');
+    await page.waitForTimeout(1200); // the counter rolls up
+    const big = (await page.locator('#big').textContent()).trim();
+    ok(big === '25', `the counter shows it straight away (${big})`);
+    await page.unroute('**/api/log');
+    await page.evaluate(() => dispatchEvent(new Event('online'))); await page.waitForTimeout(1500);
+    ok((await api('GET', '/api/me', null, slow.token)).today === 25, 'once the line clears, it reaches the server once');
+    await page.close();
+  }
   // ---- no signal: durood is kept on the phone and sent once back online; the app opens offline on the last numbers --------------
   {
     const off = await register('e2e_offline');
