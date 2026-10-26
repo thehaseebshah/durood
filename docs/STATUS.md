@@ -111,6 +111,10 @@ These are in `npm test` and `scripts/e2e.mjs`. Each new browser check was confir
 - After a visible change to the app, run `guide:shots` and then `guide:pdf`.
 - The `promos` branch (two promo videos) shares no history with the app and was left separate.
 
+## Next features
+
+Six requested features (lagging caravan members, WhatsApp button, team tasks by hashtag, weekly reading material with quizzes, separate Seerah and Sunnah pages, repeating 40-day challenges) are written up with what exists today, what to build and the open decisions in `docs/NEXT-FEATURES.md`. None is built yet.
+
 ## What is left
 
 **Needs a person or a decision**
