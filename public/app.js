@@ -2246,8 +2246,8 @@ app.addEventListener('input', (ev) => {
         const r = await api(`/caravan/search?q=${encodeURIComponent(v)}`);
         out.innerHTML = cs.id === 'cvinvq'
           ? r.usernames.map((u) => `<button class="chip" data-act="cvinvite" data-u="${esc(u)}">${esc(u)}</button>`).join('')
-          : r.caravans.map((c) => `<button class="chip" data-act="cvjoin" data-name="${esc(c.name)}">${esc(c.name)} · ${fmt(c.members)}</button>`).join('');
-        if (!out.innerHTML) out.innerHTML = `<small class="muted">${t('cv_none_found')}</small>`;
+          : r.caravans.map((c) => `<button class="chip" data-act="cvjoin" data-name="${esc(c.name)}"><span>${c.displayName ? `<bdi class="cvdn">${esc(c.displayName)}</bdi> <span class="muted">@${esc(c.name)}</span>` : esc(c.name)} · ${membersN(c.members)}</span></button>`).join('');
+        if (!out.innerHTML) out.innerHTML = `<small class="muted">${t(cs.id === 'cvinvq' ? 'cv_none_found' : 'cv_none_join')}</small>`;
       } catch { /* ignore */ }
     }, 300);
     return;

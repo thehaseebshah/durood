@@ -272,6 +272,10 @@ test('display name: the owner can give the caravan a name in Urdu; it shows on t
   assert.equal(row?.displayName, 'قافلہ نور', 'the boards carry it');
   assert.equal((await set(o, '')).view.caravan.displayName, '', 'the owner can clear it');
   await set(o, 'قافلہ نور');
+  const find = async (q) => (await api('GET', `/api/caravan/search?q=${encodeURIComponent(q)}`, { token: m.token })).caravans;
+  assert.deepEqual((await find('نور')).map((c) => [c.name, c.displayName, c.members]), [['dn_caravan', 'قافلہ نور', 2]], 'an Urdu search finds it by its display name, with its member count');
+  assert.ok((await find('dn_car')).some((c) => c.name === 'dn_caravan'), 'the handle still finds it');
+  assert.deepEqual(await find('%%'), [], 'a wildcard does not list every caravan');
   const id = (await view(o)).caravan.id;
   assert.equal((await api('DELETE', `/api/admin/caravans/${id}/display-name`, { headers: admin })).ok, true);
   assert.equal((await view(m)).caravan.displayName, '', 'an admin cleared it');

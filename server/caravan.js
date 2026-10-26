@@ -196,10 +196,14 @@ export function searchInvitees(userId, q) {
               AND NOT EXISTS (SELECT 1 FROM caravan_members cm WHERE cm.user_id = u.id) ORDER BY u.username LIMIT 8`, `${s}%`, userId).map((r) => r.username);
 }
 export function searchCaravans(q) {
-  const s = String(q ?? '').trim().replace(/[^a-z0-9_]/gi, '');
-  if (s.length < 2) return [];
-  return all(`SELECT c.name, (SELECT COUNT(*) FROM caravan_members cm JOIN users u ON u.id = cm.user_id WHERE cm.caravan_id = c.id AND ${LIVE}) members
-              FROM caravans c WHERE c.name LIKE ? ESCAPE '\\' ORDER BY c.name LIMIT 8`, `${s}%`);
+  // by handle (from its start) or by display name (anywhere in it, any script: an Urdu name finds its caravan)
+  const raw = String(q ?? '').trim().slice(0, 40);
+  const s = raw.replace(/[^a-z0-9_]/gi, '');
+  if (s.length < 2 && [...raw].length < 2) return [];
+  const like = raw.replace(/[\\%_]/g, (m) => `\\${m}`);
+  return all(`SELECT c.name, c.display_name displayName, (SELECT COUNT(*) FROM caravan_members cm JOIN users u ON u.id = cm.user_id WHERE cm.caravan_id = c.id AND ${LIVE}) members
+              FROM caravans c WHERE (? = 1 AND c.name LIKE ? ESCAPE '\\') OR (c.display_name != '' AND c.display_name LIKE ? ESCAPE '\\')
+              ORDER BY c.name LIMIT 8`, s.length >= 2 ? 1 : 0, `${s.replace(/_/g, '\\_')}%`, `%${like}%`);
 }
 
 // ---- the caravan streak -------------------------------------------------------------------------------------------------------

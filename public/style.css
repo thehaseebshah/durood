@@ -1122,3 +1122,4 @@ html[data-mode=dark] .seg:not(.five) button.on { background: #636366; color: #ff
 /* large phone text: a chip in a wrapping row breaks onto two lines instead of pushing past the card */
 .wrapx > .chip { max-width: 100%; white-space: normal; text-align: start; }
 .cta + .wrapx { margin-top: 10px; }
+.chip .cvdn { margin-inline-end: .4em; } /* Nastaliq leans past its own space */
