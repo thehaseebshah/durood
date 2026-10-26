@@ -480,3 +480,7 @@ Also: the big counter and the celebration number are measured after drawing and 
 - On a plan's start day (checked once a day and after any admin change, in `rollIfDue` in `server/game.js`) the finished challenge is filed in `challenge_past` with its number, dates, total inside its own days, crores reached and top three, the crore milestones reset, and the plan becomes the running challenge. A plan whose date passed while an earlier one was running replaces it.
 - Members see the challenge's name, "Next: name, starts date" and a **Past challenges** list (`GET /api/challenges/past`). Rankings and the pace maths follow whichever challenge is running.
 - Not built: reminders when a challenge starts or ends, and a badge for finishing.
+
+## 52. Separate Sunnah and Seerah
+
+- Today now has three folds: **Sunnah** (the day's sunnah), **Seerah** (the week's lectures and the Seerat Circle card) and **Daily reflection**. The sidebar has a **Learn** group with two pages. **Sunnah**: today's sunnah, your own sunnah posts, photos from the community. **Seerah**: this week's lectures, the Seerat Circle card, and earlier weeks' lectures (`GET /api/lectures?past=1`, newest first, 30). The bottom bar stays at four tabs; both pages sit under Browse.

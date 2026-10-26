@@ -493,7 +493,7 @@ route('GET', '/api/challenge', ({ user }) => ({ summary: challengeSummary(), ser
 route('GET', '/api/league', ({ user }) => { compete.ensureWeekClosed(); return compete.leagueView(user); });
 route('GET', '/api/team', ({ user }) => teamView(user));
 
-route('GET', '/api/lectures', ({ user }) => ({ lectures: feedApi.lectureList(user), circleUrl: circleUrl(), circleXp: CFG.circleXp }));
+route('GET', '/api/lectures', ({ user, query }) => ({ lectures: query.get('past') ? feedApi.pastLectureList(user) : feedApi.lectureList(user), circleUrl: circleUrl(), circleXp: CFG.circleXp }));
 route('POST', '/api/lectures/:id/quiz', ({ user, params, body }) => {
   rateLimit(`quiz:${user}`, 60, 60e3);
   // a few checks per lecture per half hour: enough to think again, too few to find the answers by trying every option

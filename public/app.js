@@ -345,7 +345,7 @@ function cityModal() {
 }
 
 // ---- the frame: a sidebar (a drawer on phones, like Todoist), the bottom bar and the + button ---------------------------------------
-const NAV_GLYPH = { home: 'home', feed: 'feed', rank: 'bars', caravan: 'caravan', qabila: 'nodes', tasks: 'check', people: 'chain', progress: 'me', settings: 'gear', browse: 'me' };
+const NAV_GLYPH = { home: 'home', feed: 'feed', rank: 'bars', caravan: 'caravan', qabila: 'nodes', sunnah: 'leaf', seerah: 'book', tasks: 'check', people: 'chain', progress: 'me', settings: 'gear', browse: 'me' };
 const navIcon = (k, size = 22) => uiIcon(NAV_GLYPH[k] || 'star', size, 1.7);
 const openQuests = () => (S.me.quests || []).filter((q) => !q.info && !q.done).length;
 function sideItem(k, count = 0, dot = false) {
@@ -360,6 +360,8 @@ function sidebar() {
       <button class="pill icon sclose" data-act="drawerx" aria-label="${esc(t('close'))}">✕</button></div>
     <button class="sadd" data-act="addsheet">${uiIcon('plus', 20, 2.4)}<span>${t('add_durood')}</span></button>
     <div class="sgroup">${sideItem('home', openQuests())}${sideItem('feed', m.unreadNews || 0)}${sideItem('rank')}</div>
+    <div class="slabel">${t('grp_learn')}</div>
+    <div class="sgroup">${sideItem('sunnah')}${sideItem('seerah')}</div>
     <div class="slabel">${t('grp_groups')}</div>
     <div class="sgroup">${sideItem('caravan', cvCount)}${sideItem('qabila')}${inBurhan() ? sideItem('people', S.bh?.roles?.requests || 0) : ''}</div>
     <div class="slabel">${t('grp_you')}</div>
@@ -370,7 +372,7 @@ function sidebar() {
 function shell() {
   const tabs = ['home', 'feed', 'rank'];
   // quick add sits in the top bar (iOS keeps add actions there, never floating over a list); pages with their own main action leave it out
-  const fab = !['settings', 'home', 'qabila', 'caravan', 'people'].includes(S.tab);
+  const fab = !['settings', 'home', 'qabila', 'caravan', 'people', 'sunnah', 'seerah'].includes(S.tab);
   const addLabel = esc(t(S.tab === 'tasks' ? 'own_new' : 'add_durood'));
   return `
   <a class="skip" href="#main">${t('skip_to')}</a>
@@ -379,7 +381,7 @@ function shell() {
     <span class="row">${fab ? `<button class="pill icon hadd" data-act="addsheet" aria-label="${addLabel}" title="${addLabel}">${uiIcon('plus', 20, 2.4)}</button>` : ''}<span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button></span></header>
   <main id="main" tabindex="-1" class="wrap tab-${S.tab}${Date.now() - (S.enterAt || 0) < 900 ? ' enter' : ''}"><h1 class="sr">${t('nav_' + S.tab)}</h1><div class="ltitle" aria-hidden="true">${t('nav_' + S.tab)}</div>${S.offlineMode || outbox().length ? `<div class="offbar" role="status">${uiIcon('refresh', 14, 2)} ${S.offlineMode ? t('offline_bar') : ''} ${outbox().length ? t('outbox_n')(fmt(outbox().reduce((n, x) => n + x.count, 0))) : ''}</div>` : ''}${view()}</main>
   <nav class="tabs" aria-label="${esc(t('app'))}">${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" ${S.tab === k ? 'aria-current="page"' : ''} data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}
-    <button class="${['caravan', 'qabila', 'tasks', 'people', 'progress', 'settings'].includes(S.tab) ? 'on' : ''}" data-act="drawer" aria-label="${esc(t('menu'))}">${uiIcon('menu', 22, 1.7)}<em>${t('nav_browse')}</em>${S.me.caravanInvites || S.me.caravanRequests || S.bh?.roles?.requests ? '<i class="pip" aria-hidden="true"></i>' : ''}</button></nav>
+    <button class="${['sunnah', 'seerah', 'caravan', 'qabila', 'tasks', 'people', 'progress', 'settings'].includes(S.tab) ? 'on' : ''}" data-act="drawer" aria-label="${esc(t('menu'))}">${uiIcon('menu', 22, 1.7)}<em>${t('nav_browse')}</em>${S.me.caravanInvites || S.me.caravanRequests || S.bh?.roles?.requests ? '<i class="pip" aria-hidden="true"></i>' : ''}</button></nav>
   ${S.sheet === 'add' ? addSheet() : ''}
   ${S.sheet === 'resched' ? reschedSheet() : ''}
   ${S.player ? playerModal() : ''}
@@ -391,7 +393,7 @@ function shell() {
 }
 
 function view() {
-  return ({ home, feed: feedView, rank, caravan, qabila, tasks: tasksPage, people: burhanCaravan, progress, settings }[S.tab] || home)();
+  return ({ home, feed: feedView, rank, sunnah: sunnahPage, seerah: seerahPage, caravan, qabila, tasks: tasksPage, people: burhanCaravan, progress, settings }[S.tab] || home)();
 }
 
 // a section that folds away, like a Todoist section; what is open is remembered on this device
@@ -477,13 +479,14 @@ function home() {
   ].join('');
 
   // Sunnah & Seerah: today's Sunnah, this week's lecture, today's reflection
-  let seerah = skel(), seerahMeta = '';
+  let sunnahBody = skel(), seerahBody = skel(), reflBody = skel(), sunnahMeta = '', seerahMeta = '', reflMeta = '';
   if (f) {
-    const lec = f.lectures.length ? f.lectures.map(lectureCard).join('') : `<div class="fcard"><h3>${uiIcon('book', 14, 2)} ${t('lectures')}</h3><p class="muted">${t('no_lectures')}</p></div>`;
-    seerah = `${sunnahCard(f.today)}${lec}${reflectionCard(f.reflection)}${circleCard(m)}`;
-    const items = [!!f.today?.sunnah && (f.today.ticked || !!f.today.mine), ...f.lectures.map((l) => !!l.done), !!f.reflection?.mine];
-    const total = (f.today?.sunnah ? 1 : 0) + f.lectures.length + 1;
-    seerahMeta = N(`${items.filter(Boolean).length} / ${total}`);
+    sunnahBody = `${sunnahCard(f.today)}<button class="rowlink" data-act="tab" data-tab="sunnah"><span>${t('sn_more')}</span><b class="ar">→</b></button>`;
+    seerahBody = `${lecturesNow(f)}${circleCard(m)}<button class="rowlink" data-act="tab" data-tab="seerah"><span>${t('sr_more')}</span><b class="ar">→</b></button>`;
+    reflBody = reflectionCard(f.reflection);
+    sunnahMeta = f.today?.sunnah ? N(`${f.today.ticked || f.today.mine ? 1 : 0} / 1`) : '';
+    seerahMeta = f.lectures.length ? N(`${f.lectures.filter((l) => l.done).length} / ${f.lectures.length}`) : '';
+    reflMeta = N(`${f.reflection?.mine ? 1 : 0} / 1`);
   }
   // durood quests here; the Sunnah & Seerah items show what they pay in their own cards
   const quests = m.quests.filter((q) => q.group === 'durood');
@@ -499,7 +502,9 @@ function home() {
   ${fold('quests', t('grp_quests'), N(`${quests.filter((q) => q.done).length} / ${quests.length}`),
     `${quests.filter((q) => q.period === 'day').every((q) => q.done) ? `<div class="alldone">${uiIcon('star', 14, 2)} ${t('quests_all_done')}</div>` : ''}${quests.map((q) => quest(q)).join('')}`)}
   ${assigned ? fold('assigned', t('grp_tasks_today'), N(String(S.bh.today.length)), `${assigned}<button class="rowlink" data-act="tab" data-tab="tasks"><span>${t('tasks_all')}</span><b class="ar">→</b></button>`) : ''}
-  ${fold('seerah', t('grp_seerah'), seerahMeta, seerah)}
+  ${fold('sunnah', t('nav_sunnah'), sunnahMeta, sunnahBody)}
+  ${fold('seerah', t('nav_seerah'), seerahMeta, seerahBody)}
+  ${fold('reflect', t('reflect_title'), reflMeta, reflBody)}
   ${fold('challenge', chTitle(m.pub.challenge || {}), '', challengeCard(m), false)}
   <p class="note">${t('reminder_note')}</p>`;
 }
@@ -734,6 +739,7 @@ function reflectionCard(r) {
   return `<div class="fcard"><h3>${uiIcon('pen', 14, 2)} ${t('reflect_title')}</h3><div class="head qprompt">${theme ? `<small class="theme">${t('theme_today')}: <b>${esc(theme)}</b></small>` : ''}${esc(prompt)}</div>${body}</div>`;
 }
 
+const lecturesNow = (f) => (f.lectures.length ? f.lectures.map(lectureCard).join('') : `<div class="fcard"><h3>${uiIcon('book', 14, 2)} ${t('lectures')}</h3><p class="muted">${t('no_lectures')}</p></div>`);
 function lectureCard(x) {
   let talk = '';
   if (x.myComment) talk = `<div class="reflbody" dir="auto">${esc(x.myComment.body)}</div>${hiddenNote(x.myComment.status)}<div class="muted">${uiIcon('heart', 14, 2)} ${fmt(x.myComment.likes)}</div>`;
@@ -746,6 +752,28 @@ function lectureCard(x) {
       <button class="chip ${x.done ? '' : 'solid'}" data-act="watch" data-id="${x.id}">${x.done ? t('watched') : `${uiIcon('play', 13, 2)} ${t('watch')}`}</button>
     </div>
     <div class="spacer"></div><b>${t('comment_title')}</b><div class="ctalk">${talk}</div></div>`;
+}
+
+// ---- the Sunnah page and the Seerah page ----------------------------------------------------------------------------------------
+function sunnahPage() {
+  const f = S.feed;
+  if (!f) return skel();
+  const mine = S.sunnahMine;
+  const photos = f.items.filter((it) => it.type === 'photo');
+  return `${sunnahCard(f.today)}
+    <h3>${t('sn_history')}</h3>
+    ${!mine ? skel() : mine.length ? `<ul class="lb">${mine.map((p) => `<li>${p.photoUrl ? `<img class="shot thumb" loading="lazy" src="${esc(p.photoUrl)}" alt="">` : ''}<span class="name">${esc(pick(p.titleEn, p.titleUr))}<small>${esc(dayText(p.day, { day: 'numeric', month: 'short' }))}</small></span>${statusTag(p.status)}</li>`).join('')}</ul>` : `<p class="muted padx">${t('sn_history_empty')}</p>`}
+    <h3>${t('sn_community')}</h3>
+    ${photos.length ? `<div class="stream">${photos.map(feedItem).join('')}</div>` : `<p class="muted padx">${t('sn_community_empty')}</p>`}`;
+}
+function seerahPage() {
+  const f = S.feed;
+  if (!f) return skel();
+  const past = S.pastLec;
+  return `${lecturesNow(f)}<div class="padx">${circleCard(S.me)}</div>
+    <h3>${t('sr_earlier')}</h3>
+    ${!past ? skel() : past.length ? past.map((x) => `<div class="fcard"><div class="q ${x.done ? 'd' : ''}"><span class="bx"></span><span class="t">${esc(pick(x.titleEn, x.titleUr))}<small>${esc(x.speaker)} · ${esc(dayText(x.week, { day: 'numeric', month: 'short' }))}</small></span>
+      <button class="chip ${x.done ? '' : 'solid'}" data-act="watch" data-id="${x.id}">${x.done ? t('watched') : `${uiIcon('play', 13, 2)} ${t('watch')}`}</button></div></div>`).join('') : `<p class="muted padx">${t('sr_earlier_empty')}</p>`}`;
 }
 
 // replies: short, one level, opened under the item they belong to
@@ -1588,6 +1616,12 @@ async function enterTab(tab) {
     }
     if (inBurhan() && ['home', 'tasks', 'people', 'progress'].includes(tab)) loadBurhan().then(async () => { if (tab === 'people') { await loadBurhanLists(); S.bhLists ||= { saaliks: [], razakars: [], requests: [] }; if (S.tab === 'people') draw(); } });
     if (tab === 'home') { await loadFeed(); return S.tab === 'home' && draw(); }
+    if (tab === 'sunnah' || tab === 'seerah') {
+      const more = tab === 'sunnah' ? api('/sunnah/mine').then((r) => { S.sunnahMine = r.posts; }) : api('/lectures?past=1').then((r) => { S.pastLec = r.lectures; });
+      if (!S.feed) { await loadFeed(); draw(); }
+      await more.catch(() => {});
+      return S.tab === tab && draw();
+    }
     if (tab === 'caravan') S.cv = await api('/caravan');
     if (tab === 'qabila') S.team = await api('/team');
     if (tab === 'progress') S.history = await api('/history');
@@ -2055,7 +2089,7 @@ app.addEventListener('click', async (ev) => {
     return;
   }
   if (act === 'watch') {
-    const lecture = S.learn.lectures.find((x) => x.id === Number(el.dataset.id));
+    const lecture = [...S.learn.lectures, ...(S.pastLec || [])].find((x) => x.id === Number(el.dataset.id));
     try {
       await api(`/lectures/${lecture.id}/start`, 'POST');
       S.player = { lecture, elapsed: lecture.done ? lecture.minSeconds : 0 };

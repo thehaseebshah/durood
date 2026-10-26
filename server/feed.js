@@ -200,9 +200,11 @@ export function listReplies(userId, kind, itemId) {
 // every lecture belongs to the week it is featured in; rows from before weeks existed take the week they were added in
 for (const l of all('SELECT id, created_at FROM lectures WHERE week_start IS NULL')) run('UPDATE lectures SET week_start = ? WHERE id = ?', weekStart(dayOf(l.created_at)), l.id);
 
-export function lectureList(userId, { week = weekStart() } = {}) {
+/** Lectures of earlier weeks, newest first, for the Seerah page. */
+export const pastLectureList = (userId) => lectureList(userId, { before: weekStart() });
+export function lectureList(userId, { week = weekStart(), before = null } = {}) {
   return all(`SELECT l.*, EXISTS(SELECT 1 FROM events e WHERE e.user_id = ? AND e.kind = 'lecture' AND e.ref = CAST(l.id AS TEXT)) done
-              FROM lectures l WHERE l.week_start = ? ORDER BY l.id DESC LIMIT 20`, userId, week).map((l) => {
+              FROM lectures l WHERE ${before ? 'l.week_start < ?' : 'l.week_start = ?'} ORDER BY l.week_start DESC, l.id DESC LIMIT ${before ? 30 : 20}`, userId, before || week).map((l) => {
     const quiz = publicQuiz(l);
     return { id: l.id, youtubeId: l.youtube_id, titleEn: l.title_en, titleUr: l.title_ur, speaker: l.speaker, minSeconds: l.min_seconds, xp: l.xp, done: !!l.done,
       week: l.week_start, quiz, quizPassed: quiz.length ? quizPassed(userId, l.id) : null,

@@ -96,7 +96,7 @@ Suggested order: 3, 2, 1, 6, 5, then 4.
 
 ---
 
-## 5. Separate Seerah and Sunnah on Home, and as separate sidebar tabs (M)
+## 5. Separate Seerah and Sunnah on Home, and as separate sidebar tabs (M) — BUILT 26 Oct
 
 **Asked:** separate Seerah and Sunnah sections on Home, and separate tabs for each in the sidebar.
 
