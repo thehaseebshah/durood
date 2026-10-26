@@ -401,6 +401,27 @@ try {
     ok(small.size === 0, `every tap target is at least 24 px${small.size ? ': ' + [...small].slice(0, 6).join('; ') : ''}`);
   }
 
+  // ---- Keyboard: every stop Tab reaches on every page shows where it is (an outline or a ring), light and dark --------------------
+  {
+    const unseen = new Set();
+    for (const mode of ['light', 'dark']) {
+      const page = await open(host.token, { w: 1280, h: 900, mode });
+      await page.addStyleTag({ content: '*, *::before, *::after { transition: none !important; animation: none !important; }' }); // read the settled look
+      for (const tab of ['home', 'feed', 'rank', 'caravan', 'qabila', 'tasks', 'people', 'progress', 'settings']) {
+        await go(page, tab); await page.evaluate(() => document.activeElement?.blur());
+        for (let i = 0; i < 40; i++) {
+          await page.keyboard.press('Tab');
+          const r = await page.evaluate(() => { const e = document.activeElement; if (!e || e === document.body || !e.matches(':focus')) return null; const cs = getComputedStyle(e); // (not :focus: on a part inside a built-in control, like a time box's clock button, which the browser rings itself)
+            const seen = (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0) || (cs.boxShadow !== 'none' && !/^rgba\(0, 0, 0, 0\)/.test(cs.boxShadow));
+            return seen ? null : `${e.tagName.toLowerCase()}[${e.dataset.act || e.name || e.id || ''}]`; });
+          if (r) unseen.add(`${mode}/${tab}: ${r}`);
+        }
+      }
+      await page.close();
+    }
+    ok(unseen.size === 0, `every keyboard stop shows focus${unseen.size ? ': ' + [...unseen].slice(0, 6).join('; ') : ''}`);
+  }
+
   // ---- Admin page: key sign-in, every tab opens, nothing runs off a phone screen -----------------------------------
   for (const [w, label] of [[1280, 'desktop'], [390, 'phone']]) {
     const page = await browser.newPage({ viewport: { width: w, height: 860 } });
