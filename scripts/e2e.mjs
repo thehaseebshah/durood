@@ -440,6 +440,21 @@ try {
     await ctx.close();
   }
 
+  // ---- The big numerals fit their card even when a phone scales its text (Android's font size setting): measured, not assumed -----
+  {
+    const page = await open(host.token, { w: 360, h: 780 }); const over = [];
+    await page.addStyleTag({ content: '#big { font-size: 190px !important; }' }); // as if the phone had scaled the numeral up
+    for (const txt of ['100', '9,714', '10,014', '1,234,567', '12,345,678']) {
+      await page.evaluate((t) => { document.querySelector('#big').innerHTML = t.replace(/,/g, '<span class="cm">,</span>'); dispatchEvent(new Event('resize')); }, txt);
+      await page.waitForTimeout(80);
+      const [w, room] = await page.evaluate(() => { const e = document.querySelector('#big'), cs = getComputedStyle(e), r = document.createRange(); r.selectNodeContents(e);
+        return [r.getBoundingClientRect().width, e.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)]; });
+      if (w > room + 1) over.push(`${txt} ${Math.round(w)}>${Math.round(room)}`);
+    }
+    ok(over.length === 0, `the big counter fits its card at any text scale${over.length ? ': ' + over.join('; ') : ''}`);
+    await page.close();
+  }
+
   // ---- Tap targets: on a phone nothing a finger presses is under 24 px either way (WCAG 2.2 target size), every page with folds open ----
   {
     const small = new Set(), ids = new Set();

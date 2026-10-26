@@ -1123,3 +1123,18 @@ html[data-mode=dark] .seg:not(.five) button.on { background: #636366; color: #ff
 .wrapx > .chip { max-width: 100%; white-space: normal; text-align: start; }
 .cta + .wrapx { margin-top: 10px; }
 .chip .cvdn { margin-inline-end: .4em; } /* Nastaliq leans past its own space */
+
+/* big numerals: the comma has room of its own, and a celebration's number has space for its comma's tail */
+.big .cm { letter-spacing: 0; margin-inline: .035em .05em; }
+.cnum { line-height: 1; padding-bottom: .1em; max-width: 100%; }
+.ccap { font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sig-text); margin-bottom: 8px; }
+html[lang=ur] .ccap { letter-spacing: 0; text-transform: none; font-size: .9rem; }
+/* "Goal 100 durood": the unit shares the number's baseline exactly, whatever scale the phone gives its text */
+.counterbox .sub, .sheetbox .sub { align-items: baseline; }
+.counterbox .sub > span:last-child, .sheetbox .sub > span:last-child { display: flex; justify-content: flex-end; align-items: baseline; gap: .3em; line-height: 1.3; }
+.counterbox .sub > span:last-child .u, .sheetbox .sub > span:last-child .u { margin: 0; line-height: 1; }
+.counterbox .sub > span:first-child, .sheetbox .sub > span:first-child { line-height: 1.3; }
+/* a card that follows an intro paragraph has air above it */
+.note + .linkinv, .note + .circlecard, .note + .startcard { margin-top: 14px; }
+/* stat labels that wrap (e.g. "Qabila this week") sit close together, with the unit beneath */
+.stats span { line-height: 1.35; }

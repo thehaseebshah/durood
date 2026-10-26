@@ -111,7 +111,7 @@ function sound(kind = 'tap') {
 function rollNumber(el, from, to) {
   if (!el || from === to || reduceMotion()) return;
   const t0 = performance.now(), dur = 450;
-  const step = (now) => { const k = Math.min(1, (now - t0) / dur), e = 1 - (1 - k) ** 3; el.textContent = fmt(Math.round(from + (to - from) * e)); if (k < 1) requestAnimationFrame(step); };
+  const step = (now) => { const k = Math.min(1, (now - t0) / dur), e = 1 - (1 - k) ** 3; el.innerHTML = bigHtml(Math.round(from + (to - from) * e)); fitNumerals(); if (k < 1) requestAnimationFrame(step); };
   requestAnimationFrame(step);
 }
 // grey blocks while a page loads, instead of "…"
@@ -420,7 +420,7 @@ function counter() {
   const m = S.me, live = m.today + S.pending;
   const dateLine = new Date(`${pkDay()}T00:00:00Z`).toLocaleDateString(S.lang === 'ur' ? 'ur-PK' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
   return `<div class="sub"><span>${dateLine}</span><span>${t('goal_word')} ${U(m.dailyGoal, 'durood')}</span></div>
-  <div class="big ${bigClass(live)}" id="big">${fmt(live)}</div>
+  <div class="big ${bigClass(live)}" id="big">${bigHtml(live)}</div>
   <div id="livebar">${bar((live / m.dailyGoal) * 100)}</div>`;
 }
 function addSheet() {
@@ -503,12 +503,28 @@ function home() {
 
 // keep the big number and its bar in step with taps without redrawing the screen
 // the headline numeral shrinks with the number of characters so large counts never clip
+// the comma gets a little room of its own: with the tight letter-spacing of a big numeral it touches the digit after it
+const bigHtml = (n) => fmt(n).replace(/,/g, '<span class="cm">,</span>');
+// The big numerals are sized from the screen width, but a phone's own "font size" setting scales them again (Android does).
+// So after every change measure what was really drawn and shrink to the room there is: no digit is ever cut off by its card.
+function fitNumerals() {
+  for (const el of document.querySelectorAll('#big, .cnum')) {
+    el.style.removeProperty('font-size');
+    const cs = getComputedStyle(el), room = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const r = document.createRange(); r.selectNodeContents(el);
+    const w = r.getBoundingClientRect().width;
+    if (room > 0 && w > room) el.style.setProperty('font-size', `${(parseFloat(cs.fontSize) * room / w * 0.97).toFixed(1)}px`, 'important');
+  }
+}
+document.fonts?.ready.then(fitNumerals); // measured again once the numeral font is really there
+addEventListener('resize', fitNumerals);
 const bigClass = (n) => { const c = fmt(n).length; return c <= 3 ? '' : c <= 5 ? 'l5' : c === 6 ? 'l6' : c === 7 ? 'l7' : 'l9'; }; // l9: 8+ characters (e.g. 5,000,000) still fit a 320px phone
 function liveHome() {
   const m = S.me, live = m.today + S.pending;
   if (!$('#big')) return;
-  $('#big').textContent = fmt(live);
+  $('#big').innerHTML = bigHtml(live);
   $('#big').className = `big ${bigClass(live)}`;
+  fitNumerals();
   $('#livebar').innerHTML = bar((live / m.dailyGoal) * 100);
   if ($('#pend')) { $('#pend').textContent = fmt(S.pending); $('#submitp').disabled = !S.pending; }
 }
@@ -565,8 +581,9 @@ function cardOf(x) {
 function celebrateModal() {
   const x = S.celebrate, c = cardOf(x);
   return `<div class="modal celebrate"><div class="box">
+    ${c.title === c.big ? `<div class="ccap">${esc(String(c.label).replace(/:$/, ''))}</div>` : ''}
     <div class="cnum ${c.big.length > 6 ? 'long' : ''}">${esc(c.big)}</div>
-    <div class="ctitle">${esc(c.title)}</div>
+    ${c.title === c.big ? '' : `<div class="ctitle">${esc(c.title)}</div>`}
     <p>${esc(c.text)}</p>
     <div class="row"><button class="blk fill1" data-act="shareCard"><span class="lab">${uiIcon('share', 20, 1.8)} ${t('share')}</span><b class="ar">→</b></button><button class="chip" data-act="celebrateX">${t('close')}</button></div>
   </div></div>`;
@@ -1473,6 +1490,7 @@ function draw() {
   app.innerHTML = S.me ? shell() : S.offline ? offlineView() : S.intro !== null ? introView() : authView();
   restoreFields(keep);
   enhanceModal();
+  fitNumerals();
   if (S.rollFrom != null && S.me) { rollNumber($('#big'), S.rollFrom + S.pending, S.me.today + S.pending); S.rollFrom = null; }
   afterDraw();
   cacheMe();
