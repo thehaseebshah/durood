@@ -911,9 +911,9 @@ html[data-mode=dark] #toast { background: rgba(58, 58, 60, .92); }
 .menupop, details.menu .menupop { border-radius: 14px; border: 0; box-shadow: 0 10px 30px rgba(0, 0, 0, .18); }
 /* the counter sits in a card now: a little smaller so the widest numbers still fit */
 .counterbox .big { font-size: min(10rem, 40vw); padding-inline: 16px; }
-.counterbox .big.l5 { font-size: min(7.6rem, 30vw); }
-.counterbox .big.l6 { font-size: min(6.4rem, 25vw); }
-.counterbox .big.l7 { font-size: min(5.4rem, 21vw); }
+.counterbox .big.l5 { font-size: min(7.6rem, 27vw); }
+.counterbox .big.l6 { font-size: min(6.4rem, 21vw); }
+.counterbox .big.l7 { font-size: min(5.4rem, 18vw); }
 /* Apple layer, second pass: sentence-case labels, soft notices, the invite card, rankings in a card, quieter links */
 body.in-app label:not(.check):not(.chip):not(.blk):not(.daychip) { text-transform: none; letter-spacing: 0; font-size: .85rem; font-weight: 600; color: var(--soft); }
 .counterbox .sub { border: 0; }

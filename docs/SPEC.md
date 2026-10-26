@@ -466,7 +466,7 @@ Also: the big counter and the celebration number are measured after drawing and 
 
 - A member's profile shows **Message on WhatsApp** unless the member has hidden their number. Numbers are visible by default (the community knows each other); `users.hide_phone` is the member's choice, set at sign-up (checkbox), in Settings (switch), or by an admin (`hide-phone` / `show-phone` on a member, after a complaint).
 - Public profiles carry only a `whatsapp` true/false flag. The chat address comes from `GET /api/wa/:username`: signed-in only, 40 per hour per member, 404 for yourself, hidden, deleted or suspended members. Each open is logged in `wa_opens` (kept 90 days).
-- Existing members see a one-time card on Today (local flag `wanote`) with a **Hide my number** button.
+- No prompt or notice is shown at start-up: numbers are visible by default and hiding is only offered at sign-up and in Settings.
 - Not built: a block-member button.
 
 ## 50. Falling behind (caravan owner)

@@ -473,7 +473,6 @@ function home() {
     m.caravanInvites ? `<button class="rowlink" data-act="tab" data-tab="caravan"><span>${uiIcon('caravan', 14, 2)} ${t('cv_home_invited')(m.caravanInvites)}</span><b class="ar">→</b></button>` : '',
     m.caravanRequests ? `<button class="rowlink" data-act="tab" data-tab="caravan"><span>${uiIcon('caravan', 14, 2)} ${t('cv_requests_home')(m.caravanRequests)}</span><b class="ar">→</b></button>` : '',
     S.bh?.roles?.requests ? `<button class="rowlink" data-act="tab" data-tab="people"><span>${uiIcon('chain', 14, 2)} ${t('bh_requests_home')(S.bh.roles.requests)}</span><b class="ar">→</b></button>` : '',
-    !ls.get('wanote') && !m.hidePhone ? `<div class="circlecard wanote"><b>${t('wa_note_title')}</b><p>${t('wa_note_text')}</p><div class="row"><button class="chip solid" data-act="wahide">${t('wa_note_hide')}</button><button class="chip" data-act="wanoteok">${t('wa_note_ok')}</button></div></div>` : '',
     pushPromptDue() ? `<div class="circlecard push"><b>${t('push_card_title')}</b><p>${t('push_card_text')}</p>
       <div class="row"><button class="blk fill1" data-act="pushon"><span>${t('push_enable')}</span><b class="ar">→</b></button><button class="chip" data-act="pushno">${t('push_later')}</button></div></div>` : '',
   ].join('');
@@ -525,7 +524,10 @@ function fitNumerals() {
   }
 }
 document.fonts?.ready.then(fitNumerals); // measured again once the numeral font is really there
+document.fonts?.addEventListener?.('loadingdone', fitNumerals); // ready can resolve before a font was asked for (Safari), so also re-measure whenever one finishes loading
+addEventListener('load', fitNumerals);
 addEventListener('resize', fitNumerals);
+addEventListener('orientationchange', () => setTimeout(fitNumerals, 300));
 const bigClass = (n) => { const c = fmt(n).length; return c <= 3 ? '' : c <= 5 ? 'l5' : c === 6 ? 'l6' : c === 7 ? 'l7' : 'l9'; }; // l9: 8+ characters (e.g. 5,000,000) still fit a 320px phone
 function liveHome() {
   const m = S.me, live = m.today + S.pending;
@@ -1887,10 +1889,9 @@ app.addEventListener('click', async (ev) => {
     try { const r = await api(`/wa/${encodeURIComponent(el.dataset.u)}`); window.open(r.url, '_blank', 'noopener'); } catch (e) { toast(errText(e)); }
     return;
   }
-  if (act === 'wanoteok') { ls.set('wanote', '1'); return draw(); }
   if (act === 'wahide') {
-    const v = el.dataset.v == null ? true : el.dataset.v === '1';
-    try { S.me = await api('/me', 'PATCH', { hidePhone: v }); ls.set('wanote', '1'); toast(t(v ? 'wa_hidden' : 'saved')); } catch (e) { toast(errText(e)); }
+    const v = el.dataset.v === '1';
+    try { S.me = await api('/me', 'PATCH', { hidePhone: v }); toast(t(v ? 'wa_hidden' : 'saved')); } catch (e) { toast(errText(e)); }
     return draw();
   }
   if (act === 'pastch') { S.pastCh = { rows: null }; draw(); try { S.pastCh.rows = (await api('/challenges/past')).past; } catch (e) { S.pastCh = null; toast(errText(e)); } return draw(); }
@@ -2161,7 +2162,7 @@ app.addEventListener('submit', async (ev) => {
         .find(([k]) => !String(f[k] || '').trim() || (k === 'password' && f[k].length < 6));
       if (missing) throw new Error(missing[1]);
       const r = await api('/register', 'POST', { ...f, hidePhone: !!f.hidePhone, invite: (f.invite || '').trim(), lang: S.lang });
-      ls.set('wanote', '1'); keepDevice(r); setSession(r.token, r.me);
+      keepDevice(r); setSession(r.token, r.me);
       draw();
     } else if (kind === 'waitlist') {
       await api('/waitlist', 'POST', f);
