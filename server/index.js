@@ -835,7 +835,8 @@ export function createServer() {
       const status = e instanceof HttpError ? e.status : 500;
       if (status === 500) console.error(e);
       if (status === 413) { res.setHeader('Connection', 'close'); res.once('finish', () => req.destroy()); }
-      if (!res.headersSent) res.writeHead(status, { 'Content-Type': 'application/json' });
+      // never stored: an error is about this request only, and a remembered 404 would hide a file a later deploy adds
+      if (!res.headersSent) res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
       res.end(JSON.stringify({ error: e instanceof HttpError ? e.code : 'server_error' }));
     }
   });

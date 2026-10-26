@@ -240,3 +240,11 @@ test('a file the browser already has comes back as 304 Not Modified, whichever c
   for (const sent of [tag, tag.slice(2), `"zzz", ${tag}`]) assert.equal((await fetch(base + '/style.css', { headers: { 'if-none-match': sent } })).status, 304, sent);
   assert.equal((await fetch(base + '/style.css', { headers: { 'if-none-match': 'W/"other"' } })).status, 200);
 });
+
+test('error replies are never stored by a browser or proxy (an API 404/401 or a missing file)', async () => {
+  for (const p of ['/api/no-such-thing', '/api/me', '/fonts/not-here.woff2']) {
+    const r = await fetch(base + p);
+    assert.ok(r.status >= 400, p);
+    assert.equal(r.headers.get('cache-control'), 'no-store', p);
+  }
+});
