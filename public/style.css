@@ -1114,3 +1114,5 @@ body.in-app main .phonerow select { background: var(--cell); border-color: trans
 .boot span { font-family: system-ui, sans-serif; opacity: .8; animation: bootpulse 1.4s ease-in-out infinite; }
 @keyframes bootpulse { 50% { opacity: .35; } }
 @media (prefers-reduced-motion: reduce) { .boot span { animation: none; } }
+/* dark mode: the chosen segment is the lighter grey, as on iOS (the card colour is darker than the track and read as "not chosen") */
+html[data-mode=dark] .seg:not(.five) button.on { background: #636366; color: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); }
