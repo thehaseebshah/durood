@@ -401,6 +401,16 @@ try {
     await page.close();
   }
 
+  // ---- Tapping the tab you are on, scrolled down, glides back to the top without reloading the page ------------------------------
+  {
+    const page = await open(host.token); await go(page, 'feed');
+    await page.evaluate(() => window.scrollTo(0, 600)); await page.waitForTimeout(200);
+    const before = await page.evaluate(() => window.scrollY);
+    await page.click('nav.tabs [data-tab=feed]'); await page.waitForTimeout(1200);
+    ok(before > 100 && (await page.evaluate(() => window.scrollY)) === 0, `tapping the current tab scrolls to the top (from ${Math.round(before)})`);
+    await page.close();
+  }
+
   // ---- Tap targets: on a phone nothing a finger presses is under 24 px either way (WCAG 2.2 target size), every page with folds open ----
   {
     const small = new Set();

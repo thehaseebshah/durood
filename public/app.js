@@ -1531,6 +1531,8 @@ async function enterTab(tab) {
   if (tab === 'me') tab = 'progress'; // older links
   if (tab === 'burhan') tab = 'tasks'; // the old Al-Burhan page became Tasks, My people and Me
   if (['tasks', 'people'].includes(tab) && !inBurhan()) tab = 'home';
+  // the page you are on, scrolled down: glide back to the top, as iOS tab bars do (at the top, the tap reloads it)
+  if (tab === S.tab && !S.drawer && window.scrollY > 40) { window.scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' }); return; }
   S.tab = tab; S.drawer = false; S.enterAt = Date.now();
   // pages cross-fade and slide, where the browser can (Chrome and Android's WebView); otherwise they just change
   if (document.startViewTransition && !reduceMotion()) {
