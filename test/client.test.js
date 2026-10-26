@@ -134,3 +134,9 @@ test('the Urdu city names shown in the app match the ones Urdu search uses (serv
   const rows = fs.readFileSync(new URL('../server/data/cities-ur.tsv', import.meta.url), 'utf8').split('\n').filter((l) => l.trim() && !l.startsWith('#')).map((l) => l.split('\t'));
   assert.deepEqual(UR_CITY, Object.fromEntries(rows.map(([ur, en]) => [en, ur])));
 });
+
+test('stored days are never printed raw (2026-10-23): they go through dayText, which writes them in the member\'s language', () => {
+  const app = fs.readFileSync(new URL('../public/app.js', import.meta.url), 'utf8');
+  const raw = [...app.matchAll(/esc\(([\w.]+\.(?:day|joined|due))\)/g)].map((m) => m[0]);
+  assert.deepEqual(raw, []);
+});
