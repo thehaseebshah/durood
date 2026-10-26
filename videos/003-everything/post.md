@@ -44,6 +44,7 @@ Every screen is a capture of the real app (`tools/capture-full.mjs`, app commit 
 ## Before posting
 
 - **This shows the Al-Burhan edition.** Tasks, My people, murabbi and masul, mamulaat and majalis are only in that edition. For a public audience, post 002 instead.
+- **The challenge is set to 1 arab durood in 40 days.** The app writes it as "100 crore" (it has no arab unit), so the captions say 1 arab and the screens say 100 crore.
 - **Data is a demo:**
   - The mamulaat percentages come from a stand-in for the Mamulaat app.
   - The challenge numbers ("day 9", "behind plan") and the phone numbers and emails in the salik report are all made up.

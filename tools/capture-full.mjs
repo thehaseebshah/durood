@@ -170,7 +170,8 @@ await soft(api('POST', '/api/tasks', { kind: 'task', title: 'Buy dates for the i
 for (const u of ['ahmed', 'hamza', 'ali', 'ibrahim']) { await soft(api('POST', '/api/burhan/murabbi', null, tok[u])); await soft(api('POST', '/api/burhan/murabbi/confirm', null, tok[u])); }
 await soft(api('POST', '/api/burhan/requests/ahmed', { accept: true }, tok.umar));
 for (const u of ['hamza', 'ali']) await soft(api('POST', `/api/burhan/requests/${u}`, { accept: true }, tok.ahmed));
-// the challenge has a name, and the next one is planned
+// the challenge: 1 arab (100 crore) durood in 40 days, with a name; the next one is planned
+await api('POST', '/api/admin/challenge', { days: 40, target: 1_000_000_000 }, null, K);
 await soft(api('PUT', '/api/admin/challenge/name', { nameEn: 'Rabi ul Awwal challenge', nameUr: 'ربیع الاول چیلنج' }, null, K));
 await soft(api('POST', '/api/admin/challenge/plans', { nameEn: 'Ramadan challenge', nameUr: 'رمضان چیلنج', start: plus(45), days: 30, target: 50_000_000 }, null, K));
 // content: today's sunnah, news, reflections with likes and replies, cheers on milestones
