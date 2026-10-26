@@ -418,3 +418,23 @@ Every reply carries the server's time (the HTTP `Date` header). When the phone's
 ## 41. Page weight
 
 English text is in `public/i18n.js`; Urdu text is in `public/i18n-ur.js` and is fetched only when Urdu is in use (before the first screen for Urdu members, or when switching in Settings), so English pages skip about 15 KB. English is always present as the fallback. Fonts load only where they are shown and are cached for a year: Nastaliq for Urdu, cut to the Urdu alphabet (about 117 KB per weight, from 159 KB; rendering of Urdu pages checked unchanged); an 18 KB cut of Amiri holding only the durood's letters for the welcome screens (was the full 79 KB font); a 1.6 KB cut holding only ﷺ for English text. `scripts/make-fonts.sh` rebuilds both from `scripts/fonts/amiri-source.woff2`, and a test fails if the durood text uses a letter the cut lacks. The e2e run checks that an English Today downloads neither the Urdu text nor an Urdu or Arabic font.
+
+App files (HTML, scripts, styles) are sent brotli-compressed when the browser accepts it, gzip otherwise; the compressed copies are cached per file version. Version tags are weak (`W/"…"`) because both copies share one, and a returning browser gets `304 Not Modified` either way.
+
+## 42. A weak signal
+
+A request that gets no answer is given up: after 12 s for reads and for sends that are safe to repeat (they carry a request id), after 30 s for other writes. It then counts as no signal. A durood send that hung goes straight to the phone's outbox (no further retries that would hang too), shows on the counter at once, and is sent once the line clears; the request id makes sure it is counted once.
+
+## 43. Urdu details
+
+- Percentages in Urdu text are isolated left-to-right, so they read "0%", never "%0" (a test checks every one).
+- Email and phone under the name in Settings follow the page's side; each is still written left-to-right.
+- Members' cities show in Urdu for the 95 Pakistani cities in `server/data/cities-ur.tsv` (the list Urdu city search uses; a test keeps the two the same). Other cities show as stored; the city field in Settings keeps the stored name.
+
+## 44. Starting colours
+
+The installed app opens on the app's light grey, and a signed-in member's status bar is set to their header colour (light or dark) before the app has loaded. The welcome screen keeps navy.
+
+## 45. Checks in the browser tests
+
+Besides the flows: no WCAG A/AA failures (axe) on any page in light and dark; nothing tappable under 24 px on a phone; every stop Tab reaches shows a focus ring; a stalled connection queues a durood and sends it once; a wrong phone clock still shows the right day; English pages load no Urdu text or fonts. CI runs these with Playwright 1.48: run them with that version before pushing (a newer one has passed checks 1.48 fails).
