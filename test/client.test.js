@@ -128,3 +128,9 @@ test('a percentage in Urdu text is kept left-to-right, so "0%" never shows as "%
   const loose = [...urSrc.matchAll(/(\\u2066)?\$\{\w+\}%(\\u2069)?/g)].filter((m) => !m[1] || !m[2]).map((m) => m[0]);
   assert.deepEqual(loose, [], 'wrap it as \\u2066${n}%\\u2069');
 });
+
+test('the Urdu city names shown in the app match the ones Urdu search uses (server/data/cities-ur.tsv)', async () => {
+  const { UR_CITY } = await import('../public/i18n-ur.js');
+  const rows = fs.readFileSync(new URL('../server/data/cities-ur.tsv', import.meta.url), 'utf8').split('\n').filter((l) => l.trim() && !l.startsWith('#')).map((l) => l.split('\t'));
+  assert.deepEqual(UR_CITY, Object.fromEntries(rows.map(([ur, en]) => [en, ur])));
+});

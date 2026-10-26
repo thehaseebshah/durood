@@ -8,7 +8,14 @@ const ls = {
 };
 
 // Urdu text is a separate file, fetched only when Urdu is in use (English pages skip ~15 KB)
-const loadUr = () => (I18N.ur ? Promise.resolve() : import('./i18n-ur.js').then((m) => { I18N.ur = m.UR.ur; }));
+let urCity = {};
+const loadUr = () => (I18N.ur ? Promise.resolve() : import('./i18n-ur.js').then((m) => { I18N.ur = m.UR.ur; urCity = m.UR_CITY || {}; }));
+// a member's city in Urdu when we know its Urdu name ('Lahore, Punjab, Pakistan' -> 'لاہور'); otherwise as stored
+const cityName = (s) => {
+  if (S.lang !== 'ur' || !s) return s;
+  const first = String(s).split(',')[0].trim();
+  return urCity[first] || urCity[Object.keys(urCity).find((k) => k.length >= 6 && first.startsWith(k))] || s;
+};
 const params = new URLSearchParams(location.search);
 const urlInvite = params.get('invite') || params.get('ref');
 if (urlInvite) ls.set('ref', urlInvite.trim());
@@ -651,7 +658,7 @@ function profileModal() {
     <div class="pbig">${av(p, 96, false)}</div>
     ${p.displayName ? `<div class="pname" dir="auto">${esc(p.displayName)}</div>` : ''}
     ${p.bio ? `<p class="pbio" dir="auto">${esc(p.bio)}</p>` : ''}
-    <p class="muted center">${p.city ? `${esc(p.city)} · ` : ''}${t('member_since')} ${N(esc(p.joined))}${p.caravan ? ` · ${esc(p.caravan)}` : ''}</p>
+    <p class="muted center">${p.city ? `${esc(cityName(p.city))} · ` : ''}${t('member_since')} ${N(esc(p.joined))}${p.caravan ? ` · ${esc(p.caravan)}` : ''}</p>
     ${p.level ? `<div class="stats flat">${p.total != null ? cell(p.total, t('total'), 'durood') : ''}${cell(p.streak, t('streak'))}${cell(p.level, t('level'))}</div>` : ''}
     ${p.badges?.length ? `<div class="earned static">${p.badges.filter((c) => t('badge')[c]).map((c) => `<span title="${esc(t('badge')[c][0])}">${badgeSvg(c, true)}</span>`).join('')}</div>` : ''}</div></div>`;
 }
@@ -713,7 +720,7 @@ const threadKey = (it) => `${replyKind(it)}:${it.id}`;
 function threadHtml(it) {
   const th = (S.threads || {})[threadKey(it)];
   if (!th) return '';
-  const list = (th.list || []).map((r) => `<div class="reply"><div class="fwho">${av(r, 26)}${nameLine(r)}${r.city ? ` <small>${esc(r.city)}</small>` : ''}<small class="when">${ago(r.at)}</small>
+  const list = (th.list || []).map((r) => `<div class="reply"><div class="fwho">${av(r, 26)}${nameLine(r)}${r.city ? ` <small>${esc(cityName(r.city))}</small>` : ''}<small class="when">${ago(r.at)}</small>
       ${r.mine ? '' : `<button class="chip" data-act="rreport" data-id="${r.id}" data-key="${threadKey(it)}" aria-label="${esc(t('report_label'))}" title="${esc(t('report_ask'))}">${uiIcon('flag', 12, 2)}</button>`}</div>
       <div class="reflbody" dir="auto">${esc(r.body)}</div></div>`).join('');
   const mineN = (th.list || []).filter((r) => r.mine).length;
@@ -723,7 +730,7 @@ function threadHtml(it) {
 }
 
 function feedItem(it) {
-  const who = () => `<div class="fwho">${av(it, 32)}${nameLine(it)}${it.city ? ` <small>${esc(it.city)}</small>` : ''}<small class="when">${ago(it.at)}</small></div>`;
+  const who = () => `<div class="fwho">${av(it, 32)}${nameLine(it)}${it.city ? ` <small>${esc(cityName(it.city))}</small>` : ''}<small class="when">${ago(it.at)}</small></div>`;
   const rk = replyKind(it);
   const acts = `<div class="facts"><button class="chip like ${it.liked ? 'on' : ''}" data-act="like" data-kind="${rk}" data-id="${it.id}" aria-label="${esc(t('like_label'))}" aria-pressed="${it.liked ? 'true' : 'false'}" ${it.mine || it.liked ? 'disabled' : ''}>${uiIcon('heart', 14, 2)}${it.likes ? ` ${fmt(it.likes)}` : ''}</button>
     <button class="chip" data-act="thread" data-kind="${rk}" data-id="${it.id}" aria-label="${esc(t('reply_btn'))}" aria-expanded="${(S.threads || {})[threadKey(it)] ? 'true' : 'false'}">${uiIcon('chat', 14, 2)} ${it.replies ? fmt(it.replies) : t('reply_btn')}</button>
@@ -752,7 +759,7 @@ function feedItem(it) {
         : `<button class="chip cheer ${it.cheered ? 'on' : ''}" data-act="cheer" data-id="${it.id}" ${it.cheered ? 'disabled' : ''} aria-pressed="${it.cheered}">${t('mashallah')}${it.cheers ? ` ${N(fmt(it.cheers))}` : ''}</button>`}</div>`;
   }
   if (it.type === 'city') {
-    return `<div class="fitem ms"><div class="flabel">${uiIcon('star', 12, 2)} ${t('city_label')}<small class="when">${ago(it.at)}</small></div><b>${t('city_item')(it.rank, esc(it.label))}</b></div>`;
+    return `<div class="fitem ms"><div class="flabel">${uiIcon('star', 12, 2)} ${t('city_label')}<small class="when">${ago(it.at)}</small></div><b>${t('city_item')(it.rank, esc(cityName(it.label)))}</b></div>`;
   }
   if (it.type === 'crore') {
     return `<div class="fitem ms"><div class="flabel">${uiIcon('star', 12, 2)} ${t('challenge_title')}<small class="when">${ago(it.at)}</small></div><b>${t('crore_text')(it.k)}</b></div>`;
@@ -796,10 +803,10 @@ function rank() {
   const grp = ['caravans', 'trees', 'cities', 'majalis'].includes(b.type);
   const list = b.type === 'league' ? leagueView() : !rows ? skel() : rows.length ? `<ul class="lb">${rows.map((r) => `
     <li class="${r.me ? 'me' : ''}"><span class="rank">${r.rank}</span>${r.avatar !== undefined ? av(r, 34) : ''}
-      <span class="name"><bdi>${esc(r.displayName || (r.name ?? (r.nameUr ? pick(r.username, r.nameUr) : r.username)))}</bdi>${r.me ? ` <em class="tag">${t(b.type === 'caravans' ? 'cv_yours' : 'you')}</em>` : ''}<small>${r.city ? `${esc(r.city)}` : ''}${grp ? `${r.city ? ' · ' : ''}${membersN(r.members)}${b.metric === 'average' ? ` · ${fmt(r.active)} ${t('active')}` : ''}` : ''}</small></span>
+      <span class="name"><bdi>${esc(r.displayName || (r.name != null ? (b.type === 'cities' ? cityName(r.name) : r.name) : (r.nameUr ? pick(r.username, r.nameUr) : r.username)))}</bdi>${r.me ? ` <em class="tag">${t(b.type === 'caravans' ? 'cv_yours' : 'you')}</em>` : ''}<small>${r.city ? `${esc(cityName(r.city))}` : ''}${grp ? `${r.city ? ' · ' : ''}${membersN(r.members)}${b.metric === 'average' ? ` · ${fmt(r.active)} ${t('active')}` : ''}` : ''}</small></span>
       <span class="score">${N(`${grp && b.metric === 'growth' && r.score > 0 ? '+' : ''}${fmt(r.score)}`)}${unit('durood')}</span></li>`).join('')}${b.data.you ? `
     <li class="gap" aria-hidden="true">⋯</li>
-    <li class="me"><span class="rank${b.data.you.rank > 999 ? ' long' : b.data.you.rank > 99 ? ' mid' : ''}">${fmt(b.data.you.rank)}</span>${av(S.me, 34)}<span class="name">${esc(S.me.username)} <em class="tag">${t('you')}</em><small>${esc(S.me.city || '')}</small></span>
+    <li class="me"><span class="rank${b.data.you.rank > 999 ? ' long' : b.data.you.rank > 99 ? ' mid' : ''}">${fmt(b.data.you.rank)}</span>${av(S.me, 34)}<span class="name">${esc(S.me.username)} <em class="tag">${t('you')}</em><small>${esc(cityName(S.me.city) || '')}</small></span>
       <span class="score">${U(b.data.you.score, 'durood')}</span></li>` : ''}</ul>` : `<p class="muted center">${t(b.type === 'cities' ? 'empty_cities' : 'empty_board')}</p>`;
   const kinds = [['users', 'rk_people'], ['league', 'rk_league'], ['caravans', 'rk_caravans'], ['trees', 'rk_trees'], ['cities', 'rk_cities'], ...(inBurhan() ? [['majalis', 'rk_majalis']] : [])];
   const note = b.type === 'league' ? '' : grp ? `${t('rk_note_' + b.type)} ${t('cv_note_' + b.metric)}` : (b.period === 'challenge' ? t('challenge_note') : '');
@@ -822,11 +829,11 @@ function rank() {
 function uplineBlock(tm) {
   if (!tm?.upline?.length) return '';
   return `<h3>${t('upline_title')}</h3>
-  <ul class="lb upline">${tm.upline.map((u) => `<li><span class="name">${esc(u.username)}<small>${u.city ? `${esc(u.city)} · ` : ''}${membersN(u.members)}</small></span><span class="score">${U(u.team, 'durood')}</span></li>`).join('')}</ul>`;
+  <ul class="lb upline">${tm.upline.map((u) => `<li><span class="name">${esc(u.username)}<small>${u.city ? `${esc(cityName(u.city))} · ` : ''}${membersN(u.members)}</small></span><span class="score">${U(u.team, 'durood')}</span></li>`).join('')}</ul>`;
 }
 
 // ---- caravans: a group you create and name, joined by invitation or by asking ----------------------------------------------------
-const cvRow = (r, extra = '') => `<li>${av(r, 34)}<span class="name">${esc(r.username)}${r.owner ? ` <em class="tag">${t('cv_owner')}</em>` : ''}<small>${r.city ? `${esc(r.city)} · ` : ''}${t('this_week')} ${U(r.week, 'durood')}${r.today ? ` <span class="didtoday" role="img" aria-label="${esc(t('cv_today'))}" title="${esc(t('cv_today'))}">${uiIcon('check', 12, 2.6)}</span>` : ''}</small></span><span class="score">${U(r.total, 'durood')}</span>${extra}</li>`;
+const cvRow = (r, extra = '') => `<li>${av(r, 34)}<span class="name">${esc(r.username)}${r.owner ? ` <em class="tag">${t('cv_owner')}</em>` : ''}<small>${r.city ? `${esc(cityName(r.city))} · ` : ''}${t('this_week')} ${U(r.week, 'durood')}${r.today ? ` <span class="didtoday" role="img" aria-label="${esc(t('cv_today'))}" title="${esc(t('cv_today'))}">${uiIcon('check', 12, 2.6)}</span>` : ''}</small></span><span class="score">${U(r.total, 'durood')}</span>${extra}</li>`;
 function cvJoinOrCreate(cv) {
   return `<h3 class="first-d">${t('caravan_title')}</h3>
   <p class="muted">${t('cv_intro')}</p>
@@ -856,7 +863,7 @@ function cvHome(cv) {
   ${cv.members.length > 8 && !S.cvAll ? `<button class="chip more" data-act="cvall">${t('cv_show_all')(fmt(cv.members.length))}</button>` : ''}
   ${c.owner ? `<h3>${t('cv_invite_title')}</h3><div class="padx bh">
       <input id="cvinvq" type="text" aria-label="${esc(t('cv_invite_ph'))}" autocomplete="off" autocapitalize="off" dir="ltr" placeholder="${esc(t('cv_invite_ph'))}"><div id="cvinvres" class="chips"></div>
-      ${pending.length ? `<b>${t('cv_pending')}</b>${pending.map((p) => `<div class="circlecard"><b>${esc(p.username)}</b>${p.city ? ` · ${esc(p.city)}` : ''}
+      ${pending.length ? `<b>${t('cv_pending')}</b>${pending.map((p) => `<div class="circlecard"><b>${esc(p.username)}</b>${p.city ? ` · ${esc(cityName(p.city))}` : ''}
         <p class="muted">${p.kind === 'request' ? t('cv_asked') : t('cv_invited')}</p>
         <div class="row">${p.kind === 'request' ? `<button class="blk fill1" data-act="cvreqyes" data-u="${esc(p.username)}"><span>${t('accept')}</span><b class="ar">→</b></button><button class="chip" data-act="cvreqno" data-u="${esc(p.username)}">${t('decline')}</button>` : `<button class="chip" data-act="cvcancelinv" data-u="${esc(p.username)}">${t('cv_cancel')}</button>`}</div></div>`).join('')}` : ''}</div>
     <form novalidate class="cname" data-form="cvrename"><label for="cv-rename">${t('cv_rename')}</label>
@@ -902,7 +909,7 @@ function qabila() {
     <div class="row" style="margin-top:12px"><button class="blk wa fill1" data-act="wa"><span class="lab">${uiIcon('share', 22, 1.8)} ${t('share_wa')}</span><b class="ar">→</b></button>${navigator.share ? `<button class="chip" data-act="shareinv">${t('share_other')}</button>` : ''}<button class="chip" data-act="copy" data-text="${esc(link)}">${t('copy')}</button></div>`)}
   ${fold('qinv', t('invites_title'), N(`${fmt(m.invites.left)}`), invitesBox(m), true)}
   ${fold('qdirect', `${t('direct_list')}`, N(fmt(m.team.direct)), !tm ? '…' : tm.direct.length ? `<ul class="lb">${tm.direct.map((d) => `
-    <li>${av(d, 34)}<span class="name">${esc(d.username)}<small>${d.city ? `${esc(d.city)} · ` : ''}${t('this_week')} ${U(d.week, 'durood')}</small></span><span class="score">${U(d.total, 'durood')}</span></li>`).join('')}</ul>` : empty('nodes', t('none_yet')))}
+    <li>${av(d, 34)}<span class="name">${esc(d.username)}<small>${d.city ? `${esc(cityName(d.city))} · ` : ''}${t('this_week')} ${U(d.week, 'durood')}</small></span><span class="score">${U(d.total, 'durood')}</span></li>`).join('')}</ul>` : empty('nodes', t('none_yet')))}
   ${tm?.upline?.length ? fold('qup', t('upline_title'), '', uplineBlock(tm).replace(/^<h3>.*?<\/h3>/, ''), false) : ''}`;
 }
 
@@ -1208,7 +1215,7 @@ function burhanMe() {
   if (!mu) murabbiBox = `${err}<p class="muted">${t('murabbi_text')}</p><button class="blk" data-act="bhactivate"><span>${t('murabbi_find')}</span><b class="ar">→</b></button>`;
   else if (mu.stage === 'waiting') murabbiBox = `<div class="notice">${t('murabbi_waiting')(esc(mu.name || '—'))}</div><div class="row"><button class="chip solid" data-act="bhactivate">${t('check_again')}</button><button class="chip" data-act="bhunlink">${t('unlink')}</button></div>`;
   else if (mu.stage === 'confirm') murabbiBox = `<div class="circlecard"><b>${t('murabbi_is_it')}</b>
-      <p><b>${esc(mu.username)}</b>${mu.city ? ` · ${esc(mu.city)}` : ''}<br><small class="muted">${t('murabbi_listed_as')(esc(mu.name || '—'))}</small></p>
+      <p><b>${esc(mu.username)}</b>${mu.city ? ` · ${esc(cityName(mu.city))}` : ''}<br><small class="muted">${t('murabbi_listed_as')(esc(mu.name || '—'))}</small></p>
       <p class="muted">${t('murabbi_sees')}</p>
       <div class="row"><button class="blk fill1" data-act="bhconfirm"><span>${t('yes_mine')}</span><b class="ar">→</b></button><button class="chip" data-act="bhunlink">${t('not_mine')}</button></div></div>`;
   else if (mu.stage === 'pending') murabbiBox = `<div class="notice">${t('murabbi_pending')(esc(mu.username))}</div><div class="row"><button class="chip" data-act="bhunlink">${t('unlink')}</button></div>`;
@@ -1235,13 +1242,13 @@ function burhanCaravan() {
   const sa = S.bhLists?.saaliks || [], ra = S.bhLists?.razakars || [], rq = S.bhLists?.requests || [];
   const loading = !S.bhLists && (b.roles.saaliks || b.roles.razakars || b.roles.requests);
   if (loading) return skel();
-  const reqs = rq.map((r) => `<div class="circlecard"><b>${esc(r.username)}</b>${r.city ? ` · ${esc(r.city)}` : ''}<p class="muted">${t('request_text')}</p><div class="row"><button class="blk fill1" data-act="bhaccept" data-u="${esc(r.username)}"><span>${t('accept')}</span><b class="ar">→</b></button><button class="chip" data-act="bhdecline" data-u="${esc(r.username)}">${t('decline')}</button></div></div>`).join('');
-  const saliks = sa.length ? `<ul class="lb">${sa.map((x) => `<li><button class="rowbtn" data-act="opensaalik" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('durood_week')(fmt(x.duroodWeek))}${x.mamulaatToday == null ? '' : ` · ${t('mam_short')} ${N(`${x.mamulaatToday}%`)}`}</small></span><span class="score">${U(x.duroodToday, 'durood')}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('saaliks_none')}</p>`;
+  const reqs = rq.map((r) => `<div class="circlecard"><b>${esc(r.username)}</b>${r.city ? ` · ${esc(cityName(r.city))}` : ''}<p class="muted">${t('request_text')}</p><div class="row"><button class="blk fill1" data-act="bhaccept" data-u="${esc(r.username)}"><span>${t('accept')}</span><b class="ar">→</b></button><button class="chip" data-act="bhdecline" data-u="${esc(r.username)}">${t('decline')}</button></div></div>`).join('');
+  const saliks = sa.length ? `<ul class="lb">${sa.map((x) => `<li><button class="rowbtn" data-act="opensaalik" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(cityName(x.city))} · ` : ''}${t('durood_week')(fmt(x.duroodWeek))}${x.mamulaatToday == null ? '' : ` · ${t('mam_short')} ${N(`${x.mamulaatToday}%`)}`}</small></span><span class="score">${U(x.duroodToday, 'durood')}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('saaliks_none')}</p>`;
   const allTags = S.bhLists?.tags || [], tf = S.teamFilter && allTags.some((x) => x.tag === S.teamFilter) ? S.teamFilter : null;
   const shown = tf ? ra.filter((x) => (x.tags || []).includes(tf)) : ra;
   const chips = allTags.length ? `<div class="chips tagbar"><button class="chip ${tf ? '' : 'solid'}" data-act="teamf" data-tag="">${t('team_all')} ${N(String(ra.length))}</button>${allTags.map((x) => `<button class="chip ${tf === x.tag ? 'solid' : ''}" data-act="teamf" data-tag="${esc(x.tag)}">#${esc(x.tag)} ${N(String(x.n))}</button>`).join('')}</div>` : (ra.length ? `<p class="hint padx">${t('team_hint')}</p>` : '');
   const teamForm = tf ? assignForm('teamassign', t('team_assign')(esc(tf))) : '';
-  const razakars = ra.length ? `${chips}${teamForm}<ul class="lb">${shown.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.asks ? ` · <b>${t('asks_n')(x.asks)}</b>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${N(`${x.routinePercent}%`)}`}${(x.tags || []).length ? `<span class="tagline">${x.tags.map((g) => `<em class="ttag">#${esc(g)}</em>`).join(' ')}</span>` : ''}</small></span><span class="score">${U(x.duroodWeek, 'durood')}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('razakars_none')}</p>`;
+  const razakars = ra.length ? `${chips}${teamForm}<ul class="lb">${shown.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(cityName(x.city))} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.asks ? ` · <b>${t('asks_n')(x.asks)}</b>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${N(`${x.routinePercent}%`)}`}${(x.tags || []).length ? `<span class="tagline">${x.tags.map((g) => `<em class="ttag">#${esc(g)}</em>`).join(' ')}</span>` : ''}</small></span><span class="score">${U(x.duroodWeek, 'durood')}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('razakars_none')}</p>`;
   return `${rq.length ? fold('preq', t('requests_title'), N(String(rq.length)), reqs) : ''}
   ${fold('psaliks', t('saaliks_title'), N(String(sa.length)), saliks)}
   ${fold('prazakars', t('razakars_title'), N(String(ra.length)), razakars)}`;
