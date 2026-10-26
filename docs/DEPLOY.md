@@ -106,3 +106,7 @@ Start the app and run `npm run audit`: it must report no problems.
 ## Android app
 
 `android-app/` holds a small Android wrapper that opens the live site. See `android-app/README.md` to build the APK. The wrapper loads the address in `android-app/capacitor.config.json` (the QA server by default); rebuild with `node build.mjs https://your.server` for production.
+
+
+## Production (launched 26 October 2026)
+App `seerah-quest` (https://seerah-quest.fly.dev, Singapore, 3 GB volume), branch `prod`, `EDITION=public`, console mail (reset links via the admin page's Reset link button until a mail provider is added). Secrets (ADMIN_KEY, AUTH_SECRET, PUBLIC_FOUNDERS_CODE, VAPID_SUBJECT) are set on Fly only. Deploy: `fly deploy -c fly.prod.toml --remote-only --depot=false`. `main` is the released code; `prod` points at the same commit. The Android APK is built with `node build.mjs https://seerah-quest.fly.dev`.

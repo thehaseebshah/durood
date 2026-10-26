@@ -3,10 +3,10 @@
   "appName": "Seerah Quest",
   "webDir": "www",
   "server": {
-    "url": "https://seerah-quest-qa.fly.dev",
+    "url": "https://seerah-quest.fly.dev",
     "cleartext": false,
     "allowNavigation": [
-      "seerah-quest-qa.fly.dev"
+      "seerah-quest.fly.dev"
     ]
   },
   "backgroundColor": "#0c0e2b",

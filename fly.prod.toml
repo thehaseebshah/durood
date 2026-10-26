@@ -19,7 +19,7 @@ swap_size_mb = 512   # headroom for the nightly audit and housekeeping on a 256 
   TRUST_PROXY = "1"
   CLIENT_IP_HEADER = "fly-client-ip"
   FORCE_HSTS = "1"
-  EDITION = "internal"   # Al-Burhan members only for now; set "public" for the public edition (docs/SPEC.md section 19)
+  EDITION = "public"
 
 [mounts]
   source = "quest_data"
