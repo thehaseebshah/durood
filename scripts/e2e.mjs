@@ -481,11 +481,12 @@ try {
   }
 
   // ---- Admin page: key sign-in, every tab opens, nothing runs off a phone screen -----------------------------------
-  for (const [w, label] of [[1280, 'desktop'], [390, 'phone']]) {
+  for (const [w, label] of [[1280, 'desktop'], [390, 'phone'], [360, 'small phone, large text']]) {
     const page = await browser.newPage({ viewport: { width: w, height: 860 } });
     page.on('pageerror', (e) => errors.push('admin: ' + e.message));
     await page.goto(B + '/admin.html'); await page.waitForTimeout(500);
     await page.click('#usekey'); await page.fill('#key', process.env.ADMIN_KEY); await page.click('#save'); await page.waitForTimeout(900);
+    if (label.includes('large')) await page.addStyleTag({ content: 'html { font-size: 130% !important; }' });
     const tabs = await page.$$eval('#tabs button', (x) => x.map((e) => e.dataset.tab));
     ok(tabs.length >= 8, `admin (${label}): signed in with the key, ${tabs.length} tabs`);
     const wide = [];
