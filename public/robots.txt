@@ -1,0 +1,6 @@
+# The welcome page may be listed; members' data, photos and the admin page may not.
+User-agent: *
+Disallow: /api/
+Disallow: /photos/
+Disallow: /avatars/
+Disallow: /admin.html

@@ -248,3 +248,11 @@ test('error replies are never stored by a browser or proxy (an API 404/401 or a 
     assert.equal(r.headers.get('cache-control'), 'no-store', p);
   }
 });
+
+test('robots.txt keeps search engines out of the API, member photos and the admin page', async () => {
+  const r = await fetch(base + '/robots.txt');
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('content-type'), /^text\/plain/);
+  const body = await r.text();
+  for (const p of ['/api/', '/photos/', '/avatars/', '/admin.html']) assert.match(body, new RegExp(`Disallow: ${p.replace('.', '\\.')}`));
+});
