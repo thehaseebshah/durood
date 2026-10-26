@@ -438,3 +438,12 @@ The installed app opens on the app's light grey, and a signed-in member's status
 ## 45. Checks in the browser tests
 
 Besides the flows: no WCAG A/AA failures (axe) on any page in light and dark; nothing tappable under 24 px on a phone; every stop Tab reaches shows a focus ring; a stalled connection queues a durood and sends it once; a wrong phone clock still shows the right day; English pages load no Urdu text or fonts. CI runs these with Playwright 1.48: run them with that version before pushing (a newer one has passed checks 1.48 fails).
+
+## 46. Small polish (dates, rows, photos)
+
+- Stored days are always written out in the member's language through one helper (`dayText`): History shows "Fri 23 Oct", profiles "Member since October 2026", saliks and razakars "Joined October 2026". A test fails if a raw `2026-10-23` is printed.
+- A tap anywhere on a ranking row opens that member's profile (the photo stays the keyboard's button).
+- The profile sheet's stats read "All time / Day streak / Level", labels under their numbers.
+- In dark mode the chosen option of a two- or three-way switch is the lighter grey.
+- The feed's weekly city card names the city as the city rankings do ("Lahore").
+- New sunnah photos store their width and height; the feed reserves that space before the photo arrives, so nothing jumps on slow data.
