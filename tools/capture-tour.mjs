@@ -1,6 +1,6 @@
 // Captures every screen of the app for the feature-tour promo (videos/002-*): starts the app on a throwaway database,
-// seeds a demo community over the past week, then photographs each screen on a phone in dark mode.
-//   APP_DIR=../app node tools/capture-tour.mjs [out-dir]      (default out-dir: assets/tour)
+// seeds a demo community over the past week, then photographs each screen on a phone (light mode, as the tour is set on white).
+//   APP_DIR=../app [MODE=dark] node tools/capture-tour.mjs [out-dir]      (default out-dir: assets/tour; screens in light mode unless MODE=dark)
 // Each scrolling screen is saved twice: <name>.jpg (the phone's view, which also supplies the header and tab bar) and
 // <name>-full.jpg (the whole page with the header and tab bar hidden), so the video can scroll the page underneath them
 // as the phone does. manifest.json records each page's height and where its header ends and tab bar begins (CSS px).
@@ -15,6 +15,7 @@ import { pathToFileURL } from 'node:url';
 
 const APP = path.resolve(process.env.APP_DIR || '../app');
 const OUT = path.resolve(process.argv[2] || 'assets/tour');
+const MODE = process.env.MODE || 'light';
 fs.mkdirSync(OUT, { recursive: true });
 
 // A movable clock: the week of history is seeded day by day, then the clock returns to now. The browser keeps real time.
@@ -138,7 +139,7 @@ console.log('seeded', PEOPLE.length, 'members over', DAYS, 'days');
 const browser = await chromium.launch();
 const manifest = {};
 const W = 390, H = 844;
-async function open({ token = tok.ayesha, lang = 'en', mode = 'dark', intro = true, folds = {}, w = W, h = H, motion = false } = {}) {
+async function open({ token = tok.ayesha, lang = 'en', mode = MODE, intro = true, folds = {}, w = W, h = H, motion = false } = {}) {
   const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: w > 900 ? 1.5 : 2, hasTouch: w < 900, isMobile: w < 900 });
   page.on('pageerror', (e) => console.log('page error:', e.message));
   await page.goto(B + '/');
@@ -317,7 +318,7 @@ const TODAY_FOLDS = { quests: true, seerah: true, challenge: true, start: true }
 { const page = await open(); await go(page, 'settings'); await full(page, 'settings'); await page.close(); }
 // the same Today in light, in Urdu, and on a computer
 {
-  const dark = await open(); await view(dark, 'today-dark'); await dark.close(); // the same moment as the light and Urdu ones
+  const dark = await open({ mode: 'dark' }); await view(dark, 'today-dark'); await dark.close(); // the same moment as the light and Urdu ones
   const light = await open({ mode: 'light' }); await view(light, 'today-light'); await go(light, 'rank'); await view(light, 'rank-light'); await light.close();
   const ur = await open(); await click(ur, '[data-act=setlang][data-l=ur]', 2200); await ur.evaluate(() => scrollTo(0, 0)); await view(ur, 'today-ur');
   await go(ur, 'rank'); await view(ur, 'rank-ur'); await go(ur, 'caravan'); await view(ur, 'caravan-ur');

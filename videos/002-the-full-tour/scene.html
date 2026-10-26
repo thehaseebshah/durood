@@ -1,8 +1,10 @@
 <!doctype html>
-<!-- Promo 002 "The full tour" — every feature of Seerah Quest, 1080x1920, 4 minutes. Rendered frame by frame by
-     tools/render.mjs (window.seek(t) draws time t; window.CUES lists the sound effects). Screens are real captures
-     from tools/capture-tour.mjs (assets/tour), and every spotlight sits on the exact place the capture measured.
-     Preview through a static server: it plays in real time; click to restart, press → to skip 10 s. -->
+<!-- Promo 002 "The full tour" — every feature of Seerah Quest, 1080x1920, about 4 minutes. Rendered frame by frame by
+     tools/render.mjs (window.seek(t) draws time t; window.CUES lists the sound effects). Screens are real captures from
+     tools/capture-tour.mjs (assets/tour), and every spotlight sits on the exact place the capture measured.
+     Style: the app's own Swiss identity (white paper, black ink, one green, heavy Inter, a hairline grid, the
+     eight-point star), deliberately unlike 001's night sky. Preview through a static server: it plays in real time;
+     click to restart, press → / ← to skip 10 s. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -13,152 +15,126 @@
 @font-face { font-family: 'Nastaliq'; src: url('../../assets/fonts/nastaliq-ur-700.woff2') format('woff2'); font-weight: 700; }
 @font-face { font-family: 'Amiri'; src: url('../../assets/fonts/amiri.woff2') format('woff2'); }
 @font-face { font-family: 'Salawat'; src: url('../../assets/fonts/salawat.woff2') format('woff2'); unicode-range: U+FDFA; }
-:root { --ink: #f4f1ea; --soft: #a9b3c4; --gold: #f0cf86; --sig: #22d68f; --night: #050914; }
+:root { --paper: #ffffff; --ink: #0b0b0b; --soft: #66665f; --hair: #e6e6e0; --sig: #00a86b; --sigt: #007a4d; --tint: #e3f6ed; --arrow: #2ee59d; }
 * { box-sizing: border-box; margin: 0; }
-html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--night); }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--paper); }
 body { font-family: 'Inter', 'Salawat', sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
-.stage { position: absolute; inset: 0; overflow: hidden;
-  background: radial-gradient(1400px 700px at 50% 2050px, #0e4a35 0%, #0a2a2a 30%, rgba(8,20,40,0) 70%), linear-gradient(#02040b 0%, #060c1f 45%, #0a1630 75%, #0b1d2c 100%); }
+.stage { position: absolute; inset: 0; overflow: hidden; background: var(--paper); }
 canvas { position: absolute; inset: 0; }
 .abs { position: absolute; }
 .w, .fx { will-change: transform, opacity, filter; }
 .w { display: inline-block; }
-.gold { color: var(--gold); }
 .green { color: var(--sig); }
-.glow { text-shadow: 0 0 28px rgba(240, 207, 134, .45), 0 0 80px rgba(240, 207, 134, .2); }
 .ur { font-family: 'Inter', 'Nastaliq', serif; direction: rtl; }
 .ar { font-family: 'Amiri', serif; direction: rtl; }
-.kick { font-weight: 800; font-size: 28px; letter-spacing: 6px; text-transform: uppercase; color: var(--gold); display: flex; align-items: center; gap: 16px; }
+.kick { font-weight: 800; font-size: 28px; letter-spacing: 5px; text-transform: uppercase; color: var(--sigt); display: flex; align-items: center; gap: 14px; }
 .star { display: inline-block; position: relative; width: 1em; height: 1em; flex: none; }
 .star i { position: absolute; inset: 14%; background: currentColor; }
 .star i + i { transform: rotate(45deg); }
-.head { font-weight: 900; font-size: 84px; line-height: 1.04; letter-spacing: -3px; }
+.head { font-weight: 900; font-size: 86px; line-height: 1.0; letter-spacing: -3.5px; }
 
-/* captions above the phone, on a dark scrim so they read over a zoomed screen */
-#scrim { left: 0; right: 0; top: 0; height: 760px; background: linear-gradient(#050914 0%, rgba(5,9,20,.94) 45%, rgba(5,9,20,.6) 72%, rgba(5,9,20,0) 100%); pointer-events: none; }
+/* captions above the phone, on a white scrim so they read over a zoomed screen */
+#scrim { left: 0; right: 0; top: 0; height: 720px; background: linear-gradient(#fff 0%, rgba(255,255,255,.96) 52%, rgba(255,255,255,0) 100%); pointer-events: none; }
 .cap { left: 80px; right: 80px; top: 150px; }
 .cap .head { margin-top: 14px; }
-.cap .sub { text-align: right; margin-top: 6px; font-size: 46px; line-height: 1.9; color: var(--soft); }
-#bar { left: 80px; right: 80px; top: 60px; height: 6px; display: flex; gap: 8px; }
-#bar i { flex: 1; background: rgba(244,241,234,.18); position: relative; overflow: hidden; }
-#bar i b { position: absolute; inset: 0; background: var(--gold); transform-origin: left; transform: scaleX(0); }
-#brand { left: 80px; right: 80px; top: 88px; display: flex; justify-content: space-between; font-weight: 800; font-size: 22px; letter-spacing: 6px; text-transform: uppercase; color: rgba(240,207,134,.75); }
-#brand .ur { letter-spacing: 0; font-size: 30px; font-weight: 700; }
+.cap .sub { text-align: right; margin-top: 8px; font-size: 46px; line-height: 1.9; color: var(--soft); }
+#bar { left: 80px; right: 80px; top: 60px; height: 8px; display: flex; gap: 6px; }
+#bar i { flex: 1; background: var(--hair); position: relative; overflow: hidden; }
+#bar i b { position: absolute; inset: 0; background: var(--ink); transform-origin: left; transform: scaleX(0); }
+#brand { left: 80px; right: 80px; top: 86px; display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 22px; letter-spacing: 5px; text-transform: uppercase; }
+#brand .ur { letter-spacing: 0; font-size: 30px; font-weight: 700; color: var(--sigt); }
 
-/* the phone */
+/* the phone: black, square-shouldered, with the app's hard green offset shadow */
 #rig { left: 0; top: 0; width: 1080px; height: 1920px; perspective: 2600px; perspective-origin: 540px 1000px; }
-#phone { position: absolute; left: 0; top: 0; width: 596px; height: 1248px; border-radius: 74px; padding: 18px; background: linear-gradient(145deg, #2c323a, #07090c 40%, #171b21);
-  box-shadow: 0 0 0 2px #3a414a, 0 50px 140px rgba(0,0,0,.65), 0 0 180px rgba(34,214,143,.25); transform-style: preserve-3d; }
-#scr { position: relative; width: 560px; height: 1212px; border-radius: 58px; overflow: hidden; background: #000; isolation: isolate; }
-.slot { position: absolute; inset: 0; overflow: hidden; background: #000; }
+#phone { position: absolute; left: 0; top: 0; width: 596px; height: 1248px; border-radius: 70px; padding: 18px; background: var(--ink); box-shadow: 30px 30px 0 var(--sig); transform-style: preserve-3d; }
+#scr { position: relative; width: 560px; height: 1212px; border-radius: 54px; overflow: hidden; background: #f2f2f7; isolation: isolate; }
+.slot { position: absolute; inset: 0; overflow: hidden; background: #f2f2f7; }
 .slot .page { position: absolute; left: 0; top: 0; width: 560px; }
 .slot .crop { position: absolute; left: 0; width: 560px; overflow: hidden; }
 .slot .crop img { position: absolute; left: 0; width: 560px; height: 1212px; }
-.slot .view { position: absolute; left: 0; top: 0; width: 560px; height: 1212px; }
-.slot .alt { position: absolute; left: 0; top: 0; width: 560px; height: 1212px; }
-#sheen { position: absolute; inset: 0; border-radius: 58px; background: linear-gradient(115deg, rgba(255,255,255,0) 35%, rgba(255,255,255,.07) 48%, rgba(255,255,255,0) 60%); pointer-events: none; }
-.spot { position: absolute; border-radius: 16px; border: 3px solid var(--gold); box-shadow: 0 0 0 3000px rgba(0,0,0,.6), 0 0 34px rgba(240,207,134,.7), inset 0 0 22px rgba(240,207,134,.25); pointer-events: none; }
-.ring { position: absolute; border-radius: 20px; border: 2px solid var(--gold); pointer-events: none; }
-#ripple { position: absolute; width: 140px; height: 140px; margin: -70px 0 0 -70px; border-radius: 50%; border: 5px solid #eafff5; }
-#offline { position: absolute; inset: 0; background: rgba(5,9,20,.55); display: grid; place-items: center; }
-#offline .chip { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 36px 40px; border: 2px solid var(--gold); background: rgba(5,9,20,.92); border-radius: 28px; width: 470px; text-align: center; }
-#offline .chip b { font-size: 30px; font-weight: 800; }
-#offline .chip span { font-size: 64px; font-weight: 900; color: var(--gold); letter-spacing: -2px; }
-#offline .chip small { font-size: 22px; color: var(--soft); }
+.slot .view, .slot .alt { position: absolute; left: 0; top: 0; width: 560px; height: 1212px; }
+.spot { position: absolute; border: 4px solid var(--sig); border-radius: 6px; box-shadow: 0 0 0 3000px rgba(11,11,11,.52); pointer-events: none; }
+.cm { position: absolute; width: 30px; height: 30px; border: 0 solid #fff; pointer-events: none; }
+.ring { position: absolute; border: 3px solid var(--sig); border-radius: 8px; pointer-events: none; }
+#ripple { position: absolute; width: 140px; height: 140px; margin: -70px 0 0 -70px; border-radius: 50%; border: 6px solid var(--ink); }
+#offline { position: absolute; inset: 0; background: rgba(255,255,255,.6); display: grid; place-items: center; }
+#offline .chip { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 34px 38px; background: #fff; border: 3px solid var(--ink); box-shadow: 16px 16px 0 var(--sig); width: 470px; }
+#offline .chip b { font-size: 28px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; color: var(--sigt); }
+#offline .chip span { font-size: 70px; font-weight: 900; letter-spacing: -3px; line-height: 1; }
+#offline .chip small { font-size: 24px; color: var(--soft); line-height: 1.35; }
 
-/* callout labels next to a spotlight */
-.label { position: absolute; padding: 18px 26px 14px; background: rgba(5,9,20,.96); border: 2px solid var(--gold); border-radius: 18px; max-width: 760px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+/* callouts: black blocks with a hard green shadow */
+.label { position: absolute; padding: 20px 28px 14px; background: var(--ink); color: #fff; max-width: 760px; box-shadow: 14px 14px 0 var(--sig); }
 .label b { display: block; font-weight: 800; font-size: 38px; line-height: 1.15; letter-spacing: -.5px; }
-.label span { display: block; font-size: 34px; line-height: 1.9; color: var(--gold); text-align: right; }
-.label i { position: absolute; left: 50%; width: 22px; height: 22px; margin-left: -11px; background: rgba(5,9,20,.9); border: 2px solid var(--gold); transform: rotate(45deg); }
-.label.below i { top: -13px; border-right: 0; border-bottom: 0; }
-.label.above i { bottom: -13px; border-left: 0; border-top: 0; }
+.label span { display: block; font-size: 34px; line-height: 1.9; color: var(--arrow); text-align: right; }
+.label i { position: absolute; width: 22px; height: 22px; margin-left: -11px; background: var(--sig); }
+.label.below i { top: -11px; } .label.above i { bottom: -11px; }
 
-/* chapter cards */
-.chap { inset: 0; perspective: 1800px; }
-.chap .num { position: absolute; left: 0; right: 0; top: 470px; text-align: center; font-weight: 900; font-size: 360px; letter-spacing: -14px; color: transparent; -webkit-text-stroke: 3px rgba(240,207,134,.55); line-height: 1; }
-.chap .ttl { position: absolute; left: 40px; right: 40px; top: 820px; text-align: center; font-weight: 900; font-size: 150px; letter-spacing: -6px; line-height: 1; transform-style: preserve-3d; }
-.chap .ttl .w { transform-origin: 50% 100%; }
-.chap .tur { position: absolute; left: 0; right: 0; top: 1000px; text-align: center; font-family: 'Nastaliq', serif; font-weight: 700; font-size: 92px; color: var(--gold); direction: rtl; }
-.chap .line { position: absolute; left: 100px; right: 100px; top: 1250px; text-align: center; font-size: 42px; font-weight: 600; color: var(--ink); }
-.chap .lur { position: absolute; left: 100px; right: 100px; top: 1320px; text-align: center; font-size: 42px; color: var(--soft); direction: rtl; }
-.chap .rule { position: absolute; left: 340px; right: 340px; top: 1205px; height: 4px; background: var(--gold); transform-origin: center; }
+/* chapter panels: full-bleed green or black, wiped across */
+.chap { inset: 0; overflow: hidden; }
+.chap.g { background: var(--sig); color: var(--ink); }
+.chap.k { background: var(--ink); color: #fff; }
+.chap .num { position: absolute; left: 60px; top: 230px; font-weight: 900; font-size: 470px; letter-spacing: -24px; line-height: 1; color: transparent; -webkit-text-stroke: 4px #0b0b0b; }
+.chap.k .num { -webkit-text-stroke-color: var(--arrow); }
+.chap .stack { position: absolute; left: 80px; right: 80px; top: 820px; }
+.chap .ttl { font-weight: 900; font-size: 168px; letter-spacing: -8px; line-height: .92; }
+.chap .ttl .w { transform-origin: 0 100%; }
+.chap .rule { height: 10px; width: 320px; background: currentColor; margin: 46px 0 30px; transform-origin: left; }
+.chap.k .rule { background: var(--sig); }
+.chap .tur { font-family: 'Nastaliq', serif; font-weight: 700; font-size: 88px; line-height: 1.7; direction: rtl; text-align: right; }
+.chap.k .tur { color: var(--arrow); }
+.chap .line { font-size: 46px; font-weight: 700; letter-spacing: -1px; margin-top: 18px; }
+.chap .lur { font-size: 42px; line-height: 1.9; direction: rtl; text-align: right; opacity: .8; }
+.chap svg.bigstar { position: absolute; right: -330px; top: 120px; width: 900px; height: 900px; opacity: .22; }
 
-/* 3D decks of screens */
+/* opening slams and the sayings near the end: one word or line per full-bleed panel */
+.slam { inset: 0; display: flex; flex-direction: column; justify-content: center; padding: 0 80px; }
+.slam.g { background: var(--sig); color: var(--ink); } .slam.k { background: var(--ink); color: #fff; } .slam.p { background: var(--paper); color: var(--ink); }
+.slam .big { font-weight: 900; font-size: 200px; letter-spacing: -10px; line-height: .9; text-transform: uppercase; }
+.slam .big em { font-style: normal; color: var(--sig); }
+.slam.g .big em { color: #fff; }
+.slam .su { font-size: 64px; line-height: 2; direction: rtl; text-align: right; margin-top: 30px; }
+.slam.k .su { color: var(--arrow); } .slam.g .su { color: var(--ink); } .slam.p .su { color: var(--sigt); }
+.slam .mid { font-weight: 900; font-size: 112px; letter-spacing: -5px; line-height: .98; }
+.slam .mid em { font-style: normal; color: var(--sig); }
+.slam.g .mid em { color: #fff; }
+
+/* 3D decks of screens and the flat mosaics */
 #deck { inset: 0; perspective: 2200px; perspective-origin: 540px 1000px; }
-#deck .card { position: absolute; left: 0; top: 0; width: 520px; height: 1125px; border-radius: 40px; overflow: hidden; box-shadow: 0 0 0 3px #2a3038, 0 40px 100px rgba(0,0,0,.6); backface-visibility: hidden; }
+#deck .card { position: absolute; left: 0; top: 0; width: 520px; height: 1125px; box-shadow: 0 0 0 4px var(--ink), 22px 22px 0 var(--sig); backface-visibility: hidden; background: #fff; }
 #deck .card img { width: 100%; height: 100%; display: block; }
-#deck .tag { position: absolute; left: 0; right: 0; bottom: -86px; text-align: center; font-weight: 800; font-size: 40px; color: var(--gold); letter-spacing: 3px; text-transform: uppercase; }
-#deck .tag span { display: block; font-family: 'Nastaliq', serif; font-size: 32px; letter-spacing: 0; color: var(--soft); text-transform: none; }
+#deck .tag { position: absolute; left: 0; right: 0; bottom: -100px; text-align: center; font-weight: 900; font-size: 44px; letter-spacing: -1px; }
+#deck .tag span { display: block; font-family: 'Nastaliq', serif; font-size: 34px; color: var(--sigt); }
+#mosaic { inset: 0; }
+#mosaic .tile { position: absolute; left: 0; top: 0; box-shadow: 0 0 0 3px var(--ink), 12px 12px 0 var(--sig); background: #fff; }
+#mosaic .tile img { width: 100%; height: 100%; display: block; }
 
 /* laptop */
-#laptop { left: 90px; top: 760px; width: 900px; height: 700px; perspective: 2000px; perspective-origin: 450px 300px; }
+#laptop { left: 90px; top: 800px; width: 900px; height: 700px; perspective: 2000px; perspective-origin: 450px 300px; }
 #lid { position: absolute; left: 0; top: 0; width: 900px; height: 590px; transform-origin: 50% 100%; transform-style: preserve-3d; }
-#lid .bez { position: absolute; inset: 0; border-radius: 26px 26px 6px 6px; background: #14181d; box-shadow: 0 0 0 2px #39404a, 0 0 120px rgba(34,214,143,.2); padding: 22px 22px 34px; }
-#lid img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 8px; display: block; }
-#base { position: absolute; left: -60px; top: 590px; width: 1020px; height: 34px; border-radius: 0 0 30px 30px; background: linear-gradient(#3a414a, #1a1e24); }
-
-/* words on the sky */
-.say { left: 80px; right: 80px; text-align: center; }
-.say .en { font-weight: 900; font-size: 96px; letter-spacing: -3px; line-height: 1.04; }
-.say .u { font-size: 52px; line-height: 2; color: var(--gold); direction: rtl; margin-top: 18px; }
+#lid .bez { position: absolute; inset: 0; border-radius: 22px 22px 4px 4px; background: var(--ink); padding: 22px 22px 34px; box-shadow: 24px 24px 0 var(--sig); }
+#lid img { width: 100%; height: 100%; object-fit: cover; object-position: top; border-radius: 4px; display: block; }
+#base { position: absolute; left: -60px; top: 590px; width: 1020px; height: 34px; border-radius: 0 0 26px 26px; background: linear-gradient(#d9d9d3, #a9a9a2); box-shadow: 0 2px 0 var(--ink); }
 
 /* opening and finale */
-#ayah { left: 50px; right: 50px; top: 330px; text-align: center; font-size: 88px; line-height: 2.05; }
-#ayahK { left: 0; right: 0; top: 250px; justify-content: center; }
-#ayahEn { left: 110px; right: 110px; top: 935px; text-align: center; font-size: 38px; line-height: 1.45; }
-#logo3d { left: 340px; top: 360px; width: 400px; height: 400px; perspective: 1400px; }
-#logo3d .sq { position: absolute; inset: 70px; border: 14px solid var(--gold); box-shadow: 0 0 60px rgba(240,207,134,.5), inset 0 0 40px rgba(240,207,134,.3); }
-#icon { left: 410px; top: 250px; width: 260px; height: 260px; border-radius: 60px; box-shadow: 0 0 0 2px rgba(240,207,134,.6), 0 0 120px rgba(240,207,134,.35); }
-#rays { left: 540px; top: 480px; width: 1600px; height: 1600px; margin: -800px 0 0 -800px; border-radius: 50%;
-  background: repeating-conic-gradient(from 0deg, rgba(240,207,134,.10) 0deg 4deg, rgba(240,207,134,0) 4deg 15deg);
-  -webkit-mask: radial-gradient(circle, #000 0%, rgba(0,0,0,.5) 30%, transparent 62%); mask: radial-gradient(circle, #000 0%, rgba(0,0,0,.5) 30%, transparent 62%); }
-.bigname { left: 0; right: 0; text-align: center; font-weight: 900; font-size: 128px; letter-spacing: -4px; }
-.bigur { left: 0; right: 0; text-align: center; font-family: 'Nastaliq', serif; font-weight: 700; font-size: 88px; direction: rtl; }
-#cta { left: 110px; right: 110px; top: 1195px; display: flex; justify-content: space-between; align-items: center; padding: 22px 40px 14px; background: var(--gold); color: #0b0b0b; font-weight: 800; font-size: 42px; }
-#cta .ur { display: block; font-size: 36px; font-weight: 400; line-height: 1.9; text-align: left; }
-#cta b { font-size: 56px; }
-#dome { position: absolute; left: 0; bottom: 0; width: 1080px; height: 760px; }
-#vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 85% 70% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%); }
-#flash { position: absolute; inset: 0; background: #fff6dc; opacity: 0; pointer-events: none; mix-blend-mode: screen; }
+#durood { left: 40px; right: 40px; top: 560px; text-align: center; font-size: 104px; line-height: 2.0; }
+#duroodEn { left: 120px; right: 120px; top: 1110px; text-align: center; font-size: 40px; line-height: 1.45; color: var(--soft); }
+#duroodRule { left: 380px; width: 320px; top: 1060px; height: 8px; background: var(--sig); transform-origin: center; }
+.logo { left: 80px; font-weight: 900; font-size: 250px; letter-spacing: -14px; line-height: .86; }
+#logoUr { left: 80px; right: 80px; top: 1170px; font-family: 'Nastaliq', serif; font-weight: 700; font-size: 110px; color: var(--sigt); direction: rtl; text-align: right; }
+#logoTag { left: 80px; top: 1460px; display: flex; gap: 28px; align-items: center; padding: 24px 34px; background: var(--ink); color: #fff; font-weight: 800; font-size: 36px; letter-spacing: 4px; text-transform: uppercase; box-shadow: 14px 14px 0 var(--sig); }
+#logoTag .ur { letter-spacing: 0; font-size: 36px; color: var(--arrow); text-transform: none; }
+#icon { left: 80px; top: 250px; width: 230px; height: 230px; border-radius: 52px; box-shadow: 0 0 0 4px var(--ink), 20px 20px 0 var(--sig); }
+.fbig { left: 80px; right: 80px; font-weight: 900; font-size: 150px; letter-spacing: -8px; line-height: .9; }
+#cta { left: 80px; right: 80px; top: 1340px; display: flex; justify-content: space-between; align-items: center; padding: 34px 40px 22px; background: var(--ink); color: #fff; font-weight: 800; font-size: 46px; box-shadow: 18px 18px 0 var(--sig); }
+#cta .ur { display: block; font-size: 38px; font-weight: 400; line-height: 1.9; text-align: left; color: var(--arrow); }
+#cta b { font-size: 64px; color: var(--arrow); }
 </style>
 </head>
 <body>
 <div class="stage" id="stage">
-  <canvas id="sky" width="1080" height="1920"></canvas>
-  <div class="abs fx" id="rays" data-fin="0" data-dur="1.6" data-out="999"></div>
-  <svg id="dome" viewBox="0 0 1080 760" aria-hidden="true">
-    <defs>
-      <linearGradient id="gd" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0b5a3a"/><stop offset=".45" stop-color="#1fae74"/><stop offset=".6" stop-color="#18925f"/><stop offset="1" stop-color="#083d29"/></linearGradient>
-      <linearGradient id="sil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a1322"/><stop offset="1" stop-color="#03060c"/></linearGradient>
-      <radialGradient id="halo" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#22d68f" stop-opacity=".55"/><stop offset=".5" stop-color="#22d68f" stop-opacity=".12"/><stop offset="1" stop-color="#22d68f" stop-opacity="0"/></radialGradient>
-      <linearGradient id="lamp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe7b0"/><stop offset="1" stop-color="#d49a3c"/></linearGradient>
-      <g id="minaret">
-        <rect x="-17" y="250" width="34" height="510"/>
-        <rect x="-30" y="430" width="60" height="16"/><rect x="-24" y="446" width="48" height="10"/>
-        <rect x="-26" y="300" width="52" height="14"/><rect x="-21" y="314" width="42" height="8"/>
-        <rect x="-13" y="190" width="26" height="60"/><rect x="-22" y="180" width="44" height="12"/>
-        <path d="M-13 180 C-13 140 -3 118 0 96 C3 118 13 140 13 180 Z"/>
-        <rect x="-1.5" y="60" width="3" height="40"/>
-        <path d="M0 40 a14 14 0 1 0 10 24 a11 11 0 1 1 -10 -24 Z" fill="url(#lamp)"/>
-        <rect x="-6" y="330" width="12" height="40" rx="6" fill="url(#lamp)" opacity=".55"/>
-        <rect x="-6" y="470" width="12" height="44" rx="6" fill="url(#lamp)" opacity=".55"/>
-      </g>
-    </defs>
-    <ellipse id="haloE" cx="540" cy="360" rx="420" ry="300" fill="url(#halo)"/>
-    <g fill="url(#sil)">
-      <use href="#minaret" x="150" transform="translate(0 70)"/><use href="#minaret" x="930" transform="translate(0 70)"/>
-      <use href="#minaret" x="330"/><use href="#minaret" x="750"/>
-      <rect x="0" y="600" width="1080" height="160"/><rect x="400" y="440" width="280" height="170"/>
-    </g>
-    <rect x="430" y="400" width="220" height="44" fill="#0c3b2a"/>
-    <path d="M425 404 C418 300 470 250 520 200 C530 188 536 172 540 150 C544 172 550 188 560 200 C610 250 662 300 655 404 Z" fill="url(#gd)"/>
-    <path d="M540 150 C536 220 524 330 520 404 M540 150 C548 230 560 330 566 404" stroke="#0a4a31" stroke-width="3" fill="none" opacity=".5"/>
-    <rect x="538" y="98" width="4" height="54" fill="url(#lamp)"/><circle cx="540" cy="128" r="7" fill="url(#lamp)"/>
-    <path d="M540 70 a17 17 0 1 0 12 29 a13 13 0 1 1 -12 -29 Z" fill="url(#lamp)"/>
-  </svg>
-  <canvas id="fxBack" width="1080" height="1920"></canvas>
-
+  <canvas id="grid" width="1080" height="1920"></canvas>
+  <div class="abs" id="mosaic"></div>
   <div class="abs" id="deck"></div>
   <div class="abs" id="laptop"><div id="lid"><div class="bez"><img src="../../assets/tour/desktop.jpg" alt=""></div></div><div id="base"></div></div>
 
@@ -168,39 +144,37 @@ canvas { position: absolute; inset: 0; }
     <div id="spots"></div>
     <div id="ripple"></div>
     <div id="offline"><div class="chip">
-      <svg width="86" height="86" viewBox="0 0 24 24" fill="none" stroke="#f0cf86" stroke-width="1.6" stroke-linecap="round"><path d="M2 8.5a15 15 0 0 1 20 0M5 12a10 10 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0"/><circle cx="12" cy="19" r="1.2" fill="#f0cf86"/><path d="M3 3l18 18" stroke="#ff6b5e" stroke-width="2"/></svg>
-      <b>No signal</b><span>313 saved</span><small>on this phone · sent once you are back online</small></div></div>
-    <div id="sheen"></div>
+      <svg width="76" height="76" viewBox="0 0 24 24" fill="none" stroke="#0b0b0b" stroke-width="1.8" stroke-linecap="round"><path d="M2 8.5a15 15 0 0 1 20 0M5 12a10 10 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0"/><circle cx="12" cy="19" r="1.2" fill="#0b0b0b"/><path d="M3 3l18 18" stroke="#c4251c" stroke-width="2.2"/></svg>
+      <b>No signal</b><span>313 saved</span><small>on this phone, and sent once<br>you are back online</small></div></div>
   </div></div></div>
   <div id="labels"></div>
-  <canvas id="fxFront" width="1080" height="1920"></canvas>
+  <canvas id="fx" width="1080" height="1920"></canvas>
 
   <div class="abs" id="scrim"></div>
   <div class="abs" id="bar"></div>
   <div class="abs" id="brand"><span>Seerah Quest</span><span class="ur">سیرت کوئسٹ</span></div>
   <div id="caps"></div>
-  <div id="chaps"></div>
-  <div id="says"></div>
+  <div id="panels"></div>
 
-  <!-- opening -->
-  <div class="abs kick fx" id="ayahK" data-in="0.15" data-out="7.4"><span class="star"><i></i><i></i></span>Surah Al-Ahzab · 33:56<span class="star"><i></i><i></i></span></div>
-  <div class="abs ar gold glow" id="ayah" data-words data-in="0.4" data-st="0.2" data-dur="0.8" data-out="7.4" lang="ar">إِنَّ اللَّهَ وَمَلَائِكَتَهُ يُصَلُّونَ عَلَى النَّبِيِّ يَا أَيُّهَا الَّذِينَ آمَنُوا صَلُّوا عَلَيْهِ وَسَلِّمُوا تَسْلِيمًا</div>
-  <div class="abs fx" id="ayahEn" data-in="3.4" data-dur="0.8" data-out="7.4">Indeed, Allah and His angels send blessings upon the Prophet. O you who believe, send blessings upon him and greet him with peace.</div>
-  <div class="abs" id="logo3d"><div class="sq" id="sq1"></div><div class="sq" id="sq2"></div></div>
-  <div class="abs fx bigname" id="oName" data-in="12.7" data-dur="0.8" data-out="15.6" style="top:800px">Seerah Quest</div>
-  <div class="abs fx bigur gold glow" id="oUr" data-in="13.1" data-dur="0.8" data-out="15.6" style="top:950px">سیرت کوئسٹ</div>
-  <div class="abs kick fx" id="oKick" data-in="13.6" data-dur="0.6" data-out="15.6" style="left:0;right:0;top:1200px;justify-content:center"><span class="star"><i></i><i></i></span>The full tour · مکمل تعارف<span class="star"><i></i><i></i></span></div>
+  <!-- opening: the durood, then the name -->
+  <div class="abs ar" id="durood" data-words data-in="5.5" data-st="0.26" data-dur="0.7" data-out="10.2" lang="ar">اللّٰهُمَّ صَلِّ عَلٰى مُحَمَّدٍ<br>وَعَلٰى اٰلِ مُحَمَّدٍ</div>
+  <div class="abs" id="duroodRule"></div>
+  <div class="abs fx" id="duroodEn" data-in="7.6" data-dur="0.7" data-out="10.2">O Allah, send blessings upon Muhammad ﷺ and upon the family of Muhammad</div>
+  <div class="abs logo" id="logo1" style="top:560px">Seerah</div>
+  <div class="abs logo" id="logo2" style="top:790px">Quest<span class="green">.</span></div>
+  <div class="abs" id="logoUr">سیرت کوئسٹ</div>
+  <div class="abs" id="logoTag"><span>The full tour</span><span class="ur">مکمل تعارف</span><b style="color:var(--arrow)">→</b></div>
+
+  <!-- over the closing mosaic -->
+  <div class="abs fx" data-wall="0.9" data-dur="0.5" style="left:80px;right:80px;top:1350px;padding:34px 40px 18px;background:var(--ink);color:#fff;box-shadow:18px 18px 0 var(--sig)"><div style="font-weight:900;font-size:88px;letter-spacing:-4px;line-height:1">Everything,<br>in one app<span class="green">.</span></div><div class="ur" style="font-size:52px;line-height:2;color:var(--arrow);text-align:right">سب کچھ، ایک ایپ میں</div></div>
 
   <!-- finale -->
-  <img class="abs fx" id="icon" src="../../assets/icon-512.png" alt="" data-fin="0.4" data-dur="0.9" data-out="999">
-  <div class="abs fx bigname" data-fin="0.9" data-dur="0.8" data-out="999" style="top:560px">Seerah Quest</div>
-  <div class="abs fx bigur gold glow" data-fin="1.4" data-dur="0.8" data-out="999" style="top:700px">سیرت کوئسٹ</div>
-  <div class="abs" data-words data-fin="2.2" data-st="0.07" data-out="999" style="left:90px;right:90px;top:935px;text-align:center;font-weight:700;font-size:44px;line-height:1.3">Every durood is dedicated to the <span class="gold">Seerat Circles</span> across Pakistan.</div>
-  <div class="abs ur fx" data-fin="3.0" data-out="999" style="left:90px;right:90px;top:1050px;text-align:center;font-size:42px;color:var(--soft)">ہر درود پاکستان بھر کے سیرت سرکلز کے نام</div>
-  <div class="abs fx" id="cta" data-fin="3.8" data-dur="0.6" data-out="999"><span>Ask a member for an invite code<span class="ur">دعوتی کوڈ کسی رکن سے لیں</span></span><b>→</b></div>
-
-  <div id="vignette"></div>
-  <div id="flash"></div>
+  <img class="abs fx" id="icon" src="../../assets/icon-512.png" alt="" data-fin="0.3" data-dur="0.7" data-out="999">
+  <div class="abs fbig" data-words data-fin="0.6" data-st="0.12" data-out="999" style="top:560px">Seerah Quest<span class="green">.</span></div>
+  <div class="abs fx" data-fin="1.2" data-dur="0.7" data-out="999" style="left:80px;right:80px;top:740px;font-family:'Nastaliq',serif;font-weight:700;font-size:96px;color:var(--sigt);direction:rtl;text-align:right">سیرت کوئسٹ</div>
+  <div class="abs" data-words data-fin="2.0" data-st="0.06" data-out="999" style="left:80px;right:80px;top:1010px;font-weight:800;font-size:54px;line-height:1.12;letter-spacing:-1.5px">Every durood is dedicated to the <span class="green">Seerat Circles</span> across Pakistan.</div>
+  <div class="abs ur fx" data-fin="2.8" data-out="999" style="left:80px;right:80px;top:1160px;text-align:right;font-size:44px;color:var(--soft)">ہر درود پاکستان بھر کے سیرت سرکلز کے نام</div>
+  <div class="abs fx" id="cta" data-fin="3.5" data-dur="0.6" data-out="999"><span>Ask a member for an invite code<span class="ur">دعوتی کوڈ کسی رکن سے لیں</span></span><b>→</b></div>
 </div>
 
 <script>
@@ -209,7 +183,6 @@ canvas { position: absolute; inset: 0; }
 //   step: { at: seconds into the segment, key: a measured element (assets/tour/manifest.json) or rect: [x, y, w, h] in
 //           page CSS px, en / ur: the callout, z: zoom (auto when left out), noSpot: zoom without a spotlight, scroll: px }
 // =====================================================================================================================
-let DURATION = 0; // set from the storyboard below
 const C = (n, title, ur, line, lineUr) => ({ type: 'chapter', d: 2.4, n, title, ur, line, lineUr });
 const P = (shot, d, cap, steps = [], more = {}) => ({ type: 'phone', shot, d, cap, steps, ...more });
 const STORY = [
@@ -245,7 +218,7 @@ const STORY = [
 
   C('03', 'Sunnah & Seerah', 'سنت اور سیرت', 'Live the Sunnah. Learn the Seerah.', 'سنت پر عمل، سیرت کا علم'),
   P('today', 7.0, ['Sunnah', 'A sunnah for every day.', 'ہر دن کے لیے ایک سنت'], [
-    { at: 0.3, key: 'seerah', rect: null, noSpot: true, z: 1.0, scroll: 1448 },
+    { at: 0.3, key: 'seerah', noSpot: true, z: 1.0, scroll: 1448 },
     { at: 1.4, key: 'tick', en: 'Did today’s sunnah? Tick it', ur: 'آج کی سنت پر عمل کیا؟ نشان لگائیں', z: 1.7 },
     { at: 4.2, key: 'photo', en: 'Share a photo of it', ur: 'اس کی تصویر شیئر کریں', z: 1.5 }]),
   P('today', 6.0, ['Seerah', 'Learn the Seerah, week by week.', 'ہفتہ بہ ہفتہ سیرت سیکھیں'], [
@@ -300,8 +273,8 @@ const STORY = [
   C('08', 'Yours', 'آپ کی اپنی', 'Light or dark. English or Urdu. Phone or computer.', 'لائٹ یا ڈارک، انگریزی یا اردو، فون یا کمپیوٹر'),
   P('menu', 3.8, ['Easy', 'Everything, one tap away.', 'سب کچھ ایک ٹیپ پر'], [{ at: 0.4, rect: [0, 0, 300, 844], en: 'The menu: every page', ur: 'مینو: ہر صفحہ', z: 1.0 }]),
   P('addsheet', 3.6, ['Easy', 'Add durood from any page.', 'کسی بھی صفحے سے درود درج کریں'], [{ at: 0.4, key: 'modal', en: 'The + button, everywhere', ur: '+ کا بٹن، ہر جگہ', z: 1.1 }], { tr: 'sheet' }),
-  P('today-dark', 5.2, ['Display', 'Dark or light.', 'ڈارک یا لائٹ'], [], { tr: 'fade', wipe: 'today-light' }),
-  P('today-dark', 4.6, ['اردو', 'Fully in Urdu.', 'مکمل اردو میں'], [], { tr: 'cut', flip: 'today-ur' }),
+  P('today-light', 5.2, ['Display', 'Light or dark.', 'لائٹ یا ڈارک'], [], { tr: 'fade', wipe: 'today-dark' }),
+  P('today-light', 4.6, ['اردو', 'Fully in Urdu.', 'مکمل اردو میں'], [], { tr: 'cut', flip: 'today-ur' }),
   { type: 'laptop', d: 4.8, cap: ['Anywhere', 'On your computer too.', 'کمپیوٹر پر بھی'] },
   P('settings', 6.2, ['Settings', 'Reminders, sounds, your profile.', 'یاد دہانی، آوازیں، آپ کا پروفائل'], [
     { at: 0.5, key: 'mybig', en: 'Your photo, name and bio', ur: 'آپ کی تصویر، نام اور تعارف', z: 1.8 },
@@ -309,40 +282,43 @@ const STORY = [
     { at: 4.3, key: 'remind', en: 'A daily reminder at your time', ur: 'آپ کے وقت پر روزانہ یاد دہانی', z: 1.6 }]),
 
   C('09', 'Trust', 'اعتماد', 'Built to be exact, and to stay free.', 'درست گنتی کے لیے بنی، ہمیشہ مفت'),
-  { type: 'say', d: 3.2, en: 'Every durood counted exactly once.', ur: 'ہر درود ٹھیک ایک بار گنا جاتا ہے' },
-  { type: 'say', d: 3.2, en: 'Install it on your phone like an app.', ur: 'فون پر ایپ کی طرح انسٹال کریں' },
-  { type: 'say', d: 3.2, en: 'Free. It never asks for money.', ur: 'مفت، کبھی پیسے نہیں مانگتی' },
-  { type: 'wall', d: 9.0, cap: null },
+  { type: 'say', d: 3.0, c: 'k', en: 'Every durood counted <em>exactly once.</em>', ur: 'ہر درود ٹھیک ایک بار گنا جاتا ہے' },
+  { type: 'say', d: 3.0, c: 'p', en: 'Install it on your phone <em>like an app.</em>', ur: 'فون پر ایپ کی طرح انسٹال کریں' },
+  { type: 'say', d: 3.0, c: 'g', en: 'Free. It never asks <em>for money.</em>', ur: 'مفت، کبھی پیسے نہیں مانگتی' },
+  { type: 'wall', d: 8.0 },
   { type: 'final', d: 9.5 },
 ];
+// the opening's word slams, each on its own full-bleed panel
+const SLAMS = [[1.15, 'g', 'Count<em>.</em>', 'گنیں'], [2.2, 'k', 'Compete<em>.</em>', 'مقابلہ کریں'], [3.25, 'p', 'Grow<em>.</em>', 'آگے بڑھیں'], [4.3, 'g', '<span style="font-size:166px">Together<em>.</em></span>', 'مل کر']];
 
 // =====================================================================================================================
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const prog = (t, a, b) => clamp((t - a) / (b - a));
 const outCubic = (x) => 1 - Math.pow(1 - x, 3);
+const outQuint = (x) => 1 - Math.pow(1 - x, 5);
 const inOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
 const outBack = (x) => { const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
 const lerp = (a, b, p) => a + (b - a) * p;
 const $ = (s) => document.querySelector(s), $$ = (s) => [...document.querySelectorAll(s)];
-let seed = 12345; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-const vis = (el, o) => { el.style.opacity = o; el.style.visibility = o > 0.002 ? 'visible' : 'hidden'; };
+let seed = 4242; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+const vis = (e, o) => { e.style.opacity = o; e.style.visibility = o > 0.002 ? 'visible' : 'hidden'; };
 const el = (tag, cls, html, parent) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; if (parent) parent.append(e); return e; };
 const SRC = (n) => `../../assets/tour/${n}.jpg`;
 const K = 560 / 390, BZ = 18, VW = 390, VH = 844;                  // capture px -> screen px, bezel, viewport
 const HOME = { z: 1, fx: 195, fy: 422, ax: 540, ay: 1214, rx: 0, ry: 0, rz: 0 };
 let M = {};                                                          // assets/tour/manifest.json
+const STAR_SVG = (stroke) => `<svg class="bigstar" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" fill="none" stroke="${stroke}" stroke-width=".35"/><rect x="5" y="5" width="14" height="14" transform="rotate(45 12 12)" fill="none" stroke="${stroke}" stroke-width=".35"/></svg>`;
 
 // ---- timing: lay the storyboard end to end ----------------------------------------------------------------------------
 let tt = 0; STORY.forEach((s) => { s.t = tt; tt += s.d; });
-const FIN_T = STORY[STORY.length - 1].t; STORY[STORY.length - 1].d = 9.5; DURATION = FIN_T + 9.5;
-// the finale's elements say when they come in relative to the finale's start
-$$('[data-fin]').forEach((e) => { e.dataset.in = FIN_T + Number(e.dataset.fin); });
+const DURATION = tt;
+const OPEN = STORY[0], WALL = STORY.find((s) => s.type === 'wall'), FINAL = STORY.find((s) => s.type === 'final');
+$$('[data-fin]').forEach((e) => { e.dataset.in = FINAL.t + Number(e.dataset.fin); });
+$$('[data-wall]').forEach((e) => { e.dataset.in = WALL.t + Number(e.dataset.wall); e.dataset.out = FINAL.t - 0.1; });
 const chapters = STORY.filter((s) => s.type === 'chapter');
 const PHONES = STORY.filter((s) => s.type === 'phone');
-// a run of phone segments in a row keeps the phone on screen; it flies in at the start of a run and out at the end
-const RUNS = []; STORY.forEach((s, i) => { if (s.type !== 'phone') return; const prev = STORY[i - 1]; if (prev?.type === 'phone') RUNS[RUNS.length - 1][1] = s.t + s.d; else RUNS.push([s.t, s.t + s.d]); });
-// a caption carries on through segments that have none of their own
-let lastCap = null; STORY.forEach((s) => { if (s.type === 'phone' || s.type === 'laptop' || s.type === 'deck') { if (s.cap === undefined) s.cap = lastCap; else lastCap = s.cap; } else lastCap = null; });
+const RUNS = []; STORY.forEach((s, i) => { if (s.type !== 'phone') return; if (STORY[i - 1]?.type === 'phone') RUNS[RUNS.length - 1][1] = s.t + s.d; else RUNS.push([s.t, s.t + s.d]); });
+let lastCap = null; STORY.forEach((s) => { if (['phone', 'laptop', 'deck'].includes(s.type)) { if (s.cap === undefined) s.cap = lastCap; else lastCap = s.cap; } else lastCap = null; });
 
 // ---- the measured geometry of a shot ----------------------------------------------------------------------------------
 const geo = (shot) => M[shot] || {};
@@ -350,371 +326,20 @@ const isFull = (shot) => !!geo(shot).full;
 const maxScroll = (shot) => Math.max(0, (geo(shot).h || VH) - VH);
 function rectOf(shot, step) {
   if (step.rect) return step.rect;
-  const r = geo(shot).r?.[step.key]; if (!r) { if (Object.keys(M).length) console.warn('no rect', shot, step.key); return [0, 0, VW, VH]; }
+  const r = geo(shot).r?.[step.key]; if (!r) { console.warn('no rect', shot, step.key); return [0, 0, VW, VH]; }
   return r;
 }
-// where a step scrolls a full page to: the element in the middle of the visible part (under the header, over the tab bar)
-function scrollFor(shot, step, r) {
+function scrollFor(shot, step, r) { // the element in the middle of the visible part (under the header, over the tab bar)
   if (!isFull(shot)) return geo(shot).sy || 0;
   if (step.scroll != null) return clamp(step.scroll, 0, maxScroll(shot));
   const g = geo(shot), mid = ((g.hd || 0) + (g.tab || VH)) / 2;
   return Math.round(clamp(r[1] + Math.min(r[3], 600) / 2 - mid, 0, maxScroll(shot)));
 }
 
-// ---- build the keyframes: camera, scroll, spotlights, captions, cues ----------------------------------------------------
-const CAM = [], SPOTS = [], CAPS = [], CUES = [];
-function key(list, t, v, d = 0.9) { list.push({ t, v, d }); }
-PHONES.forEach((s) => {
-  s.scrollKeys = [];
-  let lastScroll = 0;
-  const steps = s.steps || [];
-  if (steps.length || s.tr !== 'cut') key(CAM, s.t, { ...HOME }, s.tr === 'cut' ? 0.01 : 0.6);
-  steps.forEach((st, i) => {
-    const r = rectOf(s.shot, st), sc = scrollFor(s.shot, st, r);
-    const t0 = s.t + st.at, next = steps[i + 1] ? s.t + steps[i + 1].at : s.t + s.d - 0.15;
-    if (isFull(s.shot) && sc !== lastScroll) { key(s.scrollKeys, t0, sc, st.d ?? 0.9); lastScroll = sc; }
-    const vy = r[1] - (isFull(s.shot) ? sc : geo(s.shot).sy || 0);
-    const z = st.z ?? clamp(Math.min(860 / (r[2] * K), 820 / (r[3] * K)), 1, 2.6);
-    const cam = z <= 1.02 && !st.rect && !st.key ? { ...HOME } : { z, fx: r[0] + r[2] / 2, fy: vy + r[3] / 2, ax: 540, ay: z <= 1.02 ? 1214 : 1150, rx: 0, ry: 0, rz: 0 };
-    if (z <= 1.02 && st.noSpot) Object.assign(cam, { fx: 195, fy: 422, ay: 1214 });
-    key(CAM, t0, cam, st.d ?? 0.9);
-    if (!st.noSpot) { SPOTS.push({ seg: s, t0: t0 + 0.55, t1: next - 0.1, r, en: st.en, ur: st.ur }); CUES.push({ t: t0 + 0.55, k: 'tick' }); }
-  });
-  if (s.cap) CAPS.push({ t0: s.t, t1: s.t + s.d, cap: s.cap });
-  if (s.tr !== 'cut') CUES.push({ t: s.t, k: 'whoosh' });
-  if (s.hit) CUES.push({ t: s.t + 0.05, k: 'bloom' });
-  if (s.seq?.taps) for (let i = 0; i < 16; i++) CUES.push({ t: s.t + s.seq.start + i * s.seq.every, k: 'tap' });
-  if (s.shot.startsWith('type-')) CUES.push({ t: s.t, k: 'tap' });
-});
-CAM.sort((a, b) => a.t - b.t);
-// a caption is one block per run of identical captions
-const capList = []; CAPS.forEach((c) => { const p = capList[capList.length - 1]; if (p && p.cap === c.cap && Math.abs(p.t1 - c.t0) < 0.01) p.t1 = c.t1; else capList.push({ ...c }); });
-STORY.filter((s) => s.type === 'deck' || s.type === 'laptop').forEach((s) => { if (s.cap) capList.push({ t0: s.t, t1: s.t + s.d, cap: s.cap }); CUES.push({ t: s.t, k: 'whoosh' }); });
-chapters.forEach((c) => { CUES.push({ t: c.t, k: 'whoosh' }, { t: c.t + 0.35, k: 'bloom' }); });
-STORY.filter((s) => s.type === 'say').forEach((s) => CUES.push({ t: s.t + 0.1, k: 'tick' }));
-const OPEN = STORY[0], WALL = STORY.find((s) => s.type === 'wall'), FINAL = STORY.find((s) => s.type === 'final');
-CUES.push({ t: 0, k: 'swell' }, { t: 12.2, k: 'bloom' }, { t: 14.2, k: 'rise' }, { t: WALL.t, k: 'whoosh' }, { t: WALL.t + 1, k: 'rise' }, { t: FINAL.t + 0.1, k: 'bloom' }, { t: FINAL.t + 3.5, k: 'tick' });
-CUES.sort((a, b) => a.t - b.t);
-
-// value of a keyframed track at time t: each key eases from wherever the track was when it started
-function track(list, t, base) {
-  let from = base, to = base, t0 = -1e9, d = 1;
-  const at = (x) => (typeof from === 'object' ? Object.fromEntries(Object.keys(to).map((k) => [k, lerp(from[k] ?? to[k], to[k], inOut(prog(x, t0, t0 + d)))])) : lerp(from, to, inOut(prog(x, t0, t0 + d))));
-  for (const k of list) { if (k.t > t) break; from = at(k.t); to = typeof base === 'object' ? { ...to, ...k.v } : k.v; t0 = k.t; d = k.d; }
-  return at(t);
-}
-
-// ---- DOM for captions, chapters, sayings, the progress bar ----------------------------------------------------------------
-const capsBox = $('#caps');
-capList.forEach((c) => {
-  if (!c.cap) return;
-  const [k, h, u] = c.cap;
-  const box = el('div', 'abs cap', null, capsBox);
-  el('div', 'kick fx', `<span class="star"><i></i><i></i></span>${k}`, box).dataset.in = c.t0 + 0.15;
-  const hd = el('div', 'head', h, box); hd.dataset.words = ''; hd.dataset.in = c.t0 + 0.25; hd.dataset.st = 0.06;
-  el('div', 'sub ur fx', u, box).dataset.in = c.t0 + 0.6;
-  box.querySelectorAll('[data-in]').forEach((e) => { e.dataset.out = c.t1; });
-});
-const chapBox = $('#chaps');
-chapters.forEach((c) => {
-  const box = el('div', 'abs chap', null, chapBox); c.el = box;
-  el('div', 'num', c.n, box);
-  const ttl = el('div', 'ttl', c.title.replace(/\S+/g, (w) => `<span class="w">${w}</span>`), box);
-  el('div', 'rule', '', box); el('div', 'tur', c.ur, box); el('div', 'line', c.line, box); el('div', 'lur', c.lineUr, box);
-  c.words = [...ttl.querySelectorAll('.w')];
-});
-const sayBox = $('#says');
-STORY.filter((s) => s.type === 'say').forEach((s) => {
-  const box = el('div', 'abs say', null, sayBox); box.style.top = '700px';
-  const en = el('div', 'en', s.en, box); en.dataset.words = ''; en.dataset.in = s.t + 0.1; en.dataset.st = 0.07; en.dataset.out = s.t + s.d;
-  const u = el('div', 'u fx', s.ur, box); u.dataset.in = s.t + 0.6; u.dataset.out = s.t + s.d;
-});
-chapters.forEach(() => el('i', null, '<b></b>', $('#bar')));
-
-// words rise out of a blur, one after another; elements leave by lifting into a blur
-$$('[data-words]').forEach((e) => {
-  const walk = (node) => [...node.childNodes].forEach((c) => {
-    if (c.nodeType === 3) { const f = document.createDocumentFragment(); c.textContent.split(/(\s+)/).forEach((p) => { if (!p) return; if (/^\s+$/.test(p)) f.append(p); else el('span', 'w', null, f).textContent = p; }); c.replaceWith(f); }
-    else if (!c.classList?.contains('w')) walk(c);
-  });
-  walk(e);
-});
-const ANIM = $$('[data-in]').map((e) => ({ e, a: +e.dataset.in, out: +e.dataset.out, st: +(e.dataset.st || 0), dur: +(e.dataset.dur || 0.7), words: e.hasAttribute('data-words') ? [...e.querySelectorAll('.w')] : null }));
-function animText(t) {
-  for (const { e, a, out, st, dur, words } of ANIM) {
-    const o = outCubic(prog(t, out - 0.4, out)), on = t >= a - 0.01 && t < out;
-    vis(e, on ? 1 - o : 0);
-    if (!on) { e.style.transform = ''; continue; }
-    e.style.filter = o ? `blur(${o * 10}px)` : '';
-    if (words) {
-      words.forEach((w, i) => { const p = outCubic(prog(t, a + i * st, a + i * st + dur)); w.style.opacity = p; w.style.transform = `translateY(${(1 - p) * 0.45}em)`; w.style.filter = p < 1 ? `blur(${(1 - p) * 12}px)` : ''; });
-      e.style.transform = `translateY(${-o * 40}px)`;
-    } else {
-      const p = outCubic(prog(t, a, a + dur));
-      e.style.opacity = p * (1 - o); e.style.transform = `translateY(${(1 - p) * 34 - o * 40}px)`;
-      e.style.filter = p < 1 || o ? `blur(${(1 - p) * 12 + o * 10}px)` : '';
-    }
-  }
-}
-
-// ---- the sky ---------------------------------------------------------------------------------------------------------------
-const sky = $('#sky').getContext('2d'), back = $('#fxBack').getContext('2d'), front = $('#fxFront').getContext('2d');
-const sprite = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); const r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-  r.addColorStop(0, 'rgba(255,250,230,1)'); r.addColorStop(0.12, 'rgba(255,231,176,.95)'); r.addColorStop(0.35, 'rgba(240,207,134,.35)'); r.addColorStop(1, 'rgba(240,207,134,0)'); g.fillStyle = r; g.fillRect(0, 0, 128, 128); return c; })();
-const glow = (ctx, x, y, size, a) => { if (a <= 0.003) return; ctx.globalAlpha = Math.min(1, a); ctx.drawImage(sprite, x - size / 2, y - size / 2, size, size); };
-const STARS = Array.from({ length: 300 }, () => ({ x: rnd() * 1080, y: rnd() * 1600, r: 0.6 + rnd() * 1.7, w: 0.6 + rnd() * 2.2, p: rnd() * 6.28 }));
-const rate = (t) => t < 7.5 ? 5 : t < 17.5 ? 10 : (t > FINAL.t - 1 ? 40 : t > WALL.t ? 16 : 4);
-const LIGHTS = [];
-for (let t = -6; t < DURATION; t += 1 / 60) { let n = rate(Math.max(0, t)) / 60; while (n > 0) { if (rnd() < n) LIGHTS.push({ s: t, x: rnd() * 1080, y: 1880 + rnd() * 160, v: 70 + rnd() * 190, sw: 8 + rnd() * 26, f: 0.3 + rnd() * 1.2, z: 0.35 + rnd() * 1.1 }); n -= 1; } }
-function drawSky(t) {
-  sky.clearRect(0, 0, 1080, 1920); back.clearRect(0, 0, 1080, 1920); front.clearRect(0, 0, 1080, 1920);
-  sky.globalCompositeOperation = back.globalCompositeOperation = front.globalCompositeOperation = 'lighter';
-  const sa = 0.55 + 0.45 * prog(t, 0, 2);
-  sky.fillStyle = '#fff8e6';
-  for (const s of STARS) { sky.globalAlpha = sa * (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * s.w + s.p))) * (1 - s.y / 1900); sky.beginPath(); sky.arc(s.x, s.y, s.r, 0, 6.283); sky.fill(); }
-  for (const L of LIGHTS) {
-    const age = t - L.s; if (age < 0) continue;
-    const y = L.y - age * L.v; if (y < -80) continue;
-    glow(back, L.x + Math.sin(age * L.f + L.x) * L.sw, y, 34 * L.z + 10, prog(age, 0, 0.8) * clamp((y + 60) / 900) * 0.9);
-  }
-}
-
-// ---- the phone ------------------------------------------------------------------------------------------------------------
-// a slot shows one shot: the page (scrolled) under the header and tab bar, or the phone's view, or a frame of a sequence
-function makeSlot(slot) {
-  slot.innerHTML = `<img class="page"><div class="crop hd"><img></div><div class="crop tb"><img></div><img class="view"><img class="alt">`;
-  return { slot, page: slot.querySelector('.page'), hd: slot.querySelector('.hd'), hdImg: slot.querySelector('.hd img'), tb: slot.querySelector('.tb'), tbImg: slot.querySelector('.tb img'), view: slot.querySelector('.view'), alt: slot.querySelector('.alt') };
-}
-const SLOTS = [makeSlot($('#slotA')), makeSlot($('#slotB'))];
-const setSrc = (img, src) => { if (img.getAttribute('src') !== src) img.setAttribute('src', src); };
-function paint(S, seg, t) {
-  const shot = seg.shot, g = geo(shot), lt = t - seg.t;
-  let viewSrc = null;
-  if (seg.seq?.fps) viewSrc = SRC(`${shot}-${String(Math.min(seg.seq.max ?? g.frames - 1, Math.floor(lt * seg.seq.fps))).padStart(2, '0')}`);
-  else if (seg.seq?.frame != null) viewSrc = SRC(`${shot}-${String(seg.seq.frame).padStart(2, '0')}`);
-  else if (seg.seq?.taps) viewSrc = SRC(`tap-${String(clamp(Math.floor((lt - seg.seq.start) / seg.seq.every) + 1, 0, 16)).padStart(2, '0')}`);
-  else if (seg.seq?.hold != null) viewSrc = SRC(`tap-${String(seg.seq.hold).padStart(2, '0')}`);
-  if (isFull(shot) && !viewSrc) {
-    const sc = track(seg.scrollKeys, t, seg.scroll0 || 0);
-    setSrc(S.page, SRC(`${shot}-full`)); setSrc(S.hdImg, SRC(shot)); setSrc(S.tbImg, SRC(shot));
-    S.page.style.display = S.hd.style.display = S.tb.style.display = ''; S.view.style.display = 'none';
-    S.page.style.transform = `translateY(${-sc * K}px)`;
-    S.hd.style.top = '0px'; S.hd.style.height = `${(g.hd || 0) * K}px`;
-    S.tb.style.top = `${g.tab * K}px`; S.tb.style.height = `${(VH - g.tab) * K}px`; S.tbImg.style.top = `${-g.tab * K}px`;
-    seg.scrollNow = sc;
-  } else {
-    setSrc(S.view, viewSrc || SRC(shot));
-    S.page.style.display = S.hd.style.display = S.tb.style.display = 'none'; S.view.style.display = '';
-    seg.scrollNow = g.sy || 0;
-  }
-  // dark / light: a diagonal wipe that sweeps across and back
-  if (seg.wipe) {
-    setSrc(S.alt, SRC(seg.wipe)); S.alt.style.display = '';
-    const p = inOut(prog(lt, 0.8, 2.2)) * (1 - inOut(prog(lt, 3.4, 4.6)));
-    const x = lerp(-60, 160, p);
-    S.alt.style.clipPath = `polygon(0 0, ${x}% 0, ${x - 40}% 100%, 0 100%)`;
-  } else if (seg.flip) {
-    setSrc(S.alt, SRC(seg.flip)); S.alt.style.display = lt > 1.15 ? '' : 'none'; S.alt.style.clipPath = 'none';
-  } else S.alt.style.display = 'none';
-}
-const PHONE = $('#phone');
-function segAt(t) { let s = null; for (const p of PHONES) if (p.t <= t) s = p; else break; return s && t < s.t + s.d ? s : null; }
-function drawPhone(t) {
-  const run = RUNS.find(([a, b]) => t >= a && t < b);
-  vis(PHONE, run ? 1 : 0); $('#labels').innerHTML = '';
-  if (!run) return;
-  const seg = segAt(t), idx = PHONES.indexOf(seg), prev = PHONES[idx - 1];
-  // transition between the previous shot and this one
-  const trDur = seg.tr === 'cut' || !prev || prev.t + prev.d < seg.t - 0.01 ? 0 : seg.tr === 'push' ? 0.55 : 0.45;
-  const p = trDur ? inOut(prog(t, seg.t, seg.t + trDur)) : 1;
-  paint(SLOTS[0], seg, t);
-  const [A, Bs] = [SLOTS[0].slot, SLOTS[1].slot];
-  if (p < 1) {
-    paint(SLOTS[1], prev, t); vis(Bs, 1);
-    if (seg.tr === 'push') { A.style.transform = `translateX(${(1 - p) * 100}%)`; A.style.opacity = 1; Bs.style.transform = `translateX(${-p * 30}%)`; Bs.style.filter = `brightness(${1 - p * 0.5})`; }
-    else if (seg.tr === 'sheet') { A.style.transform = `translateY(${(1 - p) * 120}px)`; A.style.opacity = p; Bs.style.transform = ''; Bs.style.filter = ''; }
-    else { A.style.transform = ''; A.style.opacity = p; Bs.style.transform = ''; Bs.style.filter = ''; }
-  } else { vis(Bs, 0); A.style.transform = ''; A.style.opacity = 1; }
-  // camera
-  const c = track(CAM, t, HOME);
-  const enter = outCubic(prog(t, run[0], run[0] + 1.1)), exit = inOut(prog(t, run[1] - 0.75, run[1]));
-  let ry = c.ry + Math.sin(t * 0.7) * 1.2, rx = c.rx + (1 - enter) * 26, rz = c.rz + (1 - enter) * -7 + exit * 9;
-  if (seg.flip) { const lt = t - seg.t; ry += 180 * inOut(prog(lt, 0.4, 1.9)); }
-  const ox = BZ + c.fx * K, oy = BZ + c.fy * K;
-  PHONE.style.transformOrigin = `${ox}px ${oy}px`;
-  PHONE.style.transform = `translate(${c.ax - ox}px, ${c.ay - oy + (1 - enter) * 1500 + exit * 1600}px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${c.z})`;
-  // a flip shows the other face: the screen is mirrored back once past edge-on
-  $('#scr').style.transform = seg.flip && (t - seg.t) > 1.15 ? 'scaleX(-1)' : '';
-  $('#sheen').style.transform = `translateX(${Math.sin(t * 0.5) * 140}px)`;
-  // spotlights, ripple, offline overlay
-  drawSpots(t, seg, c);
-  drawTaps(t, seg);
-  const off = seg.offline ? outCubic(prog(t, seg.t + 0.3, seg.t + 0.9)) * (1 - prog(t, seg.t + seg.d - 0.4, seg.t + seg.d)) : 0;
-  vis($('#offline'), off); $('#offline .chip').style.transform = `scale(${0.85 + 0.15 * outBack(prog(t, seg.t + 0.3, seg.t + 1))})`;
-  if (seg.flame) drawFlame(t, seg);
-}
-// a spotlight is drawn in the screen (it moves with the phone); its callout sits beside it on the stage
-const spotBox = $('#spots');
-function drawSpots(t, seg, c) {
-  spotBox.innerHTML = '';
-  for (const s of SPOTS) {
-    if (s.seg !== seg || t < s.t0 - 0.01 || t > s.t1) continue;
-    const a = outCubic(prog(t, s.t0, s.t0 + 0.45)) * (1 - prog(t, s.t1 - 0.3, s.t1));
-    const vy = s.r[1] - seg.scrollNow, pad = 8;
-    const x = (s.r[0] - pad) * K, y = (vy - pad) * K, w = (s.r[2] + pad * 2) * K, h = (s.r[3] + pad * 2) * K;
-    const sp = el('div', 'spot', null, spotBox);
-    Object.assign(sp.style, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px`, opacity: a, transform: `scale(${1.08 - 0.08 * outCubic(prog(t, s.t0, s.t0 + 0.5))})` });
-    const pulse = prog((t - s.t0) % 1.6, 0, 1.6);
-    const rg = el('div', 'ring', null, spotBox);
-    Object.assign(rg.style, { left: `${x - pulse * 30}px`, top: `${y - pulse * 30}px`, width: `${w + pulse * 60}px`, height: `${h + pulse * 60}px`, opacity: a * (1 - pulse) * 0.8 });
-    if (!s.en) continue;
-    // the callout: below the spotlight if there is room on screen, otherwise above it
-    const sx1 = c.ax + c.z * K * (s.r[0] - pad - c.fx), sx2 = c.ax + c.z * K * (s.r[0] + s.r[2] + pad - c.fx);
-    const sy1 = c.ay + c.z * K * (vy - pad - c.fy), sy2 = c.ay + c.z * K * (vy + s.r[3] + pad - c.fy);
-    const lb = el('div', 'label', `<i></i><b>${s.en}</b>${s.ur ? `<span class="ur">${s.ur}</span>` : ''}`, $('#labels'));
-    const below = sy2 + 260 < 1760 || sy1 < 820;
-    lb.classList.add(below ? 'below' : 'above');
-    const lw = Math.min(760, lb.offsetWidth), lh = lb.offsetHeight;
-    const cx = clamp((sx1 + sx2) / 2 - lw / 2, 60, 1020 - lw);
-    const ly = below ? Math.min(sy2 + 34, 1780 - lh) : Math.max(sy1 - 34 - lh, 600);
-    const la = outCubic(prog(t, s.t0 + 0.2, s.t0 + 0.6)) * (1 - prog(t, s.t1 - 0.3, s.t1));
-    Object.assign(lb.style, { left: `${cx}px`, top: `${ly}px`, opacity: la, transform: `translateY(${(1 - la) * (below ? 20 : -20)}px)` });
-    lb.querySelector('i').style.left = `${clamp((sx1 + sx2) / 2 - cx, 30, lw - 30)}px`;
-  }
-}
-function drawTaps(t, seg) {
-  const rip = $('#ripple');
-  if (!seg.seq?.taps) { vis(rip, 0); return; }
-  const lt = t - seg.t - seg.seq.start, k = Math.floor(lt / seg.seq.every), since = lt - k * seg.seq.every;
-  const on = lt >= 0 && k < 16, rp = prog(since, 0, 0.32), at = geo('tap').at;
-  vis(rip, on ? 0.9 * (1 - rp) : 0);
-  rip.style.left = `${at.x * K}px`; rip.style.top = `${at.y * K}px`; rip.style.transform = `scale(${0.3 + rp * 1.6})`;
-}
-function drawFlame(t, seg) { // a burst of light from the streak chip
-  const lt = t - seg.t; if (lt < 0.9) return;
-  for (let i = 0; i < 14; i++) { const a = (i / 14) * 6.283 + lt * 0.4, r = 120 + 60 * Math.sin(lt * 2 + i); glow(front, 540 + Math.cos(a) * r * 1.4, 1150 + Math.sin(a) * r, 70, 0.5 * prog(lt, 0.9, 1.4) * (1 - prog(lt, seg.d - 0.5, seg.d))); }
-}
-
-// ---- chapter cards ----------------------------------------------------------------------------------------------------
-function drawChapters(t) {
-  chapters.forEach((c, i) => {
-    const lt = t - c.t, on = lt >= 0 && lt < c.d;
-    vis(c.el, on ? 1 - inOut(prog(lt, c.d - 0.45, c.d)) : 0);
-    if (!on) return;
-    const out = inOut(prog(lt, c.d - 0.45, c.d));
-    c.el.style.transform = `scale(${1 + out * 0.25})`; c.el.style.filter = out ? `blur(${out * 14}px)` : '';
-    const num = c.el.querySelector('.num'); num.style.transform = `translateY(${(1 - outCubic(prog(lt, 0, 0.8))) * 120}px) scale(${1.25 - 0.25 * outCubic(prog(lt, 0, 1.2))})`; num.style.opacity = prog(lt, 0, 0.5);
-    c.words.forEach((w, j) => { const p = outBack(prog(lt, 0.2 + j * 0.12, 0.85 + j * 0.12)); w.style.transform = `rotateX(${(1 - p) * -95}deg) translateZ(${(1 - p) * 60}px)`; w.style.opacity = prog(lt, 0.2 + j * 0.12, 0.5 + j * 0.12); });
-    c.el.querySelector('.rule').style.transform = `scaleX(${outCubic(prog(lt, 0.5, 1.1))})`;
-    for (const [sel, a] of [['.tur', 0.6], ['.line', 0.9], ['.lur', 1.1]]) { const e = c.el.querySelector(sel), p = outCubic(prog(lt, a, a + 0.5)); e.style.opacity = p; e.style.transform = `translateY(${(1 - p) * 30}px)`; }
-    if (lt < 0.9) for (let k = 0; k < 18; k++) { const a = k / 18 * 6.283, r = 80 + lt * 900; glow(front, 540 + Math.cos(a) * r, 900 + Math.sin(a) * r * 0.6, 60, 0.8 * (1 - lt / 0.9)); }
-  });
-  // progress bar: one cell per chapter
-  const cells = $$('#bar b');
-  chapters.forEach((c, i) => { const end = chapters[i + 1]?.t ?? WALL.t; cells[i].style.transform = `scaleX(${prog(t, c.t, end)})`; });
-  vis($('#bar'), prog(t, OPEN.t + OPEN.d - 0.5, OPEN.t + OPEN.d) * (1 - prog(t, WALL.t - 0.3, WALL.t)));
-  vis($('#brand'), prog(t, OPEN.t + OPEN.d - 0.5, OPEN.t + OPEN.d) * (1 - prog(t, WALL.t - 0.3, WALL.t)));
-  const anyPhone = RUNS.some(([a, b]) => t >= a && t < b) || STORY.some((s) => (s.type === 'deck' || s.type === 'laptop') && t >= s.t && t < s.t + s.d);
-  vis($('#scrim'), anyPhone ? 1 : 0);
-}
-
-// ---- 3D decks: the five leaderboards on a carousel; the opening tunnel; the closing wall ---------------------------------
-const deck = $('#deck');
-const DECKS = STORY.filter((s) => s.type === 'deck');
-DECKS.forEach((d) => { d.els = d.cards.map((c, i) => { const card = el('div', 'card', `<img src="${SRC(c)}">`, deck); if (d.tags) el('div', 'tag', `${d.tags[i][0]}<span>${d.tags[i][1]}</span>`, card).style.bottom = '-90px'; card.style.overflow = 'visible'; card.querySelector('img').style.borderRadius = '40px'; return card; }); });
-const WALL_SHOTS = ['today', 'feed', 'rank-people', 'caravan', 'me', 'qabila', 'rank-league', 'settings', 'today-light', 'rank-cities', 'today-ur', 'profile', 'intro-0', 'saved', 'menu', 'rank-caravans', 'caravan-ur', 'history-edit', 'addsheet', 'rank-ur', 'intro-2', 'register', 'tap-08', 'rank-trees'];
-const wallEls = WALL_SHOTS.map((s) => { const e = el('div', 'card', `<img src="${SRC(s)}">`, deck); e.style.width = '420px'; e.style.height = '909px'; return e; });
-const TUNNEL = ['today', 'feed', 'caravan', 'rank-people', 'me', 'today-ur', 'rank-league', 'qabila', 'settings', 'today-light', 'profile', 'rank-cities'];
-const tunnelEls = TUNNEL.map((s, i) => { const e = el('div', 'card', `<img src="${SRC(s)}">`, deck); e.style.width = '420px'; e.style.height = '909px'; return e; });
-function drawDecks(t) {
-  // cover flow: the boards stand side by side and step past the middle one at a time
-  for (const d of DECKS) {
-    const lt = t - d.t, on = lt >= 0 && lt < d.d, n = d.els.length, dwell = (d.d - 2.0) / (n - 1);
-    let f = 0; for (let i = 0; i < n - 1; i++) f += inOut(prog(lt, 1.0 + i * dwell, 1.0 + i * dwell + 0.55));
-    d.els.forEach((card, i) => {
-      vis(card, on ? 1 : 0); if (!on) return;
-      const o = i - f, ao = Math.abs(o), inP = outCubic(prog(lt, 0.05 + i * 0.08, 0.85 + i * 0.08)), outP = inOut(prog(lt, d.d - 0.6, d.d));
-      card.style.transform = `translate3d(${540 - 260 + o * 330}px, ${618 + (1 - inP) * 1300 - outP * 1600}px, ${-ao * 420}px) rotateY(${clamp(-o * 42, -62, 62)}deg)`;
-      card.style.opacity = inP * (1 - outP) * clamp(1.25 - ao * 0.32);
-      card.style.zIndex = 100 - Math.round(ao * 10);
-      const tag = card.querySelector('.tag'); if (tag) tag.style.opacity = clamp(1 - ao * 1.5);
-    });
-  }
-  // the opening tunnel: screens rush past the camera
-  const T0 = 14.8, T1 = OPEN.t + OPEN.d;
-  tunnelEls.forEach((card, i) => {
-    const lt = t - T0 - i * 0.1, on = lt >= 0 && t < T1 + 0.3;
-    vis(card, on ? 1 : 0); if (!on) return;
-    const p = lt / 2.4, zz = -5200 + p * 6200, ang = i * 2.39996, r = 520 + (i % 3) * 120;
-    card.style.transform = `translate3d(${540 - 210 + Math.cos(ang) * r}px, ${960 - 455 + Math.sin(ang) * r * 1.3}px, ${zz}px) rotateY(${Math.cos(ang) * -25}deg) rotateX(${Math.sin(ang) * 15}deg)`;
-    card.style.opacity = clamp(p * 3) * (1 - prog(zz, 300, 900));
-    card.style.zIndex = Math.round(zz / 10) + 1000;
-  });
-  // the wall: every screen on a tilted plane, drifting, then lifting away for the finale
-  const wl = t - WALL.t, won = wl >= 0 && t < FINAL.t + 1.2;
-  wallEls.forEach((card, i) => {
-    vis(card, won ? 1 : 0); if (!won) return;
-    const col = i % 6, row = Math.floor(i / 6), inP = outCubic(prog(wl, 0.1 + (col + row) * 0.07, 1.2 + (col + row) * 0.07)), outP = inOut(prog(t, FINAL.t - 0.2, FINAL.t + 1.2));
-    const gx = (col - 2.5) * 460, gy = (row - 1.5) * 980 - wl * 90;
-    card.style.transform = `translate3d(${540 - 210}px, ${700}px, -1400px) rotateX(${44 + outP * 20}deg) rotateZ(${-24 + wl * 1.2}deg) translate3d(${gx}px, ${gy + (1 - inP) * 2400}px, ${outP * -2500}px)`;
-    card.style.opacity = inP * (1 - outP);
-    card.style.zIndex = 0;
-  });
-}
-
-// ---- the laptop -----------------------------------------------------------------------------------------------------------
-const LAP = STORY.find((s) => s.type === 'laptop');
-function drawLaptop(t) {
-  const lt = t - LAP.t, on = lt >= 0 && lt < LAP.d;
-  vis($('#laptop'), on ? 1 : 0); if (!on) return;
-  const inP = outCubic(prog(lt, 0, 0.9)), open = outBack(prog(lt, 0.5, 1.9)), outP = inOut(prog(lt, LAP.d - 0.6, LAP.d));
-  $('#lid').style.transform = `rotateX(${lerp(-88, -6, open)}deg)`;
-  $('#laptop').style.transform = `translateY(${(1 - inP) * 900 - outP * 1300}px) rotateY(${Math.sin(lt * 0.6) * 5}deg) scale(${0.9 + 0.1 * inP})`;
-}
-
-// ---- the opening: the ayah, then the star unfolds into the name ------------------------------------------------------------
-function drawOpening(t) {
-  const sq1 = $('#sq1'), sq2 = $('#sq2'), box = $('#logo3d');
-  const on = t >= 9.5 && t < 15.8;
-  vis(box, on ? 1 - prog(t, 15.2, 15.8) : 0);
-  if (on) {
-    const p = outCubic(prog(t, 9.6, 12.2)), spin = (1 - p) * 540;
-    sq1.style.transform = `rotateY(${spin}deg) rotateX(${(1 - p) * 60}deg) scale(${0.4 + 0.6 * p})`;
-    sq2.style.transform = `rotateZ(${45 * p}deg) rotateY(${-spin}deg) rotateX(${(1 - p) * -60}deg) scale(${0.4 + 0.6 * p})`;
-    box.style.transform = `translateY(${prog(t, 12.4, 13.2) * -60}px) scale(${1 - 0.25 * outCubic(prog(t, 12.4, 13.2))})`;
-    if (t > 12.2 && t < 13.4) { const q = prog(t, 12.2, 13.4); for (let k = 0; k < 24; k++) { const a = k / 24 * 6.283, r = 140 + q * 700; glow(front, 540 + Math.cos(a) * r, 560 + Math.sin(a) * r, 70, 0.9 * (1 - q)); } }
-  }
-  // the sayings between the ayah and the star
-  const s1 = prog(t, 7.6, 8.2) * (1 - prog(t, 9.6, 10.1));
-  $('#oSay').style.opacity = s1; $('#oSay').style.visibility = s1 > 0 ? 'visible' : 'hidden';
-  $('#oSay').style.transform = `translateY(${(1 - outCubic(prog(t, 7.6, 8.4))) * 40}px)`;
-  $('#flash').style.opacity = 0.4 * (1 - prog(t, 12.2, 12.8)) * (t >= 12.2 ? 1 : 0) + 0.35 * (1 - prog(t, FINAL.t, FINAL.t + 0.7)) * (t >= FINAL.t ? 1 : 0);
-  // the dome: in the opening, lowered while the tour runs, back for the finale
-  const away = prog(t, 15.5, 17.5) * (1 - prog(t, WALL.t + 6, FINAL.t + 0.5));
-  $('#dome').style.transform = `translateY(${110 + (1 - outCubic(prog(t, 0, 2.2))) * 120 + away * 420}px)`;
-  $('#dome').style.opacity = 1 - away * 0.6;
-  $('#haloE').setAttribute('opacity', 0.6 + 0.25 * Math.sin(t * 1.3) + 0.6 * prog(t, FINAL.t, FINAL.t + 2));
-  $('#rays').style.transform += ` rotate(${t * 4}deg)`;
-}
-const oSay = el('div', 'abs say', `<div class="en">Now a whole nation answers, <span class="gold">together.</span></div><div class="u">اب پوری قوم مل کر درود بھیجتی ہے</div>`, $('#stage'));
-oSay.id = 'oSay'; oSay.style.top = '640px';
-
-// ---- one frame -------------------------------------------------------------------------------------------------------------
-function seek(t) {
-  drawSky(t);
-  animText(t);
-  drawOpening(t);
-  drawChapters(t);
-  drawDecks(t);
-  drawLaptop(t);
-  drawPhone(t);
-}
-
-window.DURATION = DURATION; window.CUES = CUES; window.POSTER = FINAL.t + 5; window.seek = seek; window.STORY = STORY;
-window.ready = (async () => {
-  M = await fetch('../../assets/tour/manifest.json').then((r) => r.json());
-  // rebuild the keyframes now that the measurements are in (they were laid out with empty geometry above)
-  CAM.length = SPOTS.length = 0;
+// ---- keyframes: camera, scroll and spotlights are built once the measurements are in; captions and cues now --------------
+const CAM = [], SPOTS = [], CUES = [];
+const key = (list, t, v, d = 0.9) => list.push({ t, v, d });
+function buildKeys() {
   let prevSeg = null;
   PHONES.forEach((s) => {
     // a cut to the same page carries on from where it was scrolled; a cut with no steps keeps the camera
@@ -728,17 +353,339 @@ window.ready = (async () => {
       if (isFull(s.shot) && sc !== lastScroll) { key(s.scrollKeys, t0, sc, st.d ?? 0.9); lastScroll = sc; }
       const vy = r[1] - (isFull(s.shot) ? sc : geo(s.shot).sy || 0);
       const z = st.z ?? clamp(Math.min(860 / (r[2] * K), 820 / (r[3] * K)), 1, 2.6);
-      const cam = { z, fx: r[0] + r[2] / 2, fy: vy + r[3] / 2, ax: 540, ay: z <= 1.02 ? 1214 : 1150, rx: 0, ry: 0, rz: 0 };
-      if (z <= 1.02) Object.assign(cam, { fx: 195, fy: 422, ay: 1214 });
+      const cam = z <= 1.02 ? { ...HOME } : { z, fx: r[0] + r[2] / 2, fy: vy + r[3] / 2, ax: 540, ay: 1150, rx: 0, ry: 0, rz: 0 };
       key(CAM, t0, cam, st.d ?? 0.9);
       if (!st.noSpot) SPOTS.push({ seg: s, t0: t0 + 0.55, t1: next - 0.1, r, en: st.en, ur: st.ur });
     });
     s.scrollEnd = lastScroll;
   });
   CAM.sort((a, b) => a.t - b.t);
-  const imgs = [...new Set([...$$('img')].map((i) => i.getAttribute('src')).filter(Boolean))];
+}
+PHONES.forEach((s) => {
+  (s.steps || []).forEach((st) => { if (!st.noSpot) CUES.push({ t: s.t + st.at + 0.55, k: 'tick' }); });
+  if (s.tr !== 'cut') CUES.push({ t: s.t, k: 'whoosh' });
+  if (s.hit) CUES.push({ t: s.t + 0.05, k: 'bloom' });
+  if (s.seq?.taps) for (let i = 0; i < 16; i++) CUES.push({ t: s.t + s.seq.start + i * s.seq.every, k: 'tap' });
+  if (s.shot.startsWith('type-')) CUES.push({ t: s.t, k: 'tap' });
+});
+STORY.filter((s) => s.type === 'deck' || s.type === 'laptop').forEach((s) => CUES.push({ t: s.t, k: 'whoosh' }));
+chapters.forEach((c) => CUES.push({ t: c.t, k: 'whoosh' }, { t: c.t + 0.3, k: 'thump' }));
+STORY.filter((s) => s.type === 'say').forEach((s) => CUES.push({ t: s.t, k: 'thump' }));
+SLAMS.forEach(([t]) => CUES.push({ t, k: 'thump' }));
+CUES.push({ t: 0, k: 'swell' }, { t: 5.5, k: 'whoosh' }, { t: 10.2, k: 'whoosh' }, { t: 14.0, k: 'rise' }, { t: WALL.t, k: 'whoosh' }, { t: FINAL.t, k: 'whoosh' }, { t: FINAL.t + 0.6, k: 'bloom' }, { t: FINAL.t + 3.5, k: 'tick' });
+CUES.sort((a, b) => a.t - b.t);
+
+// value of a keyframed track at time t: each key eases from wherever the track was when it started
+function track(list, t, base) {
+  let from = base, to = base, t0 = -1e9, d = 1;
+  const at = (x) => (typeof base === 'object' ? Object.fromEntries(Object.keys(to).map((k) => [k, lerp(from[k] ?? to[k], to[k], inOut(prog(x, t0, t0 + d)))])) : lerp(from, to, inOut(prog(x, t0, t0 + d))));
+  for (const k of list) { if (k.t > t) break; from = at(k.t); to = typeof base === 'object' ? { ...to, ...k.v } : k.v; t0 = k.t; d = k.d; }
+  return at(t);
+}
+
+// ---- DOM for captions, chapter panels, slams and sayings, the progress bar --------------------------------------------------
+const capList = [];
+STORY.forEach((s) => { if (!s.cap) return; const p = capList[capList.length - 1]; if (p && p.cap === s.cap && Math.abs(p.t1 - s.t) < 0.01) p.t1 = s.t + s.d; else capList.push({ t0: s.t, t1: s.t + s.d, cap: s.cap }); });
+capList.forEach((c) => {
+  const [k, h, u] = c.cap, box = el('div', 'abs cap', null, $('#caps'));
+  el('div', 'kick fx', `<span class="star"><i></i><i></i></span>${k}`, box).dataset.in = c.t0 + 0.15;
+  const hd = el('div', 'head', h, box); hd.dataset.words = ''; hd.dataset.in = c.t0 + 0.25; hd.dataset.st = 0.06;
+  el('div', 'sub ur fx', u, box).dataset.in = c.t0 + 0.6;
+  box.querySelectorAll('[data-in]').forEach((e) => { e.dataset.out = c.t1; });
+});
+const panels = $('#panels');
+chapters.forEach((c, i) => {
+  const dark = i % 2 === 1, box = el('div', `abs chap ${dark ? 'k' : 'g'}`, STAR_SVG(dark ? '#2ee59d' : '#0b0b0b'), panels); c.el = box;
+  el('div', 'num', c.n, box);
+  const st = el('div', 'stack', null, box);
+  el('div', 'ttl', c.title.replace(/\S+/g, (w) => `<span class="w">${w}</span>`), st);
+  el('div', 'rule', '', st); el('div', 'tur', c.ur, st); el('div', 'line', c.line, st); el('div', 'lur', c.lineUr, st);
+  c.words = [...box.querySelectorAll('.ttl .w')];
+});
+SLAMS.forEach((s) => { s.el = el('div', `abs slam ${s[1]}`, `<div class="big">${s[2]}</div><div class="su">${s[3]}</div>`, panels); });
+STORY.filter((s) => s.type === 'say').forEach((s) => { s.el = el('div', `abs slam ${s.c}`, `<div class="mid">${s.en}</div><div class="su">${s.ur}</div>`, panels); });
+chapters.forEach(() => el('i', null, '<b></b>', $('#bar')));
+
+// words rise out of a blur, one after another; elements leave by lifting into a blur
+$$('[data-words]').forEach((e) => {
+  const walk = (node) => [...node.childNodes].forEach((c) => {
+    if (c.nodeType === 3) { const f = document.createDocumentFragment(); c.textContent.split(/(\s+)/).forEach((p) => { if (!p) return; if (/^\s+$/.test(p)) f.append(p); else el('span', 'w', null, f).textContent = p; }); c.replaceWith(f); }
+    else if (!c.classList?.contains('w')) walk(c);
+  });
+  walk(e);
+});
+const ANIM = $$('[data-in]').map((e) => ({ e, a: +e.dataset.in, out: +e.dataset.out, st: +(e.dataset.st || 0), dur: +(e.dataset.dur || 0.6), words: e.hasAttribute('data-words') ? [...e.querySelectorAll('.w')] : null }));
+function animText(t) {
+  for (const { e, a, out, st, dur, words } of ANIM) {
+    const o = inOut(prog(t, out - 0.35, out)), on = t >= a - 0.01 && t < out;
+    vis(e, on ? 1 - o : 0);
+    if (!on) { e.style.transform = ''; continue; }
+    if (words) {
+      // Swiss: words slide up out of a hard edge, no blur
+      words.forEach((w, i) => { const p = outQuint(prog(t, a + i * st, a + i * st + dur)); w.style.opacity = p > 0 ? 1 : 0; w.style.clipPath = `inset(0 0 ${(1 - p) * 100}% 0)`; w.style.transform = `translateY(${(1 - p) * 0.6}em)`; });
+      e.style.transform = `translateX(${-o * 60}px)`;
+    } else {
+      const p = outQuint(prog(t, a, a + dur));
+      e.style.opacity = p * (1 - o); e.style.transform = `translateX(${(1 - p) * -40 - o * 60}px)`;
+    }
+  }
+}
+
+// ---- the grid: hairlines on paper, with green squares stepping along it ----------------------------------------------------
+const g = $('#grid').getContext('2d'), fx = $('#fx').getContext('2d');
+const GX = Array.from({ length: 13 }, (_, i) => 60 + i * 80), GY = Array.from({ length: 24 }, (_, i) => 40 + i * 80);
+const DOTS = Array.from({ length: 70 }, () => ({ x: GX[Math.floor(rnd() * 13)], y: GY[Math.floor(rnd() * 24)], s: rnd() * DURATION, d: 1.2 + rnd() * 2 }));
+function star(ctx, x, y, r, rot, fill) {
+  ctx.save(); ctx.translate(x, y); for (const a of [0, Math.PI / 4]) { ctx.save(); ctx.rotate(rot + a); if (fill) ctx.fillRect(-r, -r, 2 * r, 2 * r); else ctx.strokeRect(-r, -r, 2 * r, 2 * r); ctx.restore(); } ctx.restore();
+}
+function drawGrid(t) {
+  g.clearRect(0, 0, 1080, 1920); fx.clearRect(0, 0, 1080, 1920);
+  const draw = outCubic(prog(t, 0.1, 1.2));
+  g.globalAlpha = 1; g.strokeStyle = '#ecece6'; g.lineWidth = 1.5;
+  for (const x of GX) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 1920 * draw); g.stroke(); }
+  for (const y of GY) { g.beginPath(); g.moveTo(0, y); g.lineTo(1080 * draw, y); g.stroke(); }
+  g.fillStyle = '#00a86b';
+  for (const d of DOTS) { const p = prog(t, d.s, d.s + d.d); if (p <= 0 || p >= 1) continue; g.globalAlpha = Math.sin(p * Math.PI) * 0.8; g.fillRect(d.x - 7, d.y - 7, 14, 14); }
+  // a large outline star turns slowly behind the phone while it is on screen
+  const onPhone = RUNS.some(([a, b]) => t >= a - 0.5 && t < b + 0.5);
+  if (onPhone) { g.globalAlpha = 0.07; g.strokeStyle = '#0b0b0b'; g.lineWidth = 3; star(g, 540, 1230, 430, t * 0.12, false); }
+  g.globalAlpha = 1;
+}
+// green squares fly out from a point (chapter titles, the streak chip)
+function burst(cx, cy, lt, n = 16, spread = 700, size = 16) {
+  if (lt < 0 || lt > 1) return;
+  fx.fillStyle = '#00a86b';
+  for (let k = 0; k < n; k++) { const a = (k / n) * 6.283 + k, r = outCubic(lt) * spread * (0.6 + (k % 3) * 0.2); fx.globalAlpha = 1 - lt; star(fx, cx + Math.cos(a) * r, cy + Math.sin(a) * r, size * (1 - lt * 0.5), lt * 3 + k, true); }
+  fx.globalAlpha = 1;
+}
+
+// ---- the phone ------------------------------------------------------------------------------------------------------------
+function makeSlot(slot) {
+  slot.innerHTML = `<img class="page"><div class="crop hd"><img></div><div class="crop tb"><img></div><img class="view"><img class="alt">`;
+  return { slot, page: slot.querySelector('.page'), hd: slot.querySelector('.hd'), hdImg: slot.querySelector('.hd img'), tb: slot.querySelector('.tb'), tbImg: slot.querySelector('.tb img'), view: slot.querySelector('.view'), alt: slot.querySelector('.alt') };
+}
+const SLOTS = [makeSlot($('#slotA')), makeSlot($('#slotB'))];
+const setSrc = (img, src) => { if (img.getAttribute('src') !== src) img.setAttribute('src', src); };
+function paint(S, seg, t) {
+  const shot = seg.shot, gm = geo(shot), lt = t - seg.t;
+  let viewSrc = null;
+  if (seg.seq?.fps) viewSrc = SRC(`${shot}-${String(Math.min(seg.seq.max ?? gm.frames - 1, Math.floor(lt * seg.seq.fps))).padStart(2, '0')}`);
+  else if (seg.seq?.frame != null) viewSrc = SRC(`${shot}-${String(seg.seq.frame).padStart(2, '0')}`);
+  else if (seg.seq?.taps) viewSrc = SRC(`tap-${String(clamp(Math.floor((lt - seg.seq.start) / seg.seq.every) + 1, 0, 16)).padStart(2, '0')}`);
+  else if (seg.seq?.hold != null) viewSrc = SRC(`tap-${String(seg.seq.hold).padStart(2, '0')}`);
+  if (isFull(shot) && !viewSrc) {
+    const sc = track(seg.scrollKeys, t, seg.scroll0 || 0);
+    setSrc(S.page, SRC(`${shot}-full`)); setSrc(S.hdImg, SRC(shot)); setSrc(S.tbImg, SRC(shot));
+    S.page.style.display = S.hd.style.display = S.tb.style.display = ''; S.view.style.display = 'none';
+    S.page.style.transform = `translateY(${-sc * K}px)`;
+    S.hd.style.top = '0px'; S.hd.style.height = `${(gm.hd || 0) * K}px`;
+    S.tb.style.top = `${gm.tab * K}px`; S.tb.style.height = `${(VH - gm.tab) * K}px`; S.tbImg.style.top = `${-gm.tab * K}px`;
+    seg.scrollNow = sc;
+  } else {
+    setSrc(S.view, viewSrc || SRC(shot));
+    S.page.style.display = S.hd.style.display = S.tb.style.display = 'none'; S.view.style.display = '';
+    seg.scrollNow = gm.sy || 0;
+  }
+  if (seg.wipe) { // light / dark: a hard diagonal edge sweeps across and back
+    setSrc(S.alt, SRC(seg.wipe)); S.alt.style.display = '';
+    const p = inOut(prog(lt, 0.8, 2.2)) * (1 - inOut(prog(lt, 3.4, 4.6))), x = lerp(-60, 160, p);
+    S.alt.style.clipPath = `polygon(0 0, ${x}% 0, ${x - 40}% 100%, 0 100%)`;
+  } else if (seg.flip) { setSrc(S.alt, SRC(seg.flip)); S.alt.style.display = lt > 1.15 ? '' : 'none'; S.alt.style.clipPath = 'none'; }
+  else S.alt.style.display = 'none';
+}
+const PHONE = $('#phone');
+function segAt(t) { let s = null; for (const p of PHONES) if (p.t <= t) s = p; else break; return s && t < s.t + s.d ? s : null; }
+function drawPhone(t) {
+  const run = RUNS.find(([a, b]) => t >= a && t < b);
+  vis(PHONE, run ? 1 : 0); $('#labels').innerHTML = ''; $('#spots').innerHTML = '';
+  if (!run) return;
+  const seg = segAt(t), idx = PHONES.indexOf(seg), prev = PHONES[idx - 1];
+  const trDur = seg.tr === 'cut' || !prev || prev.t + prev.d < seg.t - 0.01 ? 0 : seg.tr === 'push' ? 0.5 : 0.4;
+  const p = trDur ? inOut(prog(t, seg.t, seg.t + trDur)) : 1;
+  paint(SLOTS[0], seg, t);
+  const [A, Bs] = [SLOTS[0].slot, SLOTS[1].slot];
+  if (p < 1) {
+    paint(SLOTS[1], prev, t); vis(Bs, 1);
+    if (seg.tr === 'push') { A.style.transform = `translateX(${(1 - p) * 100}%)`; A.style.opacity = 1; Bs.style.transform = `translateX(${-p * 30}%)`; }
+    else if (seg.tr === 'sheet') { A.style.transform = `translateY(${(1 - p) * 120}px)`; A.style.opacity = p; Bs.style.transform = ''; }
+    else { A.style.transform = ''; A.style.opacity = p; Bs.style.transform = ''; }
+  } else { vis(Bs, 0); A.style.transform = ''; A.style.opacity = 1; }
+  // camera; the phone swings in from the side at the start of a run and leaves the other way
+  const c = track(CAM, t, HOME);
+  const enter = outQuint(prog(t, run[0], run[0] + 0.9)), exit = inOut(prog(t, run[1] - 0.6, run[1]));
+  let ry = c.ry + Math.sin(t * 0.6) * 1.0 + (1 - enter) * 50 - exit * 50;
+  if (seg.flip) ry += 180 * inOut(prog(t - seg.t, 0.4, 1.9));
+  const ox = BZ + c.fx * K, oy = BZ + c.fy * K;
+  PHONE.style.transformOrigin = `${ox}px ${oy}px`;
+  PHONE.style.transform = `translate(${c.ax - ox + (1 - enter) * 1300 - exit * 1400}px, ${c.ay - oy}px) rotateX(${c.rx}deg) rotateY(${ry}deg) rotateZ(${c.rz}deg) scale(${c.z})`;
+  $('#scr').style.transform = seg.flip && (t - seg.t) > 1.15 ? 'scaleX(-1)' : '';
+  drawSpots(t, seg, c);
+  drawTaps(t, seg);
+  const off = seg.offline ? outQuint(prog(t, seg.t + 0.3, seg.t + 0.8)) * (1 - prog(t, seg.t + seg.d - 0.4, seg.t + seg.d)) : 0;
+  vis($('#offline'), off); $('#offline .chip').style.transform = `translateY(${(1 - outQuint(prog(t, seg.t + 0.3, seg.t + 0.9))) * 80}px)`;
+  if (seg.flame) burst(540, 1150, (t - seg.t - 0.8) / 1.2, 18, 520, 18);
+}
+// a spotlight is drawn in the screen (it moves with the phone), with crop marks; its callout sits beside it on the stage
+function drawSpots(t, seg, c) {
+  const box = $('#spots');
+  for (const s of SPOTS) {
+    if (s.seg !== seg || t < s.t0 - 0.01 || t > s.t1) continue;
+    const a = outQuint(prog(t, s.t0, s.t0 + 0.35)) * (1 - prog(t, s.t1 - 0.25, s.t1));
+    const vy = s.r[1] - seg.scrollNow, pad = 8;
+    const x = (s.r[0] - pad) * K, y = (vy - pad) * K, w = (s.r[2] + pad * 2) * K, h = (s.r[3] + pad * 2) * K;
+    const grow = 1 - outQuint(prog(t, s.t0, s.t0 + 0.4));
+    const sp = el('div', 'spot', null, box);
+    Object.assign(sp.style, { left: `${x - grow * 20}px`, top: `${y - grow * 20}px`, width: `${w + grow * 40}px`, height: `${h + grow * 40}px`, opacity: a });
+    const m = 16 + grow * 30; // crop marks just outside the corners
+    [[x - m, y - m, '4px 0 0 4px'], [x + w + m - 30, y - m, '4px 4px 0 0'], [x - m, y + h + m - 30, '0 0 4px 4px'], [x + w + m - 30, y + h + m - 30, '0 4px 4px 0']].forEach(([cx, cy, bw]) => {
+      const cm = el('div', 'cm', null, box); Object.assign(cm.style, { left: `${cx}px`, top: `${cy}px`, borderWidth: bw, opacity: a });
+    });
+    if (!s.en) continue;
+    const sx1 = c.ax + c.z * K * (s.r[0] - pad - c.fx), sx2 = c.ax + c.z * K * (s.r[0] + s.r[2] + pad - c.fx);
+    const sy1 = c.ay + c.z * K * (vy - pad - c.fy), sy2 = c.ay + c.z * K * (vy + s.r[3] + pad - c.fy);
+    const lb = el('div', 'label', `<i></i><b>${s.en}</b>${s.ur ? `<span class="ur">${s.ur}</span>` : ''}`, $('#labels'));
+    const below = sy2 + 260 < 1760 || sy1 < 820;
+    lb.classList.add(below ? 'below' : 'above');
+    const lw = Math.min(760, lb.offsetWidth), lh = lb.offsetHeight;
+    const cx = clamp((sx1 + sx2) / 2 - lw / 2, 60, 1000 - lw);
+    const ly = below ? Math.min(sy2 + 44, 1780 - lh) : Math.max(sy1 - 44 - lh, 600);
+    const la = outQuint(prog(t, s.t0 + 0.15, s.t0 + 0.5)) * (1 - prog(t, s.t1 - 0.25, s.t1));
+    Object.assign(lb.style, { left: `${cx}px`, top: `${ly}px`, opacity: la > 0 ? 1 : 0, clipPath: `inset(0 ${(1 - la) * 100}% 0 0)` });
+    lb.querySelector('i').style.left = `${clamp((sx1 + sx2) / 2 - cx, 30, lw - 30)}px`;
+  }
+}
+function drawTaps(t, seg) {
+  const rip = $('#ripple');
+  if (!seg.seq?.taps) { vis(rip, 0); return; }
+  const lt = t - seg.t - seg.seq.start, k = Math.floor(lt / seg.seq.every), since = lt - k * seg.seq.every;
+  const on = lt >= 0 && k < 16, rp = prog(since, 0, 0.3), at = geo('tap').at;
+  vis(rip, on ? 0.85 * (1 - rp) : 0);
+  rip.style.left = `${at.x * K}px`; rip.style.top = `${at.y * K}px`; rip.style.transform = `scale(${0.3 + rp * 1.6})`;
+}
+
+// ---- full-bleed panels: chapters (wiped in from the left, out to the right), slams and sayings (wiped up) -------------------
+function drawPanels(t) {
+  chapters.forEach((c) => {
+    const lt = t - c.t, on = lt >= 0 && lt < c.d;
+    vis(c.el, on ? 1 : 0); if (!on) return;
+    const wi = outQuint(prog(lt, 0, 0.45)), wo = inOut(prog(lt, c.d - 0.4, c.d));
+    c.el.style.clipPath = `inset(0 ${(1 - wi) * 100}% 0 ${wo * 100}%)`;
+    const num = c.el.querySelector('.num'); num.style.transform = `translateX(${(1 - outQuint(prog(lt, 0.1, 0.9))) * -200}px)`;
+    c.el.querySelector('.bigstar').style.transform = `rotate(${lt * 25}deg) scale(${0.8 + 0.2 * outQuint(prog(lt, 0, 1))})`;
+    c.words.forEach((w, j) => { const p = outQuint(prog(lt, 0.25 + j * 0.1, 0.8 + j * 0.1)); w.style.clipPath = `inset(0 0 ${(1 - p) * 100}% 0)`; w.style.transform = `translateY(${(1 - p) * 0.7}em)`; });
+    c.el.querySelector('.rule').style.transform = `scaleX(${outQuint(prog(lt, 0.5, 1.0))})`;
+    for (const [sel, a] of [['.tur', 0.6], ['.line', 0.8], ['.lur', 0.95]]) { const e = c.el.querySelector(sel), p = outQuint(prog(lt, a, a + 0.45)); e.style.opacity = p; e.style.transform = `translateX(${(1 - p) * -50}px)`; }
+  });
+  SLAMS.forEach(([t0], i) => {
+    const e = SLAMS[i].el, end = SLAMS[i + 1]?.[0] ?? 5.5, lt = t - t0, on = lt >= 0 && t < end + 0.25;
+    vis(e, on ? 1 : 0); if (!on) return;
+    e.style.clipPath = `inset(${(1 - outQuint(prog(lt, 0, 0.22))) * 100}% 0 0 0)`;
+    const big = e.querySelector('.big'), p = outQuint(prog(lt, 0.05, 0.5));
+    big.style.transform = `scale(${1.5 - 0.5 * p}) translateX(${(1 - p) * 40}px)`; big.style.transformOrigin = '0 50%';
+    e.querySelector('.su').style.opacity = prog(lt, 0.3, 0.55);
+  });
+  STORY.filter((s) => s.type === 'say').forEach((s) => {
+    const lt = t - s.t, on = lt >= 0 && lt < s.d + 0.2;
+    vis(s.el, on ? 1 : 0); if (!on) return;
+    s.el.style.clipPath = `inset(${(1 - outQuint(prog(lt, 0, 0.3))) * 100}% 0 0 0)`;
+    const mid = s.el.querySelector('.mid'), p = outQuint(prog(lt, 0.1, 0.6));
+    mid.style.transform = `translateY(${(1 - p) * 80}px)`; mid.style.opacity = p;
+    s.el.querySelector('.su').style.opacity = prog(lt, 0.5, 0.9);
+  });
+  // progress bar: one cell per chapter
+  const cells = $$('#bar b');
+  chapters.forEach((c, i) => { cells[i].style.transform = `scaleX(${prog(t, c.t, chapters[i + 1]?.t ?? WALL.t)})`; });
+  const mid = prog(t, OPEN.d - 0.3, OPEN.d) * (1 - prog(t, WALL.t - 0.3, WALL.t));
+  vis($('#bar'), mid); vis($('#brand'), mid);
+  const anyPhone = RUNS.some(([a, b]) => t >= a && t < b) || STORY.some((s) => (s.type === 'deck' || s.type === 'laptop') && t >= s.t && t < s.t + s.d);
+  vis($('#scrim'), anyPhone ? 1 : 0);
+  chapters.forEach((c) => burst(200, 1000, (t - c.t - 0.35) / 0.9, 14, 900, 14));
+}
+
+// ---- cover flow of the five leaderboards; flat mosaics of every screen --------------------------------------------------
+const DECKS = STORY.filter((s) => s.type === 'deck');
+DECKS.forEach((d) => { d.els = d.cards.map((c, i) => { const card = el('div', 'card', `<img src="${SRC(c)}">`, $('#deck')); el('div', 'tag', `${d.tags[i][0]}<span>${d.tags[i][1]}</span>`, card); return card; }); });
+function drawDecks(t) {
+  for (const d of DECKS) {
+    const lt = t - d.t, on = lt >= 0 && lt < d.d, n = d.els.length, dwell = (d.d - 2.0) / (n - 1);
+    let f = 0; for (let i = 0; i < n - 1; i++) f += inOut(prog(lt, 1.0 + i * dwell, 1.0 + i * dwell + 0.5));
+    d.els.forEach((card, i) => {
+      vis(card, on ? 1 : 0); if (!on) return;
+      const o = i - f, ao = Math.abs(o), inP = outQuint(prog(lt, 0.05 + i * 0.07, 0.75 + i * 0.07)), outP = inOut(prog(lt, d.d - 0.5, d.d));
+      card.style.transform = `translate3d(${540 - 260 + o * 340 + (1 - inP) * 1400 - outP * 1600}px, 640px, ${-ao * 420}px) rotateY(${clamp(-o * 40, -60, 60)}deg)`;
+      card.style.opacity = clamp(1.3 - ao * 0.35);
+      card.style.zIndex = 100 - Math.round(ao * 10);
+      card.querySelector('.tag').style.opacity = clamp(1 - ao * 1.5);
+    });
+  }
+}
+const MOS = ['today', 'feed', 'rank-people', 'caravan', 'me', 'qabila', 'rank-league', 'settings', 'today-dark', 'rank-cities', 'today-ur', 'profile',
+  'intro-0', 'menu', 'rank-caravans', 'caravan-ur', 'history-edit', 'addsheet', 'rank-ur', 'intro-2', 'register', 'tap-08', 'rank-trees', 'burst-06'];
+const tiles = MOS.map((s) => el('div', 'tile', `<img src="${SRC(s)}">`, $('#mosaic')));
+// rows of screens slide past in alternating directions; used at the end of the opening and before the finale
+function drawMosaic(t) {
+  const shows = [{ a: 14.2, b: OPEN.d + 0.1, rows: 2, w: 360, top: 330 }, { a: WALL.t, b: FINAL.t + 0.4, rows: 3, w: 280, top: 230 }];
+  const show = shows.find((s) => t >= s.a && t < s.b);
+  tiles.forEach((e) => vis(e, 0));
+  if (!show) return;
+  const lt = t - show.a, h = Math.round(show.w * 844 / 390), per = Math.ceil(tiles.length / show.rows), gap = 46;
+  tiles.forEach((e, i) => {
+    const row = i % show.rows, col = Math.floor(i / show.rows), dir = row % 2 ? 1 : -1;
+    const inP = outQuint(prog(lt, row * 0.12, 0.9 + row * 0.12)), outP = inOut(prog(t, show.b - 0.55, show.b));
+    const x = 80 + col * (show.w + gap) - (per * (show.w + gap)) / 2 + 300 + dir * lt * 60 + (1 - inP) * dir * -1400;
+    const y = show.top + row * (h + gap) - outP * 1900;
+    Object.assign(e.style, { width: `${show.w}px`, height: `${h}px`, transform: `translate(${x}px, ${y}px)` });
+    vis(e, 1);
+  });
+}
+
+// ---- the laptop ------------------------------------------------------------------------------------------------------------
+const LAP = STORY.find((s) => s.type === 'laptop');
+function drawLaptop(t) {
+  const lt = t - LAP.t, on = lt >= 0 && lt < LAP.d;
+  vis($('#laptop'), on ? 1 : 0); if (!on) return;
+  const inP = outQuint(prog(lt, 0, 0.8)), open = outBack(prog(lt, 0.5, 1.8)), outP = inOut(prog(lt, LAP.d - 0.5, LAP.d));
+  $('#lid').style.transform = `rotateX(${lerp(-88, -6, open)}deg)`;
+  $('#laptop').style.transform = `translateX(${(1 - inP) * 1200 - outP * 1300}px) rotateY(${Math.sin(lt * 0.6) * 4}deg)`;
+}
+
+// ---- the opening -------------------------------------------------------------------------------------------------------------
+function drawOpening(t) {
+  // a green star turns in, grows and fills the frame into the first slam
+  if (t < 1.4) { const p = outCubic(prog(t, 0.2, 1.15)); fx.fillStyle = '#00a86b'; fx.globalAlpha = 1; star(fx, 540, 960, 40 + Math.pow(p, 3) * 1500, p * 2.4, true); }
+  // the durood, word by word, with a green rule
+  $('#duroodRule').style.transform = `scaleX(${outQuint(prog(t, 7.2, 7.9)) * (1 - inOut(prog(t, 9.8, 10.2)))})`;
+  vis($('#duroodRule'), t > 5.5 && t < 10.2 ? 1 : 0);
+  // the name: two words slide in on the grid, the Urdu and the tag follow; all leave upwards as the mosaic arrives
+  const on = t >= 10.2 && t < 15.2, out = inOut(prog(t, 14.2, 15.0));
+  [['#logo1', 10.3, -1], ['#logo2', 10.5, 1]].forEach(([s, a, d]) => { const e = $(s), p = outQuint(prog(t, a, a + 0.6)); vis(e, on ? 1 : 0); e.style.transform = `translate(${(1 - p) * d * 900}px, ${-out * 1500}px)`; });
+  const u = $('#logoUr'), pu = outQuint(prog(t, 11.0, 11.6)); vis(u, on ? pu : 0); u.style.transform = `translate(${(1 - pu) * 120}px, ${-out * 1500}px)`;
+  const tg = $('#logoTag'), pt = outQuint(prog(t, 11.6, 12.1)); vis(tg, on ? 1 : 0); tg.style.clipPath = `inset(0 ${(1 - pt) * 100}% 0 0)`; tg.style.transform = `translateY(${-out * 1500}px)`;
+  if (on) { fx.fillStyle = '#00a86b'; fx.globalAlpha = 1 - out; star(fx, 880, 430, 70, t * 0.8, true); }
+  burst(540, 960, (t - 1.15) / 0.8, 20, 900, 18);
+  // the finale: a large green star turns in the empty corner
+  if (t > FINAL.t) { const p = outQuint(prog(t, FINAL.t + 0.8, FINAL.t + 2.2)); fx.globalAlpha = 1; fx.fillStyle = '#00a86b'; star(fx, 880, 1810, 260 * p, t * 0.25, true); fx.fillStyle = '#ffffff'; star(fx, 880, 1810, 104 * p, -t * 0.4, true); }
+}
+
+// ---- one frame -------------------------------------------------------------------------------------------------------------
+function seek(t) {
+  drawGrid(t);
+  animText(t);
+  drawMosaic(t);
+  drawDecks(t);
+  drawLaptop(t);
+  drawPhone(t);
+  drawPanels(t);
+  drawOpening(t);
+}
+
+window.DURATION = DURATION; window.CUES = CUES; window.POSTER = FINAL.t + 5; window.seek = seek; window.STORY = STORY;
+window.ready = (async () => {
+  M = await fetch('../../assets/tour/manifest.json').then((r) => r.json());
+  buildKeys();
   const all = Object.keys(M).flatMap((n) => [M[n].view ? SRC(n) : null, M[n].full ? SRC(`${n}-full`) : null, ...(M[n].frames ? Array.from({ length: M[n].frames }, (_, i) => SRC(`${n}-${String(i).padStart(2, '0')}`)) : [])]).filter(Boolean);
   for (let i = 0; i <= 16; i++) all.push(SRC(`tap-${String(i).padStart(2, '0')}`));
+  const imgs = [...new Set([...$$('img')].map((i) => i.getAttribute('src')).filter(Boolean))];
   await Promise.all([document.fonts.ready, ...[...imgs, ...all].map((src) => { const im = new Image(); im.src = src; return im.decode().catch(() => {}); })]);
 })();
 if (!navigator.webdriver) {

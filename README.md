@@ -10,7 +10,7 @@ This branch holds content only; the app lives on the main branch. PDF guides can
 |---|---|
 | `videos/NNN-slug/` | One video per folder: `scene.html` (the source), the rendered `.mp4`, `poster.jpg` (cover) and `post.md` (storyboard, captions, text to post) |
 | `assets/shots/` | Real screenshots of the app (dark mode), captured by `tools/capture.mjs` (used by 001) |
-| `assets/tour/` | Every screen of the app for the full tour, captured by `tools/capture-tour.mjs`: phone views, whole pages, animation frames and `manifest.json` (page heights and where each UI element sits) |
+| `assets/tour/` | Every screen of the app (light mode) for the full tour, captured by `tools/capture-tour.mjs`: phone views, whole pages, animation frames and `manifest.json` (page heights and where each UI element sits) |
 | `assets/fonts/`, `assets/icon-512.png` | The app's own fonts (Inter, Noto Nastaliq Urdu, Amiri) and icon |
 | `tools/capture.mjs` | Starts the app on a throwaway database, seeds a demo community over the past week, screenshots the screens |
 | `tools/capture-tour.mjs` | The same for every screen, with whole scrolling pages, frame-by-frame animations and measured element positions for spotlights |
@@ -22,7 +22,7 @@ This branch holds content only; the app lives on the main branch. PDF guides can
 | # | Title | Length | Kind |
 |---|---|---|---|
 | 001 | [Every durood counts](videos/001-every-durood-counts/post.md) | 56 s | Promo |
-| 002 | [The full tour](videos/002-the-full-tour/post.md) | 4 min 11 s | Promo: every feature, chapter by chapter |
+| 002 | [The full tour](videos/002-the-full-tour/post.md) | 4 min 10 s | Promo: every feature, chapter by chapter, in the app's Swiss style |
 
 ## Making or changing a video
 
@@ -48,7 +48,7 @@ A new video: copy a folder to `videos/NNN-slug/`, edit the text (each element's 
 ## House rules
 
 - **Real screens only.** Every app screen shown is a screenshot of the actual app (`tools/capture.mjs`), never a mock-up. The names in them are a seeded demo community, not real members.
-- **Style:** night sky, gold and the app's green; heavy Inter numerals, the eight-point star; the app shown in dark mode. Urdu in Nastaliq with every English line.
+- **Style:** each promo has its own look (001: night sky and gold, dark screens; 002: the app's Swiss white, black and green, light screens). Common to all: heavy Inter, the eight-point star, Urdu in Nastaliq with every English line.
 - **Keep text clear of the platform's buttons:** nothing important in the bottom 300 px or the right-hand 120 px.
 - **No music.** Sound effects only (synthesised); add a recitation or voice-over in the app you post from, if wanted.
 - Quran, hadith and figures are quoted with their source and checked by someone qualified before posting.

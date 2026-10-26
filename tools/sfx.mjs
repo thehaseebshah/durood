@@ -1,5 +1,6 @@
 // Sound design for the promos, synthesised from a scene's cue list (window.CUES): no music and no samples, only
-// soft effects — wind under the night sky, whooshes between scenes, a bead click per tap, warm impacts on big moments.
+// soft effects — wind under the night sky, whooshes between scenes, a bead click per tap, warm impacts on big moments,
+// dry thumps for panels that slam in.
 //   writeSfx(cues, seconds, 'out.wav')
 import fs from 'node:fs';
 
@@ -41,6 +42,11 @@ const VOICES = {
   tap(len = 0.12, k = 0) {  // a wooden bead: a short pitched knock and a tick of noise
     const n = Math.round(len * SR), f = 1250 + (k % 5) * 40, out = new Float32Array(n);
     for (let i = 0; i < n; i++) { const s = i / SR; out[i] = Math.sin(2 * Math.PI * f * s) * env(s, 0.001, 0.018) * 0.22 + Math.sin(2 * Math.PI * f * 2.7 * s) * env(s, 0.0005, 0.006) * 0.1 + rnd() * env(s, 0.0003, 0.002) * 0.15; }
+    return out;
+  },
+  thump(len = 0.45) {  // a short, dry low hit with a click on top, for panels that slam in
+    const n = Math.round(len * SR), out = new Float32Array(n); let ph = 0;
+    for (let i = 0; i < n; i++) { const s = i / SR; ph += 2 * Math.PI * (48 + 110 * Math.exp(-s * 28)) / SR; out[i] = Math.sin(ph) * env(s, 0.002, 0.09) * 0.95 + rnd() * env(s, 0.0005, 0.004) * 0.35; }
     return out;
   },
   tick(len = 0.08) { const n = Math.round(len * SR); return Float32Array.from({ length: n }, (_, i) => Math.sin(2 * Math.PI * 2200 * i / SR) * env(i / SR, 0.001, 0.01) * 0.4); },
