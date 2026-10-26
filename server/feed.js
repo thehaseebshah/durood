@@ -218,13 +218,13 @@ export function feed(userId, before = Date.now() + 1) {
     items.push({ type: 'announcement', id: a.id, at: a.created_at, titleEn: a.title_en, titleUr: a.title_ur, bodyEn: a.body_en, bodyUr: a.body_ur });
   }
   const replyN = (kind, id) => one("SELECT COUNT(*) n FROM replies WHERE kind = ? AND item_id = ? AND status = 'visible'", kind, id).n;
-  for (const p of all(`SELECT p.id, p.user_id, p.created_at, p.likes, s.title_en, s.title_ur, u.username, u.city, u.avatar_v av, u.display_name dn,
+  for (const p of all(`SELECT p.id, p.user_id, p.created_at, p.likes, p.w, p.h, s.title_en, s.title_ur, u.username, u.city, u.avatar_v av, u.display_name dn,
         EXISTS(SELECT 1 FROM likes l WHERE l.kind = 'post' AND l.item_id = p.id AND l.user_id = ?) liked
       FROM posts p JOIN sunnahs s ON s.id = p.sunnah_id JOIN users u ON u.id = p.user_id
       WHERE p.status = 'verified' AND p.purged_at IS NULL AND s.kind != 'class' AND p.created_at < ? AND u.deleted_at IS NULL AND u.suspended = 0
       ORDER BY p.created_at DESC LIMIT ?`, userId, cutoff, FEED_PAGE + 1)) {
     items.push({ type: 'photo', kind: 'sunnah', id: p.id, replies: replyN('post', p.id), at: p.created_at, username: p.username, displayName: p.dn, avatar: avatarUrl(p.user_id, p.av), city: p.city, titleEn: p.title_en, titleUr: p.title_ur,
-      photoUrl: photo(p.id), likes: p.likes, liked: !!p.liked, mine: p.user_id === userId });
+      photoUrl: photo(p.id), w: p.w || null, h: p.h || null, likes: p.likes, liked: !!p.liked, mine: p.user_id === userId });
   }
   for (const r of all(`SELECT r.id, r.user_id, r.body, r.likes, r.created_at, r.day, u.username, u.city, u.avatar_v av, u.display_name dn, pr.text_en, pr.text_ur,
         EXISTS(SELECT 1 FROM likes l WHERE l.kind = 'reflection' AND l.item_id = r.id AND l.user_id = ?) liked

@@ -104,6 +104,12 @@ try {
     ok(await page.locator('img.shot.preview').count() === 1, 'the photo shows as a preview first');
     await page.click('[data-act=postit]'); await page.waitForTimeout(1200);
     ok(await page.locator('img.shot.preview').count() === 0 && (await api('GET', '/api/feed', null, host.token)).today?.mine, 'the sunnah photo is posted');
+    { // the feed keeps the photo's space before the photo arrives, so nothing below it jumps (photo requests held back here)
+      const fp = await open(host.token); await fp.route('**/photos/**', () => {}); await go(fp, 'feed');
+      const box = await fp.evaluate(() => { const i = document.querySelector('.fitem img.shot:not(.thumb)'); return i && { w: i.clientWidth, h: i.clientHeight, aw: +i.getAttribute('width'), ah: +i.getAttribute('height') }; });
+      ok(box && box.aw > 0 && Math.abs(box.h - Math.min(380, box.w * box.ah / box.aw)) < 3, `a feed photo's space is kept before it loads (${box && `${box.w}x${box.h}`})`);
+      await fp.close();
+    }
     // pull to refresh
     const cdp = await page.context().newCDPSession(page);
     const touch = (type, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x: 200, y }] });

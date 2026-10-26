@@ -124,6 +124,7 @@ test('posting a photo pays the reward at once and the post shows in the feed', a
   const viewer = await signup('viewer_a');
   const item = (await api('GET', '/api/feed', { token: viewer.token })).items.find((i) => i.type === 'photo' && i.id === p.id);
   assert.ok(item && item.username === 'poster_v' && item.likes === 0 && item.liked === false);
+  assert.deepEqual([item.w, item.h], [400, 400], 'the photo\'s size travels with it, so the feed keeps its place while it loads');
   assert.deepEqual(audit().problems, []);
 });
 

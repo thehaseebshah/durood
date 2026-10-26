@@ -425,7 +425,9 @@ addCol('sunnahs', 'kind', "TEXT NOT NULL DEFAULT 'daily'");        // 'daily' su
 
 addCol('users', 'held', 'INTEGER NOT NULL DEFAULT 0');             // an open/confirmed automatic flag: durood stays in the ledger but is left out of public totals
 addCol('users', 'token_ver', 'INTEGER NOT NULL DEFAULT 0');       // bumped to sign a member out of every device
-addCol('posts', 'purged_at', 'INTEGER');                          // photo file deleted (retention or account deletion)
+addCol('posts', 'purged_at', 'INTEGER');
+addCol('posts', 'w', 'INTEGER');                                  // photo size, so the feed keeps its place while the photo loads
+addCol('posts', 'h', 'INTEGER');                          // photo file deleted (retention or account deletion)
 addCol('posts', 'likes', 'INTEGER NOT NULL DEFAULT 0');
 addCol('lectures', 'week_start', 'TEXT');                          // the Monday of the week this lecture is featured
 addCol('users', 'city_id', 'INTEGER');                              // the place the member chose (cities.id); required for new members

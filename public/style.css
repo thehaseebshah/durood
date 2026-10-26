@@ -1118,3 +1118,4 @@ body.in-app main .phonerow select { background: var(--cell); border-color: trans
 html[data-mode=dark] .seg:not(.five) button.on { background: #636366; color: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); }
 .lb li:has(.avbtn) { cursor: pointer; } /* the whole row opens the member's profile */
 .profile .stats span { display: block; text-align: start; } /* labels line up under their numbers, as on the Me page (the sheet itself is centred) */
+.fitem img.shot { height: auto; } /* with the photo's width and height known, the feed keeps its space while it loads */

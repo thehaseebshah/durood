@@ -744,7 +744,7 @@ function feedItem(it) {
   }
   if (it.type === 'photo') {
     return `<div class="fitem"><div class="flabel">${uiIcon('leaf', 12, 2)} ${esc(pick(it.titleEn, it.titleUr))}</div>${who()}
-      <img class="shot" loading="lazy" src="${esc(it.photoUrl)}" alt="">${acts}</div>`;
+      <img class="shot" loading="lazy" src="${esc(it.photoUrl)}"${it.w && it.h ? ` width="${Number(it.w)}" height="${Number(it.h)}"` : ''} alt="">${acts}</div>`;
   }
   if (it.type === 'reflection') {
     return `<div class="fitem"><div class="flabel">${uiIcon('pen', 12, 2)} ${t('reflect_title')}</div>${who()}

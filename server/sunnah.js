@@ -124,7 +124,7 @@ export function createPost(userId, imageB64) {
   if (!s) throw new HttpError(404, 'no_sunnah');
   if (one('SELECT 1 FROM posts WHERE user_id = ? AND sunnah_id = ?', userId, s.id)) throw new HttpError(409, 'already_posted');
   const raw = Buffer.from(String(imageB64 || '').replace(/^data:image\/jpeg;base64,/, ''), 'base64');
-  const { data } = cleanJpeg(raw);
+  const { data, width, height } = cleanJpeg(raw);
   const sha = crypto.createHash('sha256').update(data).digest('hex');
   if (one('SELECT 1 FROM posts WHERE sha256 = ?', sha)) throw new HttpError(409, 'duplicate_image');
 
@@ -133,8 +133,8 @@ export function createPost(userId, imageB64) {
   try {
     const fresh = [];
     const id = tx(() => {
-      const r = run(`INSERT INTO posts (user_id, sunnah_id, file, sha256, status, created_day, created_at, resolved_at) VALUES (?,?,?,?, 'verified', ?,?,?)`,
-        userId, s.id, file, sha, dayOf(), Date.now(), Date.now());
+      const r = run(`INSERT INTO posts (user_id, sunnah_id, file, sha256, status, created_day, created_at, resolved_at, w, h) VALUES (?,?,?,?, 'verified', ?,?,?,?,?)`,
+        userId, s.id, file, sha, dayOf(), Date.now(), Date.now(), width, height);
       const postId = Number(r.lastInsertRowid);
       grant(userId, 'sunnah', postId, CFG.sunnahXp);
       settleQuests(userId);
