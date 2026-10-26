@@ -29,10 +29,12 @@
   <script>
     /* white / dark choice: saved choice wins, otherwise follow the phone's setting; set before paint to avoid a flash */
     (function () {
-      var m = null;
-      try { m = localStorage.getItem('mode'); } catch (e) {}
+      var m = null, signedIn = false;
+      try { m = localStorage.getItem('mode'); signedIn = !!localStorage.getItem('token'); } catch (e) {}
       if (m !== 'dark' && m !== 'light') m = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       document.documentElement.setAttribute('data-mode', m);
+      /* the phone's bar starts in the colour the app will show (a member's light or dark header), not the welcome screen's navy */
+      if (signedIn) document.querySelector('meta[name=theme-color]').setAttribute('content', m === 'dark' ? '#1c1c1e' : '#f6f6f8');
     })();
   </script>
   <div id="app"><div class="boot" role="status"><b>Seerah Quest</b><span>سیرت کوئسٹ</span></div></div>
