@@ -658,8 +658,8 @@ function profileModal() {
     <div class="pbig">${av(p, 96, false)}</div>
     ${p.displayName ? `<div class="pname" dir="auto">${esc(p.displayName)}</div>` : ''}
     ${p.bio ? `<p class="pbio" dir="auto">${esc(p.bio)}</p>` : ''}
-    <p class="muted center">${p.city ? `${esc(cityName(p.city))} · ` : ''}${t('member_since')} ${N(esc(p.joined))}${p.caravan ? ` · ${esc(p.caravan)}` : ''}</p>
-    ${p.level ? `<div class="stats flat">${p.total != null ? cell(p.total, t('total'), 'durood') : ''}${cell(p.streak, t('streak'))}${cell(p.level, t('level'))}</div>` : ''}
+    <p class="muted center">${p.city ? `${esc(cityName(p.city))} · ` : ''}${t('member_since')} ${esc(/^\d{4}-\d{2}-\d{2}$/.test(p.joined || '') ? new Date(`${p.joined}T00:00:00Z`).toLocaleDateString(S.lang === 'ur' ? 'ur-PK' : 'en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }) : p.joined || '')}${p.caravan ? ` · ${esc(p.caravan)}` : ''}</p>
+    ${p.level ? `<div class="stats flat">${p.total != null ? cell(p.total, t('total'), 'durood') : ''}${cell(p.streak, t('streak_l'))}${cell(p.level, t('level'))}</div>` : ''}
     ${p.badges?.length ? `<div class="earned static">${p.badges.filter((c) => t('badge')[c]).map((c) => `<span title="${esc(t('badge')[c][0])}">${badgeSvg(c, true)}</span>`).join('')}</div>` : ''}</div></div>`;
 }
 
