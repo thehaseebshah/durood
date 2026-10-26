@@ -256,3 +256,43 @@ test('robots.txt keeps search engines out of the API, member photos and the admi
   const body = await r.text();
   for (const p of ['/api/', '/photos/', '/avatars/', '/admin.html']) assert.match(body, new RegExp(`Disallow: ${p.replace('.', '\\.')}`));
 });
+
+test('WhatsApp: a chat link for members who have not hidden their number, never the number in profiles', async () => {
+  const a = await signup('wa_a'), b = await signup('wa_b');
+  const prof = await api('GET', '/api/members/wa_b', { token: a.token });
+  assert.equal(prof.whatsapp, true);
+  assert.ok(!JSON.stringify(prof).match(/\d{10}/), 'no phone number in the profile reply');
+  const link = await api('GET', '/api/wa/wa_b', { token: a.token });
+  assert.equal(link.status, 200);
+  assert.match(link.url, /^https:\/\/wa\.me\/\d{10,15}$/);
+  assert.equal((await api('GET', '/api/wa/wa_b')).status, 401, 'signed-in only');
+  assert.equal((await api('GET', '/api/wa/wa_a', { token: a.token })).status, 404, 'not your own');
+  assert.equal((await api('GET', '/api/wa/nobody_here', { token: a.token })).status, 404);
+  assert.ok(db.prepare('SELECT COUNT(*) c FROM wa_opens').get().c >= 1, 'each open is logged');
+  // the member hides their number
+  const hide = await api('PATCH', '/api/me', { token: b.token, body: { hidePhone: true } });
+  assert.equal(hide.hidePhone, true);
+  assert.equal((await api('GET', '/api/members/wa_b', { token: a.token })).whatsapp, false);
+  assert.equal((await api('GET', '/api/wa/wa_b', { token: a.token })).status, 404);
+  await api('PATCH', '/api/me', { token: b.token, body: { hidePhone: false } });
+  assert.equal((await api('GET', '/api/wa/wa_b', { token: a.token })).status, 200);
+  // an admin can hide it after a complaint
+  const adm = await api('POST', '/api/admin/members/wa_b', { headers: admin, body: { action: 'hide-phone' } });
+  assert.equal(adm.status, 200);
+  assert.equal((await api('GET', '/api/wa/wa_b', { token: a.token })).status, 404);
+});
+
+test('WhatsApp: sign-up can start with the number hidden', async () => {
+  n += 1;
+  const r = await api('POST', '/api/register', { body: { username: 'wa_hidden', email: 'wa_hidden@x.pk', phone: `0304${String(6000000 + n)}`, password: 'secret1', invite: 'TESTFOUND', hidePhone: true, cityId: 1172451 } });
+  assert.equal(r.status, 200, JSON.stringify(r));
+  const other = await signup('wa_viewer');
+  assert.equal((await api('GET', '/api/members/wa_hidden', { token: other.token })).whatsapp, false);
+});
+
+test('WhatsApp: chat links are rate limited', async () => {
+  const a = await signup('wa_rl'); await signup('wa_rl2');
+  let last;
+  for (let i = 0; i < 42; i++) last = await api('GET', '/api/wa/wa_rl2', { token: a.token });
+  assert.equal(last.status, 429);
+});

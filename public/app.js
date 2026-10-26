@@ -296,6 +296,7 @@ function authView() {
       <label for="f-phone">${t('phone')}</label>
       <div class="phonerow"><select name="phoneCountry" aria-label="${esc(t('country'))}">${countryOptions()}</select><input id="f-phone" type="tel" name="phone" autocomplete="tel-national" required dir="ltr" placeholder="300 1234567"></div>
       <div class="hint">${t('phone_hint')}</div>
+      <label class="chk"><input type="checkbox" name="hidePhone"> <span>${t('wa_hide')}</span></label>
       ${cityPicker(t('city'))}
       ${field(t('password'), 'password', 'password', 'autocomplete="new-password" minlength="6" required dir="ltr"')}
       <button class="blk" type="submit"><span>${t('register')}</span><b class="ar">→</b></button></form>`;
@@ -469,6 +470,7 @@ function home() {
     m.caravanInvites ? `<button class="rowlink" data-act="tab" data-tab="caravan"><span>${uiIcon('caravan', 14, 2)} ${t('cv_home_invited')(m.caravanInvites)}</span><b class="ar">→</b></button>` : '',
     m.caravanRequests ? `<button class="rowlink" data-act="tab" data-tab="caravan"><span>${uiIcon('caravan', 14, 2)} ${t('cv_requests_home')(m.caravanRequests)}</span><b class="ar">→</b></button>` : '',
     S.bh?.roles?.requests ? `<button class="rowlink" data-act="tab" data-tab="people"><span>${uiIcon('chain', 14, 2)} ${t('bh_requests_home')(S.bh.roles.requests)}</span><b class="ar">→</b></button>` : '',
+    !ls.get('wanote') && !m.hidePhone ? `<div class="circlecard wanote"><b>${t('wa_note_title')}</b><p>${t('wa_note_text')}</p><div class="row"><button class="chip solid" data-act="wahide">${t('wa_note_hide')}</button><button class="chip" data-act="wanoteok">${t('wa_note_ok')}</button></div></div>` : '',
     pushPromptDue() ? `<div class="circlecard push"><b>${t('push_card_title')}</b><p>${t('push_card_text')}</p>
       <div class="row"><button class="blk fill1" data-act="pushon"><span>${t('push_enable')}</span><b class="ar">→</b></button><button class="chip" data-act="pushno">${t('push_later')}</button></div></div>` : '',
   ].join('');
@@ -676,6 +678,7 @@ function profileModal() {
     ${p.displayName ? `<div class="pname" dir="auto">${esc(p.displayName)}</div>` : ''}
     ${p.bio ? `<p class="pbio" dir="auto">${esc(p.bio)}</p>` : ''}
     <p class="muted center">${p.city ? `${esc(cityName(p.city))} · ` : ''}${t('member_since')} ${esc(dayText(p.joined, SINCE))}${p.caravan ? ` · ${esc(p.caravan)}` : ''}</p>
+    ${p.whatsapp ? `<button class="blk wabtn" data-act="wachat" data-u="${esc(d.username)}"><span>${t('wa_message')}</span><b class="ar">→</b></button>` : ''}
     ${p.level ? `<div class="stats flat">${p.total != null ? cell(p.total, t('total'), 'durood') : ''}${cell(p.streak, t('streak_l'))}${cell(p.level, t('level'))}</div>` : ''}
     ${p.badges?.length ? `<div class="earned static">${p.badges.filter((c) => t('badge')[c]).map((c) => `<span title="${esc(t('badge')[c][0])}">${badgeSvg(c, true)}</span>`).join('')}</div>` : ''}</div></div>`;
 }
@@ -1019,6 +1022,8 @@ function settings() {
   <label class="padx">${t('language')}</label>
   <div class="seg"><button class="${S.lang === 'en' ? 'on' : ''}" data-act="setlang" data-l="en">English</button><button class="${S.lang === 'ur' ? 'on' : ''}" data-act="setlang" data-l="ur">اردو</button></div>
   <div class="swlist">${['sound', 'vibrate'].map((k) => `<div class="swrow"><span id="sw-${k}">${t('feel_' + k)}</span><button class="sw" role="switch" aria-checked="${prefs[k] !== false}" aria-labelledby="sw-${k}" data-act="setfeel" data-k="${k}" data-v="${prefs[k] === false ? 1 : 0}"><i></i></button></div>`).join('')}</div>
+  <div class="swlist"><div class="swrow"><span id="sw-hide">${t('wa_hide')}</span><button class="sw" role="switch" aria-checked="${!!m.hidePhone}" aria-labelledby="sw-hide" data-act="wahide" data-v="${m.hidePhone ? 0 : 1}"><i></i></button></div></div>
+  <div class="hint padx">${t('wa_hide_hint')}</div>
   <label class="padx">${t('display')}</label>
   <div class="seg"><button class="${isDark() ? '' : 'on'}" data-act="setmode" data-m="light">${t('mode_light')}</button><button class="${isDark() ? 'on' : ''}" data-act="setmode" data-m="dark">${t('mode_dark_name')}</button></div>
 
@@ -1830,6 +1835,16 @@ app.addEventListener('click', async (ev) => {
     try { S.profile.data = await api(`/members/${encodeURIComponent(el.dataset.u)}`); } catch (e) { S.profile = null; toast(errText(e)); }
     return draw();
   }
+  if (act === 'wachat') {
+    try { const r = await api(`/wa/${encodeURIComponent(el.dataset.u)}`); window.open(r.url, '_blank', 'noopener'); } catch (e) { toast(errText(e)); }
+    return;
+  }
+  if (act === 'wanoteok') { ls.set('wanote', '1'); return draw(); }
+  if (act === 'wahide') {
+    const v = el.dataset.v == null ? true : el.dataset.v === '1';
+    try { S.me = await api('/me', 'PATCH', { hidePhone: v }); ls.set('wanote', '1'); toast(t(v ? 'wa_hidden' : 'saved')); } catch (e) { toast(errText(e)); }
+    return draw();
+  }
   if (act === 'closeprofile') { S.profile = null; return draw(); }
   if (act === 'rmavatar') { try { S.me = await api('/me/avatar', 'DELETE'); toast(t('saved')); } catch (e) { toast(errText(e)); } return draw(); }
   if (act.startsWith('cv')) {
@@ -2095,8 +2110,8 @@ app.addEventListener('submit', async (ev) => {
       const missing = [['invite', 'invite_required'], ['username', 'bad_username'], ['email', 'bad_email'], ['phone', 'bad_phone'], ['cityId', 'city_required'], ['password', 'bad_password']]
         .find(([k]) => !String(f[k] || '').trim() || (k === 'password' && f[k].length < 6));
       if (missing) throw new Error(missing[1]);
-      const r = await api('/register', 'POST', { ...f, invite: (f.invite || '').trim(), lang: S.lang });
-      keepDevice(r); setSession(r.token, r.me);
+      const r = await api('/register', 'POST', { ...f, hidePhone: !!f.hidePhone, invite: (f.invite || '').trim(), lang: S.lang });
+      ls.set('wanote', '1'); keepDevice(r); setSession(r.token, r.me);
       draw();
     } else if (kind === 'waitlist') {
       await api('/waitlist', 'POST', f);

@@ -791,7 +791,7 @@ export function getMe(userId) {
   const streakAlive = gapDays === 0 || gapDays === 1 || (gapDays === 2 && u.shields > 0); // a shield bridges one missed day
   return {
     id: u.id, username: u.username, displayName: u.display_name, bio: u.bio, avatar: avatarUrl(u.id, u.avatar_v), email: u.email, phone: u.phone, lang: u.lang, city: u.city, cityId: u.city_id, country: u.country, needsCity: !u.city_id,
-    dailyGoal: u.daily_goal, hiddenFromRanks: !!u.hidden_from_ranks,
+    dailyGoal: u.daily_goal, hidePhone: !!u.hide_phone, hiddenFromRanks: !!u.hidden_from_ranks,
     // 'decided' once an organiser looked and kept it out ("keep held"), so the member isn't told "being checked" for ever
     flagState: !u.hidden_from_ranks ? null : one("SELECT 1 FROM flags WHERE user_id = ? AND status = 'open'", u.id) ? 'open' : one("SELECT 1 FROM flags WHERE user_id = ? AND status = 'confirmed'", u.id) ? 'decided' : 'open', emailVerified: !!u.email_verified_at,
     invites: inviteStatus(userId),

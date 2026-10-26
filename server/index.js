@@ -255,10 +255,10 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
     if (one('SELECT 1 FROM users WHERE email = ? OR phone = ?', email, phone)) throw new HttpError(409, 'account_exists');
     if (r) access.consumeInvite(r);
     const referrerId = r?.kind === 'member' ? r.referrerId : null;
-    const res = run(`INSERT INTO users (username, email, phone, pass, lang, city, city_id, country, referrer_id, created_day, created_at, invited_via, invite_code)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    const res = run(`INSERT INTO users (username, email, phone, pass, lang, city, city_id, country, referrer_id, created_day, created_at, invited_via, invite_code, hide_phone)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       username, email, phone, pass, lang(body.lang), place.name, place.id, place.cc, referrerId, dayOf(), Date.now(),
-      r ? r.kind : 'open', r?.invite ? r.code : (r?.kind === 'public' ? r.code : null));
+      r ? r.kind : 'open', r?.invite ? r.code : (r?.kind === 'public' ? r.code : null), body.hidePhone === true ? 1 : 0);
     const uid = Number(res.lastInsertRowid);
     startChallengeIfNeeded(); // day 1 of the challenge is the day the first member joins
     run('INSERT INTO ancestors (user_id, ancestor_id, depth) VALUES (?,?,0)', uid, uid);
@@ -359,6 +359,7 @@ route('PATCH', '/api/me', async ({ user, body }) => {
     if (!Number.isInteger(goal) || goal < 1 || goal > 100_000) throw new HttpError(400, 'bad_count');
   }
   if (body.lang !== undefined) run('UPDATE users SET lang = ? WHERE id = ?', lang(body.lang), user);
+  if (body.hidePhone !== undefined) profile.setHidePhone(user, body.hidePhone === true || body.hidePhone === 1 || body.hidePhone === 'true');
   if (email) {
     run('UPDATE users SET email = ?, email_verified_at = NULL WHERE id = ?', email, user);
     sendMail(confirmEmail(email, `${baseUrl()}/?confirm=${makeToken(user, 'confirm', 7 * 86400e3)}`));
@@ -404,6 +405,8 @@ route('POST', '/api/me/phone', async ({ user, body }) => {
   return getMe(user);
 });
 route('GET', '/api/members/:username', ({ user, params }) => { rateLimit(`prof-view:${user}`, 120, 60e3); return profile.publicProfile(params.username); });
+// the chat address of a member who has not hidden their number: one signed-in request per chat, so numbers cannot be collected in bulk
+route('GET', '/api/wa/:username', ({ user, params }) => { rateLimit(`wa:${user}`, 40, 3600e3); return profile.waLink(user, params.username); });
 
 route('POST', '/api/log', ({ user, body }) => {
   rateLimit(`log:${user}`, 60, 60e3);
@@ -597,6 +600,12 @@ route('POST', '/api/admin/members/:username', adm, async ({ params, body, admin 
     return { ok: true };
   }
   if (a === 'suspend' || a === 'unsuspend') { const r = access.setSuspended(params.username, a === 'suspend', !!body.branch, admin.role === 'owner'); profile.logAdmin(body.branch ? `${a}-branch` : a, params.username, '', admin.actor); return r; }
+  if (a === 'hide-phone' || a === 'show-phone') { // after a complaint: stop offering this member's number to other members (they can change it back themselves)
+    const u = one('SELECT id FROM users WHERE username = ? AND deleted_at IS NULL', params.username);
+    if (!u) throw new HttpError(404, 'not_found');
+    profile.logAdmin(a, params.username, '', admin.actor);
+    return profile.setHidePhone(u.id, a === 'hide-phone');
+  }
   if (a === 'hide' || a === 'unhide') { const r = setHidden(params.username, a === 'hide'); profile.logAdmin(a, params.username, '', admin.actor); return r; }
   if (a === 'reset-link') {
     const u = one('SELECT id FROM users WHERE username = ? AND deleted_at IS NULL', params.username);

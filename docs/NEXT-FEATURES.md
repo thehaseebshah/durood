@@ -30,7 +30,7 @@ Suggested order: 3, 2, 1, 6, 5, then 4.
 
 ---
 
-## 2. A WhatsApp button on every profile (S)
+## 2. A WhatsApp button on every profile (S) — BUILT 26 Oct (optional: block-member button not built)
 
 **Asked:** each profile has a button letting anyone message that person on WhatsApp, since we already hold everyone's number.
 

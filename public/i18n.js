@@ -7,7 +7,7 @@ export const I18N = {
     login: 'Log in', register: 'Join Seerah Quest', logout: 'Log out',
     id_label: 'Username, email or phone', password: 'Password',
     username: 'Choose your username', username_hint: 'Letters, numbers and _ (3–20). This is also your referral code.',
-    email: 'Email', phone: 'WhatsApp number', phone_hint: 'Choose your country, then type your number without the country code.', city: 'City',
+    email: 'Email', phone: 'WhatsApp number', wa_message: 'Message on WhatsApp', wa_hide: 'Hide my number from other members', wa_hide_hint: 'By default other members can message you on WhatsApp from your profile. Turn this on to hide that button.', wa_hidden: 'Your number is hidden', wa_note_title: 'Members can now message you on WhatsApp', wa_note_text: 'Your profile has a WhatsApp button. Prefer not to be contacted? Hide your number.', wa_note_hide: 'Hide my number', wa_note_ok: 'OK', phone_hint: 'Choose your country, then type your number without the country code.', city: 'City',
     invited_by: 'Invited by', 
     ok_free: 'Available', taken: 'Already taken',
     nav_home: 'Today', nav_rank: 'Compete', nav_caravan: 'Caravan', nav_me: 'Me',

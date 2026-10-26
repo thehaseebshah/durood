@@ -102,7 +102,7 @@ export function setPhone(userId, phone) {
 
 // ---- what anyone in the app may see ---------------------------------------------------------------------------------------------------
 export function publicProfile(username) {
-  const u = one(`SELECT id, username, display_name, bio, avatar_v, city, created_day, xp, streak, last_day, shields, total, hidden_from_ranks, held FROM users WHERE username = ? AND deleted_at IS NULL AND suspended = 0`, String(username ?? ''));
+  const u = one(`SELECT id, username, display_name, bio, avatar_v, city, created_day, xp, streak, last_day, shields, total, hidden_from_ranks, held, phone, hide_phone FROM users WHERE username = ? AND deleted_at IS NULL AND suspended = 0`, String(username ?? ''));
   if (!u) throw new HttpError(404, 'not_found');
   const cv = one('SELECT c.name FROM caravan_members cm JOIN caravans c ON c.id = cm.caravan_id WHERE cm.user_id = ?', u.id);
   // what the public boards already show: level, a streak that is still running, badges, and durood (only while it counts on the boards)
@@ -112,7 +112,24 @@ export function publicProfile(username) {
   const onBoards = !u.hidden_from_ranks && !u.held;
   const badges = db.prepare('SELECT code FROM badges WHERE user_id = ? ORDER BY earned_at DESC LIMIT 6').all(u.id).map((b) => b.code);
   return { username: u.username, displayName: u.display_name, bio: u.bio, avatar: avatarUrl(u.id, u.avatar_v), city: u.city, joined: u.created_day, caravan: cv?.name ?? null,
-    level: Math.floor(Math.sqrt(Math.max(0, u.xp) / 100)) + 1, streak, badges, total: onBoards ? u.total : null };
+    level: Math.floor(Math.sqrt(Math.max(0, u.xp) / 100)) + 1, streak, badges, total: onBoards ? u.total : null,
+    whatsapp: !!u.phone && !u.hide_phone }; // only whether a chat can be opened; the number itself is never in this reply
+}
+
+/** The chat address for a member who has not hidden their number, handed out one signed-in request at a time (see rate limit in the route). */
+export function waLink(viewerId, username) {
+  const u = one('SELECT id, phone, hide_phone FROM users WHERE username = ? AND deleted_at IS NULL AND suspended = 0', String(username ?? ''));
+  if (!u || !u.phone || u.hide_phone || u.id === viewerId) throw new HttpError(404, 'not_found');
+  const now = Date.now();
+  run('INSERT INTO wa_opens (viewer_id, target_id, at) VALUES (?,?,?)', viewerId, u.id, now);
+  run('DELETE FROM wa_opens WHERE at < ?', now - 90 * 864e5);
+  return { url: `https://wa.me/${u.phone.replace(/\D/g, '')}` };
+}
+
+/** Hide or show a member's number to other members (the member's own choice, or an admin acting on a complaint). */
+export function setHidePhone(userId, hide) {
+  run('UPDATE users SET hide_phone = ? WHERE id = ?', hide ? 1 : 0, userId);
+  return { hidePhone: !!hide };
 }
 
 // ---- moderation (admin) ---------------------------------------------------------------------------------------------------------------

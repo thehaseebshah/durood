@@ -1144,3 +1144,7 @@ html[lang=ur] .fcard .head small.theme { font-size: .9rem; letter-spacing: 0; }
 /* the day's reflection question is a sentence or two, not a headline */
 .fcard .head.qprompt { font-size: 1.1rem; line-height: 1.55; font-weight: 650; }
 html[lang=ur] .fcard .head.qprompt { font-size: 1.2rem; line-height: 2.1; font-weight: 600; }
+
+.chk { display: flex; align-items: flex-start; gap: 10px; margin: 10px 0 0; font-weight: 500; }
+.chk input { width: 20px; height: 20px; margin: 1px 0 0; flex: none; }
+.wabtn { margin: 12px 0 4px; }

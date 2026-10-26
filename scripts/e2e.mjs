@@ -407,6 +407,9 @@ try {
     const row = page.locator('.lb li:has(.avbtn)').first();
     await row.locator('.name').click(); await page.waitForTimeout(700);
     ok(await page.locator('.modal .box.profile').count() === 1, 'tapping a ranking row opens the profile');
+    ok(await page.locator('.modal .box.profile [data-act=wachat]').count() === 1, 'another member\'s profile offers a WhatsApp message by default');
+    const hasNum = await page.evaluate(() => /\+?\d{10,}/.test(document.querySelector('.modal .box.profile').textContent));
+    ok(!hasNum, 'the profile sheet never shows a phone number');
     await page.close();
   }
 

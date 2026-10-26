@@ -425,6 +425,7 @@ addCol('sunnahs', 'kind', "TEXT NOT NULL DEFAULT 'daily'");        // 'daily' su
 
 addCol('users', 'held', 'INTEGER NOT NULL DEFAULT 0');             // an open/confirmed automatic flag: durood stays in the ledger but is left out of public totals
 addCol('users', 'token_ver', 'INTEGER NOT NULL DEFAULT 0');       // bumped to sign a member out of every device
+addCol('users', 'hide_phone', 'INTEGER NOT NULL DEFAULT 0');   // 1 = this member's number is not offered to other members (WhatsApp button)
 addCol('posts', 'purged_at', 'INTEGER');
 addCol('posts', 'w', 'INTEGER');                                  // photo size, so the feed keeps its place while the photo loads
 addCol('posts', 'h', 'INTEGER');                          // photo file deleted (retention or account deletion)
@@ -491,6 +492,14 @@ CREATE TABLE IF NOT EXISTS masul_links (
   created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS masul_links_masul ON masul_links(masul_id);
+-- who opened whose WhatsApp chat from a profile, kept 90 days so a complaint can be looked into
+CREATE TABLE IF NOT EXISTS wa_opens (
+  id        INTEGER PRIMARY KEY,
+  viewer_id INTEGER NOT NULL,
+  target_id INTEGER NOT NULL,
+  at        INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS wa_opens_at ON wa_opens(at);
 CREATE TABLE IF NOT EXISTS assignments (
   id         INTEGER PRIMARY KEY,
   masul_id   INTEGER NOT NULL REFERENCES users(id),
