@@ -1,6 +1,7 @@
 <!doctype html>
-<!-- Promo 001 "Every durood counts" — 1080x1920, 31 s. Rendered frame by frame by tools/render.mjs (window.seek(t) draws time t).
-     Open it in a browser to preview: it plays in real time, click to restart. -->
+<!-- Promo 001 "Every durood counts" — 1080x1920, 56 s. Rendered frame by frame by tools/render.mjs:
+     window.seek(t) draws time t, window.CUES lists the sound effects. Open it through a static server to preview
+     (it plays in real time; click to restart). -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -9,188 +10,393 @@
 @font-face { font-family: 'Inter'; src: url('../../assets/fonts/inter-latin.woff2') format('woff2'); font-weight: 100 900; }
 @font-face { font-family: 'Nastaliq'; src: url('../../assets/fonts/nastaliq-ur-400.woff2') format('woff2'); font-weight: 400; }
 @font-face { font-family: 'Nastaliq'; src: url('../../assets/fonts/nastaliq-ur-700.woff2') format('woff2'); font-weight: 700; }
-@font-face { font-family: 'Amiri'; src: url('../../assets/fonts/amiri-durood.woff2') format('woff2'); }
+@font-face { font-family: 'Amiri'; src: url('../../assets/fonts/amiri.woff2') format('woff2'); }
 @font-face { font-family: 'Salawat'; src: url('../../assets/fonts/salawat.woff2') format('woff2'); unicode-range: U+FDFA; }
-:root { --ink: #0b0b0b; --paper: #ffffff; --soft: #66665f; --line: #dcdcd6; --sig: #00a86b; --sig-text: #007a4d; --sig-bg: #e3f6ed; }
+:root { --ink: #f4f1ea; --soft: #a9b3c4; --gold: #f0cf86; --gold2: #ffe7b0; --sig: #22d68f; --night: #050914; }
 * { box-sizing: border-box; margin: 0; }
-html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--paper); }
-body { font-family: 'Inter', 'Salawat', sans-serif; color: var(--ink); }
-.stage { position: absolute; inset: 0; overflow: hidden; }
-.layer { position: absolute; inset: 0; will-change: transform, opacity; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--night); }
+body { font-family: 'Inter', 'Salawat', sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+.stage { position: absolute; inset: 0; overflow: hidden;
+  background: radial-gradient(1400px 700px at 50% 2050px, #0e4a35 0%, #0a2a2a 30%, rgba(8,20,40,0) 70%),
+              linear-gradient(#02040b 0%, #060c1f 45%, #0a1630 75%, #0b1d2c 100%); }
+canvas { position: absolute; inset: 0; }
+.abs { position: absolute; }
+.w, .fx { will-change: transform, opacity, filter; }
+.w { display: inline-block; }
+.gold { color: var(--gold); }
+.glow { text-shadow: 0 0 28px rgba(240, 207, 134, .45), 0 0 80px rgba(240, 207, 134, .2); }
 .ur { font-family: 'Inter', 'Nastaliq', serif; direction: rtl; }
-.star { display: inline-block; position: relative; width: 1em; height: 1em; }
-.star i { position: absolute; inset: 14%; border: .09em solid currentColor; }
+.ar { font-family: 'Amiri', serif; direction: rtl; }
+.kick { font-weight: 800; font-size: 28px; letter-spacing: 6px; text-transform: uppercase; color: var(--gold); display: flex; align-items: center; gap: 16px; }
+.star { display: inline-block; position: relative; width: 1em; height: 1em; flex: none; }
+.star i { position: absolute; inset: 14%; background: currentColor; }
 .star i + i { transform: rotate(45deg); }
-.star.fill i { background: currentColor; }
+.head { font-weight: 900; font-size: 92px; line-height: 1.04; letter-spacing: -3px; }
+.sub { font-size: 50px; line-height: 1.9; color: var(--soft); }
 
-/* the green rule across the top, as the app header */
-.topbar { position: absolute; left: 0; right: 0; top: 0; height: 18px; background: var(--sig); transform-origin: left; }
-.brand { position: absolute; top: 92px; left: 80px; right: 80px; display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 30px; letter-spacing: 4px; text-transform: uppercase; }
-.brand .ur { font-size: 34px; letter-spacing: 0; font-weight: 700; }
+#brand { left: 80px; right: 80px; top: 92px; display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 26px; letter-spacing: 6px; text-transform: uppercase; color: var(--gold); }
+#brand .ur { font-size: 34px; letter-spacing: 0; font-weight: 700; }
 
-/* captions above the phone */
-.cap { position: absolute; left: 80px; right: 80px; top: 190px; }
-.kick { color: var(--sig-text); font-weight: 800; font-size: 30px; letter-spacing: 4px; text-transform: uppercase; display: flex; align-items: center; gap: 16px; }
-.kick .star { color: var(--sig); font-size: 34px; }
-.head { font-weight: 900; font-size: 92px; line-height: 1.02; letter-spacing: -3px; margin-top: 18px; }
-.sub { font-size: 50px; line-height: 1.9; margin-top: 14px; color: var(--soft); text-align: right; }
+/* 1. the ayah */
+#ayah { left: 50px; right: 50px; top: 330px; text-align: center; font-size: 90px; line-height: 2.05; }
+#ayahK { left: 0; right: 0; top: 250px; justify-content: center; }
+#ayahEn { left: 110px; right: 110px; top: 935px; text-align: center; font-size: 38px; line-height: 1.45; color: var(--ink); font-weight: 400; }
+#ayahUr { left: 50px; right: 50px; top: 1135px; text-align: center; font-size: 38px; line-height: 2; color: var(--soft); }
 
-/* phone */
-.phone { position: absolute; left: 220px; top: 640px; width: 640px; height: 1334px; background: #0b0b0b; border-radius: 70px; padding: 22px; box-shadow: 28px 28px 0 var(--sig-bg); }
-.phone .scr { position: relative; width: 596px; height: 1290px; border-radius: 50px; overflow: hidden; background: #f2f2f7; }
-.phone img { position: absolute; left: 0; top: 0; width: 596px; height: 1290px; }
-.ripple { position: absolute; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 6px solid #fff; opacity: 0; z-index: 2; }
-.plus { position: absolute; font-weight: 900; font-size: 64px; color: var(--sig); opacity: 0; z-index: 4; text-shadow: 0 0 0 #fff; }
+/* 2. one -> ten */
+#num { left: 0; right: 0; top: 380px; height: 480px; text-align: center; font-weight: 900; font-size: 380px; line-height: 480px; letter-spacing: -16px; font-variant-numeric: tabular-nums; }
+#num span { position: absolute; left: 0; right: 0; }
+#oneT { left: 80px; right: 80px; top: 900px; }
+#tenT { left: 80px; right: 80px; top: 1010px; }
+#tenUr { left: 80px; right: 80px; top: 1215px; text-align: right; font-size: 46px; }
+#tenSrc { left: 80px; top: 1365px; font-size: 26px; }
 
-/* scene 1: the durood */
-.s1 .ar { position: absolute; left: 60px; right: 60px; top: 640px; font-family: 'Amiri', serif; font-size: 104px; line-height: 2; text-align: center; direction: rtl; }
-.s1 .ar span { display: inline-block; }
-.s1 .tr { position: absolute; left: 100px; right: 100px; top: 1170px; text-align: center; font-size: 40px; line-height: 1.45; color: var(--soft); }
-.s1 .k { position: absolute; left: 0; right: 0; top: 520px; text-align: center; justify-content: center; }
+/* 3. a whole nation */
+#nationT { left: 80px; right: 80px; top: 330px; }
+#odo { left: 0; right: 0; top: 800px; text-align: center; font-weight: 900; font-size: 158px; letter-spacing: -5px; font-variant-numeric: tabular-nums; }
+#odoL { left: 0; right: 0; top: 1010px; text-align: center; font-weight: 800; font-size: 40px; letter-spacing: 8px; text-transform: uppercase; }
+#odoUr { left: 0; right: 0; top: 1080px; text-align: center; font-size: 54px; color: var(--ink); }
 
-/* scene 2: one -> ten */
-.s2 .nums { position: absolute; left: 0; right: 0; top: 420px; display: flex; justify-content: center; align-items: center; gap: 40px; font-weight: 900; font-size: 420px; letter-spacing: -20px; line-height: 1; font-variant-numeric: tabular-nums; }
-.s2 .arrow { font-size: 160px; color: var(--sig); letter-spacing: 0; }
-.s2 .ten { color: var(--sig); }
-.s2 .q { position: absolute; left: 80px; right: 80px; top: 960px; font-size: 66px; font-weight: 800; line-height: 1.15; letter-spacing: -1.5px; }
-.s2 .qur { position: absolute; left: 80px; right: 80px; top: 1250px; font-size: 52px; line-height: 2; text-align: right; color: var(--ink); }
-.s2 .src { position: absolute; left: 80px; top: 1530px; font-size: 32px; font-weight: 700; color: var(--sig-text); letter-spacing: 2px; text-transform: uppercase; }
+/* 4-7. the phone and its captions */
+.cap { left: 80px; right: 80px; top: 180px; }
+.cap .head { margin-top: 16px; font-size: 84px; }
+.cap .sub { text-align: right; margin-top: 4px; font-size: 46px; }
+#rig { left: 0; top: 0; width: 1080px; height: 1920px; perspective: 2600px; }
+#phone { position: absolute; left: 242px; top: 600px; width: 596px; height: 1248px; border-radius: 74px; padding: 18px; background: linear-gradient(145deg, #2a2f36, #07090c 40%, #15191e); box-shadow: 0 0 0 2px #3a414a, 0 40px 120px rgba(0,0,0,.6), 0 0 160px rgba(34,214,143,.28); transform-style: preserve-3d; }
+#scr { position: relative; width: 560px; height: 1212px; border-radius: 58px; overflow: hidden; background: #0b0b0b; }
+#scr img { position: absolute; left: 0; top: 0; width: 560px; height: 1212px; }
+#sheen { position: absolute; inset: 0; border-radius: 58px; background: linear-gradient(115deg, rgba(255,255,255,0) 35%, rgba(255,255,255,.09) 48%, rgba(255,255,255,0) 60%); pointer-events: none; }
+#ripple { position: absolute; width: 130px; height: 130px; margin: -65px 0 0 -65px; border-radius: 50%; border: 5px solid #eafff5; }
+#flame { right: 96px; top: 1460px; display: flex; align-items: center; gap: 14px; padding: 18px 28px; border: 2px solid var(--gold); background: rgba(5, 9, 20, .82); font-weight: 900; font-size: 48px; }
+#flame svg { width: 46px; height: 46px; }
 
-/* scene 7: call to action */
-.s7 .icon { position: absolute; left: 50%; top: 330px; width: 300px; height: 300px; margin-left: -150px; border-radius: 68px; box-shadow: 18px 18px 0 var(--sig-bg); }
-.s7 .name { position: absolute; left: 0; right: 0; top: 700px; text-align: center; font-weight: 900; font-size: 120px; letter-spacing: -4px; }
-.s7 .nameur { position: absolute; left: 0; right: 0; top: 840px; text-align: center; font-size: 84px; font-weight: 700; direction: rtl; font-family: 'Nastaliq', serif; color: var(--sig-text); }
-.s7 .goal { position: absolute; left: 80px; right: 80px; top: 1080px; border-top: 5px solid var(--ink); border-bottom: 1.5px solid var(--ink); display: grid; grid-template-columns: 1fr 1fr; }
-.s7 .goal div { padding: 26px 0 22px; }
-.s7 .goal div + div { border-left: 1.5px solid var(--ink); padding-left: 32px; }
-.s7 .goal b { display: block; font-weight: 900; font-size: 92px; letter-spacing: -3px; line-height: 1; font-variant-numeric: tabular-nums; }
-.s7 .goal span { font-size: 30px; font-weight: 700; color: var(--soft); text-transform: uppercase; letter-spacing: 2px; }
-.s7 .cta { position: absolute; left: 80px; right: 80px; top: 1380px; background: var(--ink); color: #fff; padding: 36px 40px; display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 46px; }
-.s7 .cta b { color: #2ee59d; }
-.s7 .ctaur { position: absolute; left: 80px; right: 80px; top: 1530px; font-size: 46px; line-height: 2; text-align: right; color: var(--soft); }
-.s7 .foot { position: absolute; left: 80px; right: 80px; top: 1680px; font-size: 30px; line-height: 1.4; color: var(--soft); }
+/* 8. the Seerat Circles */
+#circT { left: 80px; right: 80px; top: 230px; font-size: 80px; }
+#circUr { left: 80px; right: 80px; top: 560px; text-align: right; font-size: 48px; }
+.city { font-weight: 700; font-size: 30px; letter-spacing: 1px; color: var(--ink); white-space: nowrap; }
+
+/* 9. finale */
+#rays { left: 540px; top: 560px; width: 1600px; height: 1600px; margin: -800px 0 0 -800px; border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(240,207,134,.10) 0deg 4deg, rgba(240,207,134,0) 4deg 15deg);
+  -webkit-mask: radial-gradient(circle, #000 0%, rgba(0,0,0,.5) 30%, transparent 62%); mask: radial-gradient(circle, #000 0%, rgba(0,0,0,.5) 30%, transparent 62%); }
+#icon { left: 410px; top: 220px; width: 260px; height: 260px; border-radius: 60px; box-shadow: 0 0 0 2px rgba(240,207,134,.6), 0 0 120px rgba(240,207,134,.35); }
+#fName { left: 0; right: 0; top: 520px; text-align: center; font-weight: 900; font-size: 128px; letter-spacing: -4px; }
+#fUr { left: 0; right: 0; top: 660px; text-align: center; font-family: 'Nastaliq', serif; font-weight: 700; font-size: 88px; direction: rtl; }
+#fJoin { left: 0; right: 0; top: 905px; text-align: center; font-weight: 800; font-size: 56px; letter-spacing: -1px; }
+#fJoinUr { left: 0; right: 0; top: 975px; text-align: center; font-size: 50px; color: var(--soft); }
+#cta { left: 110px; right: 110px; top: 1120px; display: flex; justify-content: space-between; align-items: center; padding: 22px 40px 14px; background: var(--gold); color: #0b0b0b; font-weight: 800; font-size: 42px; }
+#cta .ur { display: block; font-size: 36px; font-weight: 400; line-height: 1.9; text-align: left; }
+#cta b { font-size: 56px; }
+
+#dome { position: absolute; left: 0; bottom: 0; width: 1080px; height: 760px; }
+#vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 85% 70% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%); }
+#flash { position: absolute; inset: 0; background: #fff6dc; opacity: 0; pointer-events: none; mix-blend-mode: screen; }
 </style>
 </head>
 <body>
-<div class="stage">
-  <div class="topbar" id="topbar"></div>
-  <div class="brand" id="brand"><span>Seerah Quest</span><span class="ur">سیرت کوئسٹ</span></div>
+<div class="stage" id="stage">
+  <canvas id="sky" width="1080" height="1920"></canvas>
+  <div class="abs fx" id="rays" data-in="47.6" data-dur="1.6" data-out="99"></div>
 
-  <section class="layer s1" id="s1">
-    <div class="kick k"><span class="star fill"><i></i><i></i></span>Durood Shareef</div>
-    <div class="ar" dir="rtl" lang="ar"><span>اللّٰهُمَّ</span> <span>صَلِّ</span> <span>عَلٰى</span> <span>مُحَمَّدٍ</span><br><span>وَعَلٰى</span> <span>اٰلِ</span> <span>مُحَمَّدٍ</span></div>
-    <div class="tr">O Allah, send blessings upon Muhammad ﷺ<br>and upon the family of Muhammad</div>
-  </section>
+  <!-- Masjid an-Nabawi at night: the Green Dome between minarets (a drawn silhouette) -->
+  <svg id="dome" viewBox="0 0 1080 760" aria-hidden="true">
+    <defs>
+      <linearGradient id="gd" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0b5a3a"/><stop offset=".45" stop-color="#1fae74"/><stop offset=".6" stop-color="#18925f"/><stop offset="1" stop-color="#083d29"/></linearGradient>
+      <linearGradient id="sil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a1322"/><stop offset="1" stop-color="#03060c"/></linearGradient>
+      <radialGradient id="halo" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#22d68f" stop-opacity=".55"/><stop offset=".5" stop-color="#22d68f" stop-opacity=".12"/><stop offset="1" stop-color="#22d68f" stop-opacity="0"/></radialGradient>
+      <linearGradient id="lamp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe7b0"/><stop offset="1" stop-color="#d49a3c"/></linearGradient>
+      <g id="minaret">
+        <rect x="-17" y="250" width="34" height="510"/>
+        <rect x="-30" y="430" width="60" height="16"/><rect x="-24" y="446" width="48" height="10"/>
+        <rect x="-26" y="300" width="52" height="14"/><rect x="-21" y="314" width="42" height="8"/>
+        <rect x="-13" y="190" width="26" height="60"/>
+        <rect x="-22" y="180" width="44" height="12"/>
+        <path d="M-13 180 C-13 140 -3 118 0 96 C3 118 13 140 13 180 Z"/>
+        <rect x="-1.5" y="60" width="3" height="40"/>
+        <path d="M0 40 a14 14 0 1 0 10 24 a11 11 0 1 1 -10 -24 Z" fill="url(#lamp)"/>
+        <rect x="-6" y="330" width="12" height="40" rx="6" fill="url(#lamp)" opacity=".55"/>
+        <rect x="-6" y="470" width="12" height="44" rx="6" fill="url(#lamp)" opacity=".55"/>
+      </g>
+    </defs>
+    <ellipse id="haloE" cx="540" cy="360" rx="420" ry="300" fill="url(#halo)"/>
+    <g fill="url(#sil)">
+      <use href="#minaret" x="150" transform="translate(0 70)"/>
+      <use href="#minaret" x="930" transform="translate(0 70)"/>
+      <use href="#minaret" x="330"/>
+      <use href="#minaret" x="750"/>
+      <rect x="0" y="600" width="1080" height="160"/>
+      <rect x="400" y="440" width="280" height="170"/>
+    </g>
+    <!-- the dome -->
+    <rect x="430" y="400" width="220" height="44" fill="#0c3b2a"/>
+    <path id="domeP" d="M425 404 C418 300 470 250 520 200 C530 188 536 172 540 150 C544 172 550 188 560 200 C610 250 662 300 655 404 Z" fill="url(#gd)"/>
+    <path d="M540 150 C536 220 524 330 520 404 M540 150 C548 230 560 330 566 404" stroke="#0a4a31" stroke-width="3" fill="none" opacity=".5"/>
+    <rect x="538" y="98" width="4" height="54" fill="url(#lamp)"/>
+    <circle cx="540" cy="128" r="7" fill="url(#lamp)"/>
+    <path d="M540 70 a17 17 0 1 0 12 29 a13 13 0 1 1 -12 -29 Z" fill="url(#lamp)"/>
+  </svg>
+  <canvas id="fxBack" width="1080" height="1920"></canvas>
 
-  <section class="layer s2" id="s2">
-    <div class="nums"><span id="one">1</span><span class="arrow" id="arr">→</span><span class="ten" id="ten">10</span></div>
-    <div class="q" id="q">“Whoever sends one durood upon me, Allah sends ten blessings upon him.”</div>
-    <div class="qur ur" id="qur">جو مجھ پر ایک بار درود بھیجے، اللہ اس پر دس رحمتیں بھیجتا ہے۔</div>
-    <div class="src" id="src">Sahih Muslim 408</div>
-  </section>
+  <div class="abs" id="brand"><span>Seerah Quest</span><span class="ur">سیرت کوئسٹ</span></div>
 
-  <!-- scenes 3 to 6 share one caption slot and one phone -->
-  <section class="layer" id="caps">
-    <div class="cap" data-c="0"><div class="kick"><span class="star fill"><i></i><i></i></span>Count</div><div class="head">Tap for each durood.</div><div class="sub ur">ہر درود پر ٹیپ کریں</div></div>
-    <div class="cap" data-c="1"><div class="kick"><span class="star fill"><i></i><i></i></span>Together</div><div class="head">Recite with your caravan.</div><div class="sub ur">اپنے کارواں کے ساتھ درود پڑھیں</div></div>
-    <div class="cap" data-c="2"><div class="kick"><span class="star fill"><i></i><i></i></span>Compete</div><div class="head">Race in goodness, every week.</div><div class="sub ur">ہر ہفتے نیکی میں آگے بڑھیں</div></div>
-    <div class="cap" data-c="3"><div class="kick"><span class="star fill"><i></i><i></i></span>Grow</div><div class="head">Streaks, levels, badges.</div><div class="sub ur">سلسلہ، درجے اور بیجز</div></div>
-  </section>
-  <div class="phone" id="phone"><div class="scr" id="scr">
+  <!-- 1 -->
+  <div class="abs kick fx" id="ayahK" data-in="0.15" data-out="8.9"><span class="star"><i></i><i></i></span>Surah Al-Ahzab · 33:56<span class="star"><i></i><i></i></span></div>
+  <div class="abs ar gold glow" id="ayah" data-words data-in="0.5" data-st="0.32" data-dur="0.9" data-out="8.9" lang="ar">إِنَّ اللَّهَ وَمَلَائِكَتَهُ يُصَلُّونَ عَلَى النَّبِيِّ يَا أَيُّهَا الَّذِينَ آمَنُوا صَلُّوا عَلَيْهِ وَسَلِّمُوا تَسْلِيمًا</div>
+  <div class="abs fx" id="ayahEn" data-in="4.6" data-dur="0.8" data-out="8.9">Indeed, Allah and His angels send blessings upon the Prophet. O you who believe, send blessings upon him and greet him with peace.</div>
+  <div class="abs ur fx" id="ayahUr" data-in="5.5" data-dur="0.8" data-out="8.9">بے شک اللہ اور اس کے فرشتے نبی ﷺ پر درود بھیجتے ہیں۔ اے ایمان والو! تم بھی ان پر درود اور خوب سلام بھیجو۔</div>
+
+  <!-- 2 -->
+  <div class="abs" id="num"><span class="gold glow fx" id="n1" data-in="9.3" data-dur="0.6" data-out="11.6">1</span><span class="gold glow fx" id="n10" data-in="11.55" data-dur="0.5" data-out="14.8">10</span></div>
+  <div class="abs head" id="oneT" data-words data-in="9.6" data-st="0.08" data-out="14.8">Send one durood…</div>
+  <div class="abs head gold" id="tenT" data-words data-in="11.7" data-st="0.08" data-out="14.8">Allah sends ten blessings upon you.</div>
+  <div class="abs ur fx" id="tenUr" data-in="12.6" data-out="14.8">ایک درود پر اللہ دس رحمتیں نازل فرماتا ہے</div>
+  <div class="abs kick fx" id="tenSrc" data-in="13.0" data-out="14.8">Sahih Muslim 408</div>
+
+  <!-- 3 -->
+  <div class="abs head" id="nationT" data-words data-in="15.2" data-st="0.1" data-out="21.3">Now imagine a <span class="gold">whole nation</span>, together.</div>
+  <div class="abs gold glow fx" id="odo" data-in="16.6" data-dur="0.5" data-out="21.3">0</div>
+  <div class="abs fx" id="odoL" data-in="17.2" data-out="21.3">durood · in 40 days</div>
+  <div class="abs ur fx" id="odoUr" data-in="18.0" data-out="21.3">40 دن میں 10 کروڑ درود</div>
+
+  <!-- 4-7 -->
+  <div class="abs cap" id="c0"><div class="kick fx" data-in="21.6" data-out="28.9"><span class="star"><i></i><i></i></span>Count</div><div class="head" data-words data-in="21.75" data-st="0.07" data-out="28.9">Count every <span class="gold">single</span> one.</div><div class="sub ur fx" data-in="22.3" data-out="28.9">ہر ایک درود گنیں</div></div>
+  <div class="abs cap" id="c1"><div class="kick fx" data-in="29.1" data-out="32.9"><span class="star"><i></i><i></i></span>Together</div><div class="head" data-words data-in="29.2" data-st="0.07" data-out="32.9">Recite together, as a <span class="gold">caravan</span>.</div><div class="sub ur fx" data-in="29.7" data-out="32.9">کارواں کے ساتھ مل کر پڑھیں</div></div>
+  <div class="abs cap" id="c2"><div class="kick fx" data-in="33.1" data-out="36.9"><span class="star"><i></i><i></i></span>Compete</div><div class="head" data-words data-in="33.2" data-st="0.07" data-out="36.9">City against city, <span class="gold">every week</span>.</div><div class="sub ur fx" data-in="33.7" data-out="36.9">ہر ہفتے، شہروں کا مقابلہ</div></div>
+  <div class="abs cap" id="c3"><div class="kick fx" data-in="37.1" data-out="41.2"><span class="star"><i></i><i></i></span>Grow</div><div class="head" data-words data-in="37.2" data-st="0.07" data-out="41.2">Keep your <span class="gold">streak</span>. Earn your badges.</div><div class="sub ur fx" data-in="37.7" data-out="41.2">اپنا سلسلہ قائم رکھیں، بیجز حاصل کریں</div></div>
+  <div class="abs" id="rig"><div id="phone"><div id="scr">
     <img id="tapimg" alt="">
-    <img data-s="1" src="../../assets/shots/caravan.png" alt="">
-    <img data-s="2" src="../../assets/shots/rank.png" alt="">
-    <img data-s="3" src="../../assets/shots/me.png" alt="">
-    <div class="ripple" id="ripple"></div>
-  </div></div>
-  <div class="plus" id="plus">+1</div>
+    <img data-s="caravan" src="../../assets/shots/caravan.png" alt="">
+    <img data-s="cities" src="../../assets/shots/cities.png" alt="">
+    <img data-s="me" src="../../assets/shots/me.png" alt="">
+    <img data-s="badges" src="../../assets/shots/badges.png" alt="">
+    <div id="ripple"></div>
+    <div id="sheen"></div>
+  </div></div></div>
+  <div class="abs fx" id="flame" data-in="38.0" data-dur="0.5" data-out="41.0"><svg viewBox="0 0 24 24" fill="none" stroke="#f0cf86" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3c1 3.5 5 6 5 10.5a5 5 0 0 1-10 0c0-2.2 1.2-3.8 2.4-5 .3 1.6 1 2.6 2.1 3.1C11 9 11.2 5.8 12 3Z"/></svg><span>8 days</span></div>
+  <canvas id="fxFront" width="1080" height="1920"></canvas>
 
-  <section class="layer s7" id="s7">
-    <img class="icon" src="../../assets/icon-512.png" alt="">
-    <div class="name">Seerah Quest</div>
-    <div class="nameur">سیرت کوئسٹ</div>
-    <div class="goal"><div><b>10 crore</b><span>durood together</span></div><div><b>40 days</b><span>one challenge</span></div></div>
-    <div class="cta"><span>Ask a member for an invite</span><b>→</b></div>
-    <div class="ctaur ur">کسی رکن سے دعوت لیں اور آج ہی شامل ہوں</div>
-    <div class="foot">Every durood is dedicated to the work of the Seerat Circles across Pakistan.</div>
-  </section>
+  <!-- 8 -->
+  <div class="abs head" id="circT" data-words data-in="41.7" data-st="0.07" data-out="47.4">Every durood is dedicated to the <span class="gold">Seerat Circles</span> across Pakistan.</div>
+  <div class="abs ur fx" id="circUr" data-in="42.8" data-out="47.4">ہر درود پاکستان بھر کے سیرت سرکلز کے نام</div>
+  <div id="cities"></div>
+
+  <!-- 9 -->
+  <img class="abs fx" id="icon" src="../../assets/icon-512.png" alt="" data-in="47.9" data-dur="0.9" data-out="99">
+  <div class="abs fx" id="fName" data-in="48.4" data-dur="0.8" data-out="99">Seerah Quest</div>
+  <div class="abs gold glow fx" id="fUr" data-in="48.9" data-dur="0.8" data-out="99">سیرت کوئسٹ</div>
+  <div class="abs" id="fJoin" data-words data-in="49.7" data-st="0.09" data-out="99">Join the caravan of durood.</div>
+  <div class="abs ur fx" id="fJoinUr" data-in="50.3" data-out="99">درود کے کارواں میں شامل ہوں</div>
+  <div class="abs fx" id="cta" data-in="51.0" data-dur="0.6" data-out="99"><span>Ask a member for an invite code<span class="ur">دعوتی کوڈ کسی رکن سے لیں</span></span><b>→</b></div>
+
+  <div id="vignette"></div>
+  <div id="flash"></div>
 </div>
 
 <script>
-// ---- timeline (seconds) ----------------------------------------------------------------------------------
-const DURATION = 31;
-const T = { s1: [0, 4.6], s2: [4.6, 10], phone: [10, 26.4], s7: [26.4, 31] };
-const CAPS = [[10, 14.6], [14.6, 18.6], [18.6, 22.6], [22.6, 26.4]]; // tap, caravan, compete, grow
-const TAPS = 12, TAP0 = 11.2, TAP_EVERY = 0.24;                       // taps start once the phone has landed
+// ---- timeline (seconds) ----------------------------------------------------------------------------------------
+const DURATION = 56;
+const BURST = 11.5;                                                  // the one light becomes ten
+const PHONE = [21.5, 41.4];                                          // the phone is on screen
+const TAPS = 20, TAP0 = 23.0, TAP_EVERY = 0.24;                      // real tap screenshots tap-00 .. tap-20
+const TAP_AT = { x: 195, y: 622 };                                   // the tap button in the 390 x 844 capture
+const SCREENS = [['caravan', 29.0], ['cities', 33.0], ['me', 37.0], ['badges', 39.2]]; // screen, when it slides in
+const SWING = [21.5, 29.0, 33.0, 37.0];                              // the phone turns a little at each new screen
+const CITIES = [ // a loose constellation, north at the top (not a map)
+  ['Gilgit', 760, 780], ['Peshawar', 400, 900], ['Islamabad', 700, 950], ['Lahore', 860, 1110], ['Faisalabad', 600, 1090],
+  ['Multan', 520, 1230], ['Quetta', 200, 1260], ['Bahawalpur', 760, 1290], ['Sukkur', 360, 1390], ['Hyderabad', 600, 1480], ['Karachi', 300, 1540]];
+const LINKS = [[0, 2], [1, 2], [2, 3], [2, 4], [3, 4], [4, 5], [5, 7], [5, 6], [6, 8], [5, 8], [8, 9], [9, 10], [8, 10]];
+const CONST = [41.6, 47.4];
+// sound effects for tools/render.mjs: whoosh between scenes, a bead click per tap, soft impacts on the big moments
+const CUES = [{ t: 0, k: 'swell' }, { t: BURST, k: 'bloom' }, { t: 15.0, k: 'whoosh' }, { t: 16.6, k: 'rise' }, { t: 21.4, k: 'whoosh' },
+  ...Array.from({ length: TAPS }, (_, i) => ({ t: TAP0 + i * TAP_EVERY, k: 'tap' })),
+  { t: 28.9, k: 'whoosh' }, { t: 32.9, k: 'whoosh' }, { t: 36.9, k: 'whoosh' }, { t: 41.3, k: 'whoosh' }, { t: 47.6, k: 'bloom' }, { t: 51.0, k: 'tick' }];
 
+// ---- helpers -------------------------------------------------------------------------------------------------------
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const prog = (t, a, b) => clamp((t - a) / (b - a));
 const outCubic = (x) => 1 - Math.pow(1 - x, 3);
-const outBack = (x) => { const c = 1.6; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
-const inCubic = (x) => x * x * x;
+const inOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const outBack = (x) => { const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
 const $ = (s) => document.querySelector(s), $$ = (s) => [...document.querySelectorAll(s)];
-const set = (el, o, tf = '') => { el.style.opacity = o; el.style.transform = tf; el.style.visibility = o > 0.001 ? 'visible' : 'hidden'; };
-// a scene fades/slides in over `fin` s from its start and out over `fout` s before its end
-const life = (t, [a, b], fin = 0.5, fout = 0.4) => ({ i: outCubic(prog(t, a, a + fin)), o: inCubic(prog(t, b - fout, b)), on: t >= a && t < b });
+let seed = 12345; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+const vis = (el, o) => { el.style.opacity = o; el.style.visibility = o > 0.002 ? 'visible' : 'hidden'; };
 
+// words rise out of a blur, one after another; elements leave by lifting into a blur
+$$('[data-words]').forEach((el) => {
+  const walk = (node) => [...node.childNodes].forEach((c) => {
+    if (c.nodeType === 3) {
+      const frag = document.createDocumentFragment();
+      c.textContent.split(/(\s+)/).forEach((p) => { if (!p) return; if (/^\s+$/.test(p)) frag.append(p); else { const s = document.createElement('span'); s.className = 'w'; s.textContent = p; frag.append(s); } });
+      c.replaceWith(frag);
+    } else walk(c);
+  });
+  walk(el);
+});
+const ANIM = $$('[data-in]').map((el) => ({ el, a: +el.dataset.in, out: +el.dataset.out, st: +(el.dataset.st || 0), dur: +(el.dataset.dur || 0.7), words: el.hasAttribute('data-words') ? [...el.querySelectorAll('.w')] : null }));
+function animText(t) {
+  for (const { el, a, out, st, dur, words } of ANIM) {
+    const o = outCubic(prog(t, out - 0.45, out));
+    const on = t >= a - 0.01 && t < out;
+    vis(el, on ? 1 - o : 0);
+    if (!on) { el.style.transform = ''; continue; } // reset, so the per-frame extras added in seek() never pile up
+    el.style.filter = o ? `blur(${o * 10}px)` : '';
+    if (words) {
+      words.forEach((w, i) => { const p = outCubic(prog(t, a + i * st, a + i * st + dur)); w.style.opacity = p; w.style.transform = `translateY(${(1 - p) * 0.45}em)`; w.style.filter = p < 1 ? `blur(${(1 - p) * 12}px)` : ''; });
+      el.style.transform = `translateY(${-o * 40}px)`;
+    } else {
+      const p = outCubic(prog(t, a, a + dur));
+      el.style.opacity = p * (1 - o);
+      el.style.transform = `translateY(${(1 - p) * 34 - o * 40}px)`;
+      el.style.filter = p < 1 || o ? `blur(${(1 - p) * 12 + o * 10}px)` : '';
+    }
+  }
+}
+
+// ---- the sky: stars and rising lights ------------------------------------------------------------------------------
+const sky = $('#sky').getContext('2d'), back = $('#fxBack').getContext('2d'), front = $('#fxFront').getContext('2d');
+const sprite = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+  const r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  r.addColorStop(0, 'rgba(255,250,230,1)'); r.addColorStop(0.12, 'rgba(255,231,176,.95)'); r.addColorStop(0.35, 'rgba(240,207,134,.35)'); r.addColorStop(1, 'rgba(240,207,134,0)');
+  g.fillStyle = r; g.fillRect(0, 0, 128, 128); return c; })();
+const greenSprite = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+  const r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  r.addColorStop(0, 'rgba(230,255,244,1)'); r.addColorStop(0.15, 'rgba(34,214,143,.9)'); r.addColorStop(0.4, 'rgba(34,214,143,.25)'); r.addColorStop(1, 'rgba(34,214,143,0)');
+  g.fillStyle = r; g.fillRect(0, 0, 128, 128); return c; })();
+const glow = (ctx, x, y, size, a, img = sprite) => { if (a <= 0.003) return; ctx.globalAlpha = Math.min(1, a); ctx.drawImage(img, x - size / 2, y - size / 2, size, size); };
+
+const STARS = Array.from({ length: 320 }, () => ({ x: rnd() * 1080, y: rnd() * 1500, r: 0.6 + rnd() * 1.8, w: 0.6 + rnd() * 2.2, p: rnd() * 6.28 }));
+// rising lights: how many per second, scene by scene (each light is a durood)
+const rate = (t) => t < 9 ? 5 : t < 15 ? 3 : t < 16.4 ? 6 : t < 21.3 ? 18 + 120 * inOut(prog(t, 16.4, 20.5)) : t < 41.5 ? 7 : t < 47.5 ? 14 : 40;
+const LIGHTS = [];
+for (let t = -6; t < DURATION; t += 1 / 60) {
+  let n = rate(Math.max(0, t)) / 60; while (n > 0) { if (rnd() < n) LIGHTS.push({ s: t, x: rnd() * 1080, y: 1880 + rnd() * 160, v: 70 + rnd() * 190, sw: 8 + rnd() * 26, f: 0.3 + rnd() * 1.2, z: 0.35 + rnd() * 1.1 }); n -= 1; }
+}
+// the ten lights of the hadith, on a slow orbit around the numeral
+const TEN = Array.from({ length: 10 }, (_, i) => ({ a: (i / 10) * Math.PI * 2, r: 300 + (i % 2) * 40 }));
+
+function drawSky(t) {
+  sky.clearRect(0, 0, 1080, 1920); back.clearRect(0, 0, 1080, 1920); front.clearRect(0, 0, 1080, 1920);
+  sky.globalCompositeOperation = 'lighter';
+  const sa = 0.55 + 0.45 * prog(t, 0, 2);
+  for (const s of STARS) { sky.globalAlpha = sa * (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * s.w + s.p))) * (1 - s.y / 1900); sky.fillStyle = '#fff8e6'; sky.beginPath(); sky.arc(s.x, s.y, s.r, 0, 6.283); sky.fill(); }
+  // lights rise from behind the dome; faster while the whole nation counts up
+  const boost = 1 + 1.4 * inOut(prog(t, 16.4, 20)) * (1 - prog(t, 21, 22.5));
+  back.globalCompositeOperation = 'lighter';
+  for (const L of LIGHTS) {
+    const age = t - L.s; if (age < 0) continue;
+    const y = L.y - age * L.v * boost; if (y < -80) continue;
+    const x = L.x + Math.sin(age * L.f + L.x) * L.sw;
+    const a = prog(age, 0, 0.8) * clamp((y + 60) / 900) * 0.9;
+    glow(back, x, y, 34 * L.z + 10, a);
+  }
+  // 2. one light, then ten
+  const one = prog(t, 9.2, 9.9) * (1 - prog(t, BURST, BURST + 0.05));
+  if (one > 0) glow(front, 540, 620, 220 + 30 * Math.sin(t * 5), one);
+  const tenIn = outCubic(prog(t, BURST, BURST + 0.9)), tenOut = prog(t, 14.6, 15.6);
+  if (tenIn > 0 && tenOut < 1) TEN.forEach((L, i) => {
+    const ang = L.a + (t - BURST) * 0.45, r = L.r * outBack(prog(t, BURST, BURST + 1.0));
+    const x = 540 + Math.cos(ang) * r, y = 620 + Math.sin(ang) * r * 0.55 - tenOut * tenOut * 1300 * (0.8 + (i % 3) * 0.15);
+    glow(front, x, y, 110 + 20 * Math.sin(t * 4 + i), tenIn * (1 - tenOut * 0.5));
+  });
+  $('#flash').style.opacity = 0.55 * (1 - prog(t, BURST, BURST + 0.5)) * (t >= BURST ? 1 : 0) + 0.35 * (1 - prog(t, 47.6, 48.3)) * (t >= 47.6 ? 1 : 0);
+}
+
+// ---- the phone -------------------------------------------------------------------------------------------------------
 const tapSrc = (i) => `../../assets/shots/tap-${String(i).padStart(2, '0')}.jpg`;
 for (let i = 0; i <= TAPS; i++) new Image().src = tapSrc(i);
-
-function seek(t) {
-  // top rule draws in, brand fades in, both leave for the closing card
-  $('#topbar').style.transform = `scaleX(${outCubic(prog(t, 0, 0.8))})`;
-  const end = life(t, T.s7);
-  set($('#brand'), prog(t, 0.3, 0.9) * (1 - end.i), `translateY(${(1 - outCubic(prog(t, 0.3, 0.9))) * -20}px)`);
-
-  // 1. the durood, word by word
-  const s1 = life(t, T.s1);
-  set($('#s1'), s1.on ? 1 - s1.o : 0, `translateY(${-60 * s1.o}px)`);
-  set($('#s1 .k'), prog(t, 0.2, 0.7));
-  $$('#s1 .ar span').forEach((w, i) => { const p = outCubic(prog(t, 0.5 + i * 0.28, 1.0 + i * 0.28)); set(w, p, `translateY(${(1 - p) * 40}px)`); });
-  const tr = outCubic(prog(t, 2.6, 3.2)); set($('#s1 .tr'), tr, `translateY(${(1 - tr) * 24}px)`);
-
-  // 2. one -> ten, then the hadith
-  const s2 = life(t, T.s2);
-  set($('#s2'), s2.on ? 1 - s2.o : 0, `translateY(${-60 * s2.o}px)`);
-  const a = T.s2[0];
-  set($('#one'), outCubic(prog(t, a + 0.1, a + 0.5)), `scale(${0.6 + 0.4 * outBack(prog(t, a + 0.1, a + 0.6))})`);
-  set($('#arr'), prog(t, a + 0.6, a + 0.9), `translateX(${(1 - outCubic(prog(t, a + 0.6, a + 1))) * -60}px)`);
-  set($('#ten'), outCubic(prog(t, a + 0.9, a + 1.3)), `scale(${0.5 + 0.5 * outBack(prog(t, a + 0.9, a + 1.5))})`);
-  for (const [id, d] of [['#q', 1.6], ['#qur', 2.4], ['#src', 3.0]]) { const p = outCubic(prog(t, a + d, a + d + 0.6)); set($(id), p, `translateY(${(1 - p) * 30}px)`); }
-
-  // 3-6. the phone rises, its screen changes with each caption
-  const ph = life(t, T.phone, 0.9, 0.5);
-  set($('#phone'), ph.on ? 1 : 0, `translateY(${(1 - ph.i) * 1300 + ph.o * 1300}px) rotate(${(1 - ph.i) * 4}deg)`);
-  CAPS.forEach((r, i) => {
-    const c = life(t, r, 0.45, 0.3), el = $(`.cap[data-c="${i}"]`);
-    set(el, c.on ? c.i * (1 - c.o) : 0, `translateX(${(1 - c.i) * 70 - c.o * 70}px)`);
-    if (i > 0) { const s = life(t, [r[0] - 0.15, i === 3 ? T.phone[1] + 1 : r[1] + 0.25], 0.45, 0.01); set($(`img[data-s="${i}"]`), s.on ? s.i : 0, `translateY(${(1 - s.i) * 120}px)`); }
-  });
-  // real counting: one screenshot per tap, a ripple on the button and a +1 floating off it
+const SC = 560 / 390;                                                // capture px -> screen px
+function drawPhone(t) {
+  const [a, b] = PHONE, inP = outCubic(prog(t, a, a + 1.1)), outP = inOut(prog(t, b - 0.7, b));
+  const ph = $('#phone');
+  vis(ph, t >= a && t < b ? 1 : 0);
+  if (t < a || t >= b) return;
+  // each new screen: a small turn and settle, like a hand bringing the phone closer
+  let ry = 0, rx = 0;
+  for (const s of SWING) { const p = prog(t, s, s + 1.3); if (p > 0 && p < 1) { ry += Math.sin(p * Math.PI) * -9 * (1 - p); rx += Math.sin(p * Math.PI) * 3 * (1 - p); } }
+  const drift = Math.sin(t * 0.8) * 1.6;
+  ph.style.transform = `translateY(${(1 - inP) * 1400 + outP * 1500}px) rotateX(${(1 - inP) * 28 + rx}deg) rotateY(${ry + drift}deg) rotateZ(${(1 - inP) * -6 + outP * 8}deg)`;
+  $('#sheen').style.transform = `translateX(${Math.sin(t * 0.6) * 120 + ry * 12}px)`;
+  // taps
   const k = clamp(Math.floor((t - TAP0) / TAP_EVERY) + 1, 0, TAPS);
-  const img = $('#tapimg'); const src = tapSrc(t < TAP0 ? 0 : k); if (img.getAttribute('src') !== src) img.setAttribute('src', src);
-  const sc = 90 * 596 / 390; // the capture scrolled Today by 90 px (tools/capture.mjs)
-  const since = t - TAP0 - (k - 1) * TAP_EVERY, tapping = t >= TAP0 && k <= TAPS && since < TAP_EVERY + 0.3 && t < CAPS[0][1];
-  const rp = prog(since, 0, 0.32);
-  set($('#ripple'), tapping ? 0.85 * (1 - rp) : 0, `scale(${0.4 + rp * 1.6})`);
-  $('#ripple').style.left = '298px'; $('#ripple').style.top = `${1091 - sc}px`;
-  const fp = prog(since, 0, 0.5);
-  set($('#plus'), tapping ? 1 - fp : 0, `translateY(${-fp * 150}px)`);
-  $('#plus').style.left = '720px'; $('#plus').style.top = `${640 + 22 + 1091 - sc - 90}px`;
-
-  // 7. closing card
-  set($('#s7'), end.i, '');
-  $$('#s7 > *').forEach((el, i) => { const p = outCubic(prog(t, T.s7[0] + 0.15 + i * 0.16, T.s7[0] + 0.7 + i * 0.16)); set(el, p, `translateY(${(1 - p) * 40}px)`); });
+  const img = $('#tapimg'), src = tapSrc(t < TAP0 ? 0 : k); if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+  const since = t - TAP0 - (k - 1) * TAP_EVERY, tapping = t >= TAP0 && k >= 1 && since < 0.4;
+  const rp = prog(since, 0, 0.35), rip = $('#ripple');
+  vis(rip, tapping ? 0.9 * (1 - rp) : 0);
+  rip.style.left = `${TAP_AT.x * SC}px`; rip.style.top = `${TAP_AT.y * SC}px`; rip.style.transform = `scale(${0.3 + rp * 1.7})`;
+  // each tap sends a light up out of the phone into the sky
+  if (inP >= 1 && outP <= 0) {
+    front.globalCompositeOperation = 'lighter';
+    const bx = 242 + 18 + TAP_AT.x * SC, by = 600 + 18 + TAP_AT.y * SC;
+    for (let i = 0; i < TAPS; i++) {
+      const age = t - (TAP0 + i * TAP_EVERY); if (age < 0 || age > 2.4) continue;
+      const p = age / 2.4, side = (i % 2 ? 1 : -1) * (60 + (i * 37) % 140);
+      const x = bx + side * Math.sin(p * 2.2) + Math.sin(age * 3 + i) * 12, y = by - p * p * 1700 - p * 300;
+      glow(front, x, y, 90 - p * 30, (1 - p) * 1.1);
+      if (age < 0.6) { front.globalAlpha = 1 - age / 0.6; front.fillStyle = '#f0cf86'; front.font = '900 56px Inter'; front.fillText('+1', bx + 150, by - 70 - age * 140); }
+    }
+  }
+  // the other screens slide up in turn
+  SCREENS.forEach(([s, at], i) => {
+    const el = $(`img[data-s="${s}"]`), p = inOut(prog(t, at, at + 0.6));
+    vis(el, t >= at ? 1 : 0);
+    el.style.transform = s === 'badges' ? `translateY(${(1 - p) * 1212}px)` : `translateY(${(1 - p) * 140}px) scale(${1.04 - 0.04 * p})`;
+    if (s !== 'badges') el.style.opacity = t >= at ? p : 0;
+  });
 }
-window.DURATION = DURATION; window.seek = seek;
-window.ready = Promise.all([document.fonts.ready, ...$$('img').filter((i) => i.src).map((i) => i.decode().catch(() => {}))]);
 
-// preview: play in real time unless driven by the renderer
+// ---- the odometer ---------------------------------------------------------------------------------------------------------
+const lakh = (n) => { const s = String(Math.round(n)); if (s.length <= 3) return s; const last = s.slice(-3), rest = s.slice(0, -3); return rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + last; };
+
+// ---- the Seerat Circles constellation -------------------------------------------------------------------------------------
+const cityBox = $('#cities');
+CITIES.forEach(([name, x, y]) => { const d = document.createElement('div'); d.className = 'abs city'; d.textContent = name; d.style.left = `${x + 26}px`; d.style.top = `${y - 22}px`; cityBox.append(d); });
+const cityEls = [...cityBox.children];
+function drawCities(t) {
+  const [a, b] = CONST, out = prog(t, b - 0.5, b);
+  if (t < a || t >= b) { cityEls.forEach((e) => vis(e, 0)); return; }
+  front.globalCompositeOperation = 'lighter';
+  front.strokeStyle = '#f0cf86'; front.lineWidth = 2;
+  LINKS.forEach(([i, j], n) => {
+    const p = inOut(prog(t, a + 1.6 + n * 0.18, a + 2.3 + n * 0.18)); if (!p) return;
+    const [, x1, y1] = CITIES[i], [, x2, y2] = CITIES[j];
+    front.globalAlpha = 0.45 * (1 - out); front.beginPath(); front.moveTo(x1, y1); front.lineTo(x1 + (x2 - x1) * p, y1 + (y2 - y1) * p); front.stroke();
+  });
+  CITIES.forEach(([, x, y], i) => {
+    const p = outCubic(prog(t, a + 0.9 + i * 0.22, a + 1.5 + i * 0.22));
+    glow(front, x, y, (70 + 14 * Math.sin(t * 3 + i)) * outBack(p), p * (1 - out), i % 3 ? sprite : greenSprite);
+    vis(cityEls[i], p * (1 - out)); cityEls[i].style.transform = `translateX(${(1 - p) * -16}px)`;
+  });
+}
+
+// ---- one frame ------------------------------------------------------------------------------------------------------------
+function seek(t) {
+  drawSky(t);
+  animText(t);
+  vis($('#brand'), prog(t, 9, 9.8) * (1 - prog(t, 47.2, 47.7)));
+  // the 1 swells; the odometer runs to ten crore
+  $('#n1').style.transform = `scale(${0.7 + 0.3 * outBack(prog(t, 9.3, 10))})`;
+  $('#n10').style.transform = `scale(${0.6 + 0.4 * outBack(prog(t, BURST, BURST + 0.8))})`;
+  const v = 1e8 * Math.pow(inOut(prog(t, 16.6, 20.3)), 1.6);
+  $('#odo').textContent = lakh(v);
+  $('#odo').style.transform += ` scale(${1 + 0.06 * Math.sin(Math.PI * prog(t, 20.1, 20.6))})`;
+  drawPhone(t);
+  drawCities(t);
+  $('#flame').style.transform += ` scale(${0.8 + 0.2 * outBack(prog(t, 38, 38.6))})`;
+  // the dome: present at the start, dimmed behind the phone, glowing at the end
+  const domeA = 1 - 0.55 * prog(t, 21.3, 22.3) * (1 - prog(t, 41.2, 42.2));
+  $('#dome').style.opacity = domeA;
+  $('#dome').style.transform = `translateY(${110 + (1 - outCubic(prog(t, 0, 2.2))) * 120 + prog(t, 41.3, 42) * (1 - prog(t, 47.3, 48.3)) * 60}px)`;
+  $('#haloE').setAttribute('opacity', 0.6 + 0.25 * Math.sin(t * 1.3) + 0.6 * prog(t, 47.6, 49));
+  $('#rays').style.transform += ` rotate(${t * 4}deg)`;
+}
+
+window.DURATION = DURATION; window.CUES = CUES; window.POSTER = 53; window.seek = seek;
+window.ready = Promise.all([document.fonts.ready, document.fonts.load('900 56px Inter'), ...$$('img').filter((i) => i.getAttribute('src')).map((i) => i.decode().catch(() => {}))]);
 if (!navigator.webdriver) {
   let t0 = performance.now();
   document.addEventListener('click', () => { t0 = performance.now(); });
   const frame = () => { seek(((performance.now() - t0) / 1000) % DURATION); requestAnimationFrame(frame); };
-  requestAnimationFrame(frame);
+  window.ready.then(() => requestAnimationFrame(frame));
 } else seek(0);
 </script>
 </body>
