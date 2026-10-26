@@ -255,7 +255,8 @@ try {
     await page.route('**/api/log', (r) => { held.push(r); }); // never answered, like a stalled mobile connection
     const t0 = Date.now();
     await page.fill('#manual', '25'); await page.click('[data-act=manual]');
-    await page.waitForFunction(() => JSON.parse(localStorage.getItem('outbox') || '[]').length === 1, null, { timeout: 20000 }).catch(() => {});
+    const queued = () => page.evaluate(() => JSON.parse(localStorage.getItem('outbox') || '[]').length);
+    while (Date.now() - t0 < 20000 && (await queued()) !== 1) await page.waitForTimeout(250); // (waitForFunction breaks under the page's script policy in older Playwright)
     const waited = Date.now() - t0;
     ok((await page.evaluate(() => JSON.parse(localStorage.getItem('outbox') || '[]').length)) === 1, `a hung send goes to the outbox (after ${Math.round(waited / 1000)} s)`);
     ok(waited < 16000, 'without waiting through retries that would hang too');
