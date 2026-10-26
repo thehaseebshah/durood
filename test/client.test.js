@@ -123,3 +123,8 @@ test('keys built from a list of names exist too, e.g. [\'total\', \'average\'].m
   }
   assert.deepEqual(missing, []);
 });
+
+test('a percentage in Urdu text is kept left-to-right, so "0%" never shows as "%0"', () => {
+  const loose = [...urSrc.matchAll(/(\\u2066)?\$\{\w+\}%(\\u2069)?/g)].filter((m) => !m[1] || !m[2]).map((m) => m[0]);
+  assert.deepEqual(loose, [], 'wrap it as \\u2066${n}%\\u2069');
+});

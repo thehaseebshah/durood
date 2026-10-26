@@ -985,7 +985,7 @@ function settings() {
   <div class="uname">${esc(m.username)}</div>
   ${m.displayName ? `<div class="pname padx" dir="auto">${esc(m.displayName)}</div>` : ''}
   ${m.bio ? `<p class="pbio padx" dir="auto">${esc(m.bio)}</p>` : ''}
-  <div class="muted" dir="ltr">${esc(m.email)} · ${esc(m.phone)}</div>
+  <div class="muted"><bdi dir="ltr">${esc(m.email)}</bdi> · <bdi dir="ltr">${esc(m.phone)}</bdi></div>
   ${m.emailVerified ? '' : `<div class="notice">${t('email_unconfirmed')} <button class="linkbtn" data-act="resend">${t('resend')}</button></div>`}
   <h3>${t('appearance')}</h3>
   <label class="padx">${t('language')}</label>
@@ -1088,7 +1088,7 @@ async function loadBurhan() {
 }
 const wdName = (d) => t('weekdays')[d];
 const mamulaatBars = (m) => !m ? '' : `<div class="mam"><div class="row between"><b>${t('mam_title')}</b><span class="muted">${m.average == null ? '' : t('mam_avg')(m.average)}</span></div>
-  <div class="bars" aria-label="${esc(t('mam_title'))}">${m.series.map((x) => `<i title="${esc(x.day)}${x.percent == null ? '' : ` · ${x.percent}%`}" class="${x.percent == null ? 'none' : ''}" style="height:${x.percent == null ? 6 : Math.max(6, x.percent)}%"></i>`).join('')}</div>
+  <div class="bars" aria-label="${esc(t('mam_title'))}">${m.series.map((x) => `<i title="${esc(x.day)}${x.percent == null ? '' : ` · \u2066${x.percent}%\u2069`}" class="${x.percent == null ? 'none' : ''}" style="height:${x.percent == null ? 6 : Math.max(6, x.percent)}%"></i>`).join('')}</div>
   <div class="muted">${m.today == null ? t('mam_none_today') : t('mam_today')(m.today)}</div></div>`;
 const wdList = (a) => a.weekdays || (a.weekday == null ? [] : [a.weekday]);
 // "Every day", "Every Friday", or "Every Sat, Sun" (the week starts on Monday here, as in Pakistan)
@@ -1187,7 +1187,7 @@ function burhanToday() {
   const b = S.bh;
   if (!b || (!b.today.length && !(b.mamulaat && b.mamulaat.today != null))) return '';
   return `${b.today.map(taskRow).join('')}
-  ${b.mamulaat && b.mamulaat.today != null ? `<button class="rowlink" data-act="tab" data-tab="progress"><span>${t('mam_title')}</span><b>${b.mamulaat.today}%</b></button>` : ''}`;
+  ${b.mamulaat && b.mamulaat.today != null ? `<button class="rowlink" data-act="tab" data-tab="progress"><span>${t('mam_title')}</span><b>${N(`${b.mamulaat.today}%`)}</b></button>` : ''}`;
 }
 
 function whoSees() {
@@ -1236,12 +1236,12 @@ function burhanCaravan() {
   const loading = !S.bhLists && (b.roles.saaliks || b.roles.razakars || b.roles.requests);
   if (loading) return skel();
   const reqs = rq.map((r) => `<div class="circlecard"><b>${esc(r.username)}</b>${r.city ? ` · ${esc(r.city)}` : ''}<p class="muted">${t('request_text')}</p><div class="row"><button class="blk fill1" data-act="bhaccept" data-u="${esc(r.username)}"><span>${t('accept')}</span><b class="ar">→</b></button><button class="chip" data-act="bhdecline" data-u="${esc(r.username)}">${t('decline')}</button></div></div>`).join('');
-  const saliks = sa.length ? `<ul class="lb">${sa.map((x) => `<li><button class="rowbtn" data-act="opensaalik" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('durood_week')(fmt(x.duroodWeek))}${x.mamulaatToday == null ? '' : ` · ${t('mam_short')} ${x.mamulaatToday}%`}</small></span><span class="score">${U(x.duroodToday, 'durood')}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('saaliks_none')}</p>`;
+  const saliks = sa.length ? `<ul class="lb">${sa.map((x) => `<li><button class="rowbtn" data-act="opensaalik" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('durood_week')(fmt(x.duroodWeek))}${x.mamulaatToday == null ? '' : ` · ${t('mam_short')} ${N(`${x.mamulaatToday}%`)}`}</small></span><span class="score">${U(x.duroodToday, 'durood')}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('saaliks_none')}</p>`;
   const allTags = S.bhLists?.tags || [], tf = S.teamFilter && allTags.some((x) => x.tag === S.teamFilter) ? S.teamFilter : null;
   const shown = tf ? ra.filter((x) => (x.tags || []).includes(tf)) : ra;
   const chips = allTags.length ? `<div class="chips tagbar"><button class="chip ${tf ? '' : 'solid'}" data-act="teamf" data-tag="">${t('team_all')} ${N(String(ra.length))}</button>${allTags.map((x) => `<button class="chip ${tf === x.tag ? 'solid' : ''}" data-act="teamf" data-tag="${esc(x.tag)}">#${esc(x.tag)} ${N(String(x.n))}</button>`).join('')}</div>` : (ra.length ? `<p class="hint padx">${t('team_hint')}</p>` : '');
   const teamForm = tf ? assignForm('teamassign', t('team_assign')(esc(tf))) : '';
-  const razakars = ra.length ? `${chips}${teamForm}<ul class="lb">${shown.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.asks ? ` · <b>${t('asks_n')(x.asks)}</b>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${x.routinePercent}%`}${(x.tags || []).length ? `<span class="tagline">${x.tags.map((g) => `<em class="ttag">#${esc(g)}</em>`).join(' ')}</span>` : ''}</small></span><span class="score">${U(x.duroodWeek, 'durood')}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('razakars_none')}</p>`;
+  const razakars = ra.length ? `${chips}${teamForm}<ul class="lb">${shown.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(x.city)} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.asks ? ` · <b>${t('asks_n')(x.asks)}</b>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${N(`${x.routinePercent}%`)}`}${(x.tags || []).length ? `<span class="tagline">${x.tags.map((g) => `<em class="ttag">#${esc(g)}</em>`).join(' ')}</span>` : ''}</small></span><span class="score">${U(x.duroodWeek, 'durood')}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('razakars_none')}</p>`;
   return `${rq.length ? fold('preq', t('requests_title'), N(String(rq.length)), reqs) : ''}
   ${fold('psaliks', t('saaliks_title'), N(String(sa.length)), saliks)}
   ${fold('prazakars', t('razakars_title'), N(String(ra.length)), razakars)}`;
