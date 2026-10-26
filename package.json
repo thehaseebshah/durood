@@ -15,6 +15,9 @@
     "audit": "node server/audit.js",
     "icons": "node scripts/make-icons.js",
     "stress": "node --no-warnings scripts/stress.mjs",
-    "test:dates": "sh scripts/test-dates.sh"
+    "test:dates": "sh scripts/test-dates.sh",
+    "guide": "node scripts/guide-build.mjs",
+    "guide:pdf": "node scripts/guide-build.mjs --pdf",
+    "guide:shots": "node --no-warnings scripts/guide-shots.mjs"
   }
 }
