@@ -280,3 +280,21 @@ test('display name: the owner can give the caravan a name in Urdu; it shows on t
   assert.equal((await api('DELETE', `/api/admin/caravans/${id}/display-name`, { headers: admin })).ok, true);
   assert.equal((await view(m)).caravan.displayName, '', 'an admin cleared it');
 });
+
+test('falling behind: owner sees quiet members after a grace week, worst first, and can remove them', async () => {
+  const o = await signup('lag_o'), a = await signup('lag_a'), b = await signup('lag_b'), c = await signup('lag_c'), d = await signup('lag_d');
+  await make(o, 'lagcaravan');
+  for (const m of [a, b, c, d]) await joined(o, m);
+  const joinBack = (name, days) => db.prepare('UPDATE caravan_members SET joined_at = ? WHERE user_id = (SELECT id FROM users WHERE username = ?)').run(Date.now() - days * 86400e3, name);
+  const recited = (name, daysAgo) => db.prepare('INSERT OR REPLACE INTO daily (user_id, day, count) VALUES ((SELECT id FROM users WHERE username = ?), ?, 10)').run(name, dayStr(dayNum(dayOf()) - daysAgo));
+  assert.deepEqual((await view(o)).lagging, [], 'new members are given a grace period');
+  for (const [name] of [['lag_a'], ['lag_b'], ['lag_c'], ['lag_d']]) joinBack(name, 20);
+  recited('lag_a', 5);   // quiet for 5 days
+  recited('lag_b', 1);   // active
+  recited('lag_c', 3);   // quiet for 3 days
+  const names = (await view(o)).lagging.map((m) => [m.username, m.quietDays]);
+  assert.deepEqual(names, [['lag_d', null], ['lag_a', 5], ['lag_c', 3]], 'never first, then the longest silence; the active member and the owner are left out');
+  assert.equal((await view(a)).lagging, undefined, 'only the owner sees the list');
+  assert.equal((await api('POST', '/api/caravan/remove', { token: o.token, body: { username: 'lag_d' } })).status, 200);
+  assert.equal((await view(o)).lagging.length, 2);
+});

@@ -11,7 +11,7 @@ Suggested order: 3, 2, 1, 6, 5, then 4.
 
 ---
 
-## 1. Show lagging caravan members so the owner can remove them (S to M)
+## 1. Show lagging caravan members so the owner can remove them (S to M) — BUILT 26 Oct (Remove only; the Nudge is not built)
 
 **Asked:** the app should show members of a caravan who are lagging behind, so the caravan manager can remove them.
 

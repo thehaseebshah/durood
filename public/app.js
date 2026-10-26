@@ -882,6 +882,8 @@ function cvHome(cv) {
   ${ks.active ? `<div class="karwan"><b>${uiIcon('flame', 16, 1.8)} ${t('karwan_streak')(ks.streak)}</b>
       <div>${t('karwan_today')(fmt(ks.today), fmt(ks.size))}</div>
       ${ks.missing.length ? `<div class="muted">${t('karwan_missing')} ${ks.missing.map((n) => `<span class="chipname">${esc(n)}</span>`).join(' ')}</div>` : ''}</div>` : `<p class="note">${t('karwan_need')}</p>`}
+  ${c.owner && cv.lagging?.length ? `<h3>${t('cv_lag_title')} (${fmt(cv.lagging.length)})</h3><p class="muted padx">${t('cv_lag_hint')}</p>
+  <ul class="lb lag">${cv.lagging.map((m) => `<li>${av(m, 34)}<span class="name">${esc(m.username)}<small>${m.quietDays == null ? t('cv_lag_never') : t('cv_lag_days')(m.quietDays)}</small></span><button class="chip" data-act="cvremove" data-u="${esc(m.username)}" aria-label="${esc(t('cv_remove'))}: ${esc(m.username)}">${t('cv_remove_short')}</button></li>`).join('')}</ul>` : ''}
   <h3>${t('cv_members')} (${fmt(c.members)})</h3>
   <ul class="lb">${shown.map((m) => cvRow(m, c.owner && !m.owner ? `<button class="chip" data-act="cvremove" data-u="${esc(m.username)}" aria-label="${esc(t('cv_remove'))}" title="${esc(t('cv_remove'))}">✕</button>` : c.owner ? '<span class="xslot" aria-hidden="true"></span>' : '')).join('')}</ul>
   ${cv.members.length > 8 && !S.cvAll ? `<button class="chip more" data-act="cvall">${t('cv_show_all')(fmt(cv.members.length))}</button>` : ''}

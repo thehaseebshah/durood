@@ -264,6 +264,21 @@ caravanHooks.afterLog = afterLog;
 
 // ---- what a member sees ---------------------------------------------------------------------------------------------------------
 const MILESTONES = [10_000, 100_000, 1_000_000];
+/** Owner's list of members who have gone quiet: nothing recited for LAG_DAYS days (or ever), after a grace period from joining. Worst first. */
+const LAG_DAYS = 3, GRACE_DAYS = 7;
+function lagging(caravanId, members, ownerName, today) {
+  const out = [];
+  for (const m of members) {
+    if (m.username === ownerName || m.held) continue;
+    if (dayNum(today) - dayNum(dayOf(m.joined_at)) < GRACE_DAYS) continue;
+    const last = one('SELECT MAX(day) d FROM daily WHERE user_id = ? AND count > 0', m.uid)?.d || null;
+    const quiet = last ? dayNum(today) - dayNum(last) : null;
+    if (quiet !== null && quiet < LAG_DAYS) continue;
+    out.push({ username: m.username, displayName: m.dn, avatar: avatarUrl(m.uid, m.av), quietDays: quiet, week: m.week });
+  }
+  // never recited first, then the longest silence
+  return out.sort((x, y) => (y.quietDays ?? 1e9) - (x.quietDays ?? 1e9) || x.username.localeCompare(y.username));
+}
 export function view(userId) {
   const c = caravanOf(userId);
   const invitations = all(`SELECT c.id, c.name, (SELECT COUNT(*) FROM caravan_members cm JOIN users u ON u.id = cm.user_id WHERE cm.caravan_id = c.id AND ${LIVE}) members, ci.created_at at
@@ -289,6 +304,7 @@ export function view(userId) {
     members: members.map((m) => ({ username: m.username, displayName: m.dn, avatar: avatarUrl(m.uid, m.av), city: m.city, total: m.total, week: m.week, today: !!m.today, owner: false, joinedAt: m.joined_at })),
   };
   for (const m of out.members) m.owner = m.username === out.caravan.ownerName;
+  if (owner) out.lagging = lagging(c.id, members, out.caravan.ownerName, today);
   if (owner) out.pending = all(`SELECT u.id uid, u.avatar_v av, u.username, u.city, ci.kind, ci.created_at at FROM caravan_invites ci JOIN users u ON u.id = ci.user_id WHERE ci.caravan_id = ? AND ${LIVE} ORDER BY ci.created_at DESC LIMIT 100`, c.id).map(person);
   return out;
 }

@@ -468,3 +468,8 @@ Also: the big counter and the celebration number are measured after drawing and 
 - Public profiles carry only a `whatsapp` true/false flag. The chat address comes from `GET /api/wa/:username`: signed-in only, 40 per hour per member, 404 for yourself, hidden, deleted or suspended members. Each open is logged in `wa_opens` (kept 90 days).
 - Existing members see a one-time card on Today (local flag `wanote`) with a **Hide my number** button.
 - Not built: a block-member button.
+
+## 50. Falling behind (caravan owner)
+
+- The Caravan page shows the owner a private **Falling behind** list: members who have recited nothing for 3 days (or never), once they have been in the caravan 7 days. Worst first; each has a **Remove** button (the usual confirmation). The owner, held members and everyone else see nothing. Computed in `lagging()` in `server/caravan.js` and returned as `lagging` in the owner's caravan view. Removing members changes the caravan streak maths, as the existing remove already does.
+- Not built: a **Nudge** push (there is no push helper for member-to-member messages yet).
