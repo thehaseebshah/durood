@@ -96,6 +96,14 @@ These are in `npm test` and `scripts/e2e.mjs`. Each new browser check was confir
 
 **Totals now:** 194 unit tests and the full browser suite pass, along with the wrong-date, random-input (2,190 requests to 146 routes, 0 server errors) and 60-member load tests.
 
+## Member guide (from another session, merged in)
+
+`guide/` holds 13 beginner tutorials as a small website and a PDF (`guide/seerah-quest-guide.pdf`), with screenshots of the app, merged from the `guide` branch.
+- `npm run guide` builds the pages; `npm run guide:pdf` also prints the PDF.
+- `npm run guide:shots` retakes the screenshots on a throwaway database. They were retaken after the merge, so History shows the new date format.
+- After a visible change to the app, run `guide:shots` and then `guide:pdf`.
+- The `promos` branch (two promo videos) shares no history with the app and was left separate.
+
 ## What is left
 
 **Needs a person or a decision**
