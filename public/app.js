@@ -762,7 +762,7 @@ function feedItem(it) {
         : `<button class="chip cheer ${it.cheered ? 'on' : ''}" data-act="cheer" data-id="${it.id}" ${it.cheered ? 'disabled' : ''} aria-pressed="${it.cheered}">${t('mashallah')}${it.cheers ? ` ${N(fmt(it.cheers))}` : ''}</button>`}</div>`;
   }
   if (it.type === 'city') {
-    return `<div class="fitem ms"><div class="flabel">${uiIcon('star', 12, 2)} ${t('city_label')}<small class="when">${ago(it.at)}</small></div><b>${t('city_item')(it.rank, esc(cityName(it.label)))}</b></div>`;
+    return `<div class="fitem ms"><div class="flabel">${uiIcon('star', 12, 2)} ${t('city_label')}<small class="when">${ago(it.at)}</small></div><b>${t('city_item')(it.rank, esc(cityName(String(it.label || '').split(',')[0].trim())))}</b></div>`;
   }
   if (it.type === 'crore') {
     return `<div class="fitem ms"><div class="flabel">${uiIcon('star', 12, 2)} ${t('challenge_title')}<small class="when">${ago(it.at)}</small></div><b>${t('crore_text')(it.k)}</b></div>`;
