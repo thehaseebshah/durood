@@ -413,7 +413,7 @@ try {
 
   // ---- Tap targets: on a phone nothing a finger presses is under 24 px either way (WCAG 2.2 target size), every page with folds open ----
   {
-    const small = new Set();
+    const small = new Set(), ids = new Set();
     for (const tab of ['home', 'feed', 'rank', 'caravan', 'qabila', 'tasks', 'people', 'progress', 'settings']) {
       const page = await open(host.token); await go(page, tab);
       await page.$$eval('[data-act=fold][aria-expanded=false]', (els) => els.forEach((e) => e.click())).catch(() => {}); await page.waitForTimeout(400);
@@ -421,9 +421,13 @@ try {
         .filter((e) => e.offsetParent !== null && !e.closest('p, li small, .tagl')) // a link inside a sentence is exempt (WCAG "inline")
         .map((e) => { const r = e.getBoundingClientRect(); return r.width && (r.width < 24 || r.height < 24) ? `${e.tagName.toLowerCase()}[${e.dataset.act || ''}] ${Math.round(r.width)}x${Math.round(r.height)}` : null; })
         .filter(Boolean))).forEach((x) => small.add(`${tab}: ${x}`));
+      (await page.evaluate(() => { const c = {}; document.querySelectorAll('[id]').forEach((e) => { c[e.id] = (c[e.id] || 0) + 1; });
+        return Object.entries(c).filter(([, n]) => n > 1).map(([k]) => `id ${k} used twice`).concat([...document.querySelectorAll('label[for]')].filter((l) => !document.getElementById(l.htmlFor)).map((l) => `label for missing ${l.htmlFor}`)); }))
+        .forEach((x) => ids.add(`${tab}: ${x}`));
       await page.close();
     }
     ok(small.size === 0, `every tap target is at least 24 px${small.size ? ': ' + [...small].slice(0, 6).join('; ') : ''}`);
+    ok(ids.size === 0, `no id is used twice and every label points at a field${ids.size ? ': ' + [...ids].slice(0, 6).join('; ') : ''}`);
   }
 
   // ---- Keyboard: every stop Tab reaches on every page shows where it is (an outline or a ring), light and dark --------------------
