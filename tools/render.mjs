@@ -49,7 +49,7 @@ const draw = async (t, type = 'jpeg') => {
 // frames [a, b) to an MP4 with no sound
 async function frames(a, b, out) {
   const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-c:v', 'mjpeg', '-framerate', String(fps), '-i', '-', '-an',
-    '-c:v', 'libx264', '-preset', 'slow', '-crf', '18', '-pix_fmt', 'yuv420p', '-profile:v', 'high', out], { stdio: ['pipe', 'inherit', 'inherit'] });
+    '-c:v', 'libx264', '-preset', 'slow', '-crf', '21', '-pix_fmt', 'yuv420p', '-profile:v', 'high', out], { stdio: ['pipe', 'inherit', 'inherit'] });
   for (let f = a; f < b; f++) {
     const img = await draw(f / fps);
     if (!ff.stdin.write(img)) await new Promise((r) => ff.stdin.once('drain', r));
