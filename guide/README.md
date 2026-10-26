@@ -1,6 +1,7 @@
 # Seerah Quest Guide
 
 Beginner tutorials for members, as a small website (`guide/*.html`) and one PDF (`guide/seerah-quest-guide.pdf`).
+A separate, designed 10-page tour of every feature is `guide/seerah-quest-features.pdf`, drawn by `scripts/guide-brochure.mjs` (edit the pages there; it uses the app's own icons and badges).
 Open `guide/index.html` in a browser to read it; it is plain HTML and CSS with no build step to view.
 
 ## Edit a tutorial
@@ -20,6 +21,7 @@ The order of tutorials and their parts is the `PARTS` list at the top of `script
 npm run guide          # the HTML pages and print.html
 npm run guide:pdf      # the same, plus the PDF (needs Playwright with Chromium)
 npm run guide:shots    # retake every screenshot in guide/img from the current app (Playwright)
+npm run guide:brochure # the designed 10-page feature tour, guide/seerah-quest-features.pdf (Playwright)
 ```
 
 `guide:shots` starts the app on a throwaway database, fills it with a made-up community (a week of durood, two caravans, a lecture, news, reflections, tasks) and photographs each screen on a 390 px phone. Retake the pictures after a change to a screen, then rebuild the PDF.

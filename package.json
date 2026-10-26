@@ -18,6 +18,7 @@
     "test:dates": "sh scripts/test-dates.sh",
     "guide": "node scripts/guide-build.mjs",
     "guide:pdf": "node scripts/guide-build.mjs --pdf",
-    "guide:shots": "node --no-warnings scripts/guide-shots.mjs"
+    "guide:shots": "node --no-warnings scripts/guide-shots.mjs",
+    "guide:brochure": "node scripts/guide-brochure.mjs"
   }
 }

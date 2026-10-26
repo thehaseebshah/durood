@@ -136,7 +136,7 @@ const scrollTo = async (page, sel) => { await page.locator(sel).first().evaluate
   const page = await open(null, { intro: false });
   await shot(page, 'intro-1');
   await act(page, '[data-act=intronext]');
-  await act(page, '[data-act=intronext]');
+  await act(page, '[data-act=intronext]'); await shot(page, 'intro-3');
   await act(page, '[data-act=intronext]'); await shot(page, 'login');
   await act(page, '[data-mode=register]');
   await page.fill('[name=invite]', 'ayesha_k'); await page.locator('[name=invite]').blur(); await page.waitForTimeout(600);
@@ -240,6 +240,24 @@ const me = tok.ayesha_k;
   const ur = await open(me); await ur.evaluate(() => document.querySelector('[data-act=setlang][data-l=ur]').click()); await ur.waitForTimeout(2000); await ur.evaluate(() => scrollTo(0, 0)); await shot(ur, 'today-urdu');
   await ur.evaluate(() => document.querySelector('[data-act=setlang][data-l=en]').click()); await ur.waitForTimeout(1000); await ur.close();
   const wide = await open(me, { w: 1280, h: 800 }); await shot(wide, 'today-desktop'); await wide.close();
+}
+// extra screens for the feature brochure: dark versions and the lecture player
+{
+  const page = await open(me, { mode: 'dark' });
+  await go(page, 'feed'); await shot(page, 'feed-dark');
+  await go(page, 'rank'); await page.evaluate(() => document.querySelector('[data-act=board][data-type=league]').click()); await page.waitForTimeout(1200);
+  await page.evaluate(() => document.querySelector('.seg.five')?.scrollIntoView({ block: 'start' })); await page.evaluate(() => scrollBy(0, -70)); await page.waitForTimeout(300);
+  await shot(page, 'league-dark');
+  await go(page, 'caravan'); await shot(page, 'caravan-dark');
+  await go(page, 'progress'); await shot(page, 'me-dark');
+  await page.close();
+  const lp = await open(me, { folds: { seerah: true } });
+  // a calm stand-in for the YouTube embed, so no real video appears in the pictures
+  await lp.route(/youtube/, (r) => r.fulfill({ contentType: 'text/html', body: `<body style="margin:0;height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 30% 20%,#3a2f6b,#0c0e2b 70%);font:600 15px system-ui;color:#f0cf86;text-align:center">
+    <div><svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="rgba(240,207,134,.15)" stroke="#f0cf86" stroke-width="2"/><path d="M26 20l18 12-18 12z" fill="#f0cf86"/></svg><div style="margin-top:10px">The Hijrah: leaving Makkah for Madinah</div><div style="opacity:.7;font-weight:400;font-size:13px">Seerat Circle</div></div></body>` }));
+  await lp.evaluate(() => document.querySelector('[data-act=watch]').click()); await lp.waitForTimeout(1500);
+  await shot(lp, 'lecture');
+  await lp.close();
 }
 
 await browser.close();
