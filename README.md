@@ -9,10 +9,12 @@ This branch holds content only; the app lives on the main branch. PDF guides can
 | Path | What it is |
 |---|---|
 | `videos/NNN-slug/` | One video per folder: `scene.html` (the source), the rendered `.mp4`, `poster.jpg` (cover) and `post.md` (storyboard, captions, text to post) |
-| `assets/shots/` | Real screenshots of the app (dark mode), captured by `tools/capture.mjs` |
+| `assets/shots/` | Real screenshots of the app (dark mode), captured by `tools/capture.mjs` (used by 001) |
+| `assets/tour/` | Every screen of the app for the full tour, captured by `tools/capture-tour.mjs`: phone views, whole pages, animation frames and `manifest.json` (page heights and where each UI element sits) |
 | `assets/fonts/`, `assets/icon-512.png` | The app's own fonts (Inter, Noto Nastaliq Urdu, Amiri) and icon |
 | `tools/capture.mjs` | Starts the app on a throwaway database, seeds a demo community over the past week, screenshots the screens |
-| `tools/render.mjs` | Renders a `scene.html` to MP4 frame by frame (exact timing on any machine) |
+| `tools/capture-tour.mjs` | The same for every screen, with whole scrolling pages, frame-by-frame animations and measured element positions for spotlights |
+| `tools/render.mjs` | Renders a `scene.html` to MP4 frame by frame (exact timing on any machine); `--jobs 4` splits the work over four browsers |
 | `tools/sfx.mjs` | Synthesises the sound effects from the scene's cue list (no music, no samples) |
 
 ## Videos
@@ -20,6 +22,7 @@ This branch holds content only; the app lives on the main branch. PDF guides can
 | # | Title | Length | Kind |
 |---|---|---|---|
 | 001 | [Every durood counts](videos/001-every-durood-counts/post.md) | 56 s | Promo |
+| 002 | [The full tour](videos/002-the-full-tour/post.md) | 4 min 11 s | Promo: every feature, chapter by chapter |
 
 ## Making or changing a video
 
@@ -29,6 +32,7 @@ Needs Node 22.13+, Playwright with Chromium, and ffmpeg.
 # 1. a checkout of the app next to this one (only needed to refresh screenshots)
 git worktree add ../app claude/durood-social-rpg-app-cwz6av
 APP_DIR=../app node tools/capture.mjs assets/shots
+APP_DIR=../app node tools/capture-tour.mjs assets/tour
 
 # 2. preview: open videos/001-every-durood-counts/scene.html through any static server
 #    (it plays in real time; click to restart). Check one frame:
@@ -36,9 +40,10 @@ node tools/render.mjs videos/001-every-durood-counts --still 12.4
 
 # 3. render the MP4 and poster (a few minutes for a minute of video; --silent for no sound effects)
 node tools/render.mjs videos/001-every-durood-counts
+node tools/render.mjs videos/002-the-full-tour --jobs 4
 ```
 
-A new video: copy a folder to `videos/NNN-slug/`, edit the text (each element's `data-in` / `data-out` say when it appears and leaves) and the timeline at the top of its `<script>`, render.
+A new video: copy a folder to `videos/NNN-slug/`, edit the text (each element's `data-in` / `data-out` say when it appears and leaves) and the timeline at the top of its `<script>`, render. In 002 the whole video is the `STORY` list at the top of the script: chapters, phone segments with their steps (a measured element or a rectangle to zoom to and spotlight, with its English and Urdu callout), decks, sayings.
 
 ## House rules
 
