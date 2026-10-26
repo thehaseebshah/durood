@@ -424,6 +424,22 @@ try {
     await page.close();
   }
 
+  // ---- Reduce motion (the phone's setting): pages, the add sheet and the celebration after adding do not animate --------------
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+    const page = await ctx.newPage(); page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto(B + '/'); await page.evaluate((t) => { localStorage.setItem('token', t); localStorage.setItem('intro', '1'); }, host.token); await page.goto(B + '/'); await page.waitForTimeout(900);
+    const moving = new Set();
+    const grab = async (w) => (await page.evaluate(() => document.getAnimations().filter((a) => a.playState === 'running' && (a.effect?.getTiming?.().duration || 0) > 50)
+      .map((a) => `${a.animationName || a.transitionProperty || 'animation'} on ${a.effect?.target?.className || ''}`))).forEach((x) => moving.add(`${w}: ${x}`));
+    for (const tab of ['home', 'feed', 'rank', 'caravan', 'qabila', 'progress', 'settings']) { await page.evaluate((t) => (document.querySelector(`.sitem[data-tab=${t}]`) || document.querySelector(`[data-tab=${t}]`))?.click(), tab); await page.waitForTimeout(80); await grab(tab); await page.waitForTimeout(400); }
+    await page.click('.hadd').catch(() => {}); await page.waitForTimeout(80); await grab('add sheet'); await page.keyboard.press('Escape');
+    await page.evaluate(() => document.querySelector('[data-tab=home]').click()); await page.waitForTimeout(500);
+    await page.fill('#manual', '10'); await page.click('[data-act=manual]'); await page.waitForTimeout(150); await grab('after adding');
+    ok(moving.size === 0, `with reduce motion on, nothing animates${moving.size ? ': ' + [...moving].slice(0, 5).join('; ') : ''}`);
+    await ctx.close();
+  }
+
   // ---- Tap targets: on a phone nothing a finger presses is under 24 px either way (WCAG 2.2 target size), every page with folds open ----
   {
     const small = new Set(), ids = new Set();
