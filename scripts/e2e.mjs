@@ -385,6 +385,21 @@ try {
     ok(frames.size === 0, `no old-style hard frames anywhere${frames.size ? ': ' + [...frames].slice(0, 5).join('; ') : ''}`);
   }
 
+  // ---- Tap targets: on a phone nothing a finger presses is under 24 px either way (WCAG 2.2 target size), every page with folds open ----
+  {
+    const small = new Set();
+    for (const tab of ['home', 'feed', 'rank', 'caravan', 'qabila', 'tasks', 'people', 'progress', 'settings']) {
+      const page = await open(host.token); await go(page, tab);
+      await page.$$eval('[data-act=fold][aria-expanded=false]', (els) => els.forEach((e) => e.click())).catch(() => {}); await page.waitForTimeout(400);
+      (await page.evaluate(() => [...document.querySelectorAll('button, a[href], [role=button], [role=switch], input:not([type=hidden]), select')]
+        .filter((e) => e.offsetParent !== null && !e.closest('p, li small, .tagl')) // a link inside a sentence is exempt (WCAG "inline")
+        .map((e) => { const r = e.getBoundingClientRect(); return r.width && (r.width < 24 || r.height < 24) ? `${e.tagName.toLowerCase()}[${e.dataset.act || ''}] ${Math.round(r.width)}x${Math.round(r.height)}` : null; })
+        .filter(Boolean))).forEach((x) => small.add(`${tab}: ${x}`));
+      await page.close();
+    }
+    ok(small.size === 0, `every tap target is at least 24 px${small.size ? ': ' + [...small].slice(0, 6).join('; ') : ''}`);
+  }
+
   // ---- Admin page: key sign-in, every tab opens, nothing runs off a phone screen -----------------------------------
   for (const [w, label] of [[1280, 'desktop'], [390, 'phone']]) {
     const page = await browser.newPage({ viewport: { width: w, height: 860 } });

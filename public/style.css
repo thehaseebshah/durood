@@ -1034,6 +1034,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px
 .swrow + .swrow { border-top: .5px solid var(--line); }
 .sw { flex: none; width: 51px; height: 31px; border-radius: 99px; border: 0; padding: 0; background: var(--track); position: relative; cursor: pointer; transition: background .2s; }
 .sw i { position: absolute; top: 2px; inset-inline-start: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, .22); transition: transform .22s cubic-bezier(.3, .7, .3, 1.2); }
+.sw::before { content: ''; position: absolute; inset: -8px -6px; } /* 47 px to tap, the switch still drawn at iOS size */
 .sw[aria-checked=true] { background: #34c759; }
 .sw[aria-checked=true] i { transform: translateX(20px); }
 html[dir=rtl] .sw[aria-checked=true] i { transform: translateX(-20px); }
@@ -1059,7 +1060,7 @@ html[dir=rtl] .sw[aria-checked=true] i { transform: translateX(-20px); }
 .tab-settings .uname { font-size: 1.4rem; letter-spacing: -.3px; margin-top: 6px; }
 .tab-settings .notice { margin: 14px 14px 0; padding: 12px 16px; border: 0; border-radius: 12px; background: #fff4d6; color: #5c4300; font-weight: 500; }
 html[data-mode=dark] .tab-settings .notice { background: #2f2508; color: #ffd98a; }
-.tab-settings .notice .linkbtn { display: block; margin-top: 6px; padding: 0; }
+.tab-settings .notice .linkbtn { display: block; margin: -6px 0 -12px; padding: 12px 0; } /* a full finger's height to tap, the same look */
 /* stat cells everywhere: the unit sits on its own line under the label, so every cell reads the same */
 .stats span .u { display: block; margin: 1px 0 0; }
 /* Me: the name is a heading under the large title, not a second large title */
