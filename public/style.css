@@ -1119,3 +1119,6 @@ html[data-mode=dark] .seg:not(.five) button.on { background: #636366; color: #ff
 .lb li:has(.avbtn) { cursor: pointer; } /* the whole row opens the member's profile */
 .profile .stats span { display: block; text-align: start; } /* labels line up under their numbers, as on the Me page (the sheet itself is centred) */
 .fitem img.shot { height: auto; } /* with the photo's width and height known, the feed keeps its space while it loads */
+/* large phone text: a chip in a wrapping row breaks onto two lines instead of pushing past the card */
+.wrapx > .chip { max-width: 100%; white-space: normal; text-align: start; }
+.cta + .wrapx { margin-top: 10px; }

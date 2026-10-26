@@ -411,6 +411,19 @@ try {
     await page.close();
   }
 
+  // ---- Large phone text (130%): on a small phone nothing on any page runs past the right edge ---------------------------------
+  {
+    const page = await open(host.token, { w: 360, h: 780 }); const past = new Set();
+    await page.addStyleTag({ content: 'html { font-size: 130% !important; }' });
+    for (const tab of ['home', 'feed', 'rank', 'caravan', 'qabila', 'tasks', 'people', 'progress', 'settings']) {
+      await go(page, tab);
+      (await page.evaluate(() => [...document.querySelectorAll('main *')].filter((e) => { const b = e.getBoundingClientRect(); return b.width && b.right > innerWidth + 2 && !e.closest('.seg.five, .earned'); })
+        .slice(0, 3).map((e) => `${e.tagName.toLowerCase()}.${String(e.className).split(' ')[0]}`))).forEach((x) => past.add(`${tab}: ${x}`));
+    }
+    ok(past.size === 0, `with large text nothing runs off a small phone${past.size ? ': ' + [...past].slice(0, 6).join('; ') : ''}`);
+    await page.close();
+  }
+
   // ---- Tap targets: on a phone nothing a finger presses is under 24 px either way (WCAG 2.2 target size), every page with folds open ----
   {
     const small = new Set(), ids = new Set();
