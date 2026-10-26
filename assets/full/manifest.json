@@ -1,0 +1,11885 @@
+{
+ "intro-0": {
+  "view": true,
+  "sy": 0,
+  "r": {},
+  "heads": []
+ },
+ "intro-1": {
+  "view": true,
+  "sy": 0,
+  "r": {},
+  "heads": []
+ },
+ "intro-2": {
+  "view": true,
+  "sy": 0,
+  "r": {},
+  "heads": []
+ },
+ "intro-3": {
+  "view": true,
+  "sy": 0,
+  "r": {},
+  "heads": [
+   [
+    "USERNAME, EMAIL OR PHONE PASSWORD Log in → Forgot password?",
+    0,
+    465,
+    390,
+    304
+   ],
+   [
+    "USERNAME, EMAIL OR PHONE",
+    20,
+    465,
+    350,
+    19
+   ],
+   [
+    "PASSWORD",
+    20,
+    548,
+    350,
+    19
+   ]
+  ]
+ },
+ "register": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "invite": [
+    20,
+    487,
+    350,
+    47
+   ],
+   "waitlist": [
+    86,
+    571,
+    106,
+    44
+   ],
+   "username": [
+    20,
+    652,
+    350,
+    47
+   ],
+   "city": [
+    20,
+    1017,
+    350,
+    47
+   ]
+  },
+  "heads": [
+   [
+    "INVITE CODE Invited by ahmed ✓ No code? Request access CHOOS",
+    0,
+    465,
+    390,
+    836
+   ],
+   [
+    "INVITE CODE",
+    20,
+    465,
+    350,
+    19
+   ],
+   [
+    "CHOOSE YOUR USERNAME",
+    20,
+    629,
+    350,
+    19
+   ],
+   [
+    "EMAIL",
+    20,
+    754,
+    350,
+    19
+   ],
+   [
+    "WHATSAPP NUMBER",
+    20,
+    838,
+    350,
+    19
+   ],
+   [
+    "HIDE MY NUMBER FROM OTHER MEMBERS",
+    20,
+    959,
+    350,
+    21
+   ],
+   [
+    "CITY",
+    20,
+    994,
+    350,
+    19
+   ],
+   [
+    "PASSWORD",
+    20,
+    1138,
+    350,
+    19
+   ]
+  ],
+  "full": true,
+  "h": 1384,
+  "hd": 0,
+  "tab": 844
+ },
+ "today": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "big": [
+    14,
+    277,
+    362,
+    160
+   ],
+   "numbox": [
+    14,
+    543,
+    362,
+    178
+   ],
+   "manual": [
+    34,
+    569,
+    234,
+    64
+   ],
+   "add": [
+    276,
+    569,
+    80,
+    64
+   ],
+   "taptoggle": [
+    34,
+    734,
+    152,
+    44
+   ],
+   "start": [
+    16,
+    810,
+    358,
+    167
+   ],
+   "challenge": [
+    28,
+    3886,
+    334,
+    386
+   ],
+   "tick": [
+    34,
+    2467,
+    213,
+    60
+   ],
+   "photo": [
+    34,
+    2537,
+    322,
+    60
+   ],
+   "watch": [
+    264,
+    2880,
+    80,
+    44
+   ],
+   "reflect": [
+    34,
+    3648,
+    322,
+    89
+   ],
+   "circle": [
+    34,
+    3033,
+    322,
+    263
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    0,
+    115,
+    390,
+    50
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    1570,
+    362,
+    83
+   ],
+   "trow1": [
+    14,
+    1653,
+    362,
+    83
+   ],
+   "trow2": [
+    14,
+    1736,
+    362,
+    83
+   ],
+   "trow3": [
+    14,
+    1819,
+    362,
+    83
+   ],
+   "trow4": [
+    14,
+    1902,
+    362,
+    101
+   ],
+   "trow5": [
+    14,
+    2002,
+    362,
+    69
+   ],
+   "tcheck": [
+    30,
+    1589,
+    44,
+    44
+   ],
+   "tmenu": [
+    328,
+    1591,
+    40,
+    40
+   ]
+  },
+  "heads": [
+   [
+    "Today",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "How many durood did you recite?",
+    14,
+    543,
+    362,
+    20
+   ],
+   [
+    "Quests 3 / 5",
+    14,
+    991,
+    362,
+    53
+   ],
+   [
+    "Tasks today 7",
+    14,
+    1517,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Return the library books Due 24 Oct ",
+    14,
+    1570,
+    362,
+    83
+   ],
+   [
+    "Return the library books",
+    86,
+    1582,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Read one page of Seerah Due Today 10",
+    14,
+    1653,
+    362,
+    83
+   ],
+   [
+    "Read one page of Seerah",
+    86,
+    1665,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    14,
+    1736,
+    362,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    86,
+    1748,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    14,
+    1819,
+    362,
+    83
+   ],
+   [
+    "Visit the new members",
+    86,
+    1831,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    14,
+    1902,
+    362,
+    101
+   ],
+   [
+    "Bring the banner for Jumuah",
+    86,
+    1914,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    14,
+    2002,
+    362,
+    69
+   ],
+   [
+    "Morning adhkar",
+    86,
+    2017,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    14,
+    2071,
+    362,
+    69
+   ],
+   [
+    "Majlis-e-Zikr",
+    86,
+    2086,
+    230,
+    21
+   ],
+   [
+    "Sunnah 0 / 1",
+    14,
+    2251,
+    362,
+    53
+   ],
+   [
+    "SUNNAH OF THE DAY",
+    14,
+    2304,
+    362,
+    41
+   ],
+   [
+    "Take or choose a photo +",
+    34,
+    2537,
+    322,
+    60
+   ],
+   [
+    "Seerah 0 / 1",
+    14,
+    2758,
+    362,
+    53
+   ],
+   [
+    "LECTURE OF THE WEEK",
+    14,
+    2811,
+    362,
+    41
+   ],
+   [
+    "Daily reflection 0 / 1",
+    14,
+    3373,
+    362,
+    53
+   ],
+   [
+    "DAILY REFLECTION",
+    14,
+    3426,
+    362,
+    41
+   ],
+   [
+    "Rabi ul Awwal challenge",
+    14,
+    3821,
+    362,
+    53
+   ]
+  ],
+  "full": true,
+  "h": 4420,
+  "hd": 65,
+  "tab": 782
+ },
+ "type-1": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "big": [
+    14,
+    277,
+    362,
+    160
+   ],
+   "numbox": [
+    14,
+    543,
+    362,
+    178
+   ],
+   "manual": [
+    34,
+    569,
+    234,
+    64
+   ],
+   "add": [
+    276,
+    569,
+    80,
+    64
+   ],
+   "taptoggle": [
+    34,
+    734,
+    152,
+    44
+   ],
+   "start": [
+    16,
+    810,
+    358,
+    167
+   ],
+   "tick": [
+    34,
+    2467,
+    213,
+    60
+   ],
+   "photo": [
+    34,
+    2537,
+    322,
+    60
+   ],
+   "watch": [
+    264,
+    2880,
+    80,
+    44
+   ],
+   "reflect": [
+    34,
+    3648,
+    322,
+    89
+   ],
+   "circle": [
+    34,
+    3033,
+    322,
+    263
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    0,
+    115,
+    390,
+    50
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    1570,
+    362,
+    83
+   ],
+   "trow1": [
+    14,
+    1653,
+    362,
+    83
+   ],
+   "trow2": [
+    14,
+    1736,
+    362,
+    83
+   ],
+   "trow3": [
+    14,
+    1819,
+    362,
+    83
+   ],
+   "trow4": [
+    14,
+    1902,
+    362,
+    101
+   ],
+   "trow5": [
+    14,
+    2002,
+    362,
+    69
+   ],
+   "tcheck": [
+    30,
+    1589,
+    44,
+    44
+   ],
+   "tmenu": [
+    328,
+    1591,
+    40,
+    40
+   ]
+  },
+  "heads": [
+   [
+    "Today",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "How many durood did you recite?",
+    14,
+    543,
+    362,
+    20
+   ],
+   [
+    "Quests 3 / 5",
+    14,
+    991,
+    362,
+    53
+   ],
+   [
+    "Tasks today 7",
+    14,
+    1517,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Return the library books Due 24 Oct ",
+    14,
+    1570,
+    362,
+    83
+   ],
+   [
+    "Return the library books",
+    86,
+    1582,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Read one page of Seerah Due Today 10",
+    14,
+    1653,
+    362,
+    83
+   ],
+   [
+    "Read one page of Seerah",
+    86,
+    1665,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    14,
+    1736,
+    362,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    86,
+    1748,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    14,
+    1819,
+    362,
+    83
+   ],
+   [
+    "Visit the new members",
+    86,
+    1831,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    14,
+    1902,
+    362,
+    101
+   ],
+   [
+    "Bring the banner for Jumuah",
+    86,
+    1914,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    14,
+    2002,
+    362,
+    69
+   ],
+   [
+    "Morning adhkar",
+    86,
+    2017,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    14,
+    2071,
+    362,
+    69
+   ],
+   [
+    "Majlis-e-Zikr",
+    86,
+    2086,
+    230,
+    21
+   ],
+   [
+    "Sunnah 0 / 1",
+    14,
+    2251,
+    362,
+    53
+   ],
+   [
+    "SUNNAH OF THE DAY",
+    14,
+    2304,
+    362,
+    41
+   ],
+   [
+    "Take or choose a photo +",
+    34,
+    2537,
+    322,
+    60
+   ],
+   [
+    "Seerah 0 / 1",
+    14,
+    2758,
+    362,
+    53
+   ],
+   [
+    "LECTURE OF THE WEEK",
+    14,
+    2811,
+    362,
+    41
+   ],
+   [
+    "Daily reflection 0 / 1",
+    14,
+    3373,
+    362,
+    53
+   ],
+   [
+    "DAILY REFLECTION",
+    14,
+    3426,
+    362,
+    41
+   ],
+   [
+    "Rabi ul Awwal challenge",
+    14,
+    3821,
+    362,
+    52
+   ]
+  ]
+ },
+ "type-2": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "big": [
+    14,
+    277,
+    362,
+    160
+   ],
+   "numbox": [
+    14,
+    543,
+    362,
+    178
+   ],
+   "manual": [
+    34,
+    569,
+    234,
+    64
+   ],
+   "add": [
+    276,
+    569,
+    80,
+    64
+   ],
+   "taptoggle": [
+    34,
+    734,
+    152,
+    44
+   ],
+   "start": [
+    16,
+    810,
+    358,
+    167
+   ],
+   "tick": [
+    34,
+    2467,
+    213,
+    60
+   ],
+   "photo": [
+    34,
+    2537,
+    322,
+    60
+   ],
+   "watch": [
+    264,
+    2880,
+    80,
+    44
+   ],
+   "reflect": [
+    34,
+    3648,
+    322,
+    89
+   ],
+   "circle": [
+    34,
+    3033,
+    322,
+    263
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    0,
+    115,
+    390,
+    50
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    1570,
+    362,
+    83
+   ],
+   "trow1": [
+    14,
+    1653,
+    362,
+    83
+   ],
+   "trow2": [
+    14,
+    1736,
+    362,
+    83
+   ],
+   "trow3": [
+    14,
+    1819,
+    362,
+    83
+   ],
+   "trow4": [
+    14,
+    1902,
+    362,
+    101
+   ],
+   "trow5": [
+    14,
+    2002,
+    362,
+    69
+   ],
+   "tcheck": [
+    30,
+    1589,
+    44,
+    44
+   ],
+   "tmenu": [
+    328,
+    1591,
+    40,
+    40
+   ]
+  },
+  "heads": [
+   [
+    "Today",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "How many durood did you recite?",
+    14,
+    543,
+    362,
+    20
+   ],
+   [
+    "Quests 3 / 5",
+    14,
+    991,
+    362,
+    53
+   ],
+   [
+    "Tasks today 7",
+    14,
+    1517,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Return the library books Due 24 Oct ",
+    14,
+    1570,
+    362,
+    83
+   ],
+   [
+    "Return the library books",
+    86,
+    1582,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Read one page of Seerah Due Today 10",
+    14,
+    1653,
+    362,
+    83
+   ],
+   [
+    "Read one page of Seerah",
+    86,
+    1665,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    14,
+    1736,
+    362,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    86,
+    1748,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    14,
+    1819,
+    362,
+    83
+   ],
+   [
+    "Visit the new members",
+    86,
+    1831,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    14,
+    1902,
+    362,
+    101
+   ],
+   [
+    "Bring the banner for Jumuah",
+    86,
+    1914,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    14,
+    2002,
+    362,
+    69
+   ],
+   [
+    "Morning adhkar",
+    86,
+    2017,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    14,
+    2071,
+    362,
+    69
+   ],
+   [
+    "Majlis-e-Zikr",
+    86,
+    2086,
+    230,
+    21
+   ],
+   [
+    "Sunnah 0 / 1",
+    14,
+    2251,
+    362,
+    53
+   ],
+   [
+    "SUNNAH OF THE DAY",
+    14,
+    2304,
+    362,
+    41
+   ],
+   [
+    "Take or choose a photo +",
+    34,
+    2537,
+    322,
+    60
+   ],
+   [
+    "Seerah 0 / 1",
+    14,
+    2758,
+    362,
+    53
+   ],
+   [
+    "LECTURE OF THE WEEK",
+    14,
+    2811,
+    362,
+    41
+   ],
+   [
+    "Daily reflection 0 / 1",
+    14,
+    3373,
+    362,
+    53
+   ],
+   [
+    "DAILY REFLECTION",
+    14,
+    3426,
+    362,
+    41
+   ],
+   [
+    "Rabi ul Awwal challenge",
+    14,
+    3821,
+    362,
+    52
+   ]
+  ]
+ },
+ "type-3": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "big": [
+    14,
+    277,
+    362,
+    160
+   ],
+   "numbox": [
+    14,
+    543,
+    362,
+    178
+   ],
+   "manual": [
+    34,
+    569,
+    234,
+    64
+   ],
+   "add": [
+    276,
+    569,
+    80,
+    64
+   ],
+   "taptoggle": [
+    34,
+    734,
+    152,
+    44
+   ],
+   "start": [
+    16,
+    810,
+    358,
+    167
+   ],
+   "tick": [
+    34,
+    2467,
+    213,
+    60
+   ],
+   "photo": [
+    34,
+    2537,
+    322,
+    60
+   ],
+   "watch": [
+    264,
+    2880,
+    80,
+    44
+   ],
+   "reflect": [
+    34,
+    3648,
+    322,
+    89
+   ],
+   "circle": [
+    34,
+    3033,
+    322,
+    263
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    0,
+    115,
+    390,
+    50
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    1570,
+    362,
+    83
+   ],
+   "trow1": [
+    14,
+    1653,
+    362,
+    83
+   ],
+   "trow2": [
+    14,
+    1736,
+    362,
+    83
+   ],
+   "trow3": [
+    14,
+    1819,
+    362,
+    83
+   ],
+   "trow4": [
+    14,
+    1902,
+    362,
+    101
+   ],
+   "trow5": [
+    14,
+    2002,
+    362,
+    69
+   ],
+   "tcheck": [
+    30,
+    1589,
+    44,
+    44
+   ],
+   "tmenu": [
+    328,
+    1591,
+    40,
+    40
+   ]
+  },
+  "heads": [
+   [
+    "Today",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "How many durood did you recite?",
+    14,
+    543,
+    362,
+    20
+   ],
+   [
+    "Quests 3 / 5",
+    14,
+    991,
+    362,
+    53
+   ],
+   [
+    "Tasks today 7",
+    14,
+    1517,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Return the library books Due 24 Oct ",
+    14,
+    1570,
+    362,
+    83
+   ],
+   [
+    "Return the library books",
+    86,
+    1582,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Read one page of Seerah Due Today 10",
+    14,
+    1653,
+    362,
+    83
+   ],
+   [
+    "Read one page of Seerah",
+    86,
+    1665,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    14,
+    1736,
+    362,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    86,
+    1748,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    14,
+    1819,
+    362,
+    83
+   ],
+   [
+    "Visit the new members",
+    86,
+    1831,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    14,
+    1902,
+    362,
+    101
+   ],
+   [
+    "Bring the banner for Jumuah",
+    86,
+    1914,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    14,
+    2002,
+    362,
+    69
+   ],
+   [
+    "Morning adhkar",
+    86,
+    2017,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    14,
+    2071,
+    362,
+    69
+   ],
+   [
+    "Majlis-e-Zikr",
+    86,
+    2086,
+    230,
+    21
+   ],
+   [
+    "Sunnah 0 / 1",
+    14,
+    2251,
+    362,
+    53
+   ],
+   [
+    "SUNNAH OF THE DAY",
+    14,
+    2304,
+    362,
+    41
+   ],
+   [
+    "Take or choose a photo +",
+    34,
+    2537,
+    322,
+    60
+   ],
+   [
+    "Seerah 0 / 1",
+    14,
+    2758,
+    362,
+    53
+   ],
+   [
+    "LECTURE OF THE WEEK",
+    14,
+    2811,
+    362,
+    41
+   ],
+   [
+    "Daily reflection 0 / 1",
+    14,
+    3373,
+    362,
+    53
+   ],
+   [
+    "DAILY REFLECTION",
+    14,
+    3426,
+    362,
+    41
+   ],
+   [
+    "Rabi ul Awwal challenge",
+    14,
+    3821,
+    362,
+    52
+   ]
+  ]
+ },
+ "burst": {
+  "frames": 30,
+  "fps": 30,
+  "r": {
+   "big": [
+    14,
+    277,
+    362,
+    125
+   ],
+   "numbox": [
+    14,
+    507,
+    362,
+    178
+   ],
+   "manual": [
+    34,
+    534,
+    234,
+    64
+   ],
+   "add": [
+    276,
+    534,
+    80,
+    64
+   ],
+   "taptoggle": [
+    34,
+    699,
+    152,
+    44
+   ],
+   "start": [
+    16,
+    775,
+    358,
+    167
+   ],
+   "tick": [
+    34,
+    2432,
+    213,
+    60
+   ],
+   "photo": [
+    34,
+    2502,
+    322,
+    60
+   ],
+   "watch": [
+    264,
+    2845,
+    80,
+    44
+   ],
+   "reflect": [
+    34,
+    3613,
+    322,
+    89
+   ],
+   "circle": [
+    34,
+    2998,
+    322,
+    263
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    0,
+    115,
+    390,
+    50
+   ],
+   "modal": [
+    12,
+    279,
+    366,
+    286
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    1535,
+    362,
+    83
+   ],
+   "trow1": [
+    14,
+    1618,
+    362,
+    83
+   ],
+   "trow2": [
+    14,
+    1701,
+    362,
+    83
+   ],
+   "trow3": [
+    14,
+    1784,
+    362,
+    83
+   ],
+   "trow4": [
+    14,
+    1867,
+    362,
+    101
+   ],
+   "trow5": [
+    14,
+    1967,
+    362,
+    69
+   ],
+   "tcheck": [
+    30,
+    1554,
+    44,
+    44
+   ],
+   "tmenu": [
+    328,
+    1556,
+    40,
+    40
+   ]
+  },
+  "heads": [
+   [
+    "Today",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "How many durood did you recite?",
+    14,
+    507,
+    362,
+    20
+   ],
+   [
+    "Quests 3 / 5",
+    14,
+    956,
+    362,
+    53
+   ],
+   [
+    "Tasks today 7",
+    14,
+    1482,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Return the library books Due 24 Oct ",
+    14,
+    1535,
+    362,
+    83
+   ],
+   [
+    "Return the library books",
+    86,
+    1547,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Read one page of Seerah Due Today 10",
+    14,
+    1618,
+    362,
+    83
+   ],
+   [
+    "Read one page of Seerah",
+    86,
+    1630,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    14,
+    1701,
+    362,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    86,
+    1713,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    14,
+    1784,
+    362,
+    83
+   ],
+   [
+    "Visit the new members",
+    86,
+    1796,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    14,
+    1867,
+    362,
+    101
+   ],
+   [
+    "Bring the banner for Jumuah",
+    86,
+    1879,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    14,
+    1967,
+    362,
+    69
+   ],
+   [
+    "Morning adhkar",
+    86,
+    1982,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    14,
+    2036,
+    362,
+    69
+   ],
+   [
+    "Majlis-e-Zikr",
+    86,
+    2051,
+    230,
+    21
+   ],
+   [
+    "Sunnah 0 / 1",
+    14,
+    2216,
+    362,
+    53
+   ],
+   [
+    "SUNNAH OF THE DAY",
+    14,
+    2269,
+    362,
+    41
+   ],
+   [
+    "Take or choose a photo +",
+    34,
+    2502,
+    322,
+    60
+   ],
+   [
+    "Seerah 0 / 1",
+    14,
+    2723,
+    362,
+    53
+   ],
+   [
+    "LECTURE OF THE WEEK",
+    14,
+    2776,
+    362,
+    41
+   ],
+   [
+    "Daily reflection 0 / 1",
+    14,
+    3338,
+    362,
+    53
+   ],
+   [
+    "DAILY REFLECTION",
+    14,
+    3391,
+    362,
+    41
+   ],
+   [
+    "Rabi ul Awwal challenge",
+    14,
+    3786,
+    362,
+    52
+   ]
+  ],
+  "sy": 0
+ },
+ "tap": {
+  "frames": 17,
+  "at": {
+   "x": 195,
+   "y": 758
+  },
+  "r": {
+   "big": [
+    14,
+    277,
+    362,
+    125
+   ],
+   "numbox": [
+    14,
+    507,
+    362,
+    178
+   ],
+   "manual": [
+    34,
+    534,
+    234,
+    64
+   ],
+   "add": [
+    276,
+    534,
+    80,
+    64
+   ],
+   "presets": [
+    293,
+    849,
+    63,
+    44
+   ],
+   "taptoggle": [
+    34,
+    699,
+    152,
+    44
+   ],
+   "tap": [
+    34,
+    757,
+    322,
+    82
+   ],
+   "tapbox": [
+    14,
+    248,
+    362,
+    746
+   ],
+   "start": [
+    16,
+    1008,
+    358,
+    167
+   ],
+   "tick": [
+    34,
+    2665,
+    213,
+    60
+   ],
+   "photo": [
+    34,
+    2735,
+    322,
+    60
+   ],
+   "watch": [
+    264,
+    3078,
+    80,
+    44
+   ],
+   "reflect": [
+    34,
+    3845,
+    322,
+    89
+   ],
+   "circle": [
+    34,
+    3230,
+    322,
+    263
+   ],
+   "stk": [
+    269,
+    54,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    50,
+    44,
+    44
+   ],
+   "joinreq": [
+    0,
+    115,
+    390,
+    50
+   ],
+   "side": [
+    -306,
+    40,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    1767,
+    362,
+    83
+   ],
+   "trow1": [
+    14,
+    1850,
+    362,
+    83
+   ],
+   "trow2": [
+    14,
+    1933,
+    362,
+    83
+   ],
+   "trow3": [
+    14,
+    2016,
+    362,
+    83
+   ],
+   "trow4": [
+    14,
+    2099,
+    362,
+    101
+   ],
+   "trow5": [
+    14,
+    2200,
+    362,
+    69
+   ],
+   "tcheck": [
+    30,
+    1786,
+    44,
+    44
+   ],
+   "tmenu": [
+    328,
+    1788,
+    40,
+    40
+   ]
+  },
+  "heads": [
+   [
+    "Today",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "How many durood did you recite?",
+    14,
+    507,
+    362,
+    20
+   ],
+   [
+    "Quests 3 / 5",
+    14,
+    1189,
+    362,
+    53
+   ],
+   [
+    "Tasks today 7",
+    14,
+    1714,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Return the library books Due 24 Oct ",
+    14,
+    1767,
+    362,
+    83
+   ],
+   [
+    "Return the library books",
+    86,
+    1779,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Read one page of Seerah Due Today 10",
+    14,
+    1850,
+    362,
+    83
+   ],
+   [
+    "Read one page of Seerah",
+    86,
+    1862,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    14,
+    1933,
+    362,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    86,
+    1945,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    14,
+    2016,
+    362,
+    83
+   ],
+   [
+    "Visit the new members",
+    86,
+    2028,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    14,
+    2099,
+    362,
+    101
+   ],
+   [
+    "Bring the banner for Jumuah",
+    86,
+    2111,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    14,
+    2200,
+    362,
+    69
+   ],
+   [
+    "Morning adhkar",
+    86,
+    2215,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    14,
+    2269,
+    362,
+    69
+   ],
+   [
+    "Majlis-e-Zikr",
+    86,
+    2284,
+    230,
+    21
+   ],
+   [
+    "Sunnah 0 / 1",
+    14,
+    2449,
+    362,
+    53
+   ],
+   [
+    "SUNNAH OF THE DAY",
+    14,
+    2502,
+    362,
+    41
+   ],
+   [
+    "Take or choose a photo +",
+    34,
+    2735,
+    322,
+    60
+   ],
+   [
+    "Seerah 0 / 1",
+    14,
+    2956,
+    362,
+    53
+   ],
+   [
+    "LECTURE OF THE WEEK",
+    14,
+    3009,
+    362,
+    41
+   ],
+   [
+    "Daily reflection 0 / 1",
+    14,
+    3571,
+    362,
+    53
+   ],
+   [
+    "DAILY REFLECTION",
+    14,
+    3624,
+    362,
+    41
+   ],
+   [
+    "Rabi ul Awwal challenge",
+    14,
+    4018,
+    362,
+    52
+   ]
+  ],
+  "sy": 40
+ },
+ "tasks": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    244,
+    362,
+    83
+   ],
+   "trow1": [
+    14,
+    327,
+    362,
+    83
+   ],
+   "trow2": [
+    14,
+    410,
+    362,
+    83
+   ],
+   "trow3": [
+    14,
+    493,
+    362,
+    83
+   ],
+   "trow4": [
+    14,
+    576,
+    362,
+    100
+   ],
+   "trow5": [
+    14,
+    740,
+    362,
+    69
+   ],
+   "tcheck": [
+    30,
+    263,
+    44,
+    44
+   ],
+   "tmenu": [
+    328,
+    265,
+    40,
+    40
+   ]
+  },
+  "heads": [
+   [
+    "Tasks",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Add a task or routine",
+    14,
+    127,
+    362,
+    52
+   ],
+   [
+    "Tasks 5",
+    14,
+    191,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Return the library books Due 24 Oct ",
+    14,
+    244,
+    362,
+    83
+   ],
+   [
+    "Return the library books",
+    86,
+    256,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Read one page of Seerah Due Today 10",
+    14,
+    327,
+    362,
+    83
+   ],
+   [
+    "Read one page of Seerah",
+    86,
+    339,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    14,
+    410,
+    362,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    86,
+    422,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    14,
+    493,
+    362,
+    83
+   ],
+   [
+    "Visit the new members",
+    86,
+    505,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    14,
+    576,
+    362,
+    100
+   ],
+   [
+    "Bring the banner for Jumuah",
+    86,
+    588,
+    230,
+    21
+   ],
+   [
+    "Routines 3",
+    14,
+    687,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Surah Al-Kahf Every Friday ⋯",
+    14,
+    740,
+    362,
+    69
+   ],
+   [
+    "Surah Al-Kahf",
+    86,
+    755,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    14,
+    809,
+    362,
+    69
+   ],
+   [
+    "Morning adhkar",
+    86,
+    824,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    14,
+    878,
+    362,
+    68
+   ],
+   [
+    "Majlis-e-Zikr",
+    86,
+    893,
+    230,
+    21
+   ],
+   [
+    "Done 1",
+    14,
+    958,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Print the circle timetable Due 23 Oc",
+    14,
+    1011,
+    362,
+    82
+   ],
+   [
+    "Print the circle timetable",
+    86,
+    1023,
+    230,
+    21
+   ]
+  ],
+  "full": true,
+  "h": 1191,
+  "hd": 65,
+  "tab": 782
+ },
+ "tick": {
+  "frames": 24,
+  "fps": 30,
+  "r": {
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    244,
+    362,
+    83
+   ],
+   "trow1": [
+    14,
+    327,
+    362,
+    83
+   ],
+   "trow2": [
+    14,
+    410,
+    362,
+    83
+   ],
+   "trow3": [
+    14,
+    493,
+    362,
+    100
+   ],
+   "trow4": [
+    14,
+    657,
+    362,
+    69
+   ],
+   "trow5": [
+    14,
+    726,
+    362,
+    69
+   ],
+   "tcheck": [
+    30,
+    263,
+    44,
+    44
+   ],
+   "tmenu": [
+    328,
+    265,
+    40,
+    40
+   ]
+  },
+  "heads": [
+   [
+    "Tasks",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Add a task or routine",
+    14,
+    127,
+    362,
+    52
+   ],
+   [
+    "Tasks 4",
+    14,
+    191,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Read one page of Seerah Due Today 10",
+    14,
+    244,
+    362,
+    83
+   ],
+   [
+    "Read one page of Seerah",
+    86,
+    256,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    14,
+    327,
+    362,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    86,
+    339,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    14,
+    410,
+    362,
+    83
+   ],
+   [
+    "Visit the new members",
+    86,
+    422,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    14,
+    493,
+    362,
+    100
+   ],
+   [
+    "Bring the banner for Jumuah",
+    86,
+    505,
+    230,
+    21
+   ],
+   [
+    "Routines 3",
+    14,
+    604,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Surah Al-Kahf Every Friday ⋯",
+    14,
+    657,
+    362,
+    69
+   ],
+   [
+    "Surah Al-Kahf",
+    86,
+    672,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    14,
+    726,
+    362,
+    69
+   ],
+   [
+    "Morning adhkar",
+    86,
+    741,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    14,
+    795,
+    362,
+    68
+   ],
+   [
+    "Majlis-e-Zikr",
+    86,
+    810,
+    230,
+    21
+   ],
+   [
+    "Done 2",
+    14,
+    875,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Print the circle timetable Due 23 Oc",
+    14,
+    928,
+    362,
+    83
+   ],
+   [
+    "Print the circle timetable",
+    86,
+    940,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Return the library books Due 24 Oct ",
+    14,
+    1011,
+    362,
+    82
+   ],
+   [
+    "Return the library books",
+    86,
+    1023,
+    230,
+    21
+   ]
+  ],
+  "sy": 0
+ },
+ "swipe": {
+  "frames": 11,
+  "row": [
+   14,
+   244,
+   362,
+   83
+  ],
+  "r": {
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    244,
+    362,
+    83
+   ],
+   "trow1": [
+    14,
+    327,
+    362,
+    83
+   ],
+   "trow2": [
+    14,
+    410,
+    362,
+    83
+   ],
+   "trow3": [
+    14,
+    493,
+    362,
+    100
+   ],
+   "trow4": [
+    14,
+    657,
+    362,
+    69
+   ],
+   "trow5": [
+    14,
+    726,
+    362,
+    69
+   ],
+   "tcheck": [
+    250,
+    263,
+    44,
+    44
+   ],
+   "tmenu": [
+    548,
+    265,
+    40,
+    40
+   ]
+  },
+  "heads": [
+   [
+    "Tasks",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Add a task or routine",
+    14,
+    127,
+    362,
+    52
+   ],
+   [
+    "Tasks 4",
+    14,
+    191,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Read one page of Seerah Due Today 10",
+    14,
+    244,
+    362,
+    83
+   ],
+   [
+    "Read one page of Seerah",
+    306,
+    256,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    14,
+    327,
+    362,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    86,
+    339,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    14,
+    410,
+    362,
+    83
+   ],
+   [
+    "Visit the new members",
+    86,
+    422,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    14,
+    493,
+    362,
+    100
+   ],
+   [
+    "Bring the banner for Jumuah",
+    86,
+    505,
+    230,
+    21
+   ],
+   [
+    "Routines 3",
+    14,
+    604,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Surah Al-Kahf Every Friday ⋯",
+    14,
+    657,
+    362,
+    69
+   ],
+   [
+    "Surah Al-Kahf",
+    86,
+    672,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    14,
+    726,
+    362,
+    69
+   ],
+   [
+    "Morning adhkar",
+    86,
+    741,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    14,
+    795,
+    362,
+    68
+   ],
+   [
+    "Majlis-e-Zikr",
+    86,
+    810,
+    230,
+    21
+   ],
+   [
+    "Done 2",
+    14,
+    875,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Print the circle timetable Due 23 Oc",
+    14,
+    928,
+    362,
+    83
+   ],
+   [
+    "Print the circle timetable",
+    86,
+    940,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Return the library books Due 24 Oct ",
+    14,
+    1011,
+    362,
+    82
+   ],
+   [
+    "Return the library books",
+    86,
+    1023,
+    230,
+    21
+   ]
+  ],
+  "sy": 0
+ },
+ "swiped": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    244,
+    362,
+    83
+   ],
+   "trow1": [
+    14,
+    327,
+    362,
+    83
+   ],
+   "trow2": [
+    14,
+    410,
+    362,
+    100
+   ],
+   "trow3": [
+    14,
+    574,
+    362,
+    69
+   ],
+   "trow4": [
+    14,
+    643,
+    362,
+    69
+   ],
+   "trow5": [
+    14,
+    712,
+    362,
+    68
+   ],
+   "tcheck": [
+    30,
+    263,
+    44,
+    44
+   ],
+   "tmenu": [
+    328,
+    265,
+    40,
+    40
+   ]
+  },
+  "heads": [
+   [
+    "Tasks",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Add a task or routine",
+    14,
+    127,
+    362,
+    52
+   ],
+   [
+    "Tasks 3",
+    14,
+    191,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    14,
+    244,
+    362,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    86,
+    256,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    14,
+    327,
+    362,
+    83
+   ],
+   [
+    "Visit the new members",
+    86,
+    339,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    14,
+    410,
+    362,
+    100
+   ],
+   [
+    "Bring the banner for Jumuah",
+    86,
+    422,
+    230,
+    21
+   ],
+   [
+    "Routines 3",
+    14,
+    521,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Surah Al-Kahf Every Friday ⋯",
+    14,
+    574,
+    362,
+    69
+   ],
+   [
+    "Surah Al-Kahf",
+    86,
+    589,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    14,
+    643,
+    362,
+    69
+   ],
+   [
+    "Morning adhkar",
+    86,
+    658,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    14,
+    712,
+    362,
+    68
+   ],
+   [
+    "Majlis-e-Zikr",
+    86,
+    727,
+    230,
+    21
+   ],
+   [
+    "Done 3",
+    14,
+    792,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Print the circle timetable Due 23 Oc",
+    14,
+    845,
+    362,
+    83
+   ],
+   [
+    "Print the circle timetable",
+    86,
+    857,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Return the library books Due 24 Oct ",
+    14,
+    928,
+    362,
+    83
+   ],
+   [
+    "Return the library books",
+    86,
+    940,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Read one page of Seerah Due Today Do",
+    14,
+    1011,
+    362,
+    82
+   ],
+   [
+    "Read one page of Seerah",
+    86,
+    1023,
+    230,
+    21
+   ]
+  ]
+ },
+ "swipel": {
+  "frames": 11,
+  "row": [
+   14,
+   244,
+   362,
+   83
+  ],
+  "r": {
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    244,
+    362,
+    83
+   ],
+   "trow1": [
+    14,
+    327,
+    362,
+    83
+   ],
+   "trow2": [
+    14,
+    410,
+    362,
+    100
+   ],
+   "trow3": [
+    14,
+    574,
+    362,
+    69
+   ],
+   "trow4": [
+    14,
+    643,
+    362,
+    69
+   ],
+   "trow5": [
+    14,
+    712,
+    362,
+    68
+   ],
+   "tcheck": [
+    -190,
+    263,
+    44,
+    44
+   ],
+   "tmenu": [
+    108,
+    265,
+    40,
+    40
+   ]
+  },
+  "heads": [
+   [
+    "Tasks",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Add a task or routine",
+    14,
+    127,
+    362,
+    52
+   ],
+   [
+    "Tasks 3",
+    14,
+    191,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    14,
+    244,
+    362,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    -134,
+    256,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    14,
+    327,
+    362,
+    83
+   ],
+   [
+    "Visit the new members",
+    86,
+    339,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    14,
+    410,
+    362,
+    100
+   ],
+   [
+    "Bring the banner for Jumuah",
+    86,
+    422,
+    230,
+    21
+   ],
+   [
+    "Routines 3",
+    14,
+    521,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Surah Al-Kahf Every Friday ⋯",
+    14,
+    574,
+    362,
+    69
+   ],
+   [
+    "Surah Al-Kahf",
+    86,
+    589,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    14,
+    643,
+    362,
+    69
+   ],
+   [
+    "Morning adhkar",
+    86,
+    658,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    14,
+    712,
+    362,
+    68
+   ],
+   [
+    "Majlis-e-Zikr",
+    86,
+    727,
+    230,
+    21
+   ],
+   [
+    "Done 3",
+    14,
+    792,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Print the circle timetable Due 23 Oc",
+    14,
+    845,
+    362,
+    83
+   ],
+   [
+    "Print the circle timetable",
+    86,
+    857,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Return the library books Due 24 Oct ",
+    14,
+    928,
+    362,
+    83
+   ],
+   [
+    "Return the library books",
+    86,
+    940,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Read one page of Seerah Due Today Do",
+    14,
+    1011,
+    362,
+    82
+   ],
+   [
+    "Read one page of Seerah",
+    86,
+    1023,
+    230,
+    21
+   ]
+  ],
+  "sy": 0
+ },
+ "resched": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    0,
+    562,
+    390,
+    50
+   ],
+   "modal": [
+    0,
+    445,
+    390,
+    399
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    244,
+    362,
+    83
+   ],
+   "trow1": [
+    14,
+    327,
+    362,
+    83
+   ],
+   "trow2": [
+    14,
+    410,
+    362,
+    100
+   ],
+   "trow3": [
+    14,
+    574,
+    362,
+    69
+   ],
+   "trow4": [
+    14,
+    643,
+    362,
+    69
+   ],
+   "trow5": [
+    14,
+    712,
+    362,
+    68
+   ],
+   "tcheck": [
+    30,
+    263,
+    44,
+    44
+   ],
+   "tmenu": [
+    328,
+    265,
+    40,
+    40
+   ],
+   "resch0": [
+    0,
+    562,
+    390,
+    50
+   ],
+   "resch1": [
+    0,
+    612,
+    390,
+    50
+   ],
+   "resch2": [
+    0,
+    662,
+    390,
+    51
+   ],
+   "resch3": [
+    312,
+    730,
+    58,
+    44
+   ]
+  },
+  "heads": [
+   [
+    "Tasks",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Add a task or routine",
+    14,
+    127,
+    362,
+    52
+   ],
+   [
+    "Tasks 3",
+    14,
+    191,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    14,
+    244,
+    362,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    86,
+    256,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    14,
+    327,
+    362,
+    83
+   ],
+   [
+    "Visit the new members",
+    86,
+    339,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    14,
+    410,
+    362,
+    100
+   ],
+   [
+    "Bring the banner for Jumuah",
+    86,
+    422,
+    230,
+    21
+   ],
+   [
+    "Routines 3",
+    14,
+    521,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Surah Al-Kahf Every Friday ⋯",
+    14,
+    574,
+    362,
+    69
+   ],
+   [
+    "Surah Al-Kahf",
+    86,
+    589,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    14,
+    643,
+    362,
+    69
+   ],
+   [
+    "Morning adhkar",
+    86,
+    658,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    14,
+    712,
+    362,
+    68
+   ],
+   [
+    "Majlis-e-Zikr",
+    86,
+    727,
+    230,
+    21
+   ],
+   [
+    "Done 3",
+    14,
+    792,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Print the circle timetable Due 23 Oc",
+    14,
+    845,
+    362,
+    83
+   ],
+   [
+    "Print the circle timetable",
+    86,
+    857,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Return the library books Due 24 Oct ",
+    14,
+    928,
+    362,
+    83
+   ],
+   [
+    "Return the library books",
+    86,
+    940,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Read one page of Seerah Due Today Do",
+    14,
+    1011,
+    362,
+    82
+   ],
+   [
+    "Read one page of Seerah",
+    86,
+    1023,
+    230,
+    21
+   ],
+   [
+    "Move deadline",
+    20,
+    479,
+    126,
+    26
+   ]
+  ]
+ },
+ "addtask": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    678,
+    362,
+    83
+   ],
+   "trow1": [
+    14,
+    761,
+    362,
+    83
+   ],
+   "trow2": [
+    14,
+    844,
+    362,
+    100
+   ],
+   "trow3": [
+    14,
+    1009,
+    362,
+    69
+   ],
+   "trow4": [
+    14,
+    1078,
+    362,
+    69
+   ],
+   "trow5": [
+    14,
+    1147,
+    362,
+    68
+   ],
+   "tcheck": [
+    30,
+    697,
+    44,
+    44
+   ],
+   "tmenu": [
+    328,
+    699,
+    40,
+    40
+   ],
+   "ownkind": [
+    30,
+    218,
+    330,
+    46
+   ]
+  },
+  "heads": [
+   [
+    "Tasks",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Add a task or routine",
+    14,
+    127,
+    362,
+    53
+   ],
+   [
+    "Deadline",
+    30,
+    351,
+    330,
+    20
+   ],
+   [
+    "Tasks 3",
+    14,
+    625,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    14,
+    678,
+    362,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    86,
+    690,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    14,
+    761,
+    362,
+    83
+   ],
+   [
+    "Visit the new members",
+    86,
+    773,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    14,
+    844,
+    362,
+    100
+   ],
+   [
+    "Bring the banner for Jumuah",
+    86,
+    856,
+    230,
+    21
+   ],
+   [
+    "Routines 3",
+    14,
+    956,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Surah Al-Kahf Every Friday ⋯",
+    14,
+    1009,
+    362,
+    69
+   ],
+   [
+    "Surah Al-Kahf",
+    86,
+    1023,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    14,
+    1078,
+    362,
+    69
+   ],
+   [
+    "Morning adhkar",
+    86,
+    1092,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    14,
+    1147,
+    362,
+    68
+   ],
+   [
+    "Majlis-e-Zikr",
+    86,
+    1161,
+    230,
+    21
+   ],
+   [
+    "Done 3",
+    14,
+    1227,
+    362,
+    52
+   ]
+  ]
+ },
+ "addroutine": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    736,
+    362,
+    83
+   ],
+   "trow1": [
+    14,
+    819,
+    362,
+    83
+   ],
+   "trow2": [
+    14,
+    902,
+    362,
+    100
+   ],
+   "trow3": [
+    14,
+    1067,
+    362,
+    69
+   ],
+   "trow4": [
+    14,
+    1136,
+    362,
+    69
+   ],
+   "trow5": [
+    14,
+    1205,
+    362,
+    68
+   ],
+   "tcheck": [
+    30,
+    755,
+    44,
+    44
+   ],
+   "tmenu": [
+    328,
+    757,
+    40,
+    40
+   ],
+   "ownkind": [
+    30,
+    218,
+    330,
+    46
+   ]
+  },
+  "heads": [
+   [
+    "Tasks",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Add a task or routine",
+    14,
+    127,
+    362,
+    53
+   ],
+   [
+    "Mon",
+    30,
+    378,
+    55,
+    40
+   ],
+   [
+    "Tue",
+    91,
+    378,
+    51,
+    40
+   ],
+   [
+    "Wed",
+    148,
+    378,
+    56,
+    40
+   ],
+   [
+    "Thu",
+    210,
+    378,
+    52,
+    40
+   ],
+   [
+    "Fri",
+    268,
+    378,
+    44,
+    40
+   ],
+   [
+    "Sat",
+    30,
+    442,
+    48,
+    40
+   ],
+   [
+    "Sun",
+    84,
+    442,
+    52,
+    40
+   ],
+   [
+    "Tasks 3",
+    14,
+    683,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    14,
+    736,
+    362,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    86,
+    748,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    14,
+    819,
+    362,
+    83
+   ],
+   [
+    "Visit the new members",
+    86,
+    831,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    14,
+    902,
+    362,
+    100
+   ],
+   [
+    "Bring the banner for Jumuah",
+    86,
+    914,
+    230,
+    21
+   ],
+   [
+    "Routines 3",
+    14,
+    1014,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Surah Al-Kahf Every Friday ⋯",
+    14,
+    1067,
+    362,
+    69
+   ],
+   [
+    "Surah Al-Kahf",
+    86,
+    1081,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    14,
+    1136,
+    362,
+    69
+   ],
+   [
+    "Morning adhkar",
+    86,
+    1150,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    14,
+    1205,
+    362,
+    68
+   ],
+   [
+    "Majlis-e-Zikr",
+    86,
+    1219,
+    230,
+    21
+   ],
+   [
+    "Done 3",
+    14,
+    1285,
+    362,
+    52
+   ]
+  ]
+ },
+ "people": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "circle": [
+    34,
+    194,
+    322,
+    167
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    14,
+    820,
+    362,
+    50
+   ],
+   "row0": [
+    14,
+    441,
+    362,
+    103
+   ],
+   "row1": [
+    14,
+    545,
+    362,
+    102
+   ],
+   "row2": [
+    14,
+    870,
+    362,
+    107
+   ],
+   "row3": [
+    14,
+    978,
+    362,
+    107
+   ],
+   "row4": [
+    14,
+    1085,
+    362,
+    107
+   ],
+   "row5": [
+    14,
+    1193,
+    362,
+    107
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "teamf0": [
+    34,
+    722,
+    58,
+    44
+   ],
+   "teamf1": [
+    98,
+    722,
+    92,
+    44
+   ],
+   "teamf2": [
+    196,
+    722,
+    93,
+    44
+   ],
+   "teamf3": [
+    34,
+    772,
+    86,
+    44
+   ],
+   "teamf4": [
+    126,
+    772,
+    111,
+    44
+   ],
+   "assignall": [
+    14,
+    820,
+    362,
+    50
+   ],
+   "orz0": [
+    14,
+    870,
+    362,
+    106
+   ],
+   "orz1": [
+    14,
+    978,
+    362,
+    106
+   ],
+   "orz2": [
+    14,
+    1085,
+    362,
+    106
+   ],
+   "orz3": [
+    14,
+    1193,
+    362,
+    106
+   ],
+   "orz4": [
+    14,
+    1300,
+    362,
+    106
+   ],
+   "osl0": [
+    14,
+    441,
+    362,
+    102
+   ],
+   "osl1": [
+    14,
+    545,
+    362,
+    102
+   ]
+  },
+  "heads": [
+   [
+    "My people",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Requests to connect 1",
+    14,
+    127,
+    362,
+    53
+   ],
+   [
+    "Your saliks 2",
+    14,
+    388,
+    362,
+    53
+   ],
+   [
+    "A ali Lahore · 504 durood this week 504 durood",
+    14,
+    441,
+    362,
+    103
+   ],
+   [
+    "H hamza Karachi · 1,330 durood this week 1,330 durood",
+    14,
+    545,
+    362,
+    102
+   ],
+   [
+    "Your razakars 5",
+    14,
+    659,
+    362,
+    53
+   ],
+   [
+    "A anas Faisalabad · 0 open tasks #events 714 durood",
+    14,
+    870,
+    362,
+    107
+   ],
+   [
+    "S saad Karachi · 0 open tasks #karachi 420 durood",
+    14,
+    978,
+    362,
+    107
+   ],
+   [
+    "T talha Peshawar · 0 open tasks #peshawar 574 durood",
+    14,
+    1085,
+    362,
+    107
+   ],
+   [
+    "U usman Islamabad · 1 open task #events #lahore 875 durood",
+    14,
+    1193,
+    362,
+    107
+   ],
+   [
+    "Z zaid Peshawar · 1 open task #events #peshawar 490 durood",
+    14,
+    1300,
+    362,
+    106
+   ]
+  ],
+  "full": true,
+  "h": 1505,
+  "hd": 65,
+  "tab": 782
+ },
+ "people-team": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "circle": [
+    34,
+    194,
+    322,
+    167
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "row0": [
+    14,
+    441,
+    362,
+    103
+   ],
+   "row1": [
+    14,
+    545,
+    362,
+    102
+   ],
+   "row2": [
+    14,
+    1173,
+    362,
+    107
+   ],
+   "row3": [
+    14,
+    1281,
+    362,
+    107
+   ],
+   "row4": [
+    14,
+    1388,
+    362,
+    106
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "teamf0": [
+    34,
+    722,
+    58,
+    44
+   ],
+   "teamf1": [
+    98,
+    722,
+    92,
+    44
+   ],
+   "teamf2": [
+    196,
+    722,
+    93,
+    44
+   ],
+   "teamf3": [
+    34,
+    772,
+    86,
+    44
+   ],
+   "teamf4": [
+    126,
+    772,
+    111,
+    44
+   ],
+   "orz0": [
+    14,
+    1173,
+    362,
+    106
+   ],
+   "orz1": [
+    14,
+    1281,
+    362,
+    106
+   ],
+   "orz2": [
+    14,
+    1388,
+    362,
+    106
+   ],
+   "osl0": [
+    14,
+    441,
+    362,
+    102
+   ],
+   "osl1": [
+    14,
+    545,
+    362,
+    102
+   ]
+  },
+  "heads": [
+   [
+    "My people",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Requests to connect 1",
+    14,
+    127,
+    362,
+    53
+   ],
+   [
+    "Your saliks 2",
+    14,
+    388,
+    362,
+    53
+   ],
+   [
+    "A ali Lahore · 504 durood this week 504 durood",
+    14,
+    441,
+    362,
+    103
+   ],
+   [
+    "H hamza Karachi · 1,330 durood this week 1,330 durood",
+    14,
+    545,
+    362,
+    102
+   ],
+   [
+    "Your razakars 5",
+    14,
+    659,
+    362,
+    53
+   ],
+   [
+    "Deadline",
+    30,
+    991,
+    330,
+    20
+   ],
+   [
+    "A anas Faisalabad · 0 open tasks #events 714 durood",
+    14,
+    1173,
+    362,
+    107
+   ],
+   [
+    "U usman Islamabad · 1 open task #events #lahore 875 durood",
+    14,
+    1281,
+    362,
+    107
+   ],
+   [
+    "Z zaid Peshawar · 1 open task #events #peshawar 490 durood",
+    14,
+    1388,
+    362,
+    106
+   ]
+  ]
+ },
+ "razakar": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "circle": [
+    34,
+    194,
+    322,
+    167
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    14,
+    820,
+    362,
+    50
+   ],
+   "row0": [
+    14,
+    441,
+    362,
+    103
+   ],
+   "row1": [
+    14,
+    545,
+    362,
+    102
+   ],
+   "row2": [
+    14,
+    870,
+    362,
+    107
+   ],
+   "row3": [
+    14,
+    978,
+    362,
+    107
+   ],
+   "row4": [
+    14,
+    1085,
+    362,
+    107
+   ],
+   "row5": [
+    14,
+    1193,
+    362,
+    107
+   ],
+   "stats": [
+    14,
+    185,
+    362,
+    94
+   ],
+   "modal": [
+    0,
+    68,
+    390,
+    776
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "teamf0": [
+    34,
+    722,
+    58,
+    44
+   ],
+   "teamf1": [
+    98,
+    722,
+    92,
+    44
+   ],
+   "teamf2": [
+    196,
+    722,
+    93,
+    44
+   ],
+   "teamf3": [
+    34,
+    772,
+    86,
+    44
+   ],
+   "teamf4": [
+    126,
+    772,
+    111,
+    44
+   ],
+   "assignall": [
+    14,
+    820,
+    362,
+    50
+   ],
+   "orz0": [
+    14,
+    870,
+    362,
+    106
+   ],
+   "orz1": [
+    14,
+    978,
+    362,
+    106
+   ],
+   "orz2": [
+    14,
+    1085,
+    362,
+    106
+   ],
+   "orz3": [
+    14,
+    1193,
+    362,
+    106
+   ],
+   "orz4": [
+    14,
+    1300,
+    362,
+    106
+   ],
+   "osl0": [
+    14,
+    441,
+    362,
+    102
+   ],
+   "osl1": [
+    14,
+    545,
+    362,
+    102
+   ],
+   "tagadd": [
+    323,
+    911,
+    53,
+    44
+   ]
+  },
+  "heads": [
+   [
+    "My people",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Requests to connect 1",
+    14,
+    127,
+    362,
+    53
+   ],
+   [
+    "Your saliks 2",
+    14,
+    388,
+    362,
+    53
+   ],
+   [
+    "A ali Lahore · 504 durood this week 504 durood",
+    14,
+    441,
+    362,
+    103
+   ],
+   [
+    "H hamza Karachi · 1,330 durood this week 1,330 durood",
+    14,
+    545,
+    362,
+    102
+   ],
+   [
+    "Your razakars 5",
+    14,
+    659,
+    362,
+    53
+   ],
+   [
+    "A anas Faisalabad · 0 open tasks #events 714 durood",
+    14,
+    870,
+    362,
+    107
+   ],
+   [
+    "S saad Karachi · 0 open tasks #karachi 420 durood",
+    14,
+    978,
+    362,
+    107
+   ],
+   [
+    "T talha Peshawar · 0 open tasks #peshawar 574 durood",
+    14,
+    1085,
+    362,
+    107
+   ],
+   [
+    "U usman Islamabad · 1 open task #events #lahore 875 durood",
+    14,
+    1193,
+    362,
+    107
+   ],
+   [
+    "Z zaid Peshawar · 1 open task #events #peshawar 490 durood",
+    14,
+    1300,
+    362,
+    106
+   ],
+   [
+    "usman",
+    14,
+    100,
+    62,
+    29
+   ],
+   [
+    "Deadline",
+    14,
+    1204,
+    362,
+    20
+   ]
+  ]
+ },
+ "razakar-2": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "circle": [
+    34,
+    194,
+    322,
+    167
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    14,
+    820,
+    362,
+    50
+   ],
+   "row0": [
+    14,
+    441,
+    362,
+    103
+   ],
+   "row1": [
+    14,
+    545,
+    362,
+    102
+   ],
+   "row2": [
+    14,
+    870,
+    362,
+    107
+   ],
+   "row3": [
+    14,
+    978,
+    362,
+    107
+   ],
+   "row4": [
+    14,
+    1085,
+    362,
+    107
+   ],
+   "row5": [
+    14,
+    1193,
+    362,
+    107
+   ],
+   "stats": [
+    14,
+    -375,
+    362,
+    94
+   ],
+   "modal": [
+    0,
+    68,
+    390,
+    776
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "teamf0": [
+    34,
+    722,
+    58,
+    44
+   ],
+   "teamf1": [
+    98,
+    722,
+    92,
+    44
+   ],
+   "teamf2": [
+    196,
+    722,
+    93,
+    44
+   ],
+   "teamf3": [
+    34,
+    772,
+    86,
+    44
+   ],
+   "teamf4": [
+    126,
+    772,
+    111,
+    44
+   ],
+   "assignall": [
+    14,
+    820,
+    362,
+    50
+   ],
+   "orz0": [
+    14,
+    870,
+    362,
+    106
+   ],
+   "orz1": [
+    14,
+    978,
+    362,
+    106
+   ],
+   "orz2": [
+    14,
+    1085,
+    362,
+    106
+   ],
+   "orz3": [
+    14,
+    1193,
+    362,
+    106
+   ],
+   "orz4": [
+    14,
+    1300,
+    362,
+    106
+   ],
+   "osl0": [
+    14,
+    441,
+    362,
+    102
+   ],
+   "osl1": [
+    14,
+    545,
+    362,
+    102
+   ],
+   "tagadd": [
+    323,
+    351,
+    53,
+    44
+   ]
+  },
+  "heads": [
+   [
+    "My people",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Requests to connect 1",
+    14,
+    127,
+    362,
+    53
+   ],
+   [
+    "Your saliks 2",
+    14,
+    388,
+    362,
+    53
+   ],
+   [
+    "A ali Lahore · 504 durood this week 504 durood",
+    14,
+    441,
+    362,
+    103
+   ],
+   [
+    "H hamza Karachi · 1,330 durood this week 1,330 durood",
+    14,
+    545,
+    362,
+    102
+   ],
+   [
+    "Your razakars 5",
+    14,
+    659,
+    362,
+    53
+   ],
+   [
+    "A anas Faisalabad · 0 open tasks #events 714 durood",
+    14,
+    870,
+    362,
+    107
+   ],
+   [
+    "S saad Karachi · 0 open tasks #karachi 420 durood",
+    14,
+    978,
+    362,
+    107
+   ],
+   [
+    "T talha Peshawar · 0 open tasks #peshawar 574 durood",
+    14,
+    1085,
+    362,
+    107
+   ],
+   [
+    "U usman Islamabad · 1 open task #events #lahore 875 durood",
+    14,
+    1193,
+    362,
+    107
+   ],
+   [
+    "Z zaid Peshawar · 1 open task #events #peshawar 490 durood",
+    14,
+    1300,
+    362,
+    106
+   ],
+   [
+    "Deadline",
+    14,
+    644,
+    362,
+    20
+   ]
+  ]
+ },
+ "razakar-3": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "circle": [
+    34,
+    194,
+    322,
+    167
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    14,
+    820,
+    362,
+    50
+   ],
+   "row0": [
+    14,
+    441,
+    362,
+    103
+   ],
+   "row1": [
+    14,
+    545,
+    362,
+    102
+   ],
+   "row2": [
+    14,
+    870,
+    362,
+    107
+   ],
+   "row3": [
+    14,
+    978,
+    362,
+    107
+   ],
+   "row4": [
+    14,
+    1085,
+    362,
+    107
+   ],
+   "row5": [
+    14,
+    1193,
+    362,
+    107
+   ],
+   "stats": [
+    14,
+    -436,
+    362,
+    94
+   ],
+   "modal": [
+    0,
+    68,
+    390,
+    776
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "teamf0": [
+    34,
+    722,
+    58,
+    44
+   ],
+   "teamf1": [
+    98,
+    722,
+    92,
+    44
+   ],
+   "teamf2": [
+    196,
+    722,
+    93,
+    44
+   ],
+   "teamf3": [
+    34,
+    772,
+    86,
+    44
+   ],
+   "teamf4": [
+    126,
+    772,
+    111,
+    44
+   ],
+   "assignall": [
+    14,
+    820,
+    362,
+    50
+   ],
+   "orz0": [
+    14,
+    870,
+    362,
+    106
+   ],
+   "orz1": [
+    14,
+    978,
+    362,
+    106
+   ],
+   "orz2": [
+    14,
+    1085,
+    362,
+    106
+   ],
+   "orz3": [
+    14,
+    1193,
+    362,
+    106
+   ],
+   "orz4": [
+    14,
+    1300,
+    362,
+    106
+   ],
+   "osl0": [
+    14,
+    441,
+    362,
+    102
+   ],
+   "osl1": [
+    14,
+    545,
+    362,
+    102
+   ],
+   "tagadd": [
+    323,
+    290,
+    53,
+    44
+   ]
+  },
+  "heads": [
+   [
+    "My people",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Requests to connect 1",
+    14,
+    127,
+    362,
+    53
+   ],
+   [
+    "Your saliks 2",
+    14,
+    388,
+    362,
+    53
+   ],
+   [
+    "A ali Lahore · 504 durood this week 504 durood",
+    14,
+    441,
+    362,
+    103
+   ],
+   [
+    "H hamza Karachi · 1,330 durood this week 1,330 durood",
+    14,
+    545,
+    362,
+    102
+   ],
+   [
+    "Your razakars 5",
+    14,
+    659,
+    362,
+    53
+   ],
+   [
+    "A anas Faisalabad · 0 open tasks #events 714 durood",
+    14,
+    870,
+    362,
+    107
+   ],
+   [
+    "S saad Karachi · 0 open tasks #karachi 420 durood",
+    14,
+    978,
+    362,
+    107
+   ],
+   [
+    "T talha Peshawar · 0 open tasks #peshawar 574 durood",
+    14,
+    1085,
+    362,
+    107
+   ],
+   [
+    "U usman Islamabad · 1 open task #events #lahore 875 durood",
+    14,
+    1193,
+    362,
+    107
+   ],
+   [
+    "Z zaid Peshawar · 1 open task #events #peshawar 490 durood",
+    14,
+    1300,
+    362,
+    106
+   ],
+   [
+    "Deadline",
+    14,
+    583,
+    362,
+    20
+   ]
+  ]
+ },
+ "salik": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "circle": [
+    34,
+    194,
+    322,
+    167
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    14,
+    820,
+    362,
+    50
+   ],
+   "row0": [
+    14,
+    441,
+    362,
+    103
+   ],
+   "row1": [
+    14,
+    545,
+    362,
+    102
+   ],
+   "row2": [
+    14,
+    870,
+    362,
+    107
+   ],
+   "row3": [
+    14,
+    978,
+    362,
+    107
+   ],
+   "row4": [
+    14,
+    1085,
+    362,
+    107
+   ],
+   "row5": [
+    14,
+    1193,
+    362,
+    107
+   ],
+   "stats": [
+    14,
+    205,
+    362,
+    94
+   ],
+   "modal": [
+    0,
+    68,
+    390,
+    776
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "teamf0": [
+    34,
+    722,
+    58,
+    44
+   ],
+   "teamf1": [
+    98,
+    722,
+    92,
+    44
+   ],
+   "teamf2": [
+    196,
+    722,
+    93,
+    44
+   ],
+   "teamf3": [
+    34,
+    772,
+    86,
+    44
+   ],
+   "teamf4": [
+    126,
+    772,
+    111,
+    44
+   ],
+   "assignall": [
+    14,
+    820,
+    362,
+    50
+   ],
+   "orz0": [
+    14,
+    870,
+    362,
+    106
+   ],
+   "orz1": [
+    14,
+    978,
+    362,
+    106
+   ],
+   "orz2": [
+    14,
+    1085,
+    362,
+    106
+   ],
+   "orz3": [
+    14,
+    1193,
+    362,
+    106
+   ],
+   "orz4": [
+    14,
+    1300,
+    362,
+    106
+   ],
+   "osl0": [
+    14,
+    441,
+    362,
+    102
+   ],
+   "osl1": [
+    14,
+    545,
+    362,
+    102
+   ],
+   "bars": [
+    14,
+    860,
+    362,
+    54
+   ],
+   "mam": [
+    14,
+    831,
+    362,
+    108
+   ]
+  },
+  "heads": [
+   [
+    "My people",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Requests to connect 1",
+    14,
+    127,
+    362,
+    53
+   ],
+   [
+    "Your saliks 2",
+    14,
+    388,
+    362,
+    53
+   ],
+   [
+    "A ali Lahore · 504 durood this week 504 durood",
+    14,
+    441,
+    362,
+    103
+   ],
+   [
+    "H hamza Karachi · 1,330 durood this week 1,330 durood",
+    14,
+    545,
+    362,
+    102
+   ],
+   [
+    "Your razakars 5",
+    14,
+    659,
+    362,
+    53
+   ],
+   [
+    "A anas Faisalabad · 0 open tasks #events 714 durood",
+    14,
+    870,
+    362,
+    107
+   ],
+   [
+    "S saad Karachi · 0 open tasks #karachi 420 durood",
+    14,
+    978,
+    362,
+    107
+   ],
+   [
+    "T talha Peshawar · 0 open tasks #peshawar 574 durood",
+    14,
+    1085,
+    362,
+    107
+   ],
+   [
+    "U usman Islamabad · 1 open task #events #lahore 875 durood",
+    14,
+    1193,
+    362,
+    107
+   ],
+   [
+    "Z zaid Peshawar · 1 open task #events #peshawar 490 durood",
+    14,
+    1300,
+    362,
+    106
+   ],
+   [
+    "hamza",
+    14,
+    100,
+    62,
+    29
+   ]
+  ]
+ },
+ "salik-2": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "circle": [
+    34,
+    194,
+    322,
+    167
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    14,
+    820,
+    362,
+    50
+   ],
+   "row0": [
+    14,
+    441,
+    362,
+    103
+   ],
+   "row1": [
+    14,
+    545,
+    362,
+    102
+   ],
+   "row2": [
+    14,
+    870,
+    362,
+    107
+   ],
+   "row3": [
+    14,
+    978,
+    362,
+    107
+   ],
+   "row4": [
+    14,
+    1085,
+    362,
+    107
+   ],
+   "row5": [
+    14,
+    1193,
+    362,
+    107
+   ],
+   "stats": [
+    14,
+    38,
+    362,
+    94
+   ],
+   "modal": [
+    0,
+    68,
+    390,
+    776
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "teamf0": [
+    34,
+    722,
+    58,
+    44
+   ],
+   "teamf1": [
+    98,
+    722,
+    92,
+    44
+   ],
+   "teamf2": [
+    196,
+    722,
+    93,
+    44
+   ],
+   "teamf3": [
+    34,
+    772,
+    86,
+    44
+   ],
+   "teamf4": [
+    126,
+    772,
+    111,
+    44
+   ],
+   "assignall": [
+    14,
+    820,
+    362,
+    50
+   ],
+   "orz0": [
+    14,
+    870,
+    362,
+    106
+   ],
+   "orz1": [
+    14,
+    978,
+    362,
+    106
+   ],
+   "orz2": [
+    14,
+    1085,
+    362,
+    106
+   ],
+   "orz3": [
+    14,
+    1193,
+    362,
+    106
+   ],
+   "orz4": [
+    14,
+    1300,
+    362,
+    106
+   ],
+   "osl0": [
+    14,
+    441,
+    362,
+    102
+   ],
+   "osl1": [
+    14,
+    545,
+    362,
+    102
+   ],
+   "bars": [
+    14,
+    693,
+    362,
+    54
+   ],
+   "mam": [
+    14,
+    664,
+    362,
+    108
+   ]
+  },
+  "heads": [
+   [
+    "My people",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Requests to connect 1",
+    14,
+    127,
+    362,
+    53
+   ],
+   [
+    "Your saliks 2",
+    14,
+    388,
+    362,
+    53
+   ],
+   [
+    "A ali Lahore · 504 durood this week 504 durood",
+    14,
+    441,
+    362,
+    103
+   ],
+   [
+    "H hamza Karachi · 1,330 durood this week 1,330 durood",
+    14,
+    545,
+    362,
+    102
+   ],
+   [
+    "Your razakars 5",
+    14,
+    659,
+    362,
+    53
+   ],
+   [
+    "A anas Faisalabad · 0 open tasks #events 714 durood",
+    14,
+    870,
+    362,
+    107
+   ],
+   [
+    "S saad Karachi · 0 open tasks #karachi 420 durood",
+    14,
+    978,
+    362,
+    107
+   ],
+   [
+    "T talha Peshawar · 0 open tasks #peshawar 574 durood",
+    14,
+    1085,
+    362,
+    107
+   ],
+   [
+    "U usman Islamabad · 1 open task #events #lahore 875 durood",
+    14,
+    1193,
+    362,
+    107
+   ],
+   [
+    "Z zaid Peshawar · 1 open task #events #peshawar 490 durood",
+    14,
+    1300,
+    362,
+    106
+   ]
+  ]
+ },
+ "salik-3": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "circle": [
+    34,
+    194,
+    322,
+    167
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    14,
+    820,
+    362,
+    50
+   ],
+   "row0": [
+    14,
+    441,
+    362,
+    103
+   ],
+   "row1": [
+    14,
+    545,
+    362,
+    102
+   ],
+   "row2": [
+    14,
+    870,
+    362,
+    107
+   ],
+   "row3": [
+    14,
+    978,
+    362,
+    107
+   ],
+   "row4": [
+    14,
+    1085,
+    362,
+    107
+   ],
+   "row5": [
+    14,
+    1193,
+    362,
+    107
+   ],
+   "stats": [
+    14,
+    38,
+    362,
+    94
+   ],
+   "modal": [
+    0,
+    68,
+    390,
+    776
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "teamf0": [
+    34,
+    722,
+    58,
+    44
+   ],
+   "teamf1": [
+    98,
+    722,
+    92,
+    44
+   ],
+   "teamf2": [
+    196,
+    722,
+    93,
+    44
+   ],
+   "teamf3": [
+    34,
+    772,
+    86,
+    44
+   ],
+   "teamf4": [
+    126,
+    772,
+    111,
+    44
+   ],
+   "assignall": [
+    14,
+    820,
+    362,
+    50
+   ],
+   "orz0": [
+    14,
+    870,
+    362,
+    106
+   ],
+   "orz1": [
+    14,
+    978,
+    362,
+    106
+   ],
+   "orz2": [
+    14,
+    1085,
+    362,
+    106
+   ],
+   "orz3": [
+    14,
+    1193,
+    362,
+    106
+   ],
+   "orz4": [
+    14,
+    1300,
+    362,
+    106
+   ],
+   "osl0": [
+    14,
+    441,
+    362,
+    102
+   ],
+   "osl1": [
+    14,
+    545,
+    362,
+    102
+   ],
+   "bars": [
+    14,
+    693,
+    362,
+    54
+   ],
+   "mam": [
+    14,
+    664,
+    362,
+    108
+   ]
+  },
+  "heads": [
+   [
+    "My people",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Requests to connect 1",
+    14,
+    127,
+    362,
+    53
+   ],
+   [
+    "Your saliks 2",
+    14,
+    388,
+    362,
+    53
+   ],
+   [
+    "A ali Lahore · 504 durood this week 504 durood",
+    14,
+    441,
+    362,
+    103
+   ],
+   [
+    "H hamza Karachi · 1,330 durood this week 1,330 durood",
+    14,
+    545,
+    362,
+    102
+   ],
+   [
+    "Your razakars 5",
+    14,
+    659,
+    362,
+    53
+   ],
+   [
+    "A anas Faisalabad · 0 open tasks #events 714 durood",
+    14,
+    870,
+    362,
+    107
+   ],
+   [
+    "S saad Karachi · 0 open tasks #karachi 420 durood",
+    14,
+    978,
+    362,
+    107
+   ],
+   [
+    "T talha Peshawar · 0 open tasks #peshawar 574 durood",
+    14,
+    1085,
+    362,
+    107
+   ],
+   [
+    "U usman Islamabad · 1 open task #events #lahore 875 durood",
+    14,
+    1193,
+    362,
+    107
+   ],
+   [
+    "Z zaid Peshawar · 1 open task #events #peshawar 490 durood",
+    14,
+    1300,
+    362,
+    106
+   ]
+  ]
+ },
+ "menu": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "big": [
+    14,
+    277,
+    362,
+    125
+   ],
+   "numbox": [
+    14,
+    507,
+    362,
+    178
+   ],
+   "manual": [
+    34,
+    534,
+    234,
+    64
+   ],
+   "add": [
+    276,
+    534,
+    80,
+    64
+   ],
+   "taptoggle": [
+    34,
+    699,
+    152,
+    44
+   ],
+   "start": [
+    16,
+    775,
+    358,
+    167
+   ],
+   "tick": [
+    34,
+    2266,
+    213,
+    60
+   ],
+   "photo": [
+    34,
+    2336,
+    322,
+    60
+   ],
+   "watch": [
+    264,
+    2679,
+    80,
+    44
+   ],
+   "reflect": [
+    34,
+    3447,
+    322,
+    89
+   ],
+   "circle": [
+    34,
+    2832,
+    322,
+    263
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    0,
+    115,
+    390,
+    50
+   ],
+   "side": [
+    0,
+    0,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    1535,
+    362,
+    83
+   ],
+   "trow1": [
+    14,
+    1618,
+    362,
+    83
+   ],
+   "trow2": [
+    14,
+    1701,
+    362,
+    101
+   ],
+   "trow3": [
+    14,
+    1801,
+    362,
+    69
+   ],
+   "trow4": [
+    14,
+    1870,
+    362,
+    69
+   ],
+   "tcheck": [
+    30,
+    1554,
+    44,
+    44
+   ],
+   "tmenu": [
+    328,
+    1556,
+    40,
+    40
+   ]
+  },
+  "heads": [
+   [
+    "Today",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "How many durood did you recite?",
+    14,
+    507,
+    362,
+    20
+   ],
+   [
+    "Quests 3 / 5",
+    14,
+    956,
+    362,
+    53
+   ],
+   [
+    "Tasks today 5",
+    14,
+    1482,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    14,
+    1535,
+    362,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    86,
+    1547,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    14,
+    1618,
+    362,
+    83
+   ],
+   [
+    "Visit the new members",
+    86,
+    1630,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    14,
+    1701,
+    362,
+    101
+   ],
+   [
+    "Bring the banner for Jumuah",
+    86,
+    1713,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    14,
+    1801,
+    362,
+    69
+   ],
+   [
+    "Morning adhkar",
+    86,
+    1816,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    14,
+    1870,
+    362,
+    69
+   ],
+   [
+    "Majlis-e-Zikr",
+    86,
+    1885,
+    230,
+    21
+   ],
+   [
+    "Sunnah 0 / 1",
+    14,
+    2050,
+    362,
+    53
+   ],
+   [
+    "SUNNAH OF THE DAY",
+    14,
+    2103,
+    362,
+    41
+   ],
+   [
+    "Take or choose a photo +",
+    34,
+    2336,
+    322,
+    60
+   ],
+   [
+    "Seerah 0 / 1",
+    14,
+    2557,
+    362,
+    53
+   ],
+   [
+    "LECTURE OF THE WEEK",
+    14,
+    2610,
+    362,
+    41
+   ],
+   [
+    "Daily reflection 0 / 1",
+    14,
+    3172,
+    362,
+    53
+   ],
+   [
+    "DAILY REFLECTION",
+    14,
+    3225,
+    362,
+    41
+   ],
+   [
+    "Rabi ul Awwal challenge",
+    14,
+    3620,
+    362,
+    52
+   ]
+  ]
+ },
+ "addsheet": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "big": [
+    0,
+    481,
+    390,
+    63
+   ],
+   "numbox": [
+    0,
+    591,
+    390,
+    178
+   ],
+   "manual": [
+    20,
+    617,
+    262,
+    64
+   ],
+   "add": [
+    290,
+    617,
+    80,
+    64
+   ],
+   "taptoggle": [
+    20,
+    782,
+    152,
+    44
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    14,
+    121,
+    362,
+    66
+   ],
+   "fitem0": [
+    14,
+    197,
+    362,
+    157
+   ],
+   "fitem1": [
+    14,
+    364,
+    362,
+    87
+   ],
+   "fitem2": [
+    14,
+    461,
+    362,
+    266
+   ],
+   "fitem3": [
+    14,
+    737,
+    362,
+    293
+   ],
+   "fitem4": [
+    14,
+    1039,
+    362,
+    266
+   ],
+   "fitem5": [
+    14,
+    1315,
+    362,
+    139
+   ],
+   "like0": [
+    24,
+    675,
+    49,
+    40
+   ],
+   "like1": [
+    24,
+    977,
+    48,
+    40
+   ],
+   "like2": [
+    24,
+    1253,
+    48,
+    40
+   ],
+   "like3": [
+    24,
+    2124,
+    34,
+    40
+   ],
+   "like4": [
+    24,
+    2319,
+    34,
+    40
+   ],
+   "cheer0": [
+    34,
+    1398,
+    102,
+    44
+   ],
+   "cheer1": [
+    34,
+    1776,
+    102,
+    44
+   ],
+   "cheer2": [
+    34,
+    1925,
+    102,
+    44
+   ],
+   "avatar": [
+    34,
+    494,
+    32,
+    32
+   ],
+   "modal": [
+    0,
+    389,
+    390,
+    455
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ]
+  },
+  "heads": [
+   [
+    "Feed",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "ANNOUNCEMENT 1m Day 9 of the Rabi ul Awwal challenge JazakAl",
+    14,
+    197,
+    362,
+    157
+   ],
+   [
+    "ANNOUNCEMENT 1m",
+    34,
+    210,
+    322,
+    16
+   ],
+   [
+    "MILESTONE 1m ahmed earned 10,000 Recite 10,000 durood",
+    14,
+    364,
+    362,
+    87
+   ],
+   [
+    "MILESTONE 1m",
+    34,
+    377,
+    322,
+    16
+   ],
+   [
+    "DAILY REFLECTION U usman Usman Tariq Islamabad 1m At Hudaybi",
+    14,
+    461,
+    362,
+    266
+   ],
+   [
+    "DAILY REFLECTION",
+    34,
+    474,
+    322,
+    16
+   ],
+   [
+    "DAILY REFLECTION B bilal Bilal Ahmed Lahore 1m At Hudaybiyya",
+    14,
+    737,
+    362,
+    293
+   ],
+   [
+    "DAILY REFLECTION",
+    34,
+    750,
+    322,
+    16
+   ],
+   [
+    "DAILY REFLECTION H hamza Hamza Qureshi Karachi 1m At Hudaybi",
+    14,
+    1039,
+    362,
+    266
+   ],
+   [
+    "DAILY REFLECTION",
+    34,
+    1052,
+    322,
+    16
+   ],
+   [
+    "MILESTONE 1m usman earned 10,000 Recite 10,000 durood MashaA",
+    14,
+    1315,
+    362,
+    139
+   ],
+   [
+    "MILESTONE 1m",
+    34,
+    1328,
+    322,
+    16
+   ],
+   [
+    "CITY RANKING 1m Lahore finished #2 among cities last week",
+    14,
+    1464,
+    362,
+    66
+   ],
+   [
+    "CITY RANKING 1m",
+    34,
+    1477,
+    322,
+    16
+   ],
+   [
+    "CITY RANKING 1m Peshawar finished #3 among cities last week",
+    14,
+    1541,
+    362,
+    66
+   ],
+   [
+    "CITY RANKING 1m",
+    34,
+    1554,
+    322,
+    16
+   ],
+   [
+    "CITY RANKING 1m Karachi finished first among cities last wee",
+    14,
+    1617,
+    362,
+    66
+   ],
+   [
+    "CITY RANKING 1m",
+    34,
+    1630,
+    322,
+    16
+   ],
+   [
+    "MILESTONE 1m usman earned Silver League Reach the Silver lea",
+    14,
+    1693,
+    362,
+    139
+   ],
+   [
+    "MILESTONE 1m",
+    34,
+    1706,
+    322,
+    16
+   ],
+   [
+    "MILESTONE 1m zubair earned Silver League Reach the Silver le",
+    14,
+    1842,
+    362,
+    139
+   ],
+   [
+    "MILESTONE 1m",
+    34,
+    1855,
+    322,
+    16
+   ],
+   [
+    "THE HIJRAH: LEAVING MAKKAH FOR MADINAH B bilal Bilal Ahmed L",
+    14,
+    1991,
+    362,
+    185
+   ],
+   [
+    "THE HIJRAH: LEAVING MAKKAH FOR MADINAH",
+    34,
+    2004,
+    322,
+    16
+   ],
+   [
+    "THE HIJRAH: LEAVING MAKKAH FOR MADINAH H hamza Hamza Qureshi",
+    14,
+    2186,
+    362,
+    185
+   ],
+   [
+    "THE HIJRAH: LEAVING MAKKAH FOR MADINAH",
+    34,
+    2199,
+    322,
+    16
+   ],
+   [
+    "Add durood",
+    20,
+    422,
+    101,
+    26
+   ],
+   [
+    "How many durood did you recite?",
+    20,
+    591,
+    350,
+    20
+   ]
+  ]
+ },
+ "news": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    14,
+    121,
+    362,
+    66
+   ],
+   "fitem0": [
+    14,
+    197,
+    362,
+    157
+   ],
+   "fitem1": [
+    14,
+    364,
+    362,
+    87
+   ],
+   "fitem2": [
+    14,
+    461,
+    362,
+    266
+   ],
+   "fitem3": [
+    14,
+    737,
+    362,
+    293
+   ],
+   "fitem4": [
+    14,
+    1039,
+    362,
+    266
+   ],
+   "fitem5": [
+    14,
+    1315,
+    362,
+    139
+   ],
+   "like0": [
+    24,
+    675,
+    49,
+    40
+   ],
+   "like1": [
+    24,
+    977,
+    48,
+    40
+   ],
+   "like2": [
+    24,
+    1253,
+    48,
+    40
+   ],
+   "like3": [
+    24,
+    2124,
+    34,
+    40
+   ],
+   "like4": [
+    24,
+    2319,
+    34,
+    40
+   ],
+   "cheer0": [
+    34,
+    1398,
+    102,
+    44
+   ],
+   "cheer1": [
+    34,
+    1776,
+    102,
+    44
+   ],
+   "cheer2": [
+    34,
+    1925,
+    102,
+    44
+   ],
+   "avatar": [
+    34,
+    494,
+    32,
+    32
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ]
+  },
+  "heads": [
+   [
+    "Feed",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "ANNOUNCEMENT 1m Day 9 of the Rabi ul Awwal challenge JazakAl",
+    14,
+    197,
+    362,
+    157
+   ],
+   [
+    "ANNOUNCEMENT 1m",
+    34,
+    210,
+    322,
+    16
+   ],
+   [
+    "MILESTONE 1m ahmed earned 10,000 Recite 10,000 durood",
+    14,
+    364,
+    362,
+    87
+   ],
+   [
+    "MILESTONE 1m",
+    34,
+    377,
+    322,
+    16
+   ],
+   [
+    "DAILY REFLECTION U usman Usman Tariq Islamabad 1m At Hudaybi",
+    14,
+    461,
+    362,
+    266
+   ],
+   [
+    "DAILY REFLECTION",
+    34,
+    474,
+    322,
+    16
+   ],
+   [
+    "DAILY REFLECTION B bilal Bilal Ahmed Lahore 1m At Hudaybiyya",
+    14,
+    737,
+    362,
+    293
+   ],
+   [
+    "DAILY REFLECTION",
+    34,
+    750,
+    322,
+    16
+   ],
+   [
+    "DAILY REFLECTION H hamza Hamza Qureshi Karachi 1m At Hudaybi",
+    14,
+    1039,
+    362,
+    266
+   ],
+   [
+    "DAILY REFLECTION",
+    34,
+    1052,
+    322,
+    16
+   ],
+   [
+    "MILESTONE 1m usman earned 10,000 Recite 10,000 durood MashaA",
+    14,
+    1315,
+    362,
+    139
+   ],
+   [
+    "MILESTONE 1m",
+    34,
+    1328,
+    322,
+    16
+   ],
+   [
+    "CITY RANKING 1m Lahore finished #2 among cities last week",
+    14,
+    1464,
+    362,
+    66
+   ],
+   [
+    "CITY RANKING 1m",
+    34,
+    1477,
+    322,
+    16
+   ],
+   [
+    "CITY RANKING 1m Peshawar finished #3 among cities last week",
+    14,
+    1541,
+    362,
+    66
+   ],
+   [
+    "CITY RANKING 1m",
+    34,
+    1554,
+    322,
+    16
+   ],
+   [
+    "CITY RANKING 1m Karachi finished first among cities last wee",
+    14,
+    1617,
+    362,
+    66
+   ],
+   [
+    "CITY RANKING 1m",
+    34,
+    1630,
+    322,
+    16
+   ],
+   [
+    "MILESTONE 1m usman earned Silver League Reach the Silver lea",
+    14,
+    1693,
+    362,
+    139
+   ],
+   [
+    "MILESTONE 1m",
+    34,
+    1706,
+    322,
+    16
+   ],
+   [
+    "MILESTONE 1m zubair earned Silver League Reach the Silver le",
+    14,
+    1842,
+    362,
+    139
+   ],
+   [
+    "MILESTONE 1m",
+    34,
+    1855,
+    322,
+    16
+   ],
+   [
+    "THE HIJRAH: LEAVING MAKKAH FOR MADINAH B bilal Bilal Ahmed L",
+    14,
+    1991,
+    362,
+    185
+   ],
+   [
+    "THE HIJRAH: LEAVING MAKKAH FOR MADINAH",
+    34,
+    2004,
+    322,
+    16
+   ],
+   [
+    "THE HIJRAH: LEAVING MAKKAH FOR MADINAH H hamza Hamza Qureshi",
+    14,
+    2186,
+    362,
+    185
+   ],
+   [
+    "THE HIJRAH: LEAVING MAKKAH FOR MADINAH",
+    34,
+    2199,
+    322,
+    16
+   ]
+  ]
+ },
+ "sunnah": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "tick": [
+    20,
+    279,
+    213,
+    60
+   ],
+   "photo": [
+    20,
+    349,
+    350,
+    60
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ]
+  },
+  "heads": [
+   [
+    "Sunnah",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "SUNNAH OF THE DAY",
+    0,
+    116,
+    390,
+    41
+   ],
+   [
+    "Take or choose a photo +",
+    20,
+    349,
+    350,
+    60
+   ],
+   [
+    "YOUR SUNNAH POSTS",
+    0,
+    508,
+    390,
+    41
+   ],
+   [
+    "FROM THE COMMUNITY",
+    0,
+    618,
+    390,
+    41
+   ]
+  ],
+  "full": true,
+  "h": 995,
+  "hd": 65,
+  "tab": 782
+ },
+ "seerah": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "watch": [
+    278,
+    185,
+    80,
+    44
+   ],
+   "circle": [
+    20,
+    342,
+    350,
+    263
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ]
+  },
+  "heads": [
+   [
+    "Seerah",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "LECTURE OF THE WEEK",
+    0,
+    116,
+    390,
+    41
+   ],
+   [
+    "EARLIER LECTURES",
+    0,
+    605,
+    390,
+    41
+   ]
+  ],
+  "full": true,
+  "h": 995,
+  "hd": 65,
+  "tab": 782
+ },
+ "lecture": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "watch": [
+    278,
+    185,
+    80,
+    44
+   ],
+   "circle": [
+    20,
+    342,
+    350,
+    263
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "modal": [
+    12,
+    93,
+    366,
+    658
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "iframe": [
+    26,
+    107,
+    338,
+    190
+   ],
+   "quiz": [
+    26,
+    358,
+    338,
+    309
+   ]
+  },
+  "heads": [
+   [
+    "Seerah",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "LECTURE OF THE WEEK",
+    0,
+    116,
+    390,
+    41
+   ],
+   [
+    "EARLIER LECTURES",
+    0,
+    605,
+    390,
+    41
+   ],
+   [
+    "ANSWER TO CLAIM",
+    26,
+    358,
+    338,
+    41
+   ],
+   [
+    "Taif",
+    37,
+    442,
+    316,
+    44
+   ],
+   [
+    "Madinah",
+    37,
+    500,
+    316,
+    44
+   ],
+   [
+    "Jerusalem",
+    37,
+    558,
+    316,
+    44
+   ]
+  ]
+ },
+ "feed": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    14,
+    121,
+    362,
+    66
+   ],
+   "fitem0": [
+    14,
+    197,
+    362,
+    157
+   ],
+   "fitem1": [
+    14,
+    364,
+    362,
+    87
+   ],
+   "fitem2": [
+    14,
+    461,
+    362,
+    266
+   ],
+   "fitem3": [
+    14,
+    737,
+    362,
+    293
+   ],
+   "fitem4": [
+    14,
+    1039,
+    362,
+    266
+   ],
+   "fitem5": [
+    14,
+    1315,
+    362,
+    139
+   ],
+   "like0": [
+    24,
+    675,
+    49,
+    40
+   ],
+   "like1": [
+    24,
+    977,
+    48,
+    40
+   ],
+   "like2": [
+    24,
+    1253,
+    48,
+    40
+   ],
+   "like3": [
+    24,
+    2124,
+    34,
+    40
+   ],
+   "like4": [
+    24,
+    2319,
+    34,
+    40
+   ],
+   "cheer0": [
+    34,
+    1398,
+    102,
+    44
+   ],
+   "cheer1": [
+    34,
+    1776,
+    102,
+    44
+   ],
+   "cheer2": [
+    34,
+    1925,
+    102,
+    44
+   ],
+   "avatar": [
+    34,
+    494,
+    32,
+    32
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ]
+  },
+  "heads": [
+   [
+    "Feed",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "ANNOUNCEMENT 1m Day 9 of the Rabi ul Awwal challenge JazakAl",
+    14,
+    197,
+    362,
+    157
+   ],
+   [
+    "ANNOUNCEMENT 1m",
+    34,
+    210,
+    322,
+    16
+   ],
+   [
+    "MILESTONE 1m ahmed earned 10,000 Recite 10,000 durood",
+    14,
+    364,
+    362,
+    87
+   ],
+   [
+    "MILESTONE 1m",
+    34,
+    377,
+    322,
+    16
+   ],
+   [
+    "DAILY REFLECTION U usman Usman Tariq Islamabad 1m At Hudaybi",
+    14,
+    461,
+    362,
+    266
+   ],
+   [
+    "DAILY REFLECTION",
+    34,
+    474,
+    322,
+    16
+   ],
+   [
+    "DAILY REFLECTION B bilal Bilal Ahmed Lahore 1m At Hudaybiyya",
+    14,
+    737,
+    362,
+    293
+   ],
+   [
+    "DAILY REFLECTION",
+    34,
+    750,
+    322,
+    16
+   ],
+   [
+    "DAILY REFLECTION H hamza Hamza Qureshi Karachi 1m At Hudaybi",
+    14,
+    1039,
+    362,
+    266
+   ],
+   [
+    "DAILY REFLECTION",
+    34,
+    1052,
+    322,
+    16
+   ],
+   [
+    "MILESTONE 1m usman earned 10,000 Recite 10,000 durood MashaA",
+    14,
+    1315,
+    362,
+    139
+   ],
+   [
+    "MILESTONE 1m",
+    34,
+    1328,
+    322,
+    16
+   ],
+   [
+    "CITY RANKING 1m Lahore finished #2 among cities last week",
+    14,
+    1464,
+    362,
+    66
+   ],
+   [
+    "CITY RANKING 1m",
+    34,
+    1477,
+    322,
+    16
+   ],
+   [
+    "CITY RANKING 1m Peshawar finished #3 among cities last week",
+    14,
+    1541,
+    362,
+    66
+   ],
+   [
+    "CITY RANKING 1m",
+    34,
+    1554,
+    322,
+    16
+   ],
+   [
+    "CITY RANKING 1m Karachi finished first among cities last wee",
+    14,
+    1617,
+    362,
+    66
+   ],
+   [
+    "CITY RANKING 1m",
+    34,
+    1630,
+    322,
+    16
+   ],
+   [
+    "MILESTONE 1m usman earned Silver League Reach the Silver lea",
+    14,
+    1693,
+    362,
+    139
+   ],
+   [
+    "MILESTONE 1m",
+    34,
+    1706,
+    322,
+    16
+   ],
+   [
+    "MILESTONE 1m zubair earned Silver League Reach the Silver le",
+    14,
+    1842,
+    362,
+    139
+   ],
+   [
+    "MILESTONE 1m",
+    34,
+    1855,
+    322,
+    16
+   ],
+   [
+    "THE HIJRAH: LEAVING MAKKAH FOR MADINAH B bilal Bilal Ahmed L",
+    14,
+    1991,
+    362,
+    185
+   ],
+   [
+    "THE HIJRAH: LEAVING MAKKAH FOR MADINAH",
+    34,
+    2004,
+    322,
+    16
+   ],
+   [
+    "THE HIJRAH: LEAVING MAKKAH FOR MADINAH H hamza Hamza Qureshi",
+    14,
+    2186,
+    362,
+    185
+   ],
+   [
+    "THE HIJRAH: LEAVING MAKKAH FOR MADINAH",
+    34,
+    2199,
+    322,
+    16
+   ]
+  ],
+  "full": true,
+  "h": 2595,
+  "hd": 65,
+  "tab": 782
+ },
+ "rank-people": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "challenge": [
+    14,
+    127,
+    362,
+    322
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "seg5": [
+    14,
+    461,
+    362,
+    42
+   ],
+   "row0": [
+    14,
+    571,
+    362,
+    65
+   ],
+   "row1": [
+    14,
+    636,
+    362,
+    65
+   ],
+   "row2": [
+    14,
+    700,
+    362,
+    65
+   ],
+   "row3": [
+    14,
+    765,
+    362,
+    65
+   ],
+   "row4": [
+    14,
+    830,
+    362,
+    65
+   ],
+   "row5": [
+    14,
+    894,
+    362,
+    65
+   ],
+   "avatar": [
+    74,
+    586,
+    34,
+    34
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ]
+  },
+  "heads": [
+   [
+    "Compete",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "1 B Bilal Ahmed Lahore 1,470 durood",
+    14,
+    571,
+    362,
+    65
+   ],
+   [
+    "2 H Hamza Qureshi Karachi 1,330 durood",
+    14,
+    636,
+    362,
+    65
+   ],
+   [
+    "3 A Ahmed Raza you Lahore 1,013 durood",
+    14,
+    700,
+    362,
+    65
+   ],
+   [
+    "4 U Umar Farooq Peshawar 980 durood",
+    14,
+    765,
+    362,
+    65
+   ],
+   [
+    "5 U Usman Tariq Islamabad 875 durood",
+    14,
+    830,
+    362,
+    65
+   ],
+   [
+    "6 F Fahad Malik Karachi 805 durood",
+    14,
+    894,
+    362,
+    65
+   ],
+   [
+    "7 A Anas Zafar Faisalabad 714 durood",
+    14,
+    959,
+    362,
+    65
+   ],
+   [
+    "8 H Hamid Gul Peshawar 665 durood",
+    14,
+    1024,
+    362,
+    65
+   ],
+   [
+    "9 S Shoaib Nadeem Multan 651 durood",
+    14,
+    1089,
+    362,
+    65
+   ],
+   [
+    "10 Z Zubair Anwar Islamabad 630 durood",
+    14,
+    1153,
+    362,
+    65
+   ],
+   [
+    "11 H Huzaifa Aslam Multan 609 durood",
+    14,
+    1218,
+    362,
+    65
+   ],
+   [
+    "12 I Imran Saleem Lahore 595 durood",
+    14,
+    1283,
+    362,
+    65
+   ],
+   [
+    "13 T Talha Butt Peshawar 574 durood",
+    14,
+    1347,
+    362,
+    65
+   ],
+   [
+    "14 R Rizwan Sheikh Faisalabad 567 durood",
+    14,
+    1412,
+    362,
+    65
+   ],
+   [
+    "15 O Owais Siddiqui Karachi 560 durood",
+    14,
+    1477,
+    362,
+    65
+   ],
+   [
+    "16 H Hassan Mirza Islamabad 546 durood",
+    14,
+    1542,
+    362,
+    65
+   ],
+   [
+    "17 A Abdullah Rana Faisalabad 532 durood",
+    14,
+    1606,
+    362,
+    65
+   ],
+   [
+    "18 J Junaid Akhtar Multan 504 durood",
+    14,
+    1671,
+    362,
+    65
+   ],
+   [
+    "19 A Ali Haider Lahore 504 durood",
+    14,
+    1736,
+    362,
+    65
+   ],
+   [
+    "20 Z Zaid Khan Peshawar 490 durood",
+    14,
+    1800,
+    362,
+    65
+   ],
+   [
+    "21 I Ibrahim Shah Faisalabad 490 durood",
+    14,
+    1865,
+    362,
+    65
+   ],
+   [
+    "22 W Waqas Noor Peshawar 462 durood",
+    14,
+    1930,
+    362,
+    65
+   ],
+   [
+    "23 K Kashif Yousaf Faisalabad 455 durood",
+    14,
+    1995,
+    362,
+    65
+   ],
+   [
+    "24 F Faisal Javed Islamabad 448 durood",
+    14,
+    2059,
+    362,
+    65
+   ],
+   [
+    "25 A Arham Riaz Multan 427 durood",
+    14,
+    2124,
+    362,
+    65
+   ],
+   [
+    "26 S Saad Hussain Karachi 420 durood",
+    14,
+    2189,
+    362,
+    65
+   ],
+   [
+    "27 Y Yusuf Iqbal Lahore 378 durood",
+    14,
+    2254,
+    362,
+    65
+   ],
+   [
+    "28 D Danish Khan Karachi 350 durood",
+    14,
+    2318,
+    362,
+    64
+   ]
+  ],
+  "full": true,
+  "h": 2565,
+  "hd": 65,
+  "tab": 782
+ },
+ "rank-league": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "challenge": [
+    14,
+    127,
+    362,
+    322
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "seg5": [
+    14,
+    461,
+    362,
+    42
+   ],
+   "row0": [
+    14,
+    588,
+    362,
+    65
+   ],
+   "row1": [
+    14,
+    652,
+    362,
+    65
+   ],
+   "row2": [
+    14,
+    717,
+    362,
+    65
+   ],
+   "row3": [
+    14,
+    782,
+    362,
+    65
+   ],
+   "row4": [
+    14,
+    846,
+    362,
+    65
+   ],
+   "row5": [
+    14,
+    911,
+    362,
+    65
+   ],
+   "leaguehead": [
+    0,
+    513,
+    390,
+    46
+   ],
+   "avatar": [
+    74,
+    602,
+    34,
+    34
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ]
+  },
+  "heads": [
+   [
+    "Compete",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "1 H hamza moves up 1,330 durood",
+    14,
+    588,
+    362,
+    65
+   ],
+   [
+    "2 A ahmed you moves up 1,013 durood",
+    14,
+    652,
+    362,
+    65
+   ],
+   [
+    "3 U umar Peshawar 980 durood",
+    14,
+    717,
+    362,
+    65
+   ],
+   [
+    "4 U usman Islamabad 875 durood",
+    14,
+    782,
+    362,
+    65
+   ],
+   [
+    "5 A anas Faisalabad 714 durood",
+    14,
+    846,
+    362,
+    65
+   ],
+   [
+    "6 H hamid Peshawar 665 durood",
+    14,
+    911,
+    362,
+    65
+   ],
+   [
+    "7 S shoaib moves down 651 durood",
+    14,
+    976,
+    362,
+    65
+   ],
+   [
+    "8 Z zubair moves down 630 durood",
+    14,
+    1041,
+    362,
+    64
+   ]
+  ],
+  "full": true,
+  "h": 1335,
+  "hd": 65,
+  "tab": 782
+ },
+ "rank-caravans": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "challenge": [
+    14,
+    127,
+    362,
+    322
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "seg5": [
+    14,
+    461,
+    362,
+    42
+   ],
+   "row0": [
+    14,
+    571,
+    362,
+    65
+   ],
+   "row1": [
+    14,
+    636,
+    362,
+    65
+   ],
+   "row2": [
+    14,
+    700,
+    362,
+    65
+   ],
+   "row3": [
+    14,
+    765,
+    362,
+    64
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ]
+  },
+  "heads": [
+   [
+    "Compete",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "1 Noor Caravan yours 7 members 4,541 durood",
+    14,
+    571,
+    362,
+    65
+   ],
+   [
+    "2 Madinah Riders 6 members 3,773 durood",
+    14,
+    636,
+    362,
+    65
+   ],
+   [
+    "3 Peshawar Noor 5 members 3,171 durood",
+    14,
+    700,
+    362,
+    65
+   ],
+   [
+    "4 Karachi Ashiqan 4 members 3,115 durood",
+    14,
+    765,
+    362,
+    64
+   ]
+  ],
+  "full": true,
+  "h": 1059,
+  "hd": 65,
+  "tab": 782
+ },
+ "rank-trees": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "challenge": [
+    14,
+    127,
+    362,
+    322
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "seg5": [
+    14,
+    461,
+    362,
+    42
+   ],
+   "row0": [
+    14,
+    571,
+    362,
+    65
+   ],
+   "row1": [
+    14,
+    636,
+    362,
+    65
+   ],
+   "row2": [
+    14,
+    700,
+    362,
+    65
+   ],
+   "row3": [
+    14,
+    765,
+    362,
+    65
+   ],
+   "row4": [
+    14,
+    830,
+    362,
+    65
+   ],
+   "row5": [
+    14,
+    894,
+    362,
+    65
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ]
+  },
+  "heads": [
+   [
+    "Compete",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "1 ahmed you Lahore · 5 members 3,911 durood",
+    14,
+    571,
+    362,
+    65
+   ],
+   [
+    "2 hamza Karachi · 3 members 3,115 durood",
+    14,
+    636,
+    362,
+    65
+   ],
+   [
+    "3 umar Peshawar · 3 members 2,709 durood",
+    14,
+    700,
+    362,
+    65
+   ],
+   [
+    "4 bilal Lahore · 3 members 2,674 durood",
+    14,
+    765,
+    362,
+    65
+   ],
+   [
+    "5 abdullah Faisalabad · 2 members 1,554 durood",
+    14,
+    830,
+    362,
+    65
+   ],
+   [
+    "6 huzaifa Multan · 2 members 1,540 durood",
+    14,
+    894,
+    362,
+    65
+   ],
+   [
+    "7 usman Islamabad · 1 member 1,421 durood",
+    14,
+    959,
+    362,
+    65
+   ],
+   [
+    "8 zubair Islamabad · 2 members 1,078 durood",
+    14,
+    1024,
+    362,
+    64
+   ]
+  ],
+  "full": true,
+  "h": 1318,
+  "hd": 65,
+  "tab": 782
+ },
+ "rank-cities": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "challenge": [
+    14,
+    127,
+    362,
+    322
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "seg5": [
+    14,
+    461,
+    362,
+    42
+   ],
+   "row0": [
+    14,
+    571,
+    362,
+    65
+   ],
+   "row1": [
+    14,
+    636,
+    362,
+    65
+   ],
+   "row2": [
+    14,
+    700,
+    362,
+    83
+   ],
+   "row3": [
+    14,
+    784,
+    362,
+    64
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ]
+  },
+  "heads": [
+   [
+    "Compete",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "1 Lahore you Punjab · PK · 6 members 3,960 durood",
+    14,
+    571,
+    362,
+    65
+   ],
+   [
+    "2 Karachi Sindh · PK · 5 members 3,465 durood",
+    14,
+    636,
+    362,
+    65
+   ],
+   [
+    "3 Peshawar Khyber Pakhtunkhwa · PK · 5 members 3,171 durood",
+    14,
+    700,
+    362,
+    83
+   ],
+   [
+    "4 Faisalabad Punjab · PK · 5 members 2,758 durood",
+    14,
+    784,
+    362,
+    64
+   ]
+  ],
+  "full": true,
+  "h": 1125,
+  "hd": 65,
+  "tab": 782
+ },
+ "rank-majalis": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "challenge": [
+    14,
+    127,
+    362,
+    322
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "seg5": [
+    14,
+    461,
+    362,
+    42
+   ],
+   "row0": [
+    14,
+    571,
+    362,
+    65
+   ],
+   "row1": [
+    14,
+    636,
+    362,
+    65
+   ],
+   "row2": [
+    14,
+    700,
+    362,
+    64
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ]
+  },
+  "heads": [
+   [
+    "Compete",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "1 Shabab 10 members 6,902 durood",
+    14,
+    571,
+    362,
+    65
+   ],
+   [
+    "2 Seerat you 10 members 5,689 durood",
+    14,
+    636,
+    362,
+    65
+   ],
+   [
+    "3 Ilm e Deen 10 members 5,453 durood",
+    14,
+    700,
+    362,
+    64
+   ]
+  ],
+  "full": true,
+  "h": 1023,
+  "hd": 65,
+  "tab": 782
+ },
+ "profile": {
+  "view": true,
+  "sy": 391,
+  "r": {
+   "challenge": [
+    14,
+    127,
+    362,
+    322
+   ],
+   "stk": [
+    269,
+    405,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    401,
+    44,
+    44
+   ],
+   "seg5": [
+    14,
+    461,
+    362,
+    42
+   ],
+   "row0": [
+    14,
+    571,
+    362,
+    65
+   ],
+   "row1": [
+    14,
+    636,
+    362,
+    65
+   ],
+   "row2": [
+    14,
+    700,
+    362,
+    65
+   ],
+   "row3": [
+    14,
+    765,
+    362,
+    65
+   ],
+   "row4": [
+    14,
+    830,
+    362,
+    65
+   ],
+   "row5": [
+    14,
+    894,
+    362,
+    65
+   ],
+   "stats": [
+    14,
+    1057,
+    362,
+    90
+   ],
+   "avatar": [
+    74,
+    586,
+    34,
+    34
+   ],
+   "modal": [
+    0,
+    714,
+    390,
+    521
+   ],
+   "side": [
+    -306,
+    391,
+    300,
+    844
+   ]
+  },
+  "heads": [
+   [
+    "Compete",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "1 B Bilal Ahmed Lahore 1,470 durood",
+    14,
+    571,
+    362,
+    65
+   ],
+   [
+    "2 H Hamza Qureshi Karachi 1,330 durood",
+    14,
+    636,
+    362,
+    65
+   ],
+   [
+    "3 A Ahmed Raza you Lahore 1,013 durood",
+    14,
+    700,
+    362,
+    65
+   ],
+   [
+    "4 U Umar Farooq Peshawar 980 durood",
+    14,
+    765,
+    362,
+    65
+   ],
+   [
+    "5 U Usman Tariq Islamabad 875 durood",
+    14,
+    830,
+    362,
+    65
+   ],
+   [
+    "6 F Fahad Malik Karachi 805 durood",
+    14,
+    894,
+    362,
+    65
+   ],
+   [
+    "7 A Anas Zafar Faisalabad 714 durood",
+    14,
+    959,
+    362,
+    65
+   ],
+   [
+    "8 H Hamid Gul Peshawar 665 durood",
+    14,
+    1024,
+    362,
+    65
+   ],
+   [
+    "9 S Shoaib Nadeem Multan 651 durood",
+    14,
+    1089,
+    362,
+    65
+   ],
+   [
+    "10 Z Zubair Anwar Islamabad 630 durood",
+    14,
+    1153,
+    362,
+    65
+   ],
+   [
+    "11 H Huzaifa Aslam Multan 609 durood",
+    14,
+    1218,
+    362,
+    65
+   ],
+   [
+    "12 I Imran Saleem Lahore 595 durood",
+    14,
+    1283,
+    362,
+    65
+   ],
+   [
+    "13 T Talha Butt Peshawar 574 durood",
+    14,
+    1347,
+    362,
+    65
+   ],
+   [
+    "14 R Rizwan Sheikh Faisalabad 567 durood",
+    14,
+    1412,
+    362,
+    65
+   ],
+   [
+    "15 O Owais Siddiqui Karachi 560 durood",
+    14,
+    1477,
+    362,
+    65
+   ],
+   [
+    "16 H Hassan Mirza Islamabad 546 durood",
+    14,
+    1542,
+    362,
+    65
+   ],
+   [
+    "17 A Abdullah Rana Faisalabad 532 durood",
+    14,
+    1606,
+    362,
+    65
+   ],
+   [
+    "18 J Junaid Akhtar Multan 504 durood",
+    14,
+    1671,
+    362,
+    65
+   ],
+   [
+    "19 A Ali Haider Lahore 504 durood",
+    14,
+    1736,
+    362,
+    65
+   ],
+   [
+    "20 Z Zaid Khan Peshawar 490 durood",
+    14,
+    1800,
+    362,
+    65
+   ],
+   [
+    "21 I Ibrahim Shah Faisalabad 490 durood",
+    14,
+    1865,
+    362,
+    65
+   ],
+   [
+    "22 W Waqas Noor Peshawar 462 durood",
+    14,
+    1930,
+    362,
+    65
+   ],
+   [
+    "23 K Kashif Yousaf Faisalabad 455 durood",
+    14,
+    1995,
+    362,
+    65
+   ],
+   [
+    "24 F Faisal Javed Islamabad 448 durood",
+    14,
+    2059,
+    362,
+    65
+   ],
+   [
+    "25 A Arham Riaz Multan 427 durood",
+    14,
+    2124,
+    362,
+    65
+   ],
+   [
+    "26 S Saad Hussain Karachi 420 durood",
+    14,
+    2189,
+    362,
+    65
+   ],
+   [
+    "27 Y Yusuf Iqbal Lahore 378 durood",
+    14,
+    2254,
+    362,
+    65
+   ],
+   [
+    "28 D Danish Khan Karachi 350 durood",
+    14,
+    2318,
+    362,
+    64
+   ],
+   [
+    "hamza",
+    14,
+    747,
+    62,
+    29
+   ]
+  ]
+ },
+ "caravan": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "circle": [
+    44,
+    1494,
+    302,
+    146
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    0,
+    2034,
+    390,
+    71
+   ],
+   "row0": [
+    14,
+    551,
+    362,
+    122
+   ],
+   "row1": [
+    14,
+    673,
+    362,
+    122
+   ],
+   "row2": [
+    14,
+    795,
+    362,
+    103
+   ],
+   "row3": [
+    14,
+    898,
+    362,
+    103
+   ],
+   "row4": [
+    14,
+    1002,
+    362,
+    103
+   ],
+   "row5": [
+    14,
+    1105,
+    362,
+    103
+   ],
+   "stats": [
+    14,
+    239,
+    362,
+    115
+   ],
+   "karwan": [
+    20,
+    436,
+    350,
+    64
+   ],
+   "cvaccept": [
+    58,
+    1566,
+    192,
+    60
+   ],
+   "lvl": [
+    14,
+    366,
+    362,
+    58
+   ],
+   "avatar": [
+    34,
+    594,
+    34,
+    34
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ]
+  },
+  "heads": [
+   [
+    "Caravan",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "YOUR CARAVAN",
+    0,
+    115,
+    390,
+    41
+   ],
+   [
+    "MEMBERS (7)",
+    0,
+    510,
+    390,
+    41
+   ],
+   [
+    "A ahmed Owner Lahore · This week 1,013durood 10,213 durood",
+    14,
+    551,
+    362,
+    122
+   ],
+   [
+    "U usman Islamabad · This week 875durood 10,628 durood ✕",
+    14,
+    673,
+    362,
+    122
+   ],
+   [
+    "Z zubair Islamabad · This week 630durood 8,060 durood ✕",
+    14,
+    795,
+    362,
+    103
+   ],
+   [
+    "I imran Lahore · This week 595durood 7,312 durood ✕",
+    14,
+    898,
+    362,
+    103
+   ],
+   [
+    "H hassan Islamabad · This week 546durood 7,053 durood ✕",
+    14,
+    1002,
+    362,
+    103
+   ],
+   [
+    "A ali Lahore · This week 504durood 6,272 durood ✕",
+    14,
+    1105,
+    362,
+    103
+   ],
+   [
+    "Y yusuf Lahore · This week 378durood 5,048 durood ✕",
+    14,
+    1209,
+    362,
+    102
+   ],
+   [
+    "INVITE MEMBERS",
+    0,
+    1323,
+    390,
+    41
+   ],
+   [
+    "Rename your caravan",
+    30,
+    1676,
+    330,
+    20
+   ],
+   [
+    "Display name (optional)",
+    30,
+    1827,
+    330,
+    20
+   ]
+  ],
+  "full": true,
+  "h": 2191,
+  "hd": 65,
+  "tab": 782
+ },
+ "qabila": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "row0": [
+    14,
+    1165,
+    362,
+    103
+   ],
+   "row1": [
+    14,
+    1269,
+    362,
+    103
+   ],
+   "row2": [
+    14,
+    1372,
+    362,
+    103
+   ],
+   "row3": [
+    14,
+    1476,
+    362,
+    102
+   ],
+   "stats": [
+    14,
+    178,
+    362,
+    115
+   ],
+   "wa": [
+    30,
+    664,
+    262,
+    50
+   ],
+   "lvl": [
+    14,
+    306,
+    362,
+    58
+   ],
+   "avatar": [
+    34,
+    1200,
+    34,
+    34
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ]
+  },
+  "heads": [
+   [
+    "Qabila",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Invite people",
+    14,
+    375,
+    362,
+    53
+   ],
+   [
+    "Your invites 63",
+    14,
+    742,
+    362,
+    53
+   ],
+   [
+    "People you invited 4",
+    14,
+    1112,
+    362,
+    53
+   ],
+   [
+    "U usman Islamabad · This week 875durood 10,628 durood",
+    14,
+    1165,
+    362,
+    103
+   ],
+   [
+    "I imran Lahore · This week 595durood 7,312 durood",
+    14,
+    1269,
+    362,
+    103
+   ],
+   [
+    "A ali Lahore · This week 504durood 6,272 durood",
+    14,
+    1372,
+    362,
+    103
+   ],
+   [
+    "Y yusuf Lahore · This week 378durood 5,048 durood",
+    14,
+    1476,
+    362,
+    102
+   ]
+  ],
+  "full": true,
+  "h": 1676,
+  "hd": 65,
+  "tab": 782
+ },
+ "caravan-lag": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    0,
+    1939,
+    390,
+    71
+   ],
+   "row0": [
+    14,
+    642,
+    362,
+    84
+   ],
+   "row1": [
+    14,
+    779,
+    362,
+    122
+   ],
+   "row2": [
+    14,
+    901,
+    362,
+    103
+   ],
+   "row3": [
+    14,
+    1004,
+    362,
+    103
+   ],
+   "row4": [
+    14,
+    1108,
+    362,
+    103
+   ],
+   "row5": [
+    14,
+    1211,
+    362,
+    103
+   ],
+   "stats": [
+    14,
+    239,
+    362,
+    115
+   ],
+   "karwan": [
+    20,
+    436,
+    350,
+    87
+   ],
+   "lvl": [
+    14,
+    366,
+    362,
+    58
+   ],
+   "avatar": [
+    34,
+    667,
+    34,
+    34
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ]
+  },
+  "heads": [
+   [
+    "Caravan",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "YOUR CARAVAN",
+    0,
+    115,
+    390,
+    41
+   ],
+   [
+    "FALLING BEHIND (1)",
+    0,
+    532,
+    390,
+    41
+   ],
+   [
+    "M moiz No durood for 5 days Remove",
+    14,
+    642,
+    362,
+    84
+   ],
+   [
+    "MEMBERS (6)",
+    0,
+    738,
+    390,
+    41
+   ],
+   [
+    "B bilal Owner Lahore · This week 1,470durood 18,708 durood",
+    14,
+    779,
+    362,
+    122
+   ],
+   [
+    "A anas Faisalabad · This week 714durood 9,037 durood ✕",
+    14,
+    901,
+    362,
+    103
+   ],
+   [
+    "R rizwan Faisalabad · This week 567durood 6,667 durood ✕",
+    14,
+    1004,
+    362,
+    103
+   ],
+   [
+    "A abdullah Faisalabad · This week 532durood 6,707 durood ✕",
+    14,
+    1108,
+    362,
+    103
+   ],
+   [
+    "I ibrahim Faisalabad · This week 490durood 6,291 durood ✕",
+    14,
+    1211,
+    362,
+    103
+   ],
+   [
+    "M moiz Lahore · This week 0durood 2,779 durood ✕",
+    14,
+    1314,
+    362,
+    102
+   ],
+   [
+    "INVITE MEMBERS",
+    0,
+    1429,
+    390,
+    41
+   ],
+   [
+    "Rename your caravan",
+    30,
+    1581,
+    330,
+    20
+   ],
+   [
+    "Display name (optional)",
+    30,
+    1732,
+    330,
+    20
+   ]
+  ],
+  "full": true,
+  "h": 2096,
+  "hd": 65,
+  "tab": 782
+ },
+ "me": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "circle": [
+    34,
+    4010,
+    322,
+    261
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "stats": [
+    14,
+    225,
+    362,
+    94
+   ],
+   "lvl": [
+    14,
+    331,
+    362,
+    187
+   ],
+   "badges": [
+    14,
+    628,
+    362,
+    948
+   ],
+   "edit": [
+    304,
+    3014,
+    52,
+    44
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "mybig": [
+    20,
+    136,
+    56,
+    56
+   ],
+   "majlisset": [
+    298,
+    3841,
+    58,
+    44
+   ],
+   "bars": [
+    34,
+    4406,
+    322,
+    54
+   ],
+   "mam": [
+    34,
+    4377,
+    322,
+    108
+   ]
+  },
+  "heads": [
+   [
+    "Me",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Badges 11 / 35",
+    14,
+    530,
+    362,
+    57
+   ],
+   [
+    "PERSONAL",
+    14,
+    587,
+    362,
+    41
+   ],
+   [
+    "CARAVAN",
+    14,
+    1576,
+    362,
+    41
+   ],
+   [
+    "QABILA",
+    14,
+    2126,
+    362,
+    41
+   ],
+   [
+    "CITY",
+    14,
+    2647,
+    362,
+    41
+   ],
+   [
+    "History",
+    14,
+    2856,
+    362,
+    53
+   ],
+   [
+    "Majlis Seerat",
+    14,
+    3719,
+    362,
+    53
+   ],
+   [
+    "Murabbi and masul",
+    14,
+    3939,
+    362,
+    53
+   ],
+   [
+    "Points and levels",
+    14,
+    4604,
+    362,
+    53
+   ]
+  ],
+  "full": true,
+  "h": 5253,
+  "hd": 65,
+  "tab": 782
+ },
+ "history-edit": {
+  "view": true,
+  "sy": 2814,
+  "r": {
+   "circle": [
+    34,
+    4053,
+    322,
+    261
+   ],
+   "stk": [
+    269,
+    2828,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    2824,
+    44,
+    44
+   ],
+   "stats": [
+    14,
+    225,
+    362,
+    94
+   ],
+   "lvl": [
+    14,
+    331,
+    362,
+    187
+   ],
+   "badges": [
+    14,
+    628,
+    362,
+    948
+   ],
+   "edit": [
+    304,
+    3123,
+    52,
+    44
+   ],
+   "side": [
+    -306,
+    2814,
+    300,
+    844
+   ],
+   "mybig": [
+    20,
+    136,
+    56,
+    56
+   ],
+   "majlisset": [
+    298,
+    3884,
+    58,
+    44
+   ],
+   "bars": [
+    34,
+    4450,
+    322,
+    54
+   ],
+   "mam": [
+    34,
+    4421,
+    322,
+    108
+   ]
+  },
+  "heads": [
+   [
+    "Me",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Badges 11 / 35",
+    14,
+    530,
+    362,
+    57
+   ],
+   [
+    "PERSONAL",
+    14,
+    587,
+    362,
+    41
+   ],
+   [
+    "CARAVAN",
+    14,
+    1576,
+    362,
+    41
+   ],
+   [
+    "QABILA",
+    14,
+    2126,
+    362,
+    41
+   ],
+   [
+    "CITY",
+    14,
+    2647,
+    362,
+    41
+   ],
+   [
+    "History",
+    14,
+    2856,
+    362,
+    53
+   ],
+   [
+    "Majlis Seerat",
+    14,
+    3762,
+    362,
+    53
+   ],
+   [
+    "Murabbi and masul",
+    14,
+    3982,
+    362,
+    53
+   ],
+   [
+    "Points and levels",
+    14,
+    4647,
+    362,
+    53
+   ]
+  ]
+ },
+ "settings": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "modeseg": [
+    14,
+    868,
+    362,
+    46
+   ],
+   "feel": [
+    14,
+    622,
+    362,
+    48
+   ],
+   "remind": [
+    20,
+    1581,
+    350,
+    49
+   ],
+   "city": [
+    20,
+    1436,
+    350,
+    47
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "mybig": [
+    20,
+    149,
+    72,
+    72
+   ]
+  },
+  "heads": [
+   [
+    "Settings",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "Add a photo",
+    108,
+    145,
+    103,
+    44
+   ],
+   [
+    "Your email is not confirmed yet. We need a working email to ",
+    14,
+    359,
+    362,
+    122
+   ],
+   [
+    "LANGUAGE AND DISPLAY",
+    0,
+    481,
+    390,
+    41
+   ],
+   [
+    "Language",
+    0,
+    535,
+    390,
+    20
+   ],
+   [
+    "Display",
+    0,
+    837,
+    390,
+    20
+   ],
+   [
+    "YOUR PROFILE",
+    0,
+    944,
+    390,
+    41
+   ],
+   [
+    "Name",
+    20,
+    999,
+    350,
+    20
+   ],
+   [
+    "About you",
+    20,
+    1085,
+    350,
+    20
+   ],
+   [
+    "SETTINGS",
+    0,
+    1271,
+    390,
+    41
+   ],
+   [
+    "Daily goal",
+    20,
+    1326,
+    350,
+    20
+   ],
+   [
+    "City",
+    20,
+    1411,
+    350,
+    20
+   ],
+   [
+    "Daily reminder time",
+    20,
+    1557,
+    350,
+    20
+   ],
+   [
+    "Email !",
+    20,
+    1686,
+    350,
+    20
+   ],
+   [
+    "Current password (only needed to change your email)",
+    20,
+    1771,
+    350,
+    41
+   ],
+   [
+    "Security",
+    14,
+    1967,
+    362,
+    52
+   ],
+   [
+    "Delete account",
+    14,
+    2156,
+    362,
+    52
+   ]
+  ],
+  "full": true,
+  "h": 2351,
+  "hd": 65,
+  "tab": 782
+ },
+ "admin": {
+  "view": true,
+  "sy": 0,
+  "r": {},
+  "heads": [
+   [
+    "40-DAY CHALLENGE",
+    0,
+    288,
+    390,
+    41
+   ],
+   [
+    "START DATE (PAKISTAN TIME)",
+    20,
+    616,
+    171,
+    37
+   ],
+   [
+    "DAYS",
+    199,
+    636,
+    171,
+    19
+   ],
+   [
+    "TARGET (DUROOD)",
+    20,
+    709,
+    350,
+    19
+   ],
+   [
+    "Also forget the crores already recorded",
+    20,
+    784,
+    308,
+    44
+   ],
+   [
+    "NAME (ENGLISH, OPTIONAL)",
+    20,
+    894,
+    171,
+    37
+   ],
+   [
+    "NAME (URDU, OPTIONAL)",
+    199,
+    894,
+    171,
+    37
+   ],
+   [
+    "NEXT CHALLENGES",
+    0,
+    1043,
+    390,
+    41
+   ],
+   [
+    "NAME (ENGLISH)",
+    20,
+    1393,
+    171,
+    19
+   ],
+   [
+    "NAME (URDU)",
+    199,
+    1393,
+    171,
+    19
+   ],
+   [
+    "START DATE",
+    20,
+    1465,
+    171,
+    19
+   ],
+   [
+    "DAYS",
+    199,
+    1467,
+    171,
+    19
+   ],
+   [
+    "TARGET (DUROOD)",
+    20,
+    1540,
+    252,
+    19
+   ],
+   [
+    "RECENT DAYS",
+    0,
+    1615,
+    390,
+    41
+   ]
+  ]
+ },
+ "today-dark": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "big": [
+    14,
+    277,
+    362,
+    125
+   ],
+   "numbox": [
+    14,
+    507,
+    362,
+    178
+   ],
+   "manual": [
+    34,
+    534,
+    234,
+    64
+   ],
+   "add": [
+    276,
+    534,
+    80,
+    64
+   ],
+   "taptoggle": [
+    34,
+    699,
+    152,
+    44
+   ],
+   "start": [
+    16,
+    775,
+    358,
+    167
+   ],
+   "tick": [
+    34,
+    2266,
+    213,
+    60
+   ],
+   "photo": [
+    34,
+    2336,
+    322,
+    60
+   ],
+   "watch": [
+    264,
+    2679,
+    80,
+    44
+   ],
+   "reflect": [
+    34,
+    3447,
+    322,
+    89
+   ],
+   "circle": [
+    34,
+    2832,
+    322,
+    263
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    0,
+    115,
+    390,
+    50
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    1535,
+    362,
+    83
+   ],
+   "trow1": [
+    14,
+    1618,
+    362,
+    83
+   ],
+   "trow2": [
+    14,
+    1701,
+    362,
+    101
+   ],
+   "trow3": [
+    14,
+    1801,
+    362,
+    69
+   ],
+   "trow4": [
+    14,
+    1870,
+    362,
+    69
+   ],
+   "tcheck": [
+    30,
+    1554,
+    44,
+    44
+   ],
+   "tmenu": [
+    328,
+    1556,
+    40,
+    40
+   ]
+  },
+  "heads": [
+   [
+    "Today",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "How many durood did you recite?",
+    14,
+    507,
+    362,
+    20
+   ],
+   [
+    "Quests 3 / 5",
+    14,
+    956,
+    362,
+    53
+   ],
+   [
+    "Tasks today 5",
+    14,
+    1482,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    14,
+    1535,
+    362,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    86,
+    1547,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    14,
+    1618,
+    362,
+    83
+   ],
+   [
+    "Visit the new members",
+    86,
+    1630,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    14,
+    1701,
+    362,
+    101
+   ],
+   [
+    "Bring the banner for Jumuah",
+    86,
+    1713,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    14,
+    1801,
+    362,
+    69
+   ],
+   [
+    "Morning adhkar",
+    86,
+    1816,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    14,
+    1870,
+    362,
+    69
+   ],
+   [
+    "Majlis-e-Zikr",
+    86,
+    1885,
+    230,
+    21
+   ],
+   [
+    "Sunnah 0 / 1",
+    14,
+    2050,
+    362,
+    53
+   ],
+   [
+    "SUNNAH OF THE DAY",
+    14,
+    2103,
+    362,
+    41
+   ],
+   [
+    "Take or choose a photo +",
+    34,
+    2336,
+    322,
+    60
+   ],
+   [
+    "Seerah 0 / 1",
+    14,
+    2557,
+    362,
+    53
+   ],
+   [
+    "LECTURE OF THE WEEK",
+    14,
+    2610,
+    362,
+    41
+   ],
+   [
+    "Daily reflection 0 / 1",
+    14,
+    3172,
+    362,
+    53
+   ],
+   [
+    "DAILY REFLECTION",
+    14,
+    3225,
+    362,
+    41
+   ],
+   [
+    "Rabi ul Awwal challenge",
+    14,
+    3620,
+    362,
+    52
+   ]
+  ]
+ },
+ "today-light": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "big": [
+    14,
+    277,
+    362,
+    125
+   ],
+   "numbox": [
+    14,
+    507,
+    362,
+    178
+   ],
+   "manual": [
+    34,
+    534,
+    234,
+    64
+   ],
+   "add": [
+    276,
+    534,
+    80,
+    64
+   ],
+   "taptoggle": [
+    34,
+    699,
+    152,
+    44
+   ],
+   "start": [
+    16,
+    775,
+    358,
+    167
+   ],
+   "tick": [
+    34,
+    2266,
+    213,
+    60
+   ],
+   "photo": [
+    34,
+    2336,
+    322,
+    60
+   ],
+   "watch": [
+    264,
+    2679,
+    80,
+    44
+   ],
+   "reflect": [
+    34,
+    3447,
+    322,
+    89
+   ],
+   "circle": [
+    34,
+    2832,
+    322,
+    263
+   ],
+   "stk": [
+    269,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    330,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    0,
+    115,
+    390,
+    50
+   ],
+   "side": [
+    -306,
+    0,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    1535,
+    362,
+    83
+   ],
+   "trow1": [
+    14,
+    1618,
+    362,
+    83
+   ],
+   "trow2": [
+    14,
+    1701,
+    362,
+    101
+   ],
+   "trow3": [
+    14,
+    1801,
+    362,
+    69
+   ],
+   "trow4": [
+    14,
+    1870,
+    362,
+    69
+   ],
+   "tcheck": [
+    30,
+    1554,
+    44,
+    44
+   ],
+   "tmenu": [
+    328,
+    1556,
+    40,
+    40
+   ]
+  },
+  "heads": [
+   [
+    "Today",
+    0,
+    65,
+    390,
+    50
+   ],
+   [
+    "How many durood did you recite?",
+    14,
+    507,
+    362,
+    20
+   ],
+   [
+    "Quests 3 / 5",
+    14,
+    956,
+    362,
+    53
+   ],
+   [
+    "Tasks today 5",
+    14,
+    1482,
+    362,
+    53
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    14,
+    1535,
+    362,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    86,
+    1547,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    14,
+    1618,
+    362,
+    83
+   ],
+   [
+    "Visit the new members",
+    86,
+    1630,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    14,
+    1701,
+    362,
+    101
+   ],
+   [
+    "Bring the banner for Jumuah",
+    86,
+    1713,
+    230,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    14,
+    1801,
+    362,
+    69
+   ],
+   [
+    "Morning adhkar",
+    86,
+    1816,
+    230,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    14,
+    1870,
+    362,
+    69
+   ],
+   [
+    "Majlis-e-Zikr",
+    86,
+    1885,
+    230,
+    21
+   ],
+   [
+    "Sunnah 0 / 1",
+    14,
+    2050,
+    362,
+    53
+   ],
+   [
+    "SUNNAH OF THE DAY",
+    14,
+    2103,
+    362,
+    41
+   ],
+   [
+    "Take or choose a photo +",
+    34,
+    2336,
+    322,
+    60
+   ],
+   [
+    "Seerah 0 / 1",
+    14,
+    2557,
+    362,
+    53
+   ],
+   [
+    "LECTURE OF THE WEEK",
+    14,
+    2610,
+    362,
+    41
+   ],
+   [
+    "Daily reflection 0 / 1",
+    14,
+    3172,
+    362,
+    53
+   ],
+   [
+    "DAILY REFLECTION",
+    14,
+    3225,
+    362,
+    41
+   ],
+   [
+    "Rabi ul Awwal challenge",
+    14,
+    3620,
+    362,
+    52
+   ]
+  ]
+ },
+ "today-ur": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "big": [
+    14,
+    279,
+    362,
+    125
+   ],
+   "numbox": [
+    14,
+    496,
+    362,
+    194
+   ],
+   "manual": [
+    151,
+    529,
+    205,
+    70
+   ],
+   "add": [
+    34,
+    529,
+    109,
+    70
+   ],
+   "taptoggle": [
+    248,
+    705,
+    108,
+    44
+   ],
+   "start": [
+    16,
+    781,
+    358,
+    186
+   ],
+   "tick": [
+    105,
+    2440,
+    251,
+    64
+   ],
+   "photo": [
+    34,
+    2514,
+    322,
+    68
+   ],
+   "watch": [
+    46,
+    2878,
+    74,
+    44
+   ],
+   "reflect": [
+    34,
+    3776,
+    322,
+    108
+   ],
+   "circle": [
+    34,
+    3038,
+    322,
+    290
+   ],
+   "stk": [
+    68,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    16,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    0,
+    132,
+    390,
+    53
+   ],
+   "side": [
+    396,
+    0,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    1596,
+    362,
+    100
+   ],
+   "trow1": [
+    14,
+    1696,
+    362,
+    100
+   ],
+   "trow2": [
+    14,
+    1795,
+    362,
+    123
+   ],
+   "trow3": [
+    14,
+    1918,
+    362,
+    75
+   ],
+   "trow4": [
+    14,
+    1993,
+    362,
+    75
+   ],
+   "tcheck": [
+    316,
+    1623,
+    44,
+    44
+   ],
+   "tmenu": [
+    22,
+    1625,
+    40,
+    40
+   ]
+  },
+  "heads": [
+   [
+    "آج",
+    0,
+    65,
+    390,
+    67
+   ],
+   [
+    "آپ نے کتنا درود پڑھا؟",
+    14,
+    496,
+    362,
+    27
+   ],
+   [
+    "مشن 3 / 5",
+    14,
+    980,
+    362,
+    58
+   ],
+   [
+    "آج کے کام 5",
+    14,
+    1538,
+    362,
+    58
+   ],
+   [
+    "مکمل کریں تاریخ بدلیں Call Usman about the circle آخری تاریخ",
+    14,
+    1596,
+    362,
+    100
+   ],
+   [
+    "Call Usman about the circle",
+    74,
+    1608,
+    230,
+    27
+   ],
+   [
+    "مکمل کریں مزید وقت مانگیں Visit the new members آخری تاریخ آ",
+    14,
+    1696,
+    362,
+    100
+   ],
+   [
+    "Visit the new members",
+    74,
+    1708,
+    230,
+    27
+   ],
+   [
+    "مکمل کریں مزید وقت مانگیں Bring the banner for Jumuah آخری ت",
+    14,
+    1795,
+    362,
+    123
+   ],
+   [
+    "Bring the banner for Jumuah",
+    74,
+    1807,
+    230,
+    27
+   ],
+   [
+    "مکمل کریں تاریخ بدلیں Morning adhkar روزانہ ⋯",
+    14,
+    1918,
+    362,
+    75
+   ],
+   [
+    "Morning adhkar",
+    74,
+    1930,
+    230,
+    27
+   ],
+   [
+    "مکمل کریں مزید وقت مانگیں Majlis-e-Zikr ہر ہفتے پیر کو · bil",
+    14,
+    1993,
+    362,
+    75
+   ],
+   [
+    "Majlis-e-Zikr",
+    74,
+    2005,
+    230,
+    27
+   ],
+   [
+    "سنت 0 / 1",
+    14,
+    2185,
+    362,
+    58
+   ],
+   [
+    "آج کی سنت",
+    14,
+    2242,
+    362,
+    54
+   ],
+   [
+    "تصویر لیں یا منتخب کریں +",
+    34,
+    2514,
+    322,
+    68
+   ],
+   [
+    "سیرت 0 / 1",
+    14,
+    2742,
+    362,
+    58
+   ],
+   [
+    "ہفتے کا لیکچر",
+    14,
+    2800,
+    362,
+    54
+   ],
+   [
+    "روزانہ تحریر 0 / 1",
+    14,
+    3407,
+    362,
+    58
+   ],
+   [
+    "روزانہ تحریر",
+    14,
+    3465,
+    362,
+    54
+   ],
+   [
+    "ربیع الاول چیلنج",
+    14,
+    3971,
+    362,
+    57
+   ]
+  ]
+ },
+ "rank-ur": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "challenge": [
+    14,
+    144,
+    362,
+    384
+   ],
+   "stk": [
+    68,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    16,
+    10,
+    44,
+    44
+   ],
+   "seg5": [
+    14,
+    540,
+    362,
+    44
+   ],
+   "row0": [
+    14,
+    652,
+    362,
+    77
+   ],
+   "row1": [
+    14,
+    729,
+    362,
+    77
+   ],
+   "row2": [
+    14,
+    805,
+    362,
+    77
+   ],
+   "row3": [
+    14,
+    882,
+    362,
+    77
+   ],
+   "row4": [
+    14,
+    958,
+    362,
+    77
+   ],
+   "row5": [
+    14,
+    1035,
+    362,
+    77
+   ],
+   "avatar": [
+    282,
+    673,
+    34,
+    34
+   ],
+   "side": [
+    396,
+    0,
+    300,
+    844
+   ]
+  },
+  "heads": [
+   [
+    "مقابلہ",
+    0,
+    65,
+    390,
+    67
+   ],
+   [
+    "1 B Bilal Ahmed لاہور 1,470 درود",
+    14,
+    652,
+    362,
+    77
+   ],
+   [
+    "2 H Hamza Qureshi کراچی 1,330 درود",
+    14,
+    729,
+    362,
+    77
+   ],
+   [
+    "3 A Ahmed Raza آپ لاہور 1,013 درود",
+    14,
+    805,
+    362,
+    77
+   ],
+   [
+    "4 U Umar Farooq پشاور 980 درود",
+    14,
+    882,
+    362,
+    77
+   ],
+   [
+    "5 U Usman Tariq اسلام آباد 875 درود",
+    14,
+    958,
+    362,
+    77
+   ],
+   [
+    "6 F Fahad Malik کراچی 805 درود",
+    14,
+    1035,
+    362,
+    77
+   ],
+   [
+    "7 A Anas Zafar فیصل آباد 714 درود",
+    14,
+    1112,
+    362,
+    77
+   ],
+   [
+    "8 H Hamid Gul پشاور 665 درود",
+    14,
+    1188,
+    362,
+    77
+   ],
+   [
+    "9 S Shoaib Nadeem ملتان 651 درود",
+    14,
+    1265,
+    362,
+    77
+   ],
+   [
+    "10 Z Zubair Anwar اسلام آباد 630 درود",
+    14,
+    1342,
+    362,
+    77
+   ],
+   [
+    "11 H Huzaifa Aslam ملتان 609 درود",
+    14,
+    1418,
+    362,
+    77
+   ],
+   [
+    "12 I Imran Saleem لاہور 595 درود",
+    14,
+    1495,
+    362,
+    77
+   ],
+   [
+    "13 T Talha Butt پشاور 574 درود",
+    14,
+    1572,
+    362,
+    77
+   ],
+   [
+    "14 R Rizwan Sheikh فیصل آباد 567 درود",
+    14,
+    1648,
+    362,
+    77
+   ],
+   [
+    "15 O Owais Siddiqui کراچی 560 درود",
+    14,
+    1725,
+    362,
+    77
+   ],
+   [
+    "16 H Hassan Mirza اسلام آباد 546 درود",
+    14,
+    1801,
+    362,
+    77
+   ],
+   [
+    "17 A Abdullah Rana فیصل آباد 532 درود",
+    14,
+    1878,
+    362,
+    77
+   ],
+   [
+    "18 J Junaid Akhtar ملتان 504 درود",
+    14,
+    1955,
+    362,
+    77
+   ],
+   [
+    "19 A Ali Haider لاہور 504 درود",
+    14,
+    2031,
+    362,
+    77
+   ],
+   [
+    "20 Z Zaid Khan پشاور 490 درود",
+    14,
+    2108,
+    362,
+    77
+   ],
+   [
+    "21 I Ibrahim Shah فیصل آباد 490 درود",
+    14,
+    2185,
+    362,
+    77
+   ],
+   [
+    "22 W Waqas Noor پشاور 462 درود",
+    14,
+    2261,
+    362,
+    77
+   ],
+   [
+    "23 K Kashif Yousaf فیصل آباد 455 درود",
+    14,
+    2338,
+    362,
+    77
+   ],
+   [
+    "24 F Faisal Javed اسلام آباد 448 درود",
+    14,
+    2415,
+    362,
+    77
+   ],
+   [
+    "25 A Arham Riaz ملتان 427 درود",
+    14,
+    2491,
+    362,
+    77
+   ],
+   [
+    "26 S Saad Hussain کراچی 420 درود",
+    14,
+    2568,
+    362,
+    77
+   ],
+   [
+    "27 Y Yusuf Iqbal لاہور 378 درود",
+    14,
+    2645,
+    362,
+    77
+   ],
+   [
+    "28 D Danish Khan کراچی 350 درود",
+    14,
+    2721,
+    362,
+    76
+   ]
+  ]
+ },
+ "tasks-ur": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "stk": [
+    68,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    16,
+    10,
+    44,
+    44
+   ],
+   "side": [
+    396,
+    0,
+    300,
+    844
+   ],
+   "trow0": [
+    14,
+    270,
+    362,
+    100
+   ],
+   "trow1": [
+    14,
+    370,
+    362,
+    100
+   ],
+   "trow2": [
+    14,
+    469,
+    362,
+    122
+   ],
+   "trow3": [
+    14,
+    661,
+    362,
+    75
+   ],
+   "trow4": [
+    14,
+    736,
+    362,
+    75
+   ],
+   "trow5": [
+    14,
+    811,
+    362,
+    74
+   ],
+   "tcheck": [
+    316,
+    297,
+    44,
+    44
+   ],
+   "tmenu": [
+    22,
+    299,
+    40,
+    40
+   ]
+  },
+  "heads": [
+   [
+    "کام",
+    0,
+    65,
+    390,
+    67
+   ],
+   [
+    "کام یا معمول شامل کریں",
+    14,
+    144,
+    362,
+    57
+   ],
+   [
+    "کام 3",
+    14,
+    212,
+    362,
+    58
+   ],
+   [
+    "مکمل کریں تاریخ بدلیں Call Usman about the circle آخری تاریخ",
+    14,
+    270,
+    362,
+    100
+   ],
+   [
+    "Call Usman about the circle",
+    74,
+    282,
+    230,
+    27
+   ],
+   [
+    "مکمل کریں مزید وقت مانگیں Visit the new members آخری تاریخ آ",
+    14,
+    370,
+    362,
+    100
+   ],
+   [
+    "Visit the new members",
+    74,
+    382,
+    230,
+    27
+   ],
+   [
+    "مکمل کریں مزید وقت مانگیں Bring the banner for Jumuah آخری ت",
+    14,
+    469,
+    362,
+    122
+   ],
+   [
+    "Bring the banner for Jumuah",
+    74,
+    481,
+    230,
+    27
+   ],
+   [
+    "معمولات 3",
+    14,
+    603,
+    362,
+    58
+   ],
+   [
+    "مکمل کریں تاریخ بدلیں Surah Al-Kahf ہر ہفتے جمعہ کو ⋯",
+    14,
+    661,
+    362,
+    75
+   ],
+   [
+    "Surah Al-Kahf",
+    74,
+    673,
+    230,
+    27
+   ],
+   [
+    "مکمل کریں تاریخ بدلیں Morning adhkar روزانہ ⋯",
+    14,
+    736,
+    362,
+    75
+   ],
+   [
+    "Morning adhkar",
+    74,
+    748,
+    230,
+    27
+   ],
+   [
+    "مکمل کریں مزید وقت مانگیں Majlis-e-Zikr ہر ہفتے پیر کو · bil",
+    14,
+    811,
+    362,
+    74
+   ],
+   [
+    "Majlis-e-Zikr",
+    74,
+    823,
+    230,
+    27
+   ],
+   [
+    "مکمل 3",
+    14,
+    897,
+    362,
+    57
+   ]
+  ]
+ },
+ "caravan-ur": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "circle": [
+    44,
+    1665,
+    302,
+    189
+   ],
+   "stk": [
+    68,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    16,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    0,
+    2294,
+    390,
+    77
+   ],
+   "row0": [
+    14,
+    614,
+    362,
+    121
+   ],
+   "row1": [
+    14,
+    735,
+    362,
+    121
+   ],
+   "row2": [
+    14,
+    856,
+    362,
+    121
+   ],
+   "row3": [
+    14,
+    977,
+    362,
+    121
+   ],
+   "row4": [
+    14,
+    1098,
+    362,
+    121
+   ],
+   "row5": [
+    14,
+    1219,
+    362,
+    121
+   ],
+   "stats": [
+    14,
+    275,
+    362,
+    112
+   ],
+   "karwan": [
+    20,
+    474,
+    350,
+    77
+   ],
+   "cvaccept": [
+    151,
+    1776,
+    181,
+    64
+   ],
+   "lvl": [
+    14,
+    398,
+    362,
+    64
+   ],
+   "avatar": [
+    322,
+    657,
+    34,
+    34
+   ],
+   "side": [
+    396,
+    0,
+    300,
+    844
+   ]
+  },
+  "heads": [
+   [
+    "کارواں",
+    0,
+    65,
+    390,
+    67
+   ],
+   [
+    "آپ کا کارواں",
+    0,
+    132,
+    390,
+    54
+   ],
+   [
+    "ارکان (7)",
+    0,
+    561,
+    390,
+    54
+   ],
+   [
+    "A ahmed مالک لاہور · اس ہفتے 1,013درود 10,213 درود",
+    14,
+    614,
+    362,
+    121
+   ],
+   [
+    "U usman اسلام آباد · اس ہفتے 875درود 10,628 درود ✕",
+    14,
+    735,
+    362,
+    121
+   ],
+   [
+    "Z zubair اسلام آباد · اس ہفتے 630درود 8,060 درود ✕",
+    14,
+    856,
+    362,
+    121
+   ],
+   [
+    "I imran لاہور · اس ہفتے 595درود 7,312 درود ✕",
+    14,
+    977,
+    362,
+    121
+   ],
+   [
+    "H hassan اسلام آباد · اس ہفتے 546درود 7,053 درود ✕",
+    14,
+    1098,
+    362,
+    121
+   ],
+   [
+    "A ali لاہور · اس ہفتے 504درود 6,272 درود ✕",
+    14,
+    1219,
+    362,
+    121
+   ],
+   [
+    "Y yusuf لاہور · اس ہفتے 378درود 5,048 درود ✕",
+    14,
+    1340,
+    362,
+    120
+   ],
+   [
+    "ارکان کو بلائیں",
+    0,
+    1472,
+    390,
+    54
+   ],
+   [
+    "کارواں کا نام بدلیں",
+    30,
+    1889,
+    330,
+    27
+   ],
+   [
+    "ظاہری نام (اختیاری)",
+    30,
+    2060,
+    330,
+    27
+   ]
+  ]
+ },
+ "desktop": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "big": [
+    414,
+    256,
+    732,
+    129
+   ],
+   "numbox": [
+    414,
+    471,
+    732,
+    178
+   ],
+   "manual": [
+    434,
+    498,
+    604,
+    64
+   ],
+   "add": [
+    1046,
+    498,
+    80,
+    64
+   ],
+   "taptoggle": [
+    434,
+    663,
+    152,
+    44
+   ],
+   "start": [
+    416,
+    739,
+    728,
+    167
+   ],
+   "tick": [
+    434,
+    2148,
+    213,
+    60
+   ],
+   "photo": [
+    434,
+    2219,
+    692,
+    60
+   ],
+   "watch": [
+    1034,
+    2514,
+    80,
+    44
+   ],
+   "reflect": [
+    434,
+    3143,
+    692,
+    89
+   ],
+   "circle": [
+    434,
+    2655,
+    692,
+    190
+   ],
+   "stk": [
+    1041,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    1102,
+    10,
+    44,
+    44
+   ],
+   "joinreq": [
+    400,
+    115,
+    760,
+    50
+   ],
+   "side": [
+    0,
+    0,
+    280,
+    800
+   ],
+   "trow0": [
+    414,
+    1434,
+    732,
+    83
+   ],
+   "trow1": [
+    414,
+    1517,
+    732,
+    83
+   ],
+   "trow2": [
+    414,
+    1600,
+    732,
+    83
+   ],
+   "trow3": [
+    414,
+    1683,
+    732,
+    69
+   ],
+   "trow4": [
+    414,
+    1752,
+    732,
+    69
+   ],
+   "tcheck": [
+    430,
+    1453,
+    44,
+    44
+   ],
+   "tmenu": [
+    1098,
+    1455,
+    40,
+    40
+   ]
+  },
+  "heads": [
+   [
+    "Today",
+    400,
+    65,
+    760,
+    50
+   ],
+   [
+    "How many durood did you recite?",
+    414,
+    471,
+    732,
+    20
+   ],
+   [
+    "Quests 3 / 5",
+    414,
+    920,
+    732,
+    53
+   ],
+   [
+    "Tasks today 5",
+    414,
+    1381,
+    732,
+    53
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    414,
+    1434,
+    732,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    486,
+    1446,
+    600,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    414,
+    1517,
+    732,
+    83
+   ],
+   [
+    "Visit the new members",
+    486,
+    1529,
+    600,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    414,
+    1600,
+    732,
+    83
+   ],
+   [
+    "Bring the banner for Jumuah",
+    486,
+    1612,
+    600,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    414,
+    1683,
+    732,
+    69
+   ],
+   [
+    "Morning adhkar",
+    486,
+    1698,
+    600,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    414,
+    1752,
+    732,
+    69
+   ],
+   [
+    "Majlis-e-Zikr",
+    486,
+    1767,
+    600,
+    21
+   ],
+   [
+    "Sunnah 0 / 1",
+    414,
+    1932,
+    732,
+    53
+   ],
+   [
+    "SUNNAH OF THE DAY",
+    414,
+    1985,
+    732,
+    41
+   ],
+   [
+    "Take or choose a photo +",
+    434,
+    2219,
+    692,
+    60
+   ],
+   [
+    "Seerah 0 / 1",
+    414,
+    2401,
+    732,
+    53
+   ],
+   [
+    "LECTURE OF THE WEEK",
+    414,
+    2454,
+    732,
+    41
+   ],
+   [
+    "Daily reflection 0 / 1",
+    414,
+    2923,
+    732,
+    53
+   ],
+   [
+    "DAILY REFLECTION",
+    414,
+    2976,
+    732,
+    41
+   ],
+   [
+    "Rabi ul Awwal challenge",
+    414,
+    3316,
+    732,
+    52
+   ]
+  ]
+ },
+ "desktop-tasks": {
+  "view": true,
+  "sy": 0,
+  "r": {
+   "stk": [
+    1041,
+    14,
+    53,
+    36
+   ],
+   "bell": [
+    1102,
+    10,
+    44,
+    44
+   ],
+   "side": [
+    0,
+    0,
+    280,
+    800
+   ],
+   "trow0": [
+    414,
+    244,
+    732,
+    83
+   ],
+   "trow1": [
+    414,
+    327,
+    732,
+    83
+   ],
+   "trow2": [
+    414,
+    410,
+    732,
+    82
+   ],
+   "trow3": [
+    414,
+    557,
+    732,
+    69
+   ],
+   "trow4": [
+    414,
+    626,
+    732,
+    69
+   ],
+   "trow5": [
+    414,
+    695,
+    732,
+    68
+   ],
+   "tcheck": [
+    430,
+    263,
+    44,
+    44
+   ],
+   "tmenu": [
+    1098,
+    265,
+    40,
+    40
+   ]
+  },
+  "heads": [
+   [
+    "Tasks",
+    400,
+    65,
+    760,
+    50
+   ],
+   [
+    "Add a task or routine",
+    414,
+    127,
+    732,
+    52
+   ],
+   [
+    "Tasks 3",
+    414,
+    191,
+    732,
+    53
+   ],
+   [
+    "Mark done Move deadline Call Usman about the circle Due Tomo",
+    414,
+    244,
+    732,
+    83
+   ],
+   [
+    "Call Usman about the circle",
+    486,
+    256,
+    600,
+    21
+   ],
+   [
+    "Mark done Ask for more time Visit the new members Due Today ",
+    414,
+    327,
+    732,
+    83
+   ],
+   [
+    "Visit the new members",
+    486,
+    339,
+    600,
+    21
+   ],
+   [
+    "Mark done Ask for more time Bring the banner for Jumuah Due ",
+    414,
+    410,
+    732,
+    82
+   ],
+   [
+    "Bring the banner for Jumuah",
+    486,
+    422,
+    600,
+    21
+   ],
+   [
+    "Routines 3",
+    414,
+    504,
+    732,
+    53
+   ],
+   [
+    "Mark done Move deadline Surah Al-Kahf Every Friday ⋯",
+    414,
+    557,
+    732,
+    69
+   ],
+   [
+    "Surah Al-Kahf",
+    486,
+    571,
+    600,
+    21
+   ],
+   [
+    "Mark done Move deadline Morning adhkar Every day ⋯",
+    414,
+    626,
+    732,
+    69
+   ],
+   [
+    "Morning adhkar",
+    486,
+    640,
+    600,
+    21
+   ],
+   [
+    "Mark done Ask for more time Majlis-e-Zikr Every Monday · fro",
+    414,
+    695,
+    732,
+    68
+   ],
+   [
+    "Majlis-e-Zikr",
+    486,
+    709,
+    600,
+    21
+   ],
+   [
+    "Done 3",
+    414,
+    775,
+    732,
+    52
+   ]
+  ]
+ }
+}

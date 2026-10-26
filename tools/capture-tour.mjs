@@ -47,23 +47,23 @@ const CITIES = ['Lahore', 'Karachi', 'Islamabad', 'Peshawar', 'Multan', 'Faisala
 const city = {}; for (const c of CITIES) city[c] = await cityId(c);
 // username, display name, city, durood a day, inviter (a username, or the public founders code)
 const PEOPLE = [
-  ['ayesha', 'Ayesha Siddiqui', 'Lahore', 1300, 'SEERAH2026'], ['bilal', 'Bilal Ahmed', 'Lahore', 2100, 'SEERAH2026'],
-  ['fatima', 'Fatima Raza', 'Karachi', 1600, 'ayesha'], ['hamza', 'Hamza Qureshi', 'Karachi', 1900, 'SEERAH2026'],
-  ['zainab', 'Zainab Ali', 'Lahore', 800, 'ayesha'], ['usman', 'Usman Tariq', 'Islamabad', 1250, 'ayesha'],
-  ['khadija', 'Khadija Zafar', 'Karachi', 1150, 'fatima'], ['umar', 'Umar Farooq', 'Peshawar', 1400, 'SEERAH2026'],
-  ['maryam', 'Maryam Khan', 'Multan', 900, 'ayesha'], ['ibrahim', 'Ibrahim Shah', 'Faisalabad', 700, 'bilal'],
-  ['hira', 'Hira Malik', 'Lahore', 850, 'zainab'], ['saad', 'Saad Hussain', 'Karachi', 600, 'hamza'],
-  ['sana', 'Sana Javed', 'Karachi', 1050, 'fatima'], ['amna', 'Amna Sheikh', 'Islamabad', 950, 'usman'],
-  ['hassan', 'Hassan Mirza', 'Islamabad', 780, 'usman'], ['rabia', 'Rabia Anwar', 'Islamabad', 640, 'SEERAH2026'],
-  ['talha', 'Talha Butt', 'Peshawar', 820, 'umar'], ['noor', 'Noor Fatima', 'Peshawar', 990, 'umar'],
-  ['zaid', 'Zaid Khan', 'Peshawar', 700, 'umar'], ['asma', 'Asma Gul', 'Peshawar', 660, 'SEERAH2026'],
-  ['huzaifa', 'Huzaifa Aslam', 'Multan', 870, 'maryam'], ['iqra', 'Iqra Nadeem', 'Multan', 720, 'maryam'],
-  ['arham', 'Arham Riaz', 'Multan', 610, 'SEERAH2026'], ['laiba', 'Laiba Saleem', 'Multan', 930, 'SEERAH2026'],
-  ['anas', 'Anas Zafar', 'Faisalabad', 1020, 'bilal'], ['mahnoor', 'Mahnoor Akhtar', 'Faisalabad', 810, 'bilal'],
-  ['abdullah', 'Abdullah Rana', 'Faisalabad', 760, 'SEERAH2026'], ['eman', 'Eman Yousaf', 'Faisalabad', 650, 'SEERAH2026'],
-  ['ali', 'Ali Haider', 'Lahore', 720, 'zainab'], ['yusuf', 'Yusuf Iqbal', 'Lahore', 540, 'ayesha'],
+  ['ahmed', 'Ahmed Raza', 'Lahore', 1300, 'SEERAH2026'], ['bilal', 'Bilal Ahmed', 'Lahore', 2100, 'SEERAH2026'],
+  ['fahad', 'Fahad Raza', 'Karachi', 1600, 'ahmed'], ['hamza', 'Hamza Qureshi', 'Karachi', 1900, 'SEERAH2026'],
+  ['zubair', 'Zubair Ali', 'Lahore', 800, 'ahmed'], ['usman', 'Usman Tariq', 'Islamabad', 1250, 'ahmed'],
+  ['kashif', 'Kashif Zafar', 'Karachi', 1150, 'fahad'], ['umar', 'Umar Farooq', 'Peshawar', 1400, 'SEERAH2026'],
+  ['moiz', 'Moiz Khan', 'Multan', 900, 'ahmed'], ['ibrahim', 'Ibrahim Shah', 'Faisalabad', 700, 'bilal'],
+  ['haris', 'Haris Malik', 'Lahore', 850, 'zubair'], ['saad', 'Saad Hussain', 'Karachi', 600, 'hamza'],
+  ['shoaib', 'Shoaib Javed', 'Karachi', 1050, 'fahad'], ['adnan', 'Adnan Sheikh', 'Islamabad', 950, 'usman'],
+  ['hassan', 'Hassan Mirza', 'Islamabad', 780, 'usman'], ['rizwan', 'Rizwan Anwar', 'Islamabad', 640, 'SEERAH2026'],
+  ['talha', 'Talha Butt', 'Peshawar', 820, 'umar'], ['nabeel', 'Nabeel Ahmad', 'Peshawar', 990, 'umar'],
+  ['zaid', 'Zaid Khan', 'Peshawar', 700, 'umar'], ['asad', 'Asad Gul', 'Peshawar', 660, 'SEERAH2026'],
+  ['huzaifa', 'Huzaifa Aslam', 'Multan', 870, 'moiz'], ['irfan', 'Irfan Nadeem', 'Multan', 720, 'moiz'],
+  ['arham', 'Arham Riaz', 'Multan', 610, 'SEERAH2026'], ['luqman', 'Luqman Saleem', 'Multan', 930, 'SEERAH2026'],
+  ['anas', 'Anas Zafar', 'Faisalabad', 1020, 'bilal'], ['mohsin', 'Mohsin Akhtar', 'Faisalabad', 810, 'bilal'],
+  ['abdullah', 'Abdullah Rana', 'Faisalabad', 760, 'SEERAH2026'], ['ehsan', 'Ehsan Yousaf', 'Faisalabad', 650, 'SEERAH2026'],
+  ['ali', 'Ali Haider', 'Lahore', 720, 'zubair'], ['yusuf', 'Yusuf Iqbal', 'Lahore', 540, 'ahmed'],
 ];
-const BIO = { ayesha: 'Durood before Fajr, every day.', bilal: 'Father of three. Seerah student.', fatima: 'Karachi · Seerat Circle teacher' };
+const BIO = { ahmed: 'Durood before Fajr, every day.', bilal: 'Father of three. Seerah student.', fahad: 'Karachi · Seerat Circle teacher' };
 let seed = 11; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const tok = {};
 let n = 0;
@@ -75,7 +75,7 @@ for (const [u, name, c, , inv] of PEOPLE) {
   tok[u] = r.token;
   await soft(api('PUT', '/api/me/profile', { displayName: name, bio: BIO[u] || '' }, r.token));
 }
-// caravans from the first day, so their streaks run all week: Ayesha's Noor Caravan (Yusuf asks to join), Bilal's, Hamza's, Umar's
+// caravans from the first day, so their streaks run all week: Ahmed's Noor Caravan (Yusuf asks to join), Bilal's, Hamza's, Umar's
 async function caravan(owner, name, display, members) {
   await api('POST', '/api/caravan', { name }, tok[owner]);
   await soft(api('PUT', '/api/caravan/display-name', { displayName: display }, tok[owner]));
@@ -85,29 +85,29 @@ async function caravan(owner, name, display, members) {
     if (v.invitations?.[0]) await api('POST', `/api/caravan/invitations/${v.invitations[0].id}`, { accept: true }, tok[u]);
   }
 }
-await caravan('ayesha', 'noor_caravan', 'Noor Caravan', ['zainab', 'fatima', 'usman', 'maryam', 'hira', 'ali']);
-await caravan('bilal', 'madinah_riders', 'Madinah Riders', ['ibrahim', 'anas', 'mahnoor', 'abdullah']);
-await caravan('hamza', 'karachi_lovers', 'Karachi Ashiqan', ['khadija', 'saad', 'sana']);
-await caravan('umar', 'peshawar_noor', 'Peshawar Noor', ['talha', 'noor', 'zaid', 'asma']);
+await caravan('ahmed', 'noor_caravan', 'Noor Caravan', ['zubair', 'fahad', 'usman', 'moiz', 'haris', 'ali']);
+await caravan('bilal', 'madinah_riders', 'Madinah Riders', ['ibrahim', 'anas', 'mohsin', 'abdullah']);
+await caravan('hamza', 'karachi_lovers', 'Karachi Ashiqan', ['kashif', 'saad', 'shoaib']);
+await caravan('umar', 'peshawar_noor', 'Peshawar Noor', ['talha', 'nabeel', 'zaid', 'asad']);
 await soft(api('POST', '/api/caravan/join', { name: 'noor_caravan' }, tok.yusuf));
 for (let d = 0; d < DAYS; d++) {
   off = -(DAYS - d) * 864e5 + 3 * 3600e3;
   for (const [u, , , per] of PEOPLE) {
     if (u === 'yusuf' && d % 2) continue; // someone skips days
     let count = Math.round(per * (0.8 + rnd() * 0.4));
-    // Ayesha's week adds up to 9,200, so with 700 this morning the 313 she adds on camera crosses both her goal and 10,000
-    if (u === 'ayesha') { if (d === DAYS - 1) count = 9200 - heroSum; heroSum += count; }
+    // Ahmed's week adds up to 9,200, so with 700 this morning the 313 he adds on camera crosses both his goal and 10,000
+    if (u === 'ahmed') { if (d === DAYS - 1) count = 9200 - heroSum; heroSum += count; }
     await api('POST', '/api/log', { count, rid: crypto.randomUUID() }, tok[u]);
   }
 }
-// the lecture of this week (created at today's date: a lecture belongs to the week it is added in). Fatima and Bilal watched it
+// the lecture of this week (created at today's date: a lecture belongs to the week it is added in). Fahad and Bilal watched it
 // (the server clock moves past the minimum watch time), passed the quiz and commented
 off = 0;
 const lec = await api('POST', '/api/admin/lectures', { youtube_id: 'dQw4w9WgXcQ', title_en: 'The Hijrah: leaving Makkah for Madinah', title_ur: 'ہجرت: مکہ سے مدینہ', speaker: 'Seerat Circle', min_seconds: 900, xp: 150,
   questions: [{ q_en: 'Which city did the Prophet ﷺ migrate to?', q_ur: 'نبی ﷺ نے کس شہر کی طرف ہجرت کی؟', options_en: ['Taif', 'Madinah', 'Jerusalem'], options_ur: ['طائف', 'مدینہ', 'یروشلم'], answer: 1 }] }, null, K);
-const lecId = lec.id ?? lec.lecture?.id ?? (await api('GET', '/api/lectures', null, tok.fatima)).lectures[0]?.id;
+const lecId = lec.id ?? lec.lecture?.id ?? (await api('GET', '/api/lectures', null, tok.fahad)).lectures[0]?.id;
 off = -2 * 3600e3;
-for (const [u, text] of [['fatima', 'Subhan Allah, the trust the Prophet ﷺ placed in Allah on the night of the Hijrah.'], ['bilal', 'Watched it with my children. The cave of Thawr scene stayed with them.']]) {
+for (const [u, text] of [['fahad', 'Subhan Allah, the trust the Prophet ﷺ placed in Allah on the night of the Hijrah.'], ['bilal', 'Watched it with my children. The cave of Thawr scene stayed with them.']]) {
   await soft(api('POST', `/api/lectures/${lecId}/start`, null, tok[u]));
   off += 20 * 60e3;
   await soft(api('POST', `/api/lectures/${lecId}/quiz`, { answers: [1] }, tok[u]));
@@ -115,31 +115,31 @@ for (const [u, text] of [['fatima', 'Subhan Allah, the trust the Prophet ﷺ pla
   await soft(api('POST', `/api/lectures/${lecId}/comment`, { text }, tok[u]));
 }
 off = 0;
-// today: everyone but Ayesha (she logs on camera) has recited something; she starts the day at 700 with a goal of 1,000
-for (const [u, , , per] of PEOPLE) if (u !== 'ayesha' && u !== 'yusuf') await api('POST', '/api/log', { count: Math.round(per * 0.7), rid: crypto.randomUUID() }, tok[u]);
-await api('POST', '/api/log', { count: 700, rid: crypto.randomUUID() }, tok.ayesha);
-await soft(api('PATCH', '/api/me', { dailyGoal: 1000 }, tok.ayesha));
+// today: everyone but Ahmed (he logs on camera) has recited something; he starts the day at 700 with a goal of 1,000
+for (const [u, , , per] of PEOPLE) if (u !== 'ahmed' && u !== 'yusuf') await api('POST', '/api/log', { count: Math.round(per * 0.7), rid: crypto.randomUUID() }, tok[u]);
+await api('POST', '/api/log', { count: 700, rid: crypto.randomUUID() }, tok.ahmed);
+await soft(api('PATCH', '/api/me', { dailyGoal: 1000 }, tok.ahmed));
 
 
 // content: today's sunnah, news, reflections with likes and replies, cheers on milestones
 await api('POST', '/api/admin/sunnahs', { sunnahs: [{ day: pkDay(), title_en: 'Smile when you meet someone', title_ur: 'مسکرا کر ملنا', desc_en: 'Your smile in the face of your brother is charity.', desc_ur: 'اپنے بھائی کے سامنے مسکرانا صدقہ ہے۔', source: 'Tirmidhi 1956' }] }, null, K);
 await soft(api('POST', '/api/admin/news', { title_en: 'Day 8 of the 40-day challenge', body_en: 'JazakAllah to everyone reciting. Add your count each day, and invite one person you know. Every durood is dedicated to the Seerat Circles.' }, null, K));
 const refl = [];
-for (const [u, text] of [['fatima', 'Sending durood before Fajr made the whole morning feel lighter today.'], ['bilal', 'Read about the Hijrah with my children tonight. They asked so many good questions.'], ['zainab', 'My caravan kept me going on a tiring day. 8 days in a row now, alhamdulillah.']]) {
+for (const [u, text] of [['fahad', 'Sending durood before Fajr made the whole morning feel lighter today.'], ['bilal', 'Read about the Hijrah with my children tonight. They asked so many good questions.'], ['zubair', 'My caravan kept me going on a tiring day. 8 days in a row now, alhamdulillah.']]) {
   const r = await soft(api('POST', '/api/reflections', { text }, tok[u])); if (r?.id) refl.push([r.id, u]);
 }
-for (const [id, owner] of refl) for (const u of ['hamza', 'usman', 'khadija', 'maryam', 'ali', 'noor', 'ayesha'].filter((x) => x !== owner).slice(0, 4 + (id % 3))) await soft(api('POST', '/api/like', { kind: 'reflection', id }, tok[u]));
-if (refl[0]) { await soft(api('POST', '/api/replies', { kind: 'reflection', id: refl[0][0], text: 'Ameen! Same for me today.' }, tok.khadija)); await soft(api('POST', '/api/replies', { kind: 'reflection', id: refl[0][0], text: 'MashaAllah, beautiful.' }, tok.ayesha)); }
-for (const u of ['zainab', 'fatima', 'hira', 'usman']) await soft(api('POST', '/api/sunnah/tick', null, tok[u]));
-const feed = await api('GET', '/api/feed', null, tok.zainab);
-for (const it of (feed.items || feed.feed || []).filter((x) => x.kind === 'badge' || x.type === 'badge').slice(0, 4)) for (const u of ['zainab', 'fatima', 'usman', 'hira']) await soft(api('POST', '/api/cheer', { id: it.id }, tok[u]));
+for (const [id, owner] of refl) for (const u of ['hamza', 'usman', 'kashif', 'moiz', 'ali', 'nabeel', 'ahmed'].filter((x) => x !== owner).slice(0, 4 + (id % 3))) await soft(api('POST', '/api/like', { kind: 'reflection', id }, tok[u]));
+if (refl[0]) { await soft(api('POST', '/api/replies', { kind: 'reflection', id: refl[0][0], text: 'Ameen! Same for me today.' }, tok.kashif)); await soft(api('POST', '/api/replies', { kind: 'reflection', id: refl[0][0], text: 'MashaAllah, beautiful.' }, tok.ahmed)); }
+for (const u of ['zubair', 'fahad', 'haris', 'usman']) await soft(api('POST', '/api/sunnah/tick', null, tok[u]));
+const feed = await api('GET', '/api/feed', null, tok.zubair);
+for (const it of (feed.items || feed.feed || []).filter((x) => x.kind === 'badge' || x.type === 'badge').slice(0, 4)) for (const u of ['zubair', 'fahad', 'usman', 'haris']) await soft(api('POST', '/api/cheer', { id: it.id }, tok[u]));
 console.log('seeded', PEOPLE.length, 'members over', DAYS, 'days');
 
 // ---- the screens ---------------------------------------------------------------------------------------------------------
 const browser = await chromium.launch();
 const manifest = {};
 const W = 390, H = 844;
-async function open({ token = tok.ayesha, lang = 'en', mode = MODE, intro = true, folds = {}, w = W, h = H, motion = false } = {}) {
+async function open({ token = tok.ahmed, lang = 'en', mode = MODE, intro = true, folds = {}, w = W, h = H, motion = false } = {}) {
   const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: w > 900 ? 1.5 : 2, hasTouch: w < 900, isMobile: w < 900 });
   page.on('pageerror', (e) => console.log('page error:', e.message));
   await page.goto(B + '/');
@@ -234,7 +234,7 @@ async function frames(page, name, trigger, count, { fps = 30, settle = 250 } = {
   await view(page, 'intro-0');
   for (let i = 1; i <= 3; i++) { await click(page, '[data-act=intronext]', 900); await view(page, `intro-${i}`); }
   await click(page, '[data-mode=register]');
-  await page.fill('[name=invite]', 'ayesha'); await page.locator('[name=invite]').blur(); await page.waitForTimeout(700);
+  await page.fill('[name=invite]', 'ahmed'); await page.locator('[name=invite]').blur(); await page.waitForTimeout(700);
   await page.fill('[name=username]', 'hamid_r').catch(() => {});
   await full(page, 'register');
   await page.close();

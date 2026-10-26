@@ -13,12 +13,15 @@ The captures need a checkout of the app branch (`claude/durood-social-rpg-app-cw
 
 ```bash
 git worktree add --detach ../app origin/claude/durood-social-rpg-app-cwz6av   # or update an existing one
-APP_DIR=../app node tools/capture-tour.mjs assets/tour                         # about 2 minutes; MODE=dark for dark screens
+APP_DIR=../app node tools/capture-tour.mjs assets/tour                         # public edition (002); about 2 minutes; MODE=dark for dark screens
+APP_DIR=../app node tools/capture-full.mjs assets/full                         # the released Al-Burhan edition, everything (003)
 ```
 
-It seeds a made-up community of 30 members over a week (deterministic), then saves every screen as `<name>.jpg` (the phone's view), `<name>-full.jpg` (the whole scrolling page), frame sequences (`burst-NN`, `tap-NN`, `type-N`) and `manifest.json`. The manifest holds each page's height, header and tab bar, and the box of each known element (`r`). Look at the captures before using them, for example with a contact sheet in Python.
+Each video keeps the app commit it was made from (see the house rules in `README.md`); to change only the data, recapture from that commit (`git worktree add --detach ../app-NNN <commit>`).
 
-To show a screen that is not captured yet, add it to `tools/capture-tour.mjs`: `view()` for one screen, `full()` for a whole page, `frames()` to step through a real animation. Add a selector to `SPOTS` if the video will spotlight a new element.
+It seeds a made-up community of 30 members, **all men**, over a week (deterministic; the user's community is all male, so never seed women's names), then saves every screen as `<name>.jpg` (the phone's view), `<name>-full.jpg` (the whole scrolling page), frame sequences (`burst-NN`, `tap-NN`, `type-N`) and `manifest.json`. The manifest holds each page's height, header and tab bar, the box of each known element (`r`) and, in `capture-full`, every heading and row by its text (`heads`), which is the quickest way to find a rect. Look at the captures before using them, for example with a contact sheet in Python.
+
+To show a screen that is not captured yet, add it to `tools/capture-full.mjs` (or `capture-tour.mjs` for the public edition): `view()` for one screen, `full()` for a whole page, `frames()` to step through a real animation. Add a selector to `SPOTS` if the video will spotlight a new element.
 
 ## 2. The storyboard
 
@@ -28,8 +31,9 @@ Copy `kit/swiss/starter.html` to `videos/NNN-slug/scene.html` and write the stor
 - nothing important in the bottom 300 px or the right 120 px
 - no music
 - Quran and hadith quoted with their source, and flagged for a qualified person to check
+- men's names only in the demo data, and in captions say "he" / "his"
 
-A new visual style belongs in a new kit next to `kit/swiss`, not in edits to the shared one. 001 keeps its own night-sky scene, and 002 must stay pixel-identical.
+A new visual style belongs in a new kit next to `kit/swiss`, not in edits to the shared one. 001 keeps its own night-sky scene. A change to the kit must leave 002 and 003 looking the same: compare stills from before and after.
 
 ## 3. Check before rendering
 
@@ -55,7 +59,11 @@ Then:
 ## Pitfalls already met
 
 - **A lecture belongs to the week it is created in.** The capture creates it at today's date; the week starts on Monday.
-- **The goal burst celebrates a badge only when the 313 crosses one.** The seed makes Ayesha's total 9,900, so it crosses 10,000. The badge card that follows clips its big number at phone width, an app bug, so the video stops at frame 12.
+- **The goal burst celebrates a badge only when the 313 crosses one.** The seed makes Ahmed's total 9,900, so it crosses 10,000. The badge card that follows clips its big number at phone width, an app bug, so the video stops at frame 12.
 - **A spotlight on a re-captured feed can shift**, because new milestones appear at the top. Use rects there.
 - **`tools/sfx.mjs` filters must stay stable.** It throws if the mix comes out silent. Never skip the volume check.
+- **A view captured scrolled has `sy` in the manifest.** A rect for it is in page coordinates, so add `sy` to the on-screen y. A `key` handles this itself.
+- **Routines take weekdays with Sunday = 0** (JavaScript's numbering): Friday is 5.
+- **The seeded lecture uses a placeholder YouTube id.** `capture-full.mjs` replaces YouTube with a plain dark player, so no unrelated video can appear. Keep that in any new capture.
+- **`tools/stills.mjs` prints `missing:` for any image the scene asks for that isn't there.** Fix every one before rendering.
 - **When checking a scene in a browser, serve `.css` and `.js` with the right content types.** The tools do this; a stylesheet served as `application/octet-stream` is ignored.

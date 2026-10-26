@@ -60,7 +60,7 @@ A list played one after the other; each item has a duration `d` in seconds. The 
 |---|---|
 | `at` | Seconds into the segment |
 | `key` | An element the capture measured (`manifest.json` → `r`), or |
-| `rect` | `[x, y, w, h]` in the phone's CSS pixels (390 wide). On a whole page, `y` is from the top of the page; on a single view, as on screen |
+| `rect` | `[x, y, w, h]` in the phone's CSS pixels (390 wide), always in page coordinates: `y` is from the top of the page. A single view captured scrolled has an `sy` in the manifest; add it to the on-screen `y` |
 | `en`, `ur` | The callout. Leave both out for a spotlight without words |
 | `z` | Zoom (1 = the whole phone). Left out, it fits the element |
 | `noSpot` | Move and zoom without a spotlight |

@@ -29,20 +29,20 @@ const B = `http://127.0.0.1:${server.address().port}`;
 const api = (m, p, body, token) => fetch(B + p, { method: m, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: body ? JSON.stringify(body) : undefined }).then((r) => r.json());
 
 const CITY = { Lahore: 1172451, Karachi: 1174872, Islamabad: 1176615, Peshawar: 1168197, Multan: 1169825, Faisalabad: 1179400 };
-// A seeded demo (fixed random seed, so a re-capture gives the same numbers): username, display name, city, durood per day
+// A seeded demo, men only and names made up (fixed random seed, so a re-capture gives the same numbers): username, display name, city, durood per day
 const PEOPLE = [
-  ['ayesha', 'Ayesha Siddiqui', 'Lahore', 1200], ['bilal', 'Bilal Ahmed', 'Lahore', 950], ['hamza', 'Hamza Qureshi', 'Karachi', 1500],
-  ['fatima', 'Fatima Noor', 'Karachi', 800], ['usman', 'Usman Tariq', 'Islamabad', 1100], ['zainab', 'Zainab Ali', 'Islamabad', 700],
-  ['umar', 'Umar Farooq', 'Peshawar', 1300], ['maryam', 'Maryam Khan', 'Multan', 900], ['ibrahim', 'Ibrahim Shah', 'Faisalabad', 600],
-  ['khadija', 'Khadija Raza', 'Lahore', 1000], ['saad', 'Saad Hussain', 'Karachi', 650], ['hira', 'Hira Malik', 'Lahore', 850],
-  ['ali', 'Ali Haider', 'Lahore', 700], ['sana', 'Sana Javed', 'Karachi', 1150], ['yusuf', 'Yusuf Iqbal', 'Karachi', 500],
-  ['amna', 'Amna Sheikh', 'Islamabad', 900], ['hassan', 'Hassan Mirza', 'Islamabad', 750], ['rabia', 'Rabia Anwar', 'Islamabad', 600],
-  ['talha', 'Talha Butt', 'Peshawar', 800], ['noor', 'Noor Fatima', 'Peshawar', 950], ['zaid', 'Zaid Khan', 'Peshawar', 700],
-  ['asma', 'Asma Gul', 'Peshawar', 650], ['huzaifa', 'Huzaifa Aslam', 'Multan', 850], ['iqra', 'Iqra Nadeem', 'Multan', 700],
-  ['arham', 'Arham Riaz', 'Multan', 600], ['laiba', 'Laiba Saleem', 'Multan', 900], ['anas', 'Anas Zafar', 'Faisalabad', 1000],
-  ['mahnoor', 'Mahnoor Akhtar', 'Faisalabad', 800], ['abdullah', 'Abdullah Rana', 'Faisalabad', 750], ['eman', 'Eman Yousaf', 'Faisalabad', 650],
+  ['ahmed', 'Ahmed Raza', 'Lahore', 1200], ['bilal', 'Bilal Ahmed', 'Lahore', 950], ['hamza', 'Hamza Qureshi', 'Karachi', 1500],
+  ['fahad', 'Fahad Noor', 'Karachi', 800], ['usman', 'Usman Tariq', 'Islamabad', 1100], ['zubair', 'Zubair Ali', 'Islamabad', 700],
+  ['umar', 'Umar Farooq', 'Peshawar', 1300], ['moiz', 'Moiz Khan', 'Multan', 900], ['ibrahim', 'Ibrahim Shah', 'Faisalabad', 600],
+  ['kashif', 'Kashif Raza', 'Lahore', 1000], ['saad', 'Saad Hussain', 'Karachi', 650], ['haris', 'Haris Malik', 'Lahore', 850],
+  ['ali', 'Ali Haider', 'Lahore', 700], ['shoaib', 'Shoaib Javed', 'Karachi', 1150], ['yusuf', 'Yusuf Iqbal', 'Karachi', 500],
+  ['adnan', 'Adnan Sheikh', 'Islamabad', 900], ['hassan', 'Hassan Mirza', 'Islamabad', 750], ['rizwan', 'Rizwan Anwar', 'Islamabad', 600],
+  ['talha', 'Talha Butt', 'Peshawar', 800], ['nabeel', 'Nabeel Ahmad', 'Peshawar', 950], ['zaid', 'Zaid Khan', 'Peshawar', 700],
+  ['asad', 'Asad Gul', 'Peshawar', 650], ['huzaifa', 'Huzaifa Aslam', 'Multan', 850], ['irfan', 'Irfan Nadeem', 'Multan', 700],
+  ['arham', 'Arham Riaz', 'Multan', 600], ['luqman', 'Luqman Saleem', 'Multan', 900], ['anas', 'Anas Zafar', 'Faisalabad', 1000],
+  ['mohsin', 'Mohsin Akhtar', 'Faisalabad', 800], ['abdullah', 'Abdullah Rana', 'Faisalabad', 750], ['ehsan', 'Ehsan Yousaf', 'Faisalabad', 650],
 ];
-const CARAVAN = ['bilal', 'khadija', 'hira', 'ali', 'usman', 'sana', 'noor'];
+const CARAVAN = ['bilal', 'kashif', 'haris', 'ali', 'usman', 'shoaib', 'nabeel'];
 let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 const DAYS = 7;
 let n = 0;
@@ -54,8 +54,8 @@ for (const [u, name, city] of PEOPLE) {
   tok[u] = r.token;
   await api('PUT', '/api/me/profile', { displayName: name }, r.token);
 }
-await api('POST', '/api/caravan', { name: 'MadinaCaravan' }, tok.ayesha);
-for (const u of CARAVAN) await api('POST', '/api/caravan/invite', { username: u }, tok.ayesha);
+await api('POST', '/api/caravan', { name: 'MadinaCaravan' }, tok.ahmed);
+for (const u of CARAVAN) await api('POST', '/api/caravan/invite', { username: u }, tok.ahmed);
 for (const u of CARAVAN) {
   const inv = ((await api('GET', '/api/caravan', null, tok[u])).invitations || [])[0];
   if (inv) await api('POST', `/api/caravan/invitations/${inv.id}`, { accept: true }, tok[u]);
@@ -63,19 +63,19 @@ for (const u of CARAVAN) {
 for (let d = DAYS; d >= 0; d--) {
   off = -d * 86400e3 + (d ? 0 : -60e3);
   for (const [u, , , per] of PEOPLE) {
-    if (d === 0 && u === 'ayesha') continue; // the hero member logs today's durood on camera
+    if (d === 0 && u === 'ahmed') continue; // the hero member logs today's durood on camera
     await api('POST', '/api/log', { count: Math.round(per * (0.8 + rnd() * 0.4)), rid: crypto.randomUUID() }, tok[u]);
   }
 }
 off = 0;
-await api('POST', '/api/log', { count: 313, rid: crypto.randomUUID() }, tok.ayesha);
+await api('POST', '/api/log', { count: 313, rid: crypto.randomUUID() }, tok.ahmed);
 
 const browser = await chromium.launch();
 const shots = [];
 async function openApp({ mode = 'dark', lang = 'en', folds = {} } = {}) {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: true });
   await page.goto(B + '/');
-  await page.evaluate(([t, l, md, f]) => { localStorage.setItem('token', t); localStorage.setItem('intro', '1'); localStorage.setItem('lang', l); localStorage.setItem('mode', md); localStorage.setItem('folds', f); }, [tok.ayesha, lang, mode, JSON.stringify(folds)]);
+  await page.evaluate(([t, l, md, f]) => { localStorage.setItem('token', t); localStorage.setItem('intro', '1'); localStorage.setItem('lang', l); localStorage.setItem('mode', md); localStorage.setItem('folds', f); }, [tok.ahmed, lang, mode, JSON.stringify(folds)]);
   await page.goto(B + '/');
   await page.waitForTimeout(1000);
   await page.addStyleTag({ content: '*{caret-color:transparent!important}' });

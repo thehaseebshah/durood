@@ -83,7 +83,7 @@ function run(cfg) {
   const SRC = (n) => `${cfg.assets}${n}.jpg`;
   const K = 560 / 390, BZ = 18, VW = 390, VH = 844;                  // capture px -> screen px, bezel, viewport
   const HOME = { z: 1, fx: 195, fy: 422, ax: 540, ay: 1214, rx: 0, ry: 0, rz: 0 };
-  let M = {};                                                          // assets/tour/manifest.json
+  let M = {};                                                          // the assets' manifest.json
   const STAR_SVG = (stroke) => `<svg class="bigstar" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" fill="none" stroke="${stroke}" stroke-width=".35"/><rect x="5" y="5" width="14" height="14" transform="rotate(45 12 12)" fill="none" stroke="${stroke}" stroke-width=".35"/></svg>`;
 
   // ---- timing: lay the storyboard end to end ----------------------------------------------------------------------------
@@ -458,7 +458,7 @@ function run(cfg) {
 
   window.DURATION = DURATION; window.CUES = CUES; window.POSTER = FINAL.t + 5; window.seek = seek; window.STORY = STORY;
   window.ready = (async () => {
-    M = await fetch('../../assets/tour/manifest.json').then((r) => r.json());
+    M = await fetch(`${cfg.assets}manifest.json`).then((r) => r.json());
     buildKeys();
     const all = Object.keys(M).flatMap((n) => [M[n].view ? SRC(n) : null, M[n].full ? SRC(`${n}-full`) : null, ...(M[n].frames ? Array.from({ length: M[n].frames }, (_, i) => SRC(`${n}-${String(i).padStart(2, '0')}`)) : [])]).filter(Boolean);
     for (let i = 0; i <= 16; i++) all.push(SRC(`tap-${String(i).padStart(2, '0')}`));

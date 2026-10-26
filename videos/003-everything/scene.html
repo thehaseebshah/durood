@@ -1,0 +1,178 @@
+<!doctype html>
+<!-- Promo 003 "Everything" — the whole app as released (the Al-Burhan edition: durood, Sunnah, Seerah, caravans and
+     rankings, plus tasks, routines, My people, murabbi and masul, majalis), 1080x1920, under 5 minutes. Built on the Swiss
+     promo kit (kit/swiss). Screens are real captures from tools/capture-full.mjs (assets/full): a made-up community of men,
+     and every spotlight sits where the capture measured the element. Preview through a static server; render with
+     node tools/render.mjs videos/003-everything --jobs 4 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Everything</title>
+<link rel="stylesheet" href="../../kit/swiss/swiss.css">
+</head>
+<body>
+<script src="../../kit/swiss/engine.js"></script>
+<script>
+// =====================================================================================================================
+// The storyboard. Times are seconds. A phone segment shows one captured screen; its steps pan, zoom and spotlight.
+//   step: { at: seconds into the segment, key: a measured element (assets/full/manifest.json) or rect: [x, y, w, h] in
+//           page CSS px, en / ur: the callout, z: zoom (auto when left out), noSpot: zoom without a spotlight, scroll: px }
+// =====================================================================================================================
+const { chapter: C, phone: P } = Promo;
+Promo.run({
+  assets: '../../assets/full/',
+  brand: { en: 'Seerah Quest', ur: 'سیرت کوئسٹ' },
+  open: {
+    slams: [[1.15, 'g', 'Recite<em>.</em>', 'پڑھیں'], [2.2, 'k', 'Organise<em>.</em>', 'منظم کریں'], [3.25, 'p', 'Lead<em>.</em>', 'رہنمائی کریں'], [4.3, 'g', '<span style="font-size:166px">Together<em>.</em></span>', 'مل کر']],
+    durood: { ar: 'اللّٰهُمَّ صَلِّ عَلٰى مُحَمَّدٍ<br>وَعَلٰى اٰلِ مُحَمَّدٍ', en: 'O Allah, send blessings upon Muhammad ﷺ and upon the family of Muhammad' },
+    logo: { line1: 'Seerah', line2: 'Quest<span class="green">.</span>', ur: 'سیرت کوئسٹ', tag: 'Everything in it', tagUr: 'سب کچھ' },
+  },
+  offline: { title: 'No signal', big: '313 saved', small: 'on this phone, and sent once<br>you are back online' },
+  laptop: 'desktop-tasks',
+  mosaic: ['today', 'tasks', 'people', 'rank-people', 'caravan', 'me', 'sunnah', 'seerah', 'feed', 'rank-majalis', 'tasks-ur', 'profile',
+    'qabila', 'resched', 'razakar', 'salik', 'caravan-lag', 'settings', 'today-dark', 'addroutine', 'lecture', 'menu', 'admin', 'today-ur'],
+  wall: { en: 'Everything,<br>in one app<span class="green">.</span>', ur: 'سب کچھ، ایک ایپ میں' },
+  finale: { icon: '../../assets/icon-512.png', name: 'Seerah Quest<span class="green">.</span>', ur: 'سیرت کوئسٹ',
+    line: 'Every durood is dedicated to the <span class="green">Seerat Circles</span> across Pakistan.', lineUr: 'ہر درود پاکستان بھر کے سیرت سرکلز کے نام',
+    cta: 'Ask a member for an invite code', ctaUr: 'دعوتی کوڈ کسی رکن سے لیں' },
+  story: [
+    { type: 'open', d: 17.5 },
+
+    C('01', 'Join', 'شامل ہوں', 'Invite-only, free, in English or Urdu.', 'صرف دعوت پر، مفت، انگریزی یا اردو میں'),
+    P('intro-0', 2.6, ['Join', 'Pick your language.', 'اپنی زبان چنیں'], [{ at: 0.8, rect: [24, 495, 342, 51], en: 'English or اردو, from the first screen', z: 1.5 }]),
+    P('intro-2', 2.6, ['Join', 'Free. It never asks for money.', 'مفت، کبھی پیسے نہیں مانگتی'], [{ at: 0.5, rect: [14, 370, 362, 205], en: 'A short welcome explains it all', ur: 'مختصر تعارف سب سمجھا دیتا ہے', z: 1.35 }], { tr: 'push' }),
+    P('register', 6.4, ['Join', 'Every member is invited by someone.', 'ہر رکن کو کوئی نہ کوئی دعوت دیتا ہے'], [
+      { at: 0.5, key: 'invite', en: 'An invite code: a member’s username', ur: 'دعوتی کوڈ: کسی رکن کا یوزرنیم', z: 1.7 },
+      { at: 2.8, key: 'waitlist', en: 'No code? Request access', ur: 'کوڈ نہیں؟ رسائی کی درخواست کریں', z: 2.0 },
+      { at: 4.8, key: 'city', en: 'Your city joins the city rankings', ur: 'آپ کا شہر شہروں کے مقابلے میں', z: 1.6 }], { tr: 'push' }),
+
+    C('02', 'Today', 'آج', 'Your durood, counted exactly.', 'آپ کے درود، بالکل درست گنتی'),
+    P('today', 4.4, ['Count', 'Your durood today, in big numbers.', 'آج کے درود، بڑے ہندسوں میں'], [
+      { at: 0.8, key: 'big', en: 'Today’s count and your daily goal', ur: 'آج کی گنتی اور روزانہ کا ہدف', z: 1.45 }]),
+    { type: 'phone', shot: 'type-1', d: 0.4, tr: 'cut', cap: ['Count', 'Type it in. Press Add.', 'تعداد لکھیں، Add دبائیں'], steps: [{ at: 0, key: 'numbox', noSpot: true, z: 1.6, d: 0.6 }] },
+    { type: 'phone', shot: 'type-2', d: 0.35, tr: 'cut' },
+    { type: 'phone', shot: 'type-3', d: 1.4, tr: 'cut', steps: [{ at: 0.2, key: 'manual', en: '313 durood', z: 1.6 }] },
+    { type: 'phone', shot: 'burst', d: 4.0, tr: 'cut', seq: { fps: 7, max: 12 }, cap: ['Goal', 'Reach your goal. MashaAllah!', 'ہدف پورا، ماشاءاللہ!'], hit: true, steps: [
+      { at: 0, z: 1.15, noSpot: true, rect: [14, 150, 362, 420], d: 0.5 },
+      { at: 1.9, rect: [12, 58, 366, 132], en: 'Goal reached · level up · a new badge', ur: 'ہدف پورا · نیا درجہ · نیا بیج', z: 1.5 }] },
+    { type: 'phone', shot: 'burst', d: 2.8, tr: 'cut', seq: { frame: 12 }, cap: ['Count', 'A slip of the finger? Undo it.', 'غلطی ہو گئی؟ ایک ٹیپ میں واپس'], steps: [
+      { at: 0.2, rect: [294, 102, 68, 44], en: 'Undo', ur: 'واپس لیں', z: 2.2 }] },
+    { type: 'phone', shot: 'tap', d: 5.2, tr: 'fade', seq: { taps: true, start: 0.8, every: 0.28 }, cap: ['Count', 'Or count by tapping, bead by bead.', 'یا تسبیح کی طرح ٹیپ کر کے گنیں'], steps: [{ at: 0, key: 'tapbox', z: 1.05, noSpot: true }, { at: 4.4, key: 'presets', en: '+100, +500, +1,000 in one tap', ur: 'ایک ٹیپ میں +100، +500، +1,000', z: 1.5 }] },
+    { type: 'phone', shot: 'tap', d: 3.4, tr: 'cut', seq: { hold: 16 }, offline: true, cap: ['Offline', 'No signal? Nothing is lost.', 'سگنل نہیں؟ کچھ ضائع نہیں ہوتا'], steps: [{ at: 0, z: 1, noSpot: true, rect: [0, 0, 390, 844] }] },
+    P('today', 5.6, ['Quests', 'Quests that keep you going.', 'مشن جو آپ کو آگے بڑھاتے ہیں'], [
+      { at: 0.3, key: 'start', en: 'Getting started, step by step', ur: 'قدم بہ قدم آغاز', z: 1.25 },
+      { at: 2.7, rect: [14, 991, 362, 513], en: 'Daily and weekly quests earn points', ur: 'روزانہ اور ہفتہ وار مشن، پوائنٹس کے ساتھ', z: 1.05 }], { tr: 'fade' }),
+    P('today', 3.8, ['Streak', 'Keep your streak alive.', 'اپنا سلسلہ قائم رکھیں'], [
+      { at: 0.2, key: 'stk', en: '9-day streak', ur: '9 دن کا سلسلہ', z: 2.6, scroll: 0 }], { tr: 'cut', flame: true }),
+
+    C('03', 'Tasks', 'کام', 'Duties and routines, with deadlines.', 'ذمہ داریاں اور معمولات، مقررہ وقت کے ساتھ'),
+    P('today', 4.4, ['Tasks', 'Today’s tasks, right on Today.', 'آج کے کام، آج ہی کے صفحے پر'], [
+      { at: 0.4, rect: [14, 1517, 362, 300], en: 'Your tasks and routines due today', ur: 'آج کے کام اور معمولات', z: 1.35 }], { tr: 'fade' }),
+    P('tasks', 14.4, ['Tasks', 'Every task has a deadline.', 'ہر کام کی ایک آخری تاریخ'], [
+      { at: 0.4, rect: [14, 244, 362, 83], en: 'Late: a red ring, and fewer points', ur: 'دیر: سرخ دائرہ، اور کم پوائنٹس', z: 1.5 },
+      { at: 2.8, rect: [14, 327, 362, 83], en: 'Your own task: 10 points if done today', ur: 'اپنا کام: آج مکمل کریں تو 10 پوائنٹس', z: 1.5 },
+      { at: 5.2, rect: [14, 493, 362, 83], en: 'From your masul: 30 points', ur: 'مسؤل کی طرف سے: 30 پوائنٹس', z: 1.5 },
+      { at: 7.6, rect: [14, 576, 362, 100], en: 'You asked your masul for more time', ur: 'آپ نے مسؤل سے مزید وقت مانگا', z: 1.45 },
+      { at: 10.0, rect: [14, 687, 362, 260], en: 'Routines, on the days you choose', ur: 'معمولات، آپ کے چنے ہوئے دنوں پر', z: 1.2 },
+      { at: 12.4, rect: [14, 958, 362, 135], en: 'Done, with the points it earned', ur: 'مکمل، کمائے ہوئے پوائنٹس کے ساتھ', z: 1.4 }], { tr: 'push' }),
+    { type: 'phone', shot: 'tick', d: 3.2, tr: 'fade', seq: { fps: 10, max: 23 }, cap: ['Tasks', 'Tick it off. Points, and Undo.', 'نشان لگائیں: پوائنٹس، اور واپسی'], steps: [
+      { at: 0, rect: [14, 244, 362, 83], noSpot: true, z: 1.3 }, { at: 1.6, rect: [10, 40, 370, 76], en: 'Done, with its points. Undo for five seconds', ur: 'مکمل، پوائنٹس کے ساتھ۔ پانچ سیکنڈ تک واپسی', z: 1.5 }] },
+    { type: 'phone', shot: 'swipe', d: 2.6, tr: 'fade', seq: { fps: 6, max: 10 }, cap: ['Tasks', 'Swipe right: done.', 'دائیں سوائپ: مکمل'], steps: [{ at: 0, rect: [14, 244, 362, 83], noSpot: true, z: 1.5 }] },
+    { type: 'phone', shot: 'swipel', d: 2.4, tr: 'cut', seq: { fps: 6, max: 10 }, cap: ['Tasks', 'Swipe left: move the deadline.', 'بائیں سوائپ: تاریخ بدلیں'], steps: [{ at: 0, rect: [14, 244, 362, 83], noSpot: true, z: 1.5 }] },
+    P('resched', 3.6, undefined, [{ at: 0.3, rect: [0, 462, 390, 382], en: 'Today, in 3 days, next week, or any date', ur: 'آج، تین دن بعد، اگلے ہفتے، یا کوئی بھی تاریخ', z: 1.15 }], { tr: 'sheet' }),
+    P('addtask', 3.6, ['Tasks', 'Add your own task.', 'اپنا کام شامل کریں'], [{ at: 0.3, rect: [14, 180, 362, 380], en: 'A task with a deadline', ur: 'آخری تاریخ کے ساتھ ایک کام', z: 1.3 }], { tr: 'fade' }),
+    P('addroutine', 3.6, ['Tasks', 'Or a routine on chosen days.', 'یا چنے ہوئے دنوں پر معمول'], [{ at: 0.3, rect: [30, 368, 282, 124], en: 'Any days of the week, or every day', ur: 'ہفتے کے کوئی بھی دن، یا ہر روز', z: 1.7 }], { tr: 'cut' }),
+
+    C('04', 'My people', 'میرے لوگ', 'For murabbis and masuls.', 'مربی اور مسؤل کے لیے'),
+    P('people', 10.4, ['My people', 'Everyone you guide, in one place.', 'جن کی آپ رہنمائی کرتے ہیں، سب ایک جگہ'], [
+      { at: 0.4, rect: [14, 127, 362, 250], en: 'A salik asks you to be his murabbi', ur: 'ایک سالک آپ کو مربی بنانا چاہتا ہے', z: 1.35 },
+      { at: 3.0, rect: [14, 388, 362, 260], en: 'Your saliks: their full report, mamulaat included', ur: 'آپ کے سالک: مکمل رپورٹ، معمولات سمیت', z: 1.3 },
+      { at: 5.8, rect: [14, 659, 362, 210], en: 'Your razakars, sorted into teams', ur: 'آپ کے رضاکار، ٹیموں میں', z: 1.4 },
+      { at: 8.0, rect: [14, 870, 362, 430], en: 'Their open tasks, team tags and durood', ur: 'ان کے کھلے کام، ٹیم ٹیگ اور درود', z: 1.1 }]),
+    P('people-team', 3.4, ['Teams', 'Filter by team. Give a whole team a task.', 'ٹیم سے چھانٹیں، پوری ٹیم کو کام دیں'], [{ at: 0.3, key: 'teamf1', en: '#events', z: 2.2 }], { tr: 'cut' }),
+    P('razakar', 3.8, ['Razakar', 'A razakar’s report.', 'رضاکار کی رپورٹ'], [{ at: 0.4, rect: [0, 440, 390, 380], en: 'His tasks and routines, done and due', ur: 'اس کے کام اور معمولات، مکمل اور باقی', z: 1.1 }], { tr: 'sheet' }),
+    P('razakar-2', 3.8, undefined, [{ at: 0.2, rect: [0, 250, 390, 560], en: 'Teams, and a new task or routine', ur: 'ٹیمیں، اور نیا کام یا معمول', z: 1.05 }], { tr: 'cut' }),
+    P('salik', 3.6, ['Salik', 'A salik’s report, for his murabbi.', 'سالک کی رپورٹ، اس کے مربی کے لیے'], [{ at: 0.4, rect: [0, 200, 390, 400], en: 'His durood, streak, points and more', ur: 'اس کے درود، سلسلہ، پوائنٹس اور مزید', z: 1.1 }], { tr: 'sheet' }),
+    P('salik-2', 3.6, undefined, [{ at: 0.2, rect: [0, 655, 390, 125], en: 'Mamulaat, from the Mamulaat app', ur: 'معمولات، معمولات ایپ سے', z: 1.5 }], { tr: 'cut' }),
+
+    C('05', 'Me', 'میں', 'Your journey, in numbers.', 'آپ کا سفر، ہندسوں میں'),
+    P('me', 14.2, ['Grow', 'Levels, points, badges, links.', 'درجے، پوائنٹس، بیجز، تعلقات'], [
+      { at: 0.4, key: 'stats', en: 'This week, all time, best streak', ur: 'یہ ہفتہ، اب تک، بہترین سلسلہ', z: 1.5 },
+      { at: 2.8, key: 'lvl', en: 'Ten titles, from Musafir to Muqarrab', ur: 'مسافر سے مقرب تک دس درجے', z: 1.4 },
+      { at: 5.4, rect: [14, 530, 362, 470], en: '35 badges to earn', ur: 'حاصل کرنے کو 35 بیجز', z: 1.25 },
+      { at: 8.0, rect: [14, 3719, 362, 210], en: 'Your majlis, with its own board', ur: 'آپ کی مجلس، اس کے اپنے مقابلے کے ساتھ', z: 1.35 },
+      { at: 10.6, rect: [14, 3939, 362, 640], en: 'Your murabbi and masul, and who sees what', ur: 'آپ کے مربی اور مسؤل، اور کون کیا دیکھتا ہے', z: 1.0 }]),
+    P('history-edit', 4.6, ['History', 'Fix today’s or yesterday’s count.', 'آج یا کل کی گنتی درست کریں'], [
+      { at: 0.4, rect: [14, 3006, 362, 106], en: 'Every change stays on record', ur: 'ہر تبدیلی ریکارڈ میں رہتی ہے', z: 1.6 }], { tr: 'fade' }),
+
+    C('06', 'Learn', 'سیکھیں', 'The Sunnah. The Seerah.', 'سنت، سیرت'),
+    P('sunnah', 5.6, ['Sunnah', 'A sunnah for every day.', 'ہر دن کے لیے ایک سنت'], [
+      { at: 0.4, rect: [0, 116, 390, 300], en: 'Did it? Tick it. Share a photo of it', ur: 'عمل کیا؟ نشان لگائیں، تصویر شیئر کریں', z: 1.25 },
+      { at: 3.0, rect: [0, 508, 390, 220], en: 'Your posts and the community’s photos', ur: 'آپ کی پوسٹس اور کمیونٹی کی تصاویر', z: 1.3 }]),
+    P('seerah', 5.6, ['Seerah', 'Learn the Seerah, week by week.', 'ہفتہ بہ ہفتہ سیرت سیکھیں'], [
+      { at: 0.4, rect: [0, 116, 390, 480], en: 'This week’s lecture, and the Seerat Circles', ur: 'اس ہفتے کا لیکچر، اور سیرت سرکلز', z: 1.1 },
+      { at: 3.0, rect: [0, 605, 390, 160], en: 'Earlier lectures, any time', ur: 'پچھلے لیکچر، جب چاہیں', z: 1.5 }], { tr: 'push' }),
+    P('lecture', 5.0, ['Seerah', 'Watch, then answer to earn.', 'دیکھیں، پھر جواب دے کر پوائنٹس لیں'], [
+      { at: 0.4, rect: [10, 60, 370, 200], en: 'Videos, PDFs and audio play right here', ur: 'ویڈیو، پی ڈی ایف اور آڈیو یہیں چلتے ہیں', z: 1.4 },
+      { at: 2.6, rect: [16, 340, 358, 300], en: 'A short quiz claims the points', ur: 'ایک مختصر سوال سے پوائنٹس ملتے ہیں', z: 1.3 }], { tr: 'sheet' }),
+    P('today', 4.2, ['Reflect', 'One short thought a day.', 'روزانہ ایک مختصر خیال'], [
+      { at: 0.3, key: 'reflect', en: 'A new question each day, on the Seerah or the Sunnah', ur: 'ہر روز سیرت یا سنت پر ایک نیا سوال', z: 1.6 }], { tr: 'fade' }),
+
+    C('07', 'Feed', 'فیڈ', 'See the good everyone is doing.', 'دیکھیں سب کیا نیکیاں کر رہے ہیں'),
+    P('feed', 12.6, ['Feed', 'A feed full of goodness.', 'نیکیوں سے بھری فیڈ'], [
+      { at: 0.4, rect: [14, 197, 362, 157], en: 'News from the organisers', ur: 'منتظمین کی خبریں', z: 1.3 },
+      { at: 2.4, rect: [14, 364, 362, 87], en: 'Milestones, the moment they happen', ur: 'سنگِ میل، اسی لمحے', z: 1.6 },
+      { at: 4.4, rect: [14, 461, 362, 266], en: 'Reflections from your community', ur: 'آپ کی کمیونٹی کے خیالات', z: 1.25 },
+      { at: 6.6, key: 'like1', en: 'Like it: the writer earns points', ur: 'پسند کریں: لکھنے والے کو پوائنٹس', z: 2.4 },
+      { at: 8.6, key: 'cheer0', en: 'Say MashaAllah on a milestone', ur: 'سنگِ میل پر ماشاءاللہ کہیں', z: 2.2 },
+      { at: 10.4, rect: [14, 1464, 362, 219], en: 'Weekly city results', ur: 'ہفتہ وار شہروں کے نتائج', z: 1.35 }]),
+
+    C('08', 'Caravan', 'کارواں', 'Recite together. Grow together.', 'مل کر پڑھیں، مل کر بڑھیں'),
+    P('caravan', 9.6, ['Together', 'Recite together, as a caravan.', 'کارواں کے ساتھ مل کر پڑھیں'], [
+      { at: 0.4, key: 'stats', en: 'Your caravan’s totals', ur: 'آپ کے کارواں کی کل تعداد', z: 1.5 },
+      { at: 2.6, key: 'karwan', en: 'Caravan streak: everyone, every day', ur: 'کارواں کا سلسلہ: سب، ہر دن', z: 1.8 },
+      { at: 4.8, key: 'row1', en: '✓ who has recited today', ur: '✓ آج کس نے پڑھ لیا', z: 1.6 },
+      { at: 7.0, key: 'cvaccept', en: 'Accept people who ask to join', ur: 'شامل ہونے والوں کو قبول کریں', z: 1.6 }]),
+    P('caravan-lag', 4.6, ['Owner', 'See who is falling behind.', 'دیکھیں کون پیچھے رہ گیا'], [
+      { at: 0.4, rect: [0, 532, 390, 200], en: 'Only the owner sees it: three days without durood', ur: 'صرف مالک دیکھتا ہے: تین دن بغیر درود', z: 1.4 }], { tr: 'push' }),
+    P('qabila', 7.0, ['Qabila', 'Your Qabila grows with every invite.', 'ہر دعوت سے آپ کا قبیلہ بڑھتا ہے'], [
+      { at: 0.4, key: 'stats', en: 'Everyone who joined through you, at every level', ur: 'آپ کے ذریعے آنے والے سب لوگ، ہر درجے تک', z: 1.5 },
+      { at: 2.6, rect: [14, 375, 362, 360], en: 'Invite on WhatsApp, share or copy', ur: 'واٹس ایپ پر دعوت دیں، شیئر کریں یا کاپی کریں', z: 1.2 },
+      { at: 4.8, rect: [14, 742, 362, 360], en: 'More invites as you level up and keep your streak', ur: 'درجہ اور سلسلہ بڑھنے پر مزید دعوتیں', z: 1.2 }], { tr: 'push' }),
+
+    C('09', 'Compete', 'مقابلہ', 'Race one another in goodness.', 'نیکی میں ایک دوسرے سے آگے بڑھیں'),
+    { type: 'deck', d: 8.4, cards: ['rank-people', 'rank-league', 'rank-caravans', 'rank-trees', 'rank-cities', 'rank-majalis'], tags: [['People', 'افراد'], ['League', 'لیگ'], ['Caravans', 'کارواں'], ['Qabila', 'قبیلہ'], ['Cities', 'شہر'], ['Majalis', 'مجالس']], cap: ['Compete', 'Six leaderboards.', 'چھ مقابلے'] },
+    P('rank-people', 5.4, ['Challenge', 'A named challenge, and the next one.', 'نام کے ساتھ چیلنج، اور اگلا بھی'], [
+      { at: 0.4, key: 'challenge', en: 'Rabi ul Awwal: 10 crore durood in 40 days. Next: Ramadan', ur: 'ربیع الاول: 40 دن میں 10 کروڑ درود۔ اگلا: رمضان', z: 1.3 },
+      { at: 3.2, key: 'row0', en: 'Who leads this week', ur: 'اس ہفتے کون آگے ہے', z: 1.6 }]),
+    P('rank-majalis', 3.8, ['Majalis', 'Majlis against majlis.', 'مجلس کا مجلس سے مقابلہ'], [
+      { at: 0.4, key: 'row0', en: 'Total, average or growth', ur: 'کل، اوسط یا اضافہ', z: 1.6 }], { tr: 'push' }),
+    P('profile', 4.4, ['Profiles', 'Tap anyone. Message him on WhatsApp.', 'کسی پر ٹیپ کریں، واٹس ایپ پر پیغام بھیجیں'], [
+      { at: 0.4, rect: [14, 996, 362, 54], en: 'Message on WhatsApp', ur: 'واٹس ایپ پر پیغام', z: 1.6 }], { tr: 'sheet' }),
+
+    C('10', 'Yours', 'آپ کی اپنی', 'Light or dark. English or Urdu. Phone or computer.', 'لائٹ یا ڈارک، انگریزی یا اردو، فون یا کمپیوٹر'),
+    P('menu', 3.6, ['Easy', 'Everything, one tap away.', 'سب کچھ ایک ٹیپ پر'], [{ at: 0.4, rect: [0, 0, 300, 844], en: 'Learn, groups, tasks, my people', ur: 'سیکھیں، گروپ، کام، میرے لوگ', z: 1.0 }]),
+    P('addsheet', 3.0, ['Easy', 'Add durood from any page.', 'کسی بھی صفحے سے درود درج کریں'], [{ at: 0.4, key: 'modal', en: 'The + button, everywhere', ur: '+ کا بٹن، ہر جگہ', z: 1.1 }], { tr: 'sheet' }),
+    P('today-light', 4.8, ['Display', 'Light or dark.', 'لائٹ یا ڈارک'], [], { tr: 'fade', wipe: 'today-dark' }),
+    P('tasks', 4.4, ['اردو', 'Fully in Urdu.', 'مکمل اردو میں'], [], { tr: 'cut', flip: 'tasks-ur' }),
+    { type: 'laptop', d: 4.6, cap: ['Anywhere', 'On your computer too.', 'کمپیوٹر پر بھی'] },
+    P('settings', 5.4, ['Settings', 'Reminders, sounds, your profile.', 'یاد دہانی، آوازیں، آپ کا پروفائل'], [
+      { at: 0.4, key: 'mybig', en: 'Your photo, name and bio', ur: 'آپ کی تصویر، نام اور تعارف', z: 1.8 },
+      { at: 2.2, key: 'feel', en: 'Counter sounds and vibration', ur: 'گنتی کی آوازیں اور وائبریشن', z: 1.6 },
+      { at: 3.8, key: 'remind', en: 'A daily reminder at your time', ur: 'آپ کے وقت پر روزانہ یاد دہانی', z: 1.6 }]),
+
+    C('11', 'Organisers', 'منتظمین', 'One page runs it all.', 'ایک صفحہ، سارا انتظام'),
+    P('admin', 5.0, ['Admin', 'For the organisers.', 'منتظمین کے لیے'], [
+      { at: 0.4, rect: [0, 230, 390, 70], en: 'Challenges, invites, the waitlist, content, members', ur: 'چیلنج، دعوتیں، انتظار کی فہرست، مواد، اراکین', z: 1.5 },
+      { at: 2.6, rect: [0, 288, 390, 540], en: 'Run this challenge, plan the next', ur: 'یہ چیلنج چلائیں، اگلا طے کریں', z: 1.05 }]),
+
+    C('12', 'Trust', 'اعتماد', 'Built to be exact, and to stay free.', 'درست گنتی کے لیے بنی، ہمیشہ مفت'),
+    { type: 'say', d: 2.8, c: 'k', en: 'Every durood counted <em>exactly once.</em>', ur: 'ہر درود ٹھیک ایک بار گنا جاتا ہے' },
+    { type: 'say', d: 2.8, c: 'g', en: 'Free. It never asks <em>for money.</em>', ur: 'مفت، کبھی پیسے نہیں مانگتی' },
+    { type: 'wall', d: 5.2 },
+    { type: 'final', d: 7.6 },
+  ],
+});
+</script>
+</body>
+</html>
