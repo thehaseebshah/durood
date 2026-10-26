@@ -447,3 +447,10 @@ Besides the flows: no WCAG A/AA failures (axe) on any page in light and dark; no
 - In dark mode the chosen option of a two- or three-way switch is the lighter grey.
 - The feed's weekly city card names the city as the city rankings do ("Lahore").
 - New sunnah photos store their width and height; the feed reserves that space before the photo arrives, so nothing jumps on slow data.
+
+## 47. Caching and crawlers
+
+- API replies and every error reply (API errors, missing files) carry `Cache-Control: no-store`, so no phone or proxy keeps an error, and a remembered 404 cannot hide a file added by a later deploy.
+- Profile photos are cached `private` for a year (their address changes with each new photo): kept on the member's phone, never by a shared proxy. Sunnah photos are `private` for a day.
+- `robots.txt` lets search engines list the welcome page but not `/api/`, `/photos/`, `/avatars/` or `/admin.html` (which also carries `noindex`).
+- Accessibility checks in the browser tests now also cover: 130% text on a 360 px phone (members' pages, both edges, and all admin tabs), the phone's Reduce motion setting, duplicate ids and labels without a field.
