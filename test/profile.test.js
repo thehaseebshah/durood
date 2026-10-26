@@ -67,7 +67,7 @@ test('profile picture: rebuilt without metadata or trailing data, served by a si
   const res = await api('GET', r.avatar, { raw: true });
   assert.equal(res.status, 200);
   assert.equal(res.headers.get('content-type'), 'image/jpeg');
-  assert.match(res.headers.get('cache-control'), /immutable/);
+  assert.match(res.headers.get('cache-control'), /^private, .*immutable/, 'kept on the phone only, never by a shared proxy');
   const bytes = Buffer.from(await res.arrayBuffer());
   assert.ok(!bytes.includes(Buffer.from('GPSLatitude')) && !bytes.includes(Buffer.from('JFIF')), 'camera data and application segments are gone');
   assert.ok(!bytes.includes(Buffer.from('SECRET PAYLOAD')), 'nothing rides behind the image');

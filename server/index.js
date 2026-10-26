@@ -802,7 +802,7 @@ async function handleAvatar(res, url) {
   const m = /^\/avatars\/(\d+)\/(\d+)\/([\w-]+)$/.exec(url.pathname);
   const file = m && profile.avatarFile(Number(m[1]), Number(m[2]), m[3]);
   if (!file) throw new HttpError(404, 'not_found');
-  res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' }); // the address changes with every new picture
+  res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' }); // the address changes with every new picture; private: kept on the phone, never by a shared proxy, so a removed photo does not linger
   res.end(await readFile(file));
 }
 
