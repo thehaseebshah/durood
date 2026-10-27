@@ -1,6 +1,6 @@
 # Seerah Quest · promos
 
-Short promo and how-to videos for the app, made for portrait feeds (TikTok, Reels, Shorts, WhatsApp Status): **1080 × 1920, 30 fps, H.264 MP4**.
+Short promo and how-to videos and posters for the app, made for portrait feeds (TikTok, Reels, Shorts, WhatsApp Status): **1080 × 1920, 30 fps, H.264 MP4**.
 
 This branch holds content only; the app lives on the main branch. PDF guides can get their own branch later.
 
@@ -8,6 +8,7 @@ This branch holds content only; the app lives on the main branch. PDF guides can
 
 | Path | What it is |
 |---|---|
+| `posters/NNN-slug/` | One poster per folder: `poster.html` (the source), the rendered `poster.png` and `post.md` (wording and text to post) |
 | `videos/NNN-slug/` | One video per folder: `scene.html` (the source), the rendered `.mp4`, `poster.jpg` (cover) and `post.md` (storyboard, captions, text to post) |
 | `assets/shots/` | Real screenshots of the app (dark mode), captured by `tools/capture.mjs` (used by 001) |
 | `assets/tour/` | Every screen of the app (light mode) for the full tour, captured by `tools/capture-tour.mjs`: phone views, whole pages, animation frames and `manifest.json` (page heights and where each UI element sits) |
@@ -18,6 +19,7 @@ This branch holds content only; the app lives on the main branch. PDF guides can
 | `tools/capture-full.mjs` | The same for the released app, with tasks and routines, My people, murabbi and masul (the Mamulaat app stood in for), majalis, the Learn pages, the admin page, and real tick and swipe animations |
 | `tools/render.mjs` | Renders a `scene.html` to MP4 frame by frame (exact timing on any machine); `--jobs 4` splits the work over four browsers |
 | `tools/sfx.mjs` | Synthesises the sound effects from the scene's cue list (no music, no samples) |
+| `tools/poster.mjs` | Renders a `poster.html` to PNG (1080 × 1920 unless the page sets another size) |
 | `tools/stills.mjs` | A contact sheet of stills from a scene, to check a video without rendering it; also prints its timing |
 | `kit/swiss/` | **The Swiss promo kit**: the engine and look of 002, plus a starter page. A new video is one short page with its words and storyboard ([how](kit/swiss/README.md)) |
 | `.claude/skills/promo-video/` | Step-by-step instructions for Claude sessions making the next promo |
@@ -29,6 +31,12 @@ This branch holds content only; the app lives on the main branch. PDF guides can
 | 001 | [Every durood counts](videos/001-every-durood-counts/post.md) | 56 s | Promo |
 | 002 | [The full tour](videos/002-the-full-tour/post.md) | 4 min 10 s | Promo: every feature of the public edition, chapter by chapter, in the app's Swiss style |
 | 003 | [Everything](videos/003-everything/post.md) | 4 min 59 s | Promo: the whole released app, with tasks, routines, My people and majalis |
+
+## Posters
+
+| # | Title | Size | Kind |
+|---|---|---|---|
+| 001 | [Seerah Quest has launched](posters/001-launched/post.md) | 1080 × 1920 | Launch: founder's codes for those who intend to register 20 people |
 
 ## Making or changing a video
 

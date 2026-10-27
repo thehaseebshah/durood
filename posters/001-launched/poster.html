@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Seerah Quest has launched</title>
+<style>
+@font-face { font-family: 'Inter'; src: url('../../assets/fonts/inter-latin.woff2') format('woff2'); font-weight: 100 900; }
+@font-face { font-family: 'Nastaliq'; src: url('../../assets/fonts/nastaliq-ur-400.woff2') format('woff2'); font-weight: 400; }
+@font-face { font-family: 'Nastaliq'; src: url('../../assets/fonts/nastaliq-ur-700.woff2') format('woff2'); font-weight: 700; }
+@font-face { font-family: 'Amiri'; src: url('../../assets/fonts/amiri.woff2') format('woff2'); }
+@font-face { font-family: 'Salawat'; src: url('../../assets/fonts/salawat.woff2') format('woff2'); unicode-range: U+FDFA; }
+
+:root { --ink: #f6f1e4; --soft: #b9c7bd; --gold: #f0cf86; --gold2: #ffe9b8; --deep: #04140f; --green: #0d4a35; --sig: #22d68f; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; }
+body { position: relative; font-family: 'Inter', sans-serif; color: var(--ink); background: var(--deep); -webkit-font-smoothing: antialiased; }
+.abs { position: absolute; }
+.ur { font-family: 'Nastaliq', serif; direction: rtl; }
+.ar { font-family: 'Salawat', 'Amiri', serif; direction: rtl; }
+.gold { color: var(--gold); }
+.star { display: inline-block; position: relative; width: 1em; height: 1em; flex: none; }
+.star i { position: absolute; inset: 14%; background: currentColor; }
+.star i + i { transform: rotate(45deg); }
+
+/* ---------- background ---------- */
+#bg { inset: 0; background:
+  radial-gradient(900px 700px at 50% 960px, rgba(240, 207, 134, .26) 0%, rgba(240, 207, 134, .07) 40%, rgba(240, 207, 134, 0) 70%),
+  radial-gradient(1200px 900px at 50% 1950px, #0f5a3f 0%, rgba(10, 60, 42, .5) 40%, rgba(4, 20, 15, 0) 75%),
+  linear-gradient(#020b08 0%, #05190f 40%, #072419 70%, #062016 100%); }
+#rays { left: 50%; top: 960px; width: 2600px; height: 2600px; margin: -1300px 0 0 -1300px; border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 233, 184, .075) 0deg 2.2deg, rgba(255, 233, 184, 0) 2.2deg 11.25deg);
+  -webkit-mask: radial-gradient(closest-side, #000 8%, rgba(0, 0, 0, .55) 35%, transparent 72%); mask: radial-gradient(closest-side, #000 8%, rgba(0, 0, 0, .55) 35%, transparent 72%); }
+#girih { inset: 0; opacity: .1; -webkit-mask: linear-gradient(#000, rgba(0, 0, 0, .25) 30%, rgba(0, 0, 0, .1) 55%, #000 100%); mask: linear-gradient(#000, rgba(0, 0, 0, .25) 30%, rgba(0, 0, 0, .1) 55%, #000 100%); }
+#grain { inset: 0; opacity: .14; mix-blend-mode: overlay; }
+.spark { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: #fff6dc; box-shadow: 0 0 14px 3px rgba(255, 230, 170, .7); }
+.spark.x { width: 30px; height: 30px; border-radius: 0; background: none; box-shadow: none; }
+.spark.x::before, .spark.x::after { content: ''; position: absolute; left: 50%; top: 0; width: 2px; height: 100%; margin-left: -1px; background: linear-gradient(transparent, #fff3d0, transparent); }
+.spark.x::after { transform: rotate(90deg); }
+
+/* ---------- top ---------- */
+#brand { left: 84px; right: 84px; top: 70px; display: flex; align-items: center; justify-content: space-between; }
+#brand .l { display: flex; align-items: center; gap: 20px; font-weight: 800; font-size: 27px; letter-spacing: 7px; text-transform: uppercase; color: var(--gold); }
+#brand img { width: 62px; height: 62px; border-radius: 16px; box-shadow: 0 0 0 2px rgba(240, 207, 134, .5), 0 10px 30px rgba(0, 0, 0, .5); }
+#brand .r { font-size: 40px; color: var(--gold); opacity: .9; }
+#rule { left: 84px; right: 84px; top: 160px; height: 2px; background: linear-gradient(90deg, rgba(240, 207, 134, .7), rgba(240, 207, 134, .15)); }
+
+#durood { left: 0; right: 0; top: 188px; text-align: center; font-size: 54px; line-height: 1.5; color: var(--gold2); text-shadow: 0 0 30px rgba(240, 207, 134, .45); }
+
+#kick { left: 84px; top: 312px; display: flex; align-items: center; gap: 18px; font-weight: 800; font-size: 30px; letter-spacing: 9px; text-transform: uppercase; color: var(--gold); }
+#kick .star { font-size: 26px; }
+#head { left: 76px; right: 40px; top: 352px; font-weight: 900; font-size: 128px; line-height: .94; letter-spacing: -5px; white-space: nowrap; }
+#head .l2 { display: block; background: linear-gradient(100deg, #b98a35 0%, #ffe9b8 30%, #f0cf86 50%, #fff4d6 62%, #c99a44 100%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 6px 24px rgba(240, 207, 134, .25)); }
+#headUr { left: 84px; right: 84px; top: 604px; font-size: 42px; line-height: 1.9; color: var(--soft); text-align: right; }
+
+/* ---------- the founder's card ---------- */
+#cardWrap { left: 50%; top: 742px; width: 790px; height: 440px; margin-left: -395px; perspective: 1700px; }
+#card { position: absolute; inset: 0; border-radius: 34px; transform: rotateX(16deg) rotateY(-14deg) rotateZ(-5deg); transform-style: preserve-3d;
+  background: linear-gradient(118deg, #8a6424 0%, #d7ac58 14%, #fff0c4 30%, #e3b965 44%, #b88732 58%, #f6dc98 74%, #fff5d8 82%, #c5953f 100%);
+  box-shadow: 0 2px 0 #fff7df inset, 0 -3px 0 rgba(90, 60, 15, .45) inset, 0 60px 90px rgba(0, 0, 0, .65), 0 24px 40px rgba(0, 0, 0, .45), 0 0 160px rgba(240, 207, 134, .35); overflow: hidden; color: #10291e; }
+#card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, .55) 44%, rgba(255, 255, 255, 0) 52%, transparent 70%); mix-blend-mode: soft-light; }
+#card svg.guil { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .22; }
+#edge { position: absolute; inset: 0; border-radius: 34px; transform: rotateX(16deg) rotateY(-14deg) rotateZ(-5deg) translate3d(10px, 14px, -14px); background: #5e4114; filter: blur(.5px); }
+.c { position: absolute; }
+#cTop { left: 52px; right: 52px; top: 44px; display: flex; justify-content: space-between; align-items: flex-start; }
+#cTop .t { font-weight: 900; font-size: 46px; letter-spacing: 3px; text-transform: uppercase; line-height: 1; text-shadow: 0 1px 0 rgba(255, 248, 225, .7); }
+#cTop .s { margin-top: 12px; font-weight: 700; font-size: 22px; letter-spacing: 6px; text-transform: uppercase; opacity: .7; }
+#emblem { width: 104px; height: 104px; color: #10291e; position: relative; margin-top: -6px; }
+#emblem .star { position: absolute; inset: 0; font-size: 104px; }
+#emblem .star i { background: none; border: 4px solid currentColor; }
+#emblem .in { position: absolute; inset: 30px; font-size: 44px; }
+#code { left: 52px; right: 52px; top: 236px; display: flex; align-items: center; gap: 26px; font-weight: 800; font-size: 64px; letter-spacing: 4px; text-shadow: 0 1px 0 rgba(255, 248, 225, .75), 0 -1px 0 rgba(80, 50, 10, .35); }
+#code .dots { display: flex; gap: 14px; }
+#code .dots b { width: 26px; height: 26px; border-radius: 50%; background: #10291e; box-shadow: 0 1px 0 rgba(255, 248, 225, .7); }
+#code .sep { width: 26px; height: 5px; background: #10291e; opacity: .6; }
+#cBot { left: 52px; right: 52px; bottom: 40px; display: flex; justify-content: space-between; align-items: flex-end; font-weight: 700; font-size: 22px; letter-spacing: 5px; text-transform: uppercase; opacity: .75; }
+#cBot .ur { font-size: 34px; letter-spacing: 0; text-transform: none; line-height: 1.4; }
+
+/* ---------- the condition ---------- */
+#cond { left: 84px; right: 84px; top: 1262px; }
+#cond .k { display: flex; align-items: center; gap: 18px; font-weight: 800; font-size: 28px; letter-spacing: 9px; text-transform: uppercase; color: var(--gold); }
+#cond .k::after { content: ''; flex: 1; height: 2px; background: linear-gradient(90deg, rgba(240, 207, 134, .6), transparent); }
+#cond .row { display: flex; align-items: center; gap: 36px; margin-top: 22px; }
+#n20 { font-weight: 900; font-size: 196px; line-height: .78; letter-spacing: -10px; color: transparent; -webkit-text-stroke: 4px var(--gold); text-shadow: 0 0 50px rgba(240, 207, 134, .25); }
+#cond .txt { font-weight: 700; font-size: 40px; line-height: 1.2; letter-spacing: -.5px; }
+#cond .txt b { font-weight: 900; color: var(--gold2); }
+#people { left: 84px; right: 84px; top: 1478px; display: grid; grid-template-columns: repeat(20, 1fr); gap: 8px; }
+#people span { font-size: 30px; color: var(--gold); justify-self: center; }
+#people span { opacity: .8; }
+#people span i { background: none; border: 2.5px solid currentColor; }
+#condUr { left: 84px; right: 84px; top: 1522px; font-size: 35px; line-height: 1.9; color: var(--soft); text-align: right; }
+
+/* ---------- call to action ---------- */
+#cta { left: 84px; right: 84px; top: 1680px; height: 132px; display: flex; align-items: center; gap: 26px; padding: 0 34px 0 26px; border-radius: 26px; color: #0b2318;
+  background: linear-gradient(100deg, #e7c174 0%, #fff0c8 38%, #f0cf86 60%, #d6a957 100%); box-shadow: 0 2px 0 #fff7df inset, 0 24px 60px rgba(0, 0, 0, .45), 0 0 80px rgba(240, 207, 134, .3); }
+#cta .ic { width: 84px; height: 84px; flex: none; border-radius: 50%; background: #0b2318; display: grid; place-items: center; }
+#cta .ic svg { width: 46px; height: 46px; }
+#cta .en { flex: 1; line-height: 1; }
+#cta .en b { display: block; font-weight: 900; font-size: 54px; letter-spacing: -1.5px; }
+#cta .en span { display: block; margin-top: 10px; font-weight: 700; font-size: 27px; letter-spacing: .5px; }
+#cta .u { text-align: right; font-size: 30px; line-height: 1.75; font-weight: 700; margin-top: 6px; }
+</style>
+</head>
+<body data-w="1080" data-h="1920">
+<div class="abs" id="bg"></div>
+<div class="abs" id="rays"></div>
+<svg class="abs" id="girih" width="1080" height="1920">
+  <defs>
+    <pattern id="g8" width="120" height="120" patternUnits="userSpaceOnUse">
+      <g fill="none" stroke="#f0cf86" stroke-width="1.6">
+        <rect x="32" y="32" width="56" height="56"/>
+        <rect x="32" y="32" width="56" height="56" transform="rotate(45 60 60)"/>
+        <path d="M0 60 H20 M100 60 H120 M60 0 V20 M60 100 V120"/>
+        <path d="M0 0 L20 20 M120 0 L100 20 M0 120 L20 100 M120 120 L100 100"/>
+      </g>
+    </pattern>
+  </defs>
+  <rect width="1080" height="1920" fill="url(#g8)"/>
+</svg>
+<svg class="abs" id="grain" width="1080" height="1920"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 0"/></filter><rect width="1080" height="1920" filter="url(#n)"/></svg>
+
+<i class="spark" style="left:196px;top:880px"></i>
+<i class="spark" style="left:930px;top:842px;opacity:.7"></i>
+<i class="spark" style="left:120px;top:1290px;opacity:.6"></i>
+<i class="spark" style="left:968px;top:1316px"></i>
+<i class="spark x" style="left:878px;top:868px"></i>
+<i class="spark x" style="left:132px;top:1210px;transform:scale(.7)"></i>
+
+<div class="abs" id="brand">
+  <div class="l"><img src="../../assets/icon-512.png" alt="">Seerah Quest</div>
+  <div class="r ur">سیرت کوئسٹ</div>
+</div>
+<div class="abs" id="rule"></div>
+
+<div class="abs ar" id="durood">اللّٰهُمَّ صَلِّ عَلٰى مُحَمَّدٍ ﷺ</div>
+
+<div class="abs" id="kick"><span class="star"><i></i><i></i></span>Alhamdulillah</div>
+<div class="abs" id="head">Seerah Quest<span class="l2">has launched.</span></div>
+<div class="abs ur" id="headUr">الحمدللہ! سیرت کوئسٹ کا آغاز ہو گیا ہے</div>
+
+<div class="abs" id="cardWrap">
+  <div id="edge"></div>
+  <div id="card">
+    <svg class="guil" viewBox="0 0 820 500" preserveAspectRatio="none">
+      <g fill="none" stroke="#5a3d10" stroke-width="1.2" id="guil"></g>
+    </svg>
+    <div class="c" id="cTop">
+      <div><div class="t">Founder's code</div><div class="s">Seerah Quest · By invitation</div></div>
+      <div id="emblem"><span class="star"><i></i><i></i></span><span class="star in"><i></i><i></i></span></div>
+    </div>
+        <div class="c" id="code">SQ <span class="sep"></span><span class="dots"><b></b><b></b><b></b><b></b></span><span class="sep"></span><span class="dots"><b></b><b></b><b></b><b></b></span></div>
+    <div class="c" id="cBot"><span>Founders only</span><span class="ur">فاؤنڈر کوڈ</span></div>
+  </div>
+</div>
+
+<div class="abs" id="cond">
+  <div class="k">Who gets one</div>
+  <div class="row">
+    <div id="n20">20</div>
+    <div class="txt">Make the <b>intention</b> to register <b>20&nbsp;people</b>, messaging each one <b>yourself</b>.</div>
+  </div>
+</div>
+<div class="abs" id="people"></div>
+<div class="abs ur" id="condUr">صرف اُن کے لیے جو 20 لوگوں کو خود ایک ایک کر کے<br>میسج کر کے رجسٹر کروانے کی نیت کریں</div>
+
+<div class="abs" id="cta">
+  <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#f0cf86" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M20 11.5a8 8 0 0 1-11.6 7.1L4 20l1.4-4.2A8 8 0 1 1 20 11.5Z"/><path d="M8.5 10h7M8.5 13.5h4.5"/></svg></div>
+  <div class="en"><b>Message me</b><span>for your founder's code</span></div>
+  <div class="u ur">مجھے میسج کریں<br>اپنا فاؤنڈر کوڈ لیں</div>
+</div>
+
+<script>
+// fine guilloche lines across the card
+const g = document.getElementById('guil');
+for (let k = 0; k < 26; k++) {
+  let d = '';
+  for (let x = 0; x <= 820; x += 10) {
+    const y = 250 + Math.sin(x / 70 + k * .38) * (40 + k * 6) + Math.cos(x / 23 + k) * 6;
+    d += (x ? ' L' : 'M') + x + ' ' + y.toFixed(1);
+  }
+  const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', d); g.appendChild(p);
+}
+// twenty people: the first one is you
+const pp = document.getElementById('people');
+for (let i = 0; i < 20; i++) pp.insertAdjacentHTML('beforeend', '<span class="star"><i></i><i></i></span>');
+</script>
+</body>
+</html>
