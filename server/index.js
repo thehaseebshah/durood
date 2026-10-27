@@ -163,7 +163,7 @@ route('GET', '/api/invite-check', { auth: false }, ({ query, ip }) => {
   rateLimit(`inv:${ip}`, 60, 60e3);
   try {
     const r = access.resolveInvite(query.get('code'));
-    return { valid: true, kind: r.kind, caravan: r.caravan.name, displayName: r.caravan.display_name || '', from: r.caravan.display_name || r.caravan.name };
+    return r.caravan ? { valid: true, kind: r.kind, caravan: r.caravan.name, displayName: r.caravan.display_name || '', from: r.caravan.display_name || r.caravan.name } : { valid: true, kind: r.kind, caravan: null, displayName: '', from: '' };
   } catch (e) {
     if (e instanceof HttpError) return { valid: false, reason: e.code };
     throw e;
@@ -223,7 +223,11 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
   const { id, confirmToken } = tx(() => {
     // resolve again inside the transaction so a caravan can't be filled past its daily cap by two people at once
     const r = access.resolveInvite(inviteRaw);
-    const out = insertMember({ username, email, phone, pass, lang: body.lang, place, hidePhone: body.hidePhone === true, via: r.kind, code: r.invite ? r.code : null, caravanId: r.caravan.id });
+    const out = insertMember({ username, email, phone, pass, lang: body.lang, place, hidePhone: body.hidePhone === true, via: r.kind, code: r.invite || r.leader ? r.code : null, caravanId: r.caravan ? r.caravan.id : null });
+    if (r.kind === 'leader') { // the holder of a leader code starts their own caravan, named at sign-up
+      if (!String(body.caravanName || '').trim()) throw new HttpError(400, 'caravan_name_required');
+      caravanApi.createWithOwner(out.id, body.caravanName);
+    }
     access.consumeInvite(r);
     return out;
   });
@@ -490,6 +494,7 @@ route('POST', '/api/news/seen', ({ user }) => news.markNewsSeen(user));
 // ---- admin ----
 const adm = { auth: false, admin: true };
 route('GET', '/api/admin/invites', adm, () => ({ invites: access.listInvites(), signups: access.signupSettings() }));
+route('POST', '/api/admin/leader-codes', adm, ({ body, admin }) => { const r = access.createLeaderCode({ label: body.label, maxUses: body.maxUses }); profile.logAdmin('leader-code', r.code, String(r.maxUses ?? ''), admin.actor); return r; });
 route('POST', '/api/admin/invites', adm, ({ body }) => access.createFounderCode({ label: body.label, maxUses: body.maxUses, caravan: body.caravan }));
 route('POST', '/api/admin/invites/:code/revoke', adm, ({ params }) => access.revokeInvite(params.code));
 // kill switch for sign-ups, and the daily cap on new members per caravan name

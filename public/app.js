@@ -278,6 +278,11 @@ function authView() {
       <label for="f-invite">${t('invite_code')}</label>
       <input id="f-invite" type="text" name="invite" value="${esc(S.ref)}" autocapitalize="none" autocomplete="off" required data-check="invite" dir="ltr" aria-describedby="rcheck">
       <div class="hint ${S.refName ? 'ok' : ''}" id="rcheck">${S.refName ? `${t('joining')} <bdi>${esc(S.refName)}</bdi> ✓` : t('invite_hint')}</div>
+      <div id="lcv" hidden>
+        <label for="f-cvname">${t('leader_name')}</label>
+        <input id="f-cvname" type="text" name="caravanName" data-check="cvname" autocapitalize="none" autocomplete="off" maxlength="20" dir="ltr" aria-describedby="cvcheck">
+        <div class="hint" id="cvcheck">${t('leader_name_hint')}</div>
+      </div>
       <p class="linkrow">${t('no_code')} <button type="button" class="linkbtn" data-act="mode" data-mode="waitlist">${t('request_access')}</button></p>
       <label for="f-username">${t('username')}</label>
       <input id="f-username" type="text" name="username" data-check="username" autocapitalize="none" autocomplete="username" maxlength="20" required dir="ltr">
@@ -1587,14 +1592,24 @@ app.addEventListener('input', (ev) => {
         out.className = 'hint ' + (r.ok ? 'ok' : 'bad');
         out.textContent = r.ok ? `✓ ${t('ok_free')}` : r.reason ? t('err').bad_username : t('taken');
       } catch { /* offline: server will validate */ }
+    } else if (el.dataset.check === 'cvname') {
+      const out = $('#cvcheck');
+      if (!v) { out.className = 'hint'; out.textContent = t('leader_name_hint'); return; }
+      try {
+        const r = await api(`/username-check?u=${encodeURIComponent(v)}`);
+        out.className = 'hint ' + (r.ok ? 'ok' : 'bad');
+        out.textContent = r.ok ? `✓ ${t('ok_free')}` : r.reason ? t('err').bad_caravan_name : t('err').caravan_name_taken;
+      } catch { /* the server checks again at sign-up */ }
     } else {
       const out = $('#rcheck');
-      if (!v) { out.className = 'hint'; out.textContent = t('invite_hint'); return; }
+      if (!v) { out.className = 'hint'; out.textContent = t('invite_hint'); const lc = $('#lcv'); if (lc) lc.hidden = true; return; }
       try {
         const r = await api(`/invite-check?code=${encodeURIComponent(v)}`);
         if ($('#f-invite')?.value.trim() !== v) return; // typed on since: a newer check is coming
         out.className = 'hint ' + (r.valid ? 'ok' : 'bad');
-        out.innerHTML = r.valid ? `${t('joining')} <bdi>${esc(r.displayName || r.caravan || r.from)}</bdi> ✓` : esc(t('err')[r.reason] || t('err').bad_invite);
+        const lead = r.valid && r.kind === 'leader'; // a leader code: the person starts their own caravan and names it
+        const lc = $('#lcv'); if (lc) lc.hidden = !lead;
+        out.innerHTML = lead ? `${t('leader_ok')} ✓` : r.valid ? `${t('joining')} <bdi>${esc(r.displayName || r.caravan || r.from)}</bdi> ✓` : esc(t('err')[r.reason] || t('err').bad_invite);
       } catch { /* ignore */ }
     }
   }, 350);

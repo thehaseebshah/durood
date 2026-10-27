@@ -23,7 +23,7 @@ export const ADMIN_PERMS = {
   'GET /api/admin/members': 'members', 'POST /api/admin/members/:username': 'members',   // the action inside decides (see index.js)
   'POST /api/admin/members/create': 'organise',
   'POST /api/admin/sunnahs': 'organise', 'GET /api/admin/sunnahs': 'organise', 'DELETE /api/admin/sunnahs/:day': 'organise',
-  'GET /api/admin/invites': 'organise', 'POST /api/admin/invites': 'organise', 'POST /api/admin/invites/:code/revoke': 'organise', 'POST /api/admin/signups': 'organise',
+  'GET /api/admin/invites': 'organise', 'POST /api/admin/leader-codes': 'organise', 'POST /api/admin/invites': 'organise', 'POST /api/admin/invites/:code/revoke': 'organise', 'POST /api/admin/signups': 'organise',
   'GET /api/admin/waitlist': 'organise', 'POST /api/admin/waitlist/:id': 'organise',
   'GET /api/admin/challenge': 'status', 'POST /api/admin/challenge': 'organise',
   'GET /api/admin/news': 'organise', 'POST /api/admin/news': 'organise', 'DELETE /api/admin/news/:id': 'organise',

@@ -46,3 +46,6 @@ Navy/gold look unchanged; fields validated as now; phone/email not verified; adm
 - **Badges:** the Qabila, recruit, lecture and circle badges are gone; the caravan badges (`group10k`, `group100k`, `group1m`) now say "your caravan recited".
 - **Service worker:** cache `durood-v1`; no push handlers.
 - `scripts/e2e.mjs` drives all of this. `scripts/guide-shots.mjs` and `guide/` still target the old app.
+
+## Leader codes
+An admin makes a leader code (Invite codes tab, optional max uses). Whoever signs up with it also names a new caravan and becomes its owner (`leader_codes` table; `POST /api/admin/leader-codes`; register takes `caravanName`). The caravan's name is then the code for its own members.

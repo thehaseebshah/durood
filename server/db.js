@@ -239,6 +239,16 @@ CREATE TABLE IF NOT EXISTS invites (
   created_at INTEGER NOT NULL
 );
 
+-- a code that lets someone sign up AND start their own caravan (they name it at sign-up and own it)
+CREATE TABLE IF NOT EXISTS leader_codes (
+  code       TEXT PRIMARY KEY,
+  label      TEXT NOT NULL DEFAULT '',
+  max_uses   INTEGER,
+  uses       INTEGER NOT NULL DEFAULT 0,
+  revoked    INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS waitlist (
   id         INTEGER PRIMARY KEY,
   name       TEXT NOT NULL,

@@ -40,6 +40,12 @@ export function resolveInvite(raw) {
   const code = normCode(text);
   if (!code) throw new HttpError(400, 'bad_invite');
 
+  const lead = one('SELECT * FROM leader_codes WHERE code = ?', code);
+  if (lead) {
+    if (lead.revoked) throw new HttpError(400, 'invite_revoked');
+    if (lead.max_uses != null && lead.uses >= lead.max_uses) throw new HttpError(400, 'invite_used');
+    return { kind: 'leader', leader: lead, code, label: lead.label, caravan: null };
+  }
   const inv = one('SELECT * FROM invites WHERE code = ?', code);
   if (inv) {
     if (inv.revoked) throw new HttpError(400, 'invite_revoked');
@@ -58,7 +64,10 @@ export function resolveInvite(raw) {
 
 /** Marks a resolved code as used. Call inside the registration transaction, after re-resolving. */
 export function consumeInvite(r) {
-  if (r.invite) {
+  if (r.leader) {
+    const res = run('UPDATE leader_codes SET uses = uses + 1 WHERE code = ? AND revoked = 0 AND (max_uses IS NULL OR uses < max_uses)', r.code);
+    if (!res.changes) throw new HttpError(400, 'invite_used');
+  } else if (r.invite) {
     const res = run('UPDATE invites SET uses = uses + 1 WHERE code = ? AND revoked = 0 AND (max_uses IS NULL OR uses < max_uses)', r.code);
     if (!res.changes) throw new HttpError(400, 'invite_used');
   }
@@ -86,12 +95,23 @@ export function createFounderCode({ label = '', maxUses = null, caravan } = {}) 
   run('INSERT INTO invites (code, kind, label, max_uses, caravan_id, created_at) VALUES (?,?,?,?,?,?)', code, 'founder', String(label).slice(0, 60), max, c.id, Date.now());
   return { code: showCode(code), label, maxUses: max, caravan: c.name };
 }
+/** A code whose holder signs up and starts a caravan of their own (they name it at sign-up). Share one code with many people; max uses caps it. */
+export function createLeaderCode({ label = '', maxUses = null } = {}) {
+  const code = genCode();
+  const max = maxUses == null || maxUses === '' ? null : Math.max(1, Number(maxUses) | 0);
+  run('INSERT INTO leader_codes (code, label, max_uses, created_at) VALUES (?,?,?,?)', code, String(label).slice(0, 60), max, Date.now());
+  return { code: showCode(code), label, maxUses: max };
+}
 export const revokeInvite = (rawCode) => {
   const res = run('UPDATE invites SET revoked = 1 WHERE code = ?', normCode(rawCode));
-  if (!res.changes) throw new HttpError(404, 'not_found');
+  const res2 = run('UPDATE leader_codes SET revoked = 1 WHERE code = ?', normCode(rawCode));
+  if (!res.changes && !res2.changes) throw new HttpError(404, 'not_found');
   return { ok: true };
 };
-export const listInvites = () => all(`SELECT i.*, c.name caravan, (SELECT COUNT(*) FROM users u WHERE u.invite_code = i.code) joined FROM invites i LEFT JOIN caravans c ON c.id = i.caravan_id ORDER BY i.created_at DESC LIMIT 200`)
+const listLeaderCodes = () => all('SELECT l.*, (SELECT COUNT(*) FROM users u WHERE u.invite_code = l.code) joined FROM leader_codes l ORDER BY l.created_at DESC LIMIT 100')
+  .map((i) => ({ code: showCode(i.code), kind: 'leader', label: i.label, caravan: null, maxUses: i.max_uses, uses: i.uses, joined: i.joined, revoked: !!i.revoked, createdAt: i.created_at }));
+export const listInvites = () => [...listLeaderCodes(), ...listInvitesTied()].sort((a, b) => b.createdAt - a.createdAt);
+const listInvitesTied = () => all(`SELECT i.*, c.name caravan, (SELECT COUNT(*) FROM users u WHERE u.invite_code = i.code) joined FROM invites i LEFT JOIN caravans c ON c.id = i.caravan_id ORDER BY i.created_at DESC LIMIT 200`)
   .map((i) => ({ code: showCode(i.code), kind: i.kind, label: i.label, caravan: i.caravan, maxUses: i.max_uses, uses: i.uses, joined: i.joined, revoked: !!i.revoked, createdAt: i.created_at }));
 
 // ---- waitlist ---------------------------------------------------------------------------------------------

@@ -147,6 +147,9 @@ const views = {
       <div class="inline"><div>${signups.enabled ? '<span class="pillbox ok">OPEN</span>' : '<span class="pillbox bad">CLOSED</span>'}</div>
         <button class="chip solid" data-a="signupsw" data-v="${signups.enabled ? '0' : '1'}">${signups.enabled ? 'Close sign-ups' : 'Open sign-ups'}</button>
         <div><label>New members per caravan name, per day</label><input id="sgcap" type="number" min="0" max="100000" value="${signups.dailyCap}" style="max-width:130px"></div><button class="chip" data-a="signupcap">Set limit</button></div>
+      <h3>Leader codes</h3>
+      <p class="muted">A leader code lets many people each start their own caravan: they sign up with the code, type a name for their caravan, and become its owner. Share one code (for example in a WhatsApp broadcast) and set how many people may use it. Revoke it to stop it.</p>
+      <div class="inline"><div><label>Label</label><input id="llabel" placeholder="First 500 leaders" maxlength="60"></div><div><label>Max uses</label><input id="lmax" type="number" min="1" inputmode="numeric" value="500"></div><button class="chip solid" data-a="lnew">Create leader code</button></div>
       <h3>Codes for a caravan</h3>
       <p class="muted">A code is tied to one caravan: whoever signs up with it joins that caravan. Give one to an organiser or a city lead. Leave max uses blank for no limit.</p>
       <div class="inline"><div><label>Caravan name</label><input id="fcv" placeholder="e.g. noor_caravan" maxlength="20" autocapitalize="off" dir="ltr"></div><div><label>Label</label><input id="flabel" placeholder="Lahore lead" maxlength="60"></div><div><label>Max uses (blank = unlimited)</label><input id="fmax" type="number" min="1" inputmode="numeric"></div><button class="chip solid" data-a="fnew">Create code</button></div>
@@ -304,6 +307,7 @@ document.addEventListener('click', (ev) => {
     restore2: async () => { await api('POST', `/content/${d.kind}/${d.id}`, { action: 'restore' }); say('Restored.'); },
     signupsw: async () => { const r = await api('POST', '/signups', { enabled: d.v === '1' }); say(r.enabled ? 'Sign-ups are open.' : 'Sign-ups are closed. Existing members are not affected.'); },
     signupcap: async () => { const r = await api('POST', '/signups', { dailyCap: Number($('#sgcap').value) }); say(`Limit saved: ${fmt(r.dailyCap)} new members per caravan name per day.`); },
+    lnew: async () => { const r = await api('POST', '/leader-codes', { label: $('#llabel').value, maxUses: $('#lmax').value }); say(`Leader code: ${r.code}${r.maxUses ? ` (up to ${r.maxUses} people)` : ''}. Share it: they type it at sign-up and name their own caravan.`); },
     fnew: async () => { const r = await api('POST', '/invites', { caravan: $('#fcv').value.trim(), label: $('#flabel').value, maxUses: $('#fmax').value }); say(`New code for ${r.caravan}: ${r.code}`); },
     revoke: async () => { await api('POST', `/invites/${d.code}/revoke`); say('Revoked.'); },
     wlfilter: async () => { window.__wl = d.s; },

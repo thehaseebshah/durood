@@ -32,17 +32,23 @@ export function join(caravanId, userId) {
 }
 
 /** An admin creates a caravan and makes an existing member (who is in no caravan yet) its owner. */
-export function adminCreate({ name: rawName, owner, displayName }) {
+/** Creates a caravan with `userId` as its owner and first member. Call inside a transaction. */
+export function createWithOwner(userId, rawName, displayName = '') {
   const name = cleanName(rawName);
   const dn = displayName === undefined || displayName === '' ? '' : plain(displayName, NAME_MAX, 2);
+  if (caravanOf(userId)) throw new HttpError(409, 'already_in_caravan');
+  if (handleTaken(name)) throw new HttpError(409, 'caravan_name_taken');
+  const id = Number(run('INSERT INTO caravans (name, display_name, owner_id, created_at) VALUES (?,?,?,?)', name, dn, userId, Date.now()).lastInsertRowid);
+  join(id, userId);
+  return { id, name };
+}
+
+/** An admin creates a caravan and makes an existing member (who is in no caravan yet) its owner. */
+export function adminCreate({ name, owner, displayName }) {
   return tx(() => {
     const u = userByName(owner);
     if (!u) throw new HttpError(404, 'member_not_found');
-    if (caravanOf(u.id)) throw new HttpError(409, 'already_in_caravan');
-    if (handleTaken(name)) throw new HttpError(409, 'caravan_name_taken');
-    const id = Number(run('INSERT INTO caravans (name, display_name, owner_id, created_at) VALUES (?,?,?,?)', name, dn, u.id, Date.now()).lastInsertRowid);
-    join(id, u.id);
-    return { id, name, owner: u.username };
+    return { ...createWithOwner(u.id, name, displayName), owner: u.username };
   });
 }
 

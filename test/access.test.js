@@ -357,3 +357,27 @@ test('audit catches a tampered edit chain', async () => {
   db.prepare("UPDATE entries SET count = -999 WHERE kind = 'reverse' AND user_id = ?").run(uid('chain_u'));
   assert.ok(audit().problems.some((p) => p.kind === 'edit_chain'));
 });
+
+test('a leader code lets each holder sign up and start their own caravan, up to its limit', async () => {
+  const mk = await admin('POST', '/leader-codes', { label: 'first leaders', maxUses: 2 });
+  assert.ok(mk.code, JSON.stringify(mk));
+  const chk = await api('GET', `/api/invite-check?code=${mk.code}`);
+  assert.deepEqual([chk.valid, chk.kind, chk.caravan], [true, 'leader', null]);
+  const reg = (username, caravanName, extra = {}) => { n += 1; return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0306${String(8000000 + n)}`, password: 'secret1', cityId: 1172451, invite: mk.code, caravanName, ...extra } }); };
+  assert.equal((await reg('ld_a', '')).error, 'caravan_name_required');
+  assert.equal((await reg('ld_a', 'ab')).error, 'bad_caravan_name');
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM users WHERE username = 'ld_a'").get().n, 0, 'a failed sign-up leaves nothing behind');
+  const a = await reg('ld_a', 'leaders_one');
+  assert.ok(a.token, JSON.stringify(a));
+  assert.equal(a.me.caravan.name, 'leaders_one');
+  assert.equal(a.me.caravan.owner, true);
+  assert.equal((await reg('ld_b', 'leaders_one')).error, 'caravan_name_taken');
+  assert.equal((await reg('ld_b', 'ld_b')).error, 'caravan_name_taken', 'a caravan cannot take the new member\'s own username');
+  assert.ok((await reg('ld_c', 'leaders_two')).token);
+  assert.equal((await reg('ld_d', 'leaders_three')).error, 'invite_used', 'the limit holds');
+  // the new caravan's name is now a code for its own members
+  assert.ok((await signup('ld_member', 'leaders_one')).token);
+  const list = await api('GET', '/api/admin/invites', { headers: A });
+  assert.ok(list.invites.some((i) => i.kind === 'leader' && i.uses === 2));
+  assert.equal((await api('POST', '/api/admin/leader-codes', { body: {} })).status, 403, 'admins only');
+});
