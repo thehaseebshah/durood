@@ -369,6 +369,15 @@ try {
     await page.close();
   }
 
+  // ---- Logging out from the open menu must leave the sign-in page scrollable (a menu left open once locked the page) ------------
+  {
+    const page = await open(host.token);
+    await page.click('nav.tabs [data-act=drawer]'); await page.waitForTimeout(400);
+    await page.click('.side [data-act=logout]'); await page.waitForTimeout(700);
+    ok(await page.evaluate(() => getComputedStyle(document.body).overflow !== 'hidden'), 'after logging out from the menu the page can scroll');
+    await page.close();
+  }
+
   // ---- Tapping the tab you are on, scrolled down, glides back to the top without reloading the page ------------------------------
   {
     const page = await open(host.token); await go(page, 'feed');

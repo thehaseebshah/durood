@@ -154,7 +154,7 @@ function setSession(token, me) {
 }
 
 function logout(render = true) {
-  S.profile = null;
+  S.profile = null; S.drawer = false; S.sheet = null; S.celebrate = null; // a drawer left open would keep the sign-in page from scrolling
   // nothing of one member's is left for the next person on a shared phone
   S.pending = 0; ls.del('pending'); S.draft = null; S.draftKind = null; S.threads = {}; S.history = null; S.editing = null;
   S.token = null; S.me = null; ls.del('token'); ls.del('meCache'); cachedMe = null;
@@ -1027,7 +1027,7 @@ function draw() {
   const keep = snapshotFields();
   document.body.classList.toggle('in-app', !!S.me);
   document.body.classList.toggle('side-hidden', !!S.sideHidden);
-  document.body.classList.toggle('drawer-open', !!S.drawer);
+  document.body.classList.toggle('drawer-open', !!S.drawer && !!S.me);
   document.title = S.me ? `${t('nav_' + S.tab)} · ${t('app')}` : t('app');
   const barColor = S.me ? (isDark() ? '#1c1c1e' : '#f6f6f8') : '#0c0e2b';
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', barColor); // the phone's bar matches the frosted header inside the app
