@@ -461,11 +461,22 @@ const bigHtml = (n) => fmt(n).replace(/,/g, '<span class="cm">,</span>');
 function fitNumerals() {
   for (const el of document.querySelectorAll('#big, .cnum')) {
     el.style.removeProperty('font-size');
-    const cs = getComputedStyle(el), room = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const cs = getComputedStyle(el), pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
     const r = document.createRange(); r.selectNodeContents(el);
-    const w = r.getBoundingClientRect().width;
-    if (room > 0 && w > room) el.style.setProperty('font-size', `${(parseFloat(cs.fontSize) * room / w * 0.97).toFixed(1)}px`, 'important');
+    // three ways of seeing how wide the digits really are (the text's own box, and what overflows the card); the widest wins, so a
+    // browser that reports one of them wrongly (Safari on iPhone does for some fonts) cannot let a number run off the card
+    for (let pass = 0; pass < 3; pass++) {
+      const room = el.clientWidth - pad;
+      const w = Math.max(r.getBoundingClientRect().width, el.scrollWidth - pad);
+      if (!(room > 0 && w > room + 0.5)) break;
+      el.style.setProperty('font-size', `${(parseFloat(getComputedStyle(el).fontSize) * room / w * 0.96).toFixed(1)}px`, 'important');
+    }
   }
+}
+if (typeof ResizeObserver === 'function') { // the card changing size (rotation, the keyboard, a late font) re-measures too
+  let ro, last = null;
+  const watch = () => { const box = document.querySelector('.counterbox'); if (box && box !== last) { ro?.disconnect(); last = box; ro = new ResizeObserver(() => fitNumerals()); ro.observe(box); } };
+  new MutationObserver(watch).observe(document.documentElement, { childList: true, subtree: true });
 }
 document.fonts?.ready.then(fitNumerals); // measured again once the numeral font is really there
 document.fonts?.addEventListener?.('loadingdone', fitNumerals); // ready can resolve before a font was asked for (Safari), so also re-measure whenever one finishes loading
