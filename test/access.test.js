@@ -437,3 +437,20 @@ test('audit catches a tampered edit chain', async () => {
   db.prepare("UPDATE entries SET count = -999 WHERE kind = 'reverse' AND user_id = ?").run(uid('chain_u'));
   assert.ok(audit().problems.some((p) => p.kind === 'edit_chain'));
 });
+
+test('the public code can place everyone who joins under one member, without using up that member\'s own invites', async () => {
+  const host = await signup('pubhost');
+  assert.equal((await admin('POST', '/public-code', { referrer: 'nobody_here' })).status, 404);
+  assert.equal((await admin('POST', '/public-code', { referrer: 'pubhost' })).referrer, 'pubhost');
+  const a = await signup('pubkid_a'), b = await signup('pubkid_b');
+  const row = (u) => db.prepare('SELECT referrer_id, invited_via FROM users WHERE username = ?').get(u);
+  const hostId = db.prepare("SELECT id FROM users WHERE username = 'pubhost'").get().id;
+  assert.equal(row('pubkid_a').referrer_id, hostId);
+  assert.equal(row('pubkid_a').invited_via, 'public');
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM ancestors WHERE ancestor_id = ? AND user_id != ?').get(hostId, hostId).n >= 2, true, 'they are in the host\'s Qabila');
+  const me = await api('GET', '/api/me', { token: host.token });
+  assert.equal(me.invites.used, 0, 'public sign-ups do not count against the host\'s own invites');
+  assert.ok(a.token && b.token);
+  await admin('POST', '/public-code', { referrer: '' });
+  assert.equal(row((await signup('pubkid_c'), 'pubkid_c')).referrer_id, null, 'cleared: nobody\'s again');
+});

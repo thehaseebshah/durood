@@ -254,11 +254,11 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
     // one answer for both, so sign-up can't be used to test whether someone's email or number is registered
     if (one('SELECT 1 FROM users WHERE email = ? OR phone = ?', email, phone)) throw new HttpError(409, 'account_exists');
     if (r) access.consumeInvite(r);
-    const referrerId = r?.kind === 'member' ? r.referrerId : null;
-    const res = run(`INSERT INTO users (username, email, phone, pass, lang, city, city_id, country, referrer_id, created_day, created_at, invited_via, invite_code, hide_phone)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    const referrerId = r?.referrerId ?? null; // a member's own code, or the public code when an admin placed it under a member
+    const res = run(`INSERT INTO users (username, email, phone, pass, lang, city, city_id, country, referrer_id, created_day, created_at, invited_via, invite_code, hide_phone, placed)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       username, email, phone, pass, lang(body.lang), place.name, place.id, place.cc, referrerId, dayOf(), Date.now(),
-      r ? r.kind : 'open', r?.invite ? r.code : (r?.kind === 'public' ? r.code : null), body.hidePhone === true ? 1 : 0);
+      r ? r.kind : 'open', r?.invite ? r.code : (r?.kind === 'public' ? r.code : null), body.hidePhone === true ? 1 : 0, r?.kind === 'public' && referrerId ? 1 : 0);
     const uid = Number(res.lastInsertRowid);
     startChallengeIfNeeded(); // day 1 of the challenge is the day the first member joins
     run('INSERT INTO ancestors (user_id, ancestor_id, depth) VALUES (?,?,0)', uid, uid);
@@ -267,7 +267,7 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
       run(`INSERT INTO ancestors (user_id, ancestor_id, depth)
            SELECT ?, ancestor_id, depth + 1 FROM ancestors WHERE user_id = ?`, uid, referrerId);
     }
-    if (referrerId) setImmediate(() => news.notifyJoined(referrerId, username));
+    if (referrerId && r.kind === 'member') setImmediate(() => news.notifyJoined(referrerId, username));
     return { id: uid, confirmToken: makeToken(uid, 'confirm', 7 * 86400e3) };
   });
   // a confirmation link goes out but never blocks sign-in: it tells us which addresses actually work
@@ -570,7 +570,7 @@ const adm = { auth: false, admin: true };
 route('GET', '/api/admin/invites', adm, () => ({ invites: access.listInvites(), publicCode: access.publicCode() }));
 route('POST', '/api/admin/invites', adm, ({ body }) => access.createFounderCode({ label: body.label, maxUses: body.maxUses }));
 route('POST', '/api/admin/invites/:code/revoke', adm, ({ params }) => access.revokeInvite(params.code));
-route('POST', '/api/admin/public-code', adm, ({ body }) => access.setPublicCode({ code: body.code, enabled: body.enabled, dailyCap: body.dailyCap }));
+route('POST', '/api/admin/public-code', adm, ({ body }) => access.setPublicCode({ code: body.code, enabled: body.enabled, dailyCap: body.dailyCap, referrer: body.referrer }));
 route('GET', '/api/admin/waitlist', adm, ({ query }) => ({ requests: access.listWaitlist(query.get('status') || 'pending') }));
 route('POST', '/api/admin/waitlist/:id', adm, async ({ params, body }) => {
   const r = access.resolveWaitlist(Number(params.id), body.action);

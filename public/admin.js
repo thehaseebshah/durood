@@ -183,6 +183,7 @@ const views = {
       <p class="muted">Anyone with this code can join; they start their own Qabila (nobody above them) and can later say who invited them, within 14 days. Switch it off once your launch period ends.</p>
       <div class="inline"><div><div class="code2">${esc(publicCode.code || 'not set')}</div>${publicCode.enabled ? '<span class="pillbox ok">ON</span>' : '<span class="pillbox bad">OFF</span>'}</div>
         <div><label>Sign-ups a day (0 closes it)</label><input id="pubcap" type="number" min="0" value="${publicCode.dailyCap}" style="max-width:110px"><small class="muted">${publicCode.usedToday} used today</small></div><button class="chip" data-a="pubcap">Set limit</button>
+        <div><label>Everyone who joins with this code goes into the Qabila of (username)</label><input id="pubref" value="${esc(publicCode.referrer || '')}" style="max-width:180px" dir="ltr"></div><button class="chip" data-a="pubref">Save</button>
         <button class="chip solid" data-a="pub" data-v="${publicCode.enabled ? '0' : '1'}">${publicCode.enabled ? 'Switch off' : 'Switch on'}</button>
         <button class="chip" data-a="pubnew">New random code</button></div>
       <div class="inline"><div><label>Set your own code</label><input id="pubset" placeholder="e.g. QAFILA2026" maxlength="20"></div><button class="chip" data-a="pubset">Set</button></div>
@@ -354,6 +355,7 @@ document.addEventListener('click', (ev) => {
     chtoday: async () => { if (!confirm('Make today day 1 of the challenge?')) return; await api('POST', '/challenge', { start: pktToday() }); say('Day 1 is now today.'); },
     pub: () => api('POST', '/public-code', { enabled: d.v === '1' }),
     pubcap: async () => { await api('POST', '/public-code', { dailyCap: Number($('#pubcap').value) }); say('Daily limit saved.'); },
+    pubref: async () => { await api('POST', '/public-code', { referrer: $('#pubref').value.trim() }); say($('#pubref').value.trim() ? 'Saved. New sign-ups with the public code join that member\'s Qabila.' : 'Saved. New sign-ups with the public code are not placed under anyone.'); },
     pubnew: () => api('POST', '/public-code', { code: '', enabled: true }),
     pubset: () => api('POST', '/public-code', { code: $('#pubset').value.trim() }),
     fnew: async () => { const r = await api('POST', '/invites', { label: $('#flabel').value, maxUses: $('#fmax').value }); say(`New founder code: ${r.code}`); },

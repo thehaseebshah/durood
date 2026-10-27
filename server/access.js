@@ -30,7 +30,8 @@ export function inviteSources(userId) {
   return { start: CAP.start, level: CAP.perLevel * (level - 1), active: CAP.perActive * active, streak: CAP.perStreak * weeks,
     next: { level: level + 1, levelXp: 100 * level ** 2, streak: CAP.streakDays * (weeks + 1) } };
 }
-export const invitesUsed = (userId) => one('SELECT COUNT(*) n FROM users WHERE referrer_id = ?', userId).n;
+// only people who joined with this member's own invite count against it (those who came through the public code and were placed under them do not)
+export const invitesUsed = (userId) => one("SELECT COUNT(*) n FROM users WHERE referrer_id = ? AND placed = 0", userId).n;
 export function inviteStatus(userId) {
   const { next, ...from } = inviteSources(userId);
   const cap = from.start + from.level + from.active + from.streak, used = invitesUsed(userId);
@@ -42,9 +43,14 @@ const publicCap = () => Math.max(0, Math.floor(Number(getSetting('public_daily_c
 const publicToday = () => one("SELECT COUNT(*) n FROM users WHERE invited_via = 'public' AND created_day = ?", pkDay()).n;
 export function publicCode() {
   const code = getSetting('public_code');
-  return { code: code ? showCode(code) : null, enabled: getSetting('public_enabled', '0') === '1', dailyCap: publicCap(), usedToday: publicToday() };
+  return { code: code ? showCode(code) : null, enabled: getSetting('public_enabled', '0') === '1', dailyCap: publicCap(), usedToday: publicToday(), referrer: getSetting('public_referrer', '') };
 }
-export function setPublicCode({ code, enabled, dailyCap }) {
+export function setPublicCode({ code, enabled, dailyCap, referrer }) {
+  if (referrer !== undefined) { // everyone who joins with the public code is placed in this member's Qabila ('' = nobody's)
+    const name = String(referrer).trim();
+    if (name && !one('SELECT 1 FROM users WHERE username = ? AND deleted_at IS NULL AND suspended = 0', name)) throw new HttpError(404, 'member_not_found');
+    setSetting('public_referrer', name);
+  }
   if (dailyCap !== undefined) {
     const n = Number(dailyCap);
     if (!Number.isInteger(n) || n < 0 || n > 100_000) throw new HttpError(400, 'bad_cap');
@@ -80,7 +86,8 @@ export function resolveInvite(raw) {
     if (getSetting('public_enabled', '0') !== '1') throw new HttpError(400, 'bad_invite');
     // the public code is the easiest way to mass-create fake accounts, so only so many can join through it each day
     if (publicToday() >= publicCap()) throw new HttpError(400, 'public_full');
-    return { kind: 'public', code, label: '' };
+    const host = getSetting('public_referrer', '') && one('SELECT id FROM users WHERE username = ? AND deleted_at IS NULL AND suspended = 0', getSetting('public_referrer', ''));
+    return { kind: 'public', code, label: '', referrerId: host ? host.id : null };
   }
 
   const m = one('SELECT id, username, suspended, deleted_at FROM users WHERE username = ?', text);
