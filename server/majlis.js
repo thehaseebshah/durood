@@ -19,9 +19,11 @@ db.exec(`CREATE TABLE IF NOT EXISTS majalis (
 )`);
 if (!db.prepare('PRAGMA table_info(users)').all().some((c) => c.name === 'majlis_id')) db.exec('ALTER TABLE users ADD COLUMN majlis_id INTEGER REFERENCES majalis(id)');
 
-// the nine default majalis, there from the start
-export const DEFAULT_MAJALIS = [['Shabab', 'شباب'], ['Ilm e Deen', 'علمِ دین'], ['Jamiaat', 'جامعات'], ['Tameeraat', 'تعمیرات'], ['Seerat', 'سیرت'],
-  ['Islaah', 'اصلاح'], ['Atfaal', 'اطفال'], ['Qabail', 'قبائل'], ['Aamilah', 'عاملہ']];
+// the default majalis, there from the start ('Ilm e Deen' is now 'Taleem'; 'Other' catches everyone else)
+export const DEFAULT_MAJALIS = [['Shabab', 'شباب'], ['Taleem', 'تعلیم'], ['Jamiaat', 'جامعات'], ['Tameeraat', 'تعمیرات'], ['Seerat', 'سیرت'],
+  ['Islaah', 'اصلاح'], ['Atfaal', 'اطفال'], ['Qabail', 'قبائل'], ['Aamilah', 'عاملہ'], ['Finance', 'فنانس'], ['Nashriaat', 'نشریات'], ['Other', 'دیگر']];
+// a database made before the rename keeps its members: the same row gets the new name
+run("UPDATE majalis SET name = 'Taleem', name_ur = 'تعلیم' WHERE name = 'Ilm e Deen' AND NOT EXISTS (SELECT 1 FROM majalis WHERE name = 'Taleem')");
 for (const [name, ur] of DEFAULT_MAJALIS) run("INSERT OR IGNORE INTO majalis (name, name_ur, status, created_at) VALUES (?, ?, 'approved', ?)", name, ur, Date.now());
 
 const out = (m) => m && { id: m.id, name: m.name, nameUr: m.name_ur };
@@ -36,6 +38,24 @@ export function listMajalis(userId) {
   return { majalis: list, mine: majlisOf(userId), proposal: mine ? { name: mine.name, status: mine.status } : null };
 }
 
+/** The approved majalis, for the sign-up page (no sign-in needed). */
+export const publicMajalis = () => all("SELECT id, name, name_ur FROM majalis WHERE status = 'approved' ORDER BY name = 'Other', id").map((m) => ({ id: m.id, name: m.name, nameUr: m.name_ur }));
+
+const cleanMajlisName = (raw, max = 40) => String(raw ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+/**
+ * A new majlis made by a member: no approval. If one with that name already exists the member simply joins it, so nobody can
+ * start a second 'Finance'. Call inside a transaction (sign-up) or on its own. Returns the majlis id.
+ */
+export function createMajlis(userId, rawName, rawUr = '') {
+  const name = cleanMajlisName(rawName), ur = cleanMajlisName(rawUr);
+  if ([...name].length < 2 || /(https?:\/\/|www\.)/i.test(name) || /(https?:\/\/|www\.)/i.test(ur)) throw new HttpError(400, 'bad_majlis');
+  const have = one("SELECT id FROM majalis WHERE name = ? AND status = 'approved'", name);
+  if (have) return have.id;
+  if (one("SELECT 1 FROM majalis WHERE name = ?", name)) throw new HttpError(409, 'majlis_taken'); // an old rejected or pending row with that name
+  if (one("SELECT COUNT(*) n FROM majalis WHERE proposed_by = ?", userId).n >= 3) throw new HttpError(429, 'majlis_limit'); // a member can start a few, not hundreds
+  return Number(run("INSERT INTO majalis (name, name_ur, status, proposed_by, created_at, decided_at) VALUES (?, ?, 'approved', ?, ?, ?)", name, ur, userId, Date.now(), Date.now()).lastInsertRowid);
+}
+
 /** Join an approved majlis, or leave (id null). */
 export function setMajlis(userId, id) {
   if (id == null || id === '') { run('UPDATE users SET majlis_id = NULL WHERE id = ?', userId); return { ok: true }; }
@@ -44,16 +64,12 @@ export function setMajlis(userId, id) {
   return { ok: true };
 }
 
-/** Propose a new majlis. It waits for an admin; the proposer joins it when it is approved. One open proposal at a time. */
+/** A member starts a new majlis (no approval) and joins it. */
 export function proposeMajlis(userId, rawName, rawUr = '') {
-  const name = String(rawName ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
-  const ur = String(rawUr ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40);
-  if ([...name].length < 2 || [...name].length > 40 || /(https?:\/\/|www\.)/i.test(name)) throw new HttpError(400, 'bad_majlis');
   return tx(() => {
-    if (one("SELECT 1 FROM majalis WHERE proposed_by = ? AND status = 'pending'", userId)) throw new HttpError(409, 'majlis_pending');
-    if (one('SELECT 1 FROM majalis WHERE name = ?', name)) throw new HttpError(409, 'majlis_taken');
-    run("INSERT INTO majalis (name, name_ur, status, proposed_by, created_at) VALUES (?, ?, 'pending', ?, ?)", name, ur, userId, Date.now());
-    return { ok: true };
+    const id = createMajlis(userId, rawName, rawUr);
+    run('UPDATE users SET majlis_id = ? WHERE id = ?', id, userId);
+    return { ok: true, id };
   });
 }
 

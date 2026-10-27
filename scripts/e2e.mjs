@@ -61,7 +61,7 @@ try {
     await page.locator('[data-act=mode][data-mode=register], [data-mode=register]').first().click().catch(() => {});
     await page.waitForTimeout(300);
     ok(await page.locator('form[data-form=register]').count() === 1, 'sign-up form shows');
-    ok((await page.textContent('label[for=f-invite]')).trim() === 'Caravan name', 'the code field is called Caravan name');
+    ok((await page.textContent('label[for=f-invite]')).trim() === 'Caravan name or leader code', 'the code field is called Caravan name or leader code');
     await page.click('form[data-form=register] button[type=submit]'); await page.waitForTimeout(500);
     ok(await page.evaluate(() => document.activeElement?.name === 'invite'), 'an empty sign-up points at the first empty field');
     await page.fill('[name=invite]', 'nobody_here'); await page.waitForTimeout(900);
@@ -74,11 +74,13 @@ try {
     await page.fill('[name=username]', 'e2e_form'); await page.fill('[name=email]', 'e2e_form@e2e.pk'); await page.fill('[name=phone]', '300 7770001');
     await page.fill('[data-city]', 'Lahore'); await page.waitForTimeout(900);
     await page.locator('li[data-act=pickcity]').first().click();
+    await page.selectOption('#f-mjsel', '__new'); await page.fill('[name=newMajlisName]', 'E2E Media'); // a new majlis, no approval
     await page.fill('[name=password]', 'secret12');
     await page.click('form[data-form=register] button[type=submit]'); await page.waitForTimeout(1500);
     ok(await page.locator('nav.tabs').count() === 1, 'the form signs a new member in');
     const me = await api('GET', '/api/me', null, await page.evaluate(() => localStorage.getItem('token')));
     ok(me.caravan?.name === 'e2e_cv' && !me.caravan.owner, 'the new member is in the caravan they named');
+    ok(me.majlis?.name === 'E2E Media', 'a majlis made at sign-up is created and joined at once');
     await page.close();
     // the sign-up kill switch and the daily cap show a plain message
     await api('POST', '/api/admin/signups', { enabled: false }, null, K);
@@ -86,7 +88,7 @@ try {
     await cl.locator('[data-mode=register]').first().click().catch(() => {}); await cl.waitForTimeout(400);
     ok(await cl.locator('.notice', { hasText: 'closed' }).count() === 1, 'closed sign-ups say so on the form');
     await cl.fill('[name=invite]', 'e2e_cv'); await cl.fill('[name=username]', 'e2e_late'); await cl.fill('[name=email]', 'e2e_late@e2e.pk'); await cl.fill('[name=phone]', '300 7770002');
-    await cl.fill('[data-city]', 'Lahore'); await cl.waitForTimeout(900); await cl.locator('li[data-act=pickcity]').first().click(); await cl.fill('[name=password]', 'secret12');
+    await cl.fill('[data-city]', 'Lahore'); await cl.waitForTimeout(900); await cl.locator('li[data-act=pickcity]').first().click(); await cl.selectOption('#f-mjsel', { index: 1 }); await cl.fill('[name=password]', 'secret12');
     await cl.click('form[data-form=register] button[type=submit]'); await cl.waitForTimeout(900);
     ok(/closed/i.test(await cl.textContent('.err')), 'a sign-up while closed shows the closed message');
     await cl.close();

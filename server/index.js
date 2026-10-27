@@ -155,6 +155,7 @@ route('GET', '/api/admin/log', { auth: false, admin: true }, () => ({ log: profi
 
 // ---- Majalis ------------------------------------------------------------------------------------------------------------
 const B = (fn) => fn;
+route('GET', '/api/majalis-public', { auth: false }, ({ ip }) => { rateLimit(`mjp:${ip}`, 60, 60e3); return { majalis: majlis.publicMajalis() }; });
 route('GET', '/api/majalis', B(({ user }) => majlis.listMajalis(user)));
 route('PUT', '/api/me/majlis', B(({ user, body }) => { majlis.setMajlis(user, body.id); return { ...majlis.listMajalis(user), me: getMe(user) }; }));
 route('POST', '/api/majalis', B(({ user, body }) => { rateLimit(`mj:${user}`, 5, 86400e3); majlis.proposeMajlis(user, body.name, body.nameUr); return majlis.listMajalis(user); }));
@@ -227,6 +228,18 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
     if (r.kind === 'leader') { // the holder of a leader code starts their own caravan, named at sign-up
       if (!String(body.caravanName || '').trim()) throw new HttpError(400, 'caravan_name_required');
       caravanApi.createWithOwner(out.id, body.caravanName);
+    }
+    // the majlis: one from the list, or a new one the member names (no approval needed)
+    const pick = Number(body.majlisId);
+    if (body.newMajlis && String(body.newMajlis.name || '').trim()) {
+      const mid = majlis.createMajlis(out.id, body.newMajlis.name, body.newMajlis.nameUr);
+      db.prepare('UPDATE users SET majlis_id = ? WHERE id = ?').run(mid, out.id);
+    } else if (Number.isInteger(pick) && pick > 0) {
+      if (!db.prepare("SELECT 1 FROM majalis WHERE id = ? AND status = 'approved'").get(pick)) throw new HttpError(400, 'bad_majlis');
+      db.prepare('UPDATE users SET majlis_id = ? WHERE id = ?').run(pick, out.id);
+    } else { // none chosen (an older app or a script): 'Other', so every member belongs to one
+      const other = db.prepare("SELECT id FROM majalis WHERE name = 'Other'").get();
+      if (other) db.prepare('UPDATE users SET majlis_id = ? WHERE id = ?').run(other.id, out.id);
     }
     access.consumeInvite(r);
     return out;

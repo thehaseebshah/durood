@@ -119,9 +119,9 @@ const views = {
   async majalis() {
     const { majalis } = await api('GET', '/majalis');
     return `<h3>Majalis</h3>
-      <p class="muted">Members pick a majlis under Me and can propose a new one; approve the proposals that are real groups. The proposer joins a majlis once it is approved.</p>
+      <p class="muted">Members pick a majlis when they sign up (and can change it under Me). If theirs is not listed they can create it themselves, with no approval, and join it at once. Nothing to approve here; this list is for your information.</p>
       <table><tr><th>Majlis</th><th>Urdu</th><th>Members</th><th>Status</th><th>Proposed by</th><th></th></tr>${majalis.map((m) => `<tr><td>${esc(m.name)}</td><td dir="rtl">${esc(m.name_ur)}</td><td>${fmt(m.members)}</td><td>${esc(m.status)}</td><td>${esc(m.proposer || '—')}</td>
-        <td>${m.status === 'pending' ? `<button class="chip solid" data-a="mjyes" data-id="${m.id}">Approve</button> <button class="chip" data-a="mjno" data-id="${m.id}">Reject</button>` : ''}</td></tr>`).join('')}</table>`;
+        <td></td></tr>`).join('')}</table>`;
   },
   async admins() {
     const { admins, roles } = await api('GET', '/admins');

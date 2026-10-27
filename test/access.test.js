@@ -381,3 +381,28 @@ test('a leader code lets each holder sign up and start their own caravan, up to 
   assert.ok(list.invites.some((i) => i.kind === 'leader' && i.uses === 2));
   assert.equal((await api('POST', '/api/admin/leader-codes', { body: {} })).status, 403, 'admins only');
 });
+
+test('Majlis: chosen at sign-up from the list or created on the spot without approval; Ilm e Deen is now Taleem', async () => {
+  const list = (await api('GET', '/api/majalis-public')).majalis;
+  const names = list.map((m) => m.name);
+  for (const want of ['Taleem', 'Finance', 'Nashriaat', 'Other']) assert.ok(names.includes(want), want);
+  assert.ok(!names.includes('Ilm e Deen'));
+  assert.equal(names.at(-1), 'Other', 'Other is last');
+  const reg = (u, extra) => { n += 1; return api('POST', '/api/register', { body: { username: u, email: `${u}@x.pk`, phone: `0307${String(2000000 + n)}`, password: 'secret1', cityId: 1172451, invite: 'testcv', ...extra } }); };
+  assert.equal((await reg('mj_z', {})).me.majlis.name, 'Other', 'none chosen: Other');
+  assert.equal((await reg('mj_a', { majlisId: 99999 })).error, 'bad_majlis');
+  const fin = list.find((m) => m.name === 'Finance');
+  const a = await reg('mj_a', { majlisId: fin.id });
+  assert.equal(a.me.majlis.name, 'Finance');
+  const b = await reg('mj_b', { newMajlis: { name: '  Media   Team ', nameUr: 'میڈیا' } });
+  assert.equal(b.me.majlis.name, 'Media Team', 'created on the spot, no approval');
+  assert.ok((await api('GET', '/api/majalis-public')).majalis.some((m) => m.name === 'Media Team'));
+  const c = await reg('mj_c', { newMajlis: { name: 'media team' } });
+  assert.equal(c.me.majlis.id, b.me.majlis.id, 'the same name joins the existing majlis instead of making a second');
+  assert.equal((await reg('mj_d', { newMajlis: { name: 'x' } })).error, 'bad_majlis');
+  assert.equal((await reg('mj_e', { newMajlis: { name: 'see www.example.com' } })).error, 'bad_majlis');
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM users WHERE username IN ('mj_d','mj_e')").get().n, 0, 'a refused sign-up leaves nothing');
+  // a member can start a majlis later too, and is limited
+  const m = await api('POST', '/api/majalis', { token: a.token, body: { name: 'Women Wing' } });
+  assert.ok(m.majalis.some((x) => x.name === 'Women Wing'));
+});

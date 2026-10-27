@@ -291,8 +291,14 @@ function authView() {
       <label for="f-phone">${t('phone')}</label>
       <div class="phonerow"><select name="phoneCountry" aria-label="${esc(t('country'))}">${countryOptions()}</select><input id="f-phone" type="tel" name="phone" autocomplete="tel-national" required dir="ltr" placeholder="300 1234567"></div>
       <div class="hint">${t('phone_hint')}</div>
-      <label class="chk"><input type="checkbox" name="hidePhone"> <span>${t('wa_hide')}</span></label>
       ${cityPicker(t('city'))}
+      <label for="f-mjsel">${t('majlis_title')}</label>
+      <select id="f-mjsel" name="majlisSel" required>${signupMajalisOptions()}</select>
+      <div id="mjnew" hidden>
+        <input name="newMajlisName" type="text" maxlength="40" autocomplete="off" placeholder="${esc(t('majlis_propose_ph'))}" aria-label="${esc(t('majlis_propose_ph'))}">
+        <input name="newMajlisUr" type="text" maxlength="40" dir="auto" autocomplete="off" placeholder="${esc(t('majlis_propose_ur'))}" aria-label="${esc(t('majlis_propose_ur'))}">
+        <div class="hint">${t('majlis_new_hint')}</div>
+      </div>
       ${field(t('password'), 'password', 'password', 'autocomplete="new-password" minlength="6" required dir="ltr"')}
       <button class="blk" type="submit"><span>${t('register')}</span><b class="ar">→</b></button></form>`;
   } else if (mode === 'waitlist') {
@@ -850,18 +856,25 @@ function progress() {
 }
 
 // the member's majlis: pick one, or propose a new one for an admin to approve
+// the Majlis choice on the sign-up page: the list is fetched once (no sign-in needed), 'not listed' lets the member name a new one at once
+function signupMajalisOptions() {
+  if (!S.signupMajalis && !S.signupMajalisLoading) {
+    S.signupMajalisLoading = true;
+    api('/majalis-public').then((r) => { S.signupMajalis = r.majalis; }).catch(() => { S.signupMajalis = []; }).finally(() => { S.signupMajalisLoading = false; if (!S.me) draw(); });
+  }
+  const list = S.signupMajalis || [];
+  return `<option value="">${t('majlis_choose')}</option>${list.map((m) => `<option value="${m.id}">${esc(pick(m.name, m.nameUr))}</option>`).join('')}<option value="__new">${t('majlis_new_opt')}</option>`;
+}
 function majlisBox() {
   const d = S.majalis;
   if (!d) { if (!S.majalisLoading) { S.majalisLoading = true; api('/majalis').then((r) => { S.majalis = r; }).catch(() => {}).finally(() => { S.majalisLoading = false; draw(); }); } return skel(); }
-  const prop = d.proposal;
   return `<div class="padx"><p class="muted">${t('majlis_text')}</p>
     <div class="row"><select id="mj-pick" aria-label="${esc(t('majlis_title'))}"><option value="">${t('majlis_none')}</option>${d.majalis.map((x) => `<option value="${x.id}" ${d.mine?.id === x.id ? 'selected' : ''}>${esc(pick(x.name, x.nameUr))} (${fmt(x.members)})</option>`).join('')}</select>
     <button class="chip solid" data-act="majlisset">${t('majlis_save')}</button></div>
-    ${prop ? `<p class="note">${prop.status === 'pending' ? t('majlis_waiting')(esc(prop.name)) : t('majlis_refused')(esc(prop.name))}</p>` : ''}
-    ${prop?.status === 'pending' ? '' : `<details class="pdetails"><summary>${t('majlis_propose')}</summary>
+    <details class="pdetails"><summary>${t('majlis_propose')}</summary>
       <form novalidate data-form="majlisnew"><input name="name" type="text" maxlength="40" placeholder="${esc(t('majlis_propose_ph'))}" aria-label="${esc(t('majlis_propose_ph'))}" dir="auto">
       <input name="nameUr" type="text" maxlength="40" placeholder="${esc(t('majlis_propose_ur'))}" aria-label="${esc(t('majlis_propose_ur'))}" dir="rtl">
-      <button class="chip solid" type="submit">${t('majlis_send')}</button></form></details>`}</div>`;
+      <button class="chip solid" type="submit">${t('majlis_send')}</button></form></details></div>`;
 }
 
 // ---- Settings: profile, preferences, security, and leaving ------------------------------------------------------------------------
@@ -1430,10 +1443,13 @@ app.addEventListener('submit', async (ev) => {
       draw();
     } else if (kind === 'register') {
       // checked top to bottom, so the message is about the first field that needs attention
-      const missing = [['invite', 'invite_required'], ['username', 'bad_username'], ['email', 'bad_email'], ['phone', 'bad_phone'], ['cityId', 'city_required'], ['password', 'bad_password']]
+      const missing = [['invite', 'invite_required'], ['username', 'bad_username'], ['email', 'bad_email'], ['phone', 'bad_phone'], ['cityId', 'city_required'], ['majlisSel', 'majlis_required'], ['password', 'bad_password']]
         .find(([k]) => !String(f[k] || '').trim() || (k === 'password' && f[k].length < 6));
       if (missing) throw new Error(missing[1]);
-      const r = await api('/register', 'POST', { ...f, hidePhone: !!f.hidePhone, invite: (f.invite || '').trim(), lang: S.lang });
+      const isNew = f.majlisSel === '__new';
+      if (isNew && !String(f.newMajlisName || '').trim()) throw new Error('bad_majlis');
+      const r = await api('/register', 'POST', { ...f, invite: (f.invite || '').trim(), lang: S.lang,
+        ...(isNew ? { newMajlis: { name: f.newMajlisName, nameUr: f.newMajlisUr } } : { majlisId: Number(f.majlisSel) }) });
       keepDevice(r); setSession(r.token, r.me);
       draw();
     } else if (kind === 'waitlist') {
@@ -1520,6 +1536,7 @@ async function toAvatarDataUrl(file) {
   throw new Error('bad_image');
 }
 app.addEventListener('change', async (ev) => {
+  if (ev.target.id === 'f-mjsel') { const box = $('#mjnew'); if (box) box.hidden = ev.target.value !== '__new'; return; }
   const pic = ev.target.closest('input[data-avatar]');
   if (pic && pic.files[0]) {
     try { S.me = await api('/me/avatar', 'POST', { image: await toAvatarDataUrl(pic.files[0]) }); toast(t('saved')); } catch (e) { toast(e.message === 'bad_image' ? (I18N[S.lang] || I18N.en).err.bad_image : errText(e)); }

@@ -49,3 +49,6 @@ Navy/gold look unchanged; fields validated as now; phone/email not verified; adm
 
 ## Leader codes
 An admin makes a leader code (Invite codes tab, optional max uses). Whoever signs up with it also names a new caravan and becomes its owner (`leader_codes` table; `POST /api/admin/leader-codes`; register takes `caravanName`). The caravan's name is then the code for its own members.
+
+## Majlis at sign-up
+Sign-up asks for a Majlis after the city: pick one, or choose "my majlis is not listed" and name it (no approval; same name joins the existing one; at most 3 new ones per member). No choice (older apps) means 'Other'. Defaults: Shabab, Taleem (was Ilm e Deen), Jamiaat, Tameeraat, Seerat, Islaah, Atfaal, Qabail, Aamilah, Finance, Nashriaat, Other. `GET /api/majalis-public` feeds the form. The sign-up page no longer has the hide-my-number box (it stays in Settings).
