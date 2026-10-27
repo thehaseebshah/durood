@@ -81,10 +81,8 @@ test('logging durood: xp, streak, badges, caps', async () => {
   assert.deepEqual(r.me.quests.map((q) => q.id).filter((id) => !['goal', 'weekgoal', 'days5', 'streak', 'special'].includes(id)), ['sunnah'], 'only durood and Sunnah quests remain');
   assert.equal((await api('POST', '/api/log', { token, body: { count: 0 } })).error, 'bad_count');
   assert.equal((await api('POST', '/api/log', { token, body: { count: 1.5 } })).error, 'bad_count');
-  assert.equal((await api('POST', '/api/log', { token, body: { count: 999999 } })).error, 'bad_count');
-  assert.equal((await api('POST', '/api/log', { token, body: { count: 50_001 } })).error, 'bad_count', 'one submission can never exceed the daily limit');
-  assert.equal((await api('POST', '/api/log', { token, body: { count: 49_000 } })).added, 49_000); // 50,000 for the day
-  assert.equal((await api('POST', '/api/log', { token, body: { count: 1 } })).error, 'daily_cap');
+  assert.equal((await api('POST', '/api/log', { token, body: { count: 1_000_001 } })).error, 'bad_count', 'one submission is guarded against a slipped finger');
+  assert.equal((await api('POST', '/api/log', { token, body: { count: 49_000 } })).added, 49_000);
   assert.equal((await api('GET', '/api/me')).status, 401);
 });
 

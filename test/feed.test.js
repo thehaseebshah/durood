@@ -87,7 +87,7 @@ test('caravan badges follow the named group', async () => {
   const root = await make('ms_caravan', 'ms_root');
   const pal = await signup('ms_pal', 'ms_caravan');
   const kid = await signup('ms_kid');
-  await log(root, 200); await log(kid, 12_000);                        // the caravan (root + pal): 200
+  await log(root, 200); await log(kid, 9_000);                         // the caravan (root + pal): 200
   let me = await api('GET', '/api/me', { token: root.token });
   assert.ok(!me.badges.includes('group10k'), 'the caravan has not passed 10,000');
   assert.equal((await api('GET', '/api/caravan', { token: root.token })).caravan.total, 200);

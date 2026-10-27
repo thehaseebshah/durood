@@ -46,17 +46,12 @@ const withEnv = async (vars, fn) => {
   try { return await fn(); } finally { for (const [k, v] of Object.entries(old)) { if (v === undefined) delete process.env[k]; else process.env[k] = v; } }
 };
 
-test('new members have a lower daily limit; established members have 50,000', async () => {
-  assert.equal(CFG.maxDaily, 50_000);
-  assert.equal(CFG.maxDailyNew, 10_000);
+test('there is no daily limit for anyone, new members included; only one huge submission is refused', async () => {
   const fresh = await signup('hd_fresh');
-  assert.equal((await log(fresh, 10_001)).error, 'daily_cap');
-  assert.equal((await log(fresh, 10_000)).added, 10_000);
-  assert.equal((await log(fresh, 1)).error, 'daily_cap');
-  const old = await signup('hd_old'); age('hd_old');
-  assert.equal((await log(old, 19_000)).added, 19_000);
-  assert.equal((await log(old, 31_000)).added, 31_000);          // 50,000 exactly
-  assert.equal((await log(old, 1)).error, 'daily_cap');
+  assert.equal((await log(fresh, 4_500)).added, 4_500);
+  assert.equal((await log(fresh, 6_600)).added, 6_600, 'a second batch the same day is fine');
+  assert.equal((await log(fresh, 40_000)).added, 40_000);
+  assert.equal((await log(fresh, 1_000_001)).error, 'bad_count');
 });
 
 test('sessions: revoke signs out other devices; a password reset does too', async () => {

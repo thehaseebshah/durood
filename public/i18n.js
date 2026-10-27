@@ -435,7 +435,6 @@ export const I18N = {
       busy: 'The app is busy — please try again in a moment',
       bad_request_id: 'Something went wrong, please retry',
       bad_count: 'Enter a whole number within the limit (at most 50,000 at a time)',
-      daily_cap: 'That is over today’s limit. Come back tomorrow, in shaa Allah',
       unauthorized: 'Please log in again',
       network: 'No connection. Please try again.',
       server_error: 'Something went wrong',

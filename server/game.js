@@ -3,8 +3,7 @@ import { HttpError, avatarUrl } from './auth.js';
 
 // ---- tunables -------------------------------------------------------------
 export const CFG = {
-  maxDaily: Number(process.env.MAX_DAILY) || 50_000,          // ceiling per person per day (about 8 hours at 100 a minute)
-  maxDailyNew: Number(process.env.MAX_DAILY_NEW) || 10_000,   // ceiling during a member's first 7 days
+  maxSingle: Number(process.env.MAX_SINGLE) || 1_000_000,     // one submission: only a guard against a slipped finger (an extra zero); there is no limit per day
   newMemberDays: 7,
   activeMin: 100,            // a caravan badge is shared only with members who have recited this many in all
   // Durood is the primary activity (1 XP per durood plus the milestone/quest bonuses below). Sunnah and seerah
@@ -23,7 +22,6 @@ export const CFG = {
   nationalTarget: Number(process.env.NATIONAL_TARGET || 100_000_000),
 };
 
-CFG.maxSingle = CFG.maxDaily; // one submission can never exceed the daily ceiling
 
 // ---- time: everything is bucketed by Pakistan time (UTC+5) -----------------
 const PK = 5 * 3600e3;
@@ -217,7 +215,6 @@ export function settleQuests(userId) {
 
 // ---- actions --------------------------------------------------------------
 /** The most a member may have reported on one day: lower while they are new, because new accounts are the easiest to fake. */
-const dailyLimit = (u, day) => (dayNum(day) - dayNum(u.created_day) < CFG.newMemberDays ? CFG.maxDailyNew : CFG.maxDaily);
 
 export function logDurood(userId, count, rid) {
   if (!Number.isInteger(count) || count < 1 || count > CFG.maxSingle) throw new HttpError(400, 'bad_count');
@@ -231,8 +228,6 @@ export function logDurood(userId, count, rid) {
     // a retried or double-tapped submission carries the same rid and must never count twice
     if (one('SELECT 1 FROM entries WHERE user_id = ? AND rid = ?', userId, rid)) { duplicate = true; return; }
     const u = one('SELECT * FROM users WHERE id = ?', userId);
-    const prev = one('SELECT count FROM daily WHERE user_id = ? AND day = ?', userId, day)?.count ?? 0;
-    if (prev + count > dailyLimit(u, day)) throw new HttpError(400, 'daily_cap');
 
     run('INSERT INTO entries (user_id, day, count, rid, created_at) VALUES (?,?,?,?,?)', userId, day, count, rid, Date.now());
     run(`INSERT INTO daily (user_id, day, count) VALUES (?,?,?)
@@ -325,9 +320,7 @@ export function editEntry(userId, entryId, newCount, ridIn) {
     if (getSetting(`week_closed:${weekStart(e.day)}`)) throw new HttpError(403, 'edit_window'); // a week whose leagues and city podium are decided is final
     const delta = newCount - e.count;
     if (delta === 0) throw new HttpError(400, 'no_change');
-    const dayTotal = one('SELECT count FROM daily WHERE user_id = ? AND day = ?', userId, e.day).count;
     const eu = one('SELECT created_day, held FROM users WHERE id = ?', userId);
-    if (delta > 0 && dayTotal + delta > dailyLimit(eu, e.day)) throw new HttpError(400, 'daily_cap');
 
     const now = Date.now();
     run("INSERT INTO entries (user_id, day, count, rid, created_at, kind, ref_id) VALUES (?,?,?,?,?, 'reverse', ?)", userId, e.day, -e.count, `${base}:r`, now, e.id);

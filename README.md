@@ -56,7 +56,7 @@ The first caravan is made by an admin: create a member (Members tab, or `POST /a
 | `NODE_ENV` | `production` makes the server refuse to start without a real mail provider, a 24+ character `ADMIN_KEY` and `AUTH_SECRET` |
 | `TRUST_PROXY`, `CLIENT_IP_HEADER`, `FORCE_HSTS` | Behind a proxy (`1`, `fly-client-ip`, `1` on Fly) |
 | `ADMIN_IP_ALLOWLIST` | Optional comma-separated addresses allowed to use the admin API |
-| `MAX_DAILY`, `MAX_DAILY_NEW` | Most durood one member can report in a day (default 50,000; 10,000 in the first 7 days) |
+| `MAX_SINGLE` | Most durood one submission may add (default 1,000,000, only a guard against an extra zero). There is no limit per day |
 | `CARAVAN_DAILY_CAP` | New members one caravan name may take per day (default 200; the admin changes it on the Invite codes tab) |
 | `REG_LIMIT_PER_HOUR` | Sign-ups per hour per address (default 30) |
 | `MAJLIS_MIN_ACTIVE` | Active members a majlis needs to appear on its board |

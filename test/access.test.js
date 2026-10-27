@@ -243,14 +243,14 @@ test('editing an entry: reversing entry plus replacement, caches follow, history
   assert.equal((await api('PATCH', `/api/entries/${cur}`, { token: u.token, body: { count: 313 } })).error, 'no_change');
   assert.equal((await api('PATCH', `/api/entries/${cur}`, { token: u.token, body: { count: -1 } })).error, 'bad_count'); // (0 removes an entry: see the undo test)
   assert.equal((await api('PATCH', `/api/entries/${cur}`, { token: u.token, body: { count: 1.5 } })).error, 'bad_count');
-  assert.equal((await api('PATCH', `/api/entries/${cur}`, { token: u.token, body: { count: 100001 } })).error, 'bad_count');
+  assert.equal((await api('PATCH', `/api/entries/${cur}`, { token: u.token, body: { count: 1_000_001 } })).error, 'bad_count');
   const stranger = await signup('ed_stranger');
   assert.equal((await api('PATCH', `/api/entries/${cur}`, { token: stranger.token, body: { count: 5 } })).error, 'not_found');
   assert.deepEqual(audit().problems, []);
   assert.equal(db.prepare("SELECT COUNT(*) n FROM entries WHERE user_id = ?").get(uid('ed_user')).n, 5, 'original + 2 edits x 2 rows, nothing erased');
 });
 
-test('edit window: yesterday is editable, anything older is locked; the daily cap still applies', async () => {
+test('edit window: yesterday is editable, anything older is locked', async () => {
   const u = await signup('win_user');
   // on a Monday, yesterday is in last week, which an earlier test's durood has already closed (closed weeks are locked by design); reopen it so this checks the edit window alone
   db.prepare('DELETE FROM settings WHERE key = ?').run(`week_closed:${weekStart(shift(dayOf(), -1))}`);
@@ -267,7 +267,6 @@ test('edit window: yesterday is editable, anything older is locked; the daily ca
   assert.equal((await api('PATCH', `/api/entries/${oldEntry}`, { token: u.token, body: { count: 250 } })).error, 'edit_window');
   seedDay('win_user', 1, 49_000);                        // yesterday is now close to the 50,000 daily cap
   const small = seedDay('win_user', 1, 100);
-  assert.equal((await api('PATCH', `/api/entries/${small}`, { token: u.token, body: { count: 20_000 } })).error, 'daily_cap');
   assert.equal((await api('PATCH', `/api/entries/${small}`, { token: u.token, body: { count: 50 } })).history.days.find((d) => d.day === yDay.day).entries.length, 3, 'editing down is always allowed');
   assert.deepEqual(audit().problems, [], 'edits to yesterday keep the ledger consistent');
 });
