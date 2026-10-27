@@ -1,12 +1,12 @@
 {
-  "appId": "app.seerahquest",
-  "appName": "Seerah Quest",
+  "appId": "app.duroodquest",
+  "appName": "Durood Quest",
   "webDir": "www",
   "server": {
-    "url": "https://seerah-quest.fly.dev",
+    "url": "https://durood-quest.fly.dev",
     "cleartext": false,
     "allowNavigation": [
-      "seerah-quest.fly.dev"
+      "durood-quest.fly.dev"
     ]
   },
   "backgroundColor": "#0c0e2b",

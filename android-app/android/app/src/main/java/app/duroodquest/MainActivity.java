@@ -1,4 +1,4 @@
-package app.seerahquest;
+package app.duroodquest;
 
 import com.getcapacitor.BridgeActivity;
 

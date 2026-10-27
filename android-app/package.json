@@ -1,8 +1,8 @@
 {
-  "name": "seerah-quest-android",
+  "name": "durood-quest-android",
   "private": true,
   "version": "0.1.0",
-  "description": "Android wrapper for Seerah Quest. Separate from the server, which stays free of npm dependencies.",
+  "description": "Android wrapper for Durood Quest. Separate from the server, which stays free of npm dependencies.",
   "scripts": { "build": "node build.mjs" },
   "dependencies": {
     "@capacitor/android": "^7.0.0",

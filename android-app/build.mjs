@@ -1,4 +1,4 @@
-// Builds the Android app (a release APK you can install by hand, signed with signing/seerah-quest.jks) that opens the live Seerah Quest site.
+// Builds the Android app (a release APK you can install by hand, signed with signing/durood-quest.jks) that opens the live Durood Quest site.
 //   node build.mjs [https://your-server]     the address defaults to the one in capacitor.config.json
 // Needs JDK 17+, the Android SDK (ANDROID_HOME) and `npm install` run once here.
 import { readFileSync, writeFileSync, copyFileSync, mkdirSync } from 'node:fs';
@@ -10,5 +10,5 @@ const run = (c, o = {}) => execSync(c, { stdio: 'inherit', ...o });
 run('npx cap sync android');
 run('./gradlew assembleRelease --no-daemon -q --max-workers=1 -I ../maven-mirror.init.gradle', { cwd: 'android' });
 mkdirSync('dist', { recursive: true });
-copyFileSync('android/app/build/outputs/apk/release/app-release.apk', 'dist/seerah-quest.apk');
-console.log(`\nBuilt dist/seerah-quest.apk, opening ${cfg.server.url}`);
+copyFileSync('android/app/build/outputs/apk/release/app-release.apk', 'dist/durood-quest.apk');
+console.log(`\nBuilt dist/durood-quest.apk, opening ${cfg.server.url}`);

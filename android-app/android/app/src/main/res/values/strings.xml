@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Seerah Quest</string>
-    <string name="title_activity_main">Seerah Quest</string>
-    <string name="package_name">app.seerahquest</string>
-    <string name="custom_url_scheme">app.seerahquest</string>
+    <string name="app_name">Durood Quest</string>
+    <string name="title_activity_main">Durood Quest</string>
+    <string name="package_name">app.duroodquest</string>
+    <string name="custom_url_scheme">app.duroodquest</string>
 </resources>
