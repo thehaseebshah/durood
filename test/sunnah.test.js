@@ -6,9 +6,9 @@ process.env.DB_PATH = ':memory:';
 process.env.ADMIN_KEY = 'test-admin';
 process.env.REG_LIMIT_PER_HOUR = '1000';
 process.env.PUBLIC_CACHE_MS = '0';
-process.env.PUBLIC_FOUNDERS_CODE = 'TESTFOUND';
 
 const { createServer } = await import('../server/index.js');
+(await import('./helpers.js')).seedCaravan();
 const { cleanJpeg } = await import('../server/sunnah.js');
 const { audit } = await import('../server/audit.js');
 const { dayOf, CFG } = await import('../server/game.js');
@@ -33,7 +33,7 @@ async function api(method, path, { token, body, headers } = {}) {
 const admin = { 'x-admin-key': 'test-admin' };
 const signup = async (username) => {
   n += 1;
-  return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0301${String(2000000 + n)}`, password: 'secret1', cityId: 1172451, invite: 'TESTFOUND' } });
+  return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0301${String(2000000 + n)}`, password: 'secret1', cityId: 1172451, invite: 'testcv' } });
 };
 const xp = async (u) => (await api('GET', '/api/me', { token: u.token })).xp;
 

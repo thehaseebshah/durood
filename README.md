@@ -41,11 +41,8 @@ Environment variables:
 | `DB_PATH` | SQLite file (default `data/durood.db`) |
 | `AUTH_SECRET` | Token signing secret (auto-generated into `data/secret.key` if unset) |
 | `ADMIN_KEY` | Shared break-glass owner key for the admin API (below). Admins normally sign in with their own member account and a role (`node scripts/make-admin.mjs <username> owner` makes the first). Unset = key disabled |
-| `CIRCLE_URL` | Seerat Circle sign-up link shown in the Learn tab |
 | `NATIONAL_TARGET` | Goal for the national meter (default 100,000,000) |
 | `TEAM_MAX_DEPTH` | Cap how deep a caravan counts (default unlimited) |
-| `INVITE_ONLY` | `0` allows open sign-up (development only; default is invite-only) |
-| `PUBLIC_FOUNDERS_CODE` | Seeds the public founders code on first start (change or switch off later on the admin page) |
 | `PUBLIC_URL` | Base URL used in emailed links, e.g. `https://quest.example.org` |
 | `MAIL_PROVIDER` | `resend`, `sendgrid`, or unset for the log-only console sender |
 | `RESEND_API_KEY` / `SENDGRID_API_KEY`, `MAIL_FROM` | Credentials and sender for the chosen provider |
@@ -56,13 +53,13 @@ Environment variables:
 | `ADMIN_IP_ALLOWLIST` | Comma-separated addresses allowed to use the admin API (optional; ten wrong admin keys lock an address out for 15 minutes either way) |
 | `MAX_DAILY`, `MAX_DAILY_NEW` | Most durood one member can report in a day (default 50,000; 10,000 during their first 7 days) |
 | `PUBLIC_DAILY_CAP` | Sign-ups per day through the public founders code (default 200; change it on the admin page) |
+| `CARAVAN_DAILY_CAP` | New members one caravan name may take per day (default 200; the admin can change it on the Invite codes tab) |
 | `PUBLIC_CACHE_MS` | How long boards and the public meter are cached (default 30 s boards / 15 s meter; `0` turns caching off, used by the tests) |
 | `EDITION` | `internal` (Al-Burhan: murabbi, masul, mamulaat, tasks, routines) or `public` (none of those). Default `public`; the Fly configs set `internal` |
 | `MAMULAAT_API_URL`, `MAMULAAT_API_KEY` | The Mamulaat app's API (docs/BURHAN-API.md). Set the key with `fly secrets set`. `MAMULAAT_TTL_MS` changes the 30 minute cache |
 | `PHOTO_KEEP_DAYS` | Days a decided Sunnah photo is kept before the file is deleted (default 14). Deleting an account deletes its photos at once |
 | `BACKUP_DIR`, `BACKUP_KEEP`, `BACKUP_EVERY_HOURS` | Nightly database snapshot (default every 24 h, newest 14 kept). Also `node scripts/backup.mjs`. Copy the folder off the machine, and back up `UPLOAD_DIR` and `AUTH_SECRET` separately |
 | `UPLOAD_DIR` | Where photos are stored (default `data/uploads`); must be on a persistent volume |
-| `VAPID_SUBJECT`, `PUSH_HOSTS` | A real `mailto:` address for push; extra allowed push hosts (browsers' own services are built in) |
 
 ### Installing on Android
 Deploy behind HTTPS, open the site in Chrome → menu → **Install app** / *Add to Home screen*.

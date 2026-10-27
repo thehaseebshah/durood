@@ -5,9 +5,9 @@ process.env.DB_PATH = ':memory:';
 process.env.ADMIN_KEY = 'test-admin';
 process.env.REG_LIMIT_PER_HOUR = '1000';
 process.env.PUBLIC_CACHE_MS = '0';
-process.env.PUBLIC_FOUNDERS_CODE = 'TESTFOUND';
 
 const { createServer, normalizePhone } = await import('../server/index.js');
+(await import('./helpers.js')).seedCaravan();
 const geo = await import('../server/geo.js');
 const { db } = await import('../server/db.js');
 
@@ -22,7 +22,7 @@ async function api(method, path, { token, body } = {}) {
   const res = await fetch(base + path, { method, headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) }, body: body && JSON.stringify(body) });
   return { status: res.status, ...(await res.json().catch(() => ({}))) };
 }
-const reg = (extra = {}) => { n += 1; return api('POST', '/api/register', { body: { username: `geo_${n}`, email: `geo${n}@x.pk`, phone: `0307${String(8000000 + n)}`, password: 'secret1', invite: 'TESTFOUND', ...extra } }); };
+const reg = (extra = {}) => { n += 1; return api('POST', '/api/register', { body: { username: `geo_${n}`, email: `geo${n}@x.pk`, phone: `0307${String(8000000 + n)}`, password: 'secret1', invite: 'testcv', ...extra } }); };
 
 test('phone numbers: any country, the national form with a country, and Pakistani numbers as before', () => {
   assert.equal(normalizePhone('+44 7700 900123'), '+447700900123');

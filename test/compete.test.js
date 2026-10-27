@@ -6,10 +6,10 @@ process.env.DB_PATH = ':memory:';
 process.env.ADMIN_KEY = 'test-admin';
 process.env.REG_LIMIT_PER_HOUR = '1000';
 process.env.PUBLIC_CACHE_MS = '0';
-process.env.PUBLIC_FOUNDERS_CODE = 'TESTFOUND';
 process.env.MAX_DAILY_NEW = '50000';
 
 const { createServer } = await import('../server/index.js');
+(await import('./helpers.js')).seedCaravan();
 const { audit } = await import('../server/audit.js');
 const { db } = await import('../server/db.js');
 const { dayOf, dayNum, dayStr, weekStart, specialToday, CFG } = await import('../server/game.js');
@@ -29,7 +29,7 @@ async function api(method, path, { token, body, headers } = {}) {
 }
 const admin = { 'x-admin-key': 'test-admin' };
 const LAHORE = 1172451, KARACHI = 1174872, MULTAN = 1169825;
-const signup = (username, invite = 'TESTFOUND', cityId = LAHORE) => {
+const signup = (username, invite = 'testcv', cityId = LAHORE) => {
   n += 1;
   return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0308${String(9000000 + n)}`, password: 'secret1', cityId, invite } });
 };
@@ -38,20 +38,18 @@ const uid = (u) => db.prepare('SELECT id FROM users WHERE username = ?').get(u).
 // writes durood for a past day straight into the ledger and its caches, consistently
 function seed(username, daysAgo, count) {
   const id = uid(username), day = dayStr(dayNum(dayOf()) - daysAgo);
-  if (db.prepare('SELECT total FROM users WHERE id = ?').get(id).total === 0) db.prepare('UPDATE users SET tree_active = tree_active + 1 WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth > 0)').run(id);
   db.prepare('INSERT INTO entries (user_id, day, count, rid, created_at) VALUES (?,?,?,?,?)').run(id, day, count, `seed-${username}-${daysAgo}-${crypto.randomUUID()}`, Date.now());
   db.prepare('INSERT INTO daily (user_id, day, count) VALUES (?,?,?) ON CONFLICT(user_id, day) DO UPDATE SET count = count + excluded.count').run(id, day, count);
   db.prepare('UPDATE users SET total = total + ?, xp = xp + ? WHERE id = ?').run(count, count, id);
-  db.prepare('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ?)').run(count, id);
   db.prepare('INSERT INTO day_totals (day, total) VALUES (?, ?) ON CONFLICT(day) DO UPDATE SET total = total + excluded.total').run(day, count);
 }
 const age = (username, days = 40) => db.prepare('UPDATE users SET created_day = ? WHERE username = ?').run(dayStr(dayNum(dayOf()) - days), username);
 
 test('city boards: total, average and growth, only for cities with 5 members who recited this week, my city marked', async () => {
   const lah = [], mul = [];
-  for (let i = 0; i < 6; i++) { lah.push(await signup(`cl_${i}`, 'TESTFOUND', LAHORE)); await log(lah[i], 100 + i * 10); }
-  for (let i = 0; i < 5; i++) { mul.push(await signup(`cm_${i}`, 'TESTFOUND', MULTAN)); await log(mul[i], 400); }
-  const few = []; for (let i = 0; i < 3; i++) { few.push(await signup(`ck_${i}`, 'TESTFOUND', KARACHI)); await log(few[i], 5000); }
+  for (let i = 0; i < 6; i++) { lah.push(await signup(`cl_${i}`, 'testcv', LAHORE)); await log(lah[i], 100 + i * 10); }
+  for (let i = 0; i < 5; i++) { mul.push(await signup(`cm_${i}`, 'testcv', MULTAN)); await log(mul[i], 400); }
+  const few = []; for (let i = 0; i < 3; i++) { few.push(await signup(`ck_${i}`, 'testcv', KARACHI)); await log(few[i], 5000); }
   const board = async (metric) => (await api('GET', `/api/leaderboard?type=cities&metric=${metric}`, { token: lah[0].token })).rows;
   const total = await board('total');
   assert.deepEqual(total.map((r) => r.username), ['Multan', 'Lahore'], 'Karachi has only 3 active members, so it is not listed');
@@ -70,7 +68,7 @@ test('the weekly close awards the city podium, once, and the feed announces it',
   // last week: Lahore 6 members, Multan 5 members, Karachi 5 members, Quetta (id from search) 5 members
   const prev = weekStart(dayStr(dayNum(weekStart()) - 7));
   db.prepare("DELETE FROM settings WHERE key LIKE 'week_closed:%'").run(); // earlier logging already closed the (empty) weeks
-  const mk = async (prefix, cityId, count, per) => { const out = []; for (let i = 0; i < count; i++) { const u = await signup(`${prefix}_${i}`, 'TESTFOUND', cityId); out.push(u); const id = uid(`${prefix}_${i}`); db.prepare('INSERT INTO daily (user_id, day, count) VALUES (?,?,?)').run(id, prev, per); } return out; };
+  const mk = async (prefix, cityId, count, per) => { const out = []; for (let i = 0; i < count; i++) { const u = await signup(`${prefix}_${i}`, 'testcv', cityId); out.push(u); const id = uid(`${prefix}_${i}`); db.prepare('INSERT INTO daily (user_id, day, count) VALUES (?,?,?)').run(id, prev, per); } return out; };
   const a = await mk('pa', 1174872, 5, 1000), b = await mk('pb', 1169825, 5, 600), c = await mk('pc', 1172451, 5, 300), d = await mk('pd', 1168197, 5, 100);
   const closed = compete.ensureWeekClosed();
   assert.equal(closed.week, prev);
@@ -82,7 +80,12 @@ test('the weekly close awards the city podium, once, and the feed announces it',
   assert.ok((await badges(b[0])).includes('city_podium') && !(await badges(b[0])).includes('city_champion'));
   assert.ok(!(await badges(d[0])).includes('city_podium'), 'fourth place gets nothing');
   assert.equal(compete.ensureWeekClosed(), null, 'closing twice does nothing');
-  const items = (await api('GET', '/api/feed', { token: a[0].token })).items.filter((i) => i.type === 'city');
+  // everyone shares one caravan here, so its milestones fill the first pages: read on until the city lines turn up
+  const items = [];
+  for (let page = await api('GET', '/api/feed', { token: a[0].token }); ; page = await api('GET', `/api/feed?before=${page.next}`, { token: a[0].token })) {
+    items.push(...page.items.filter((i) => i.type === 'city'));
+    if (!page.next) break;
+  }
   assert.equal(items.find((i) => i.rank === 1).label, 'Karachi, Sindh, Pakistan');
   assert.ok(c.length === 5);
 });
@@ -125,18 +128,6 @@ test('leagues: the first durood of a week joins a group of at most 30; promotion
   const view2 = await api('GET', '/api/league', { token: ids[11].token });
   assert.equal(view2.last.result, 'up'); assert.equal(view2.last.rank, 1);
   assert.deepEqual(audit().problems.filter((p) => !['xp', 'user_total', 'team_total', 'daily', 'national', 'day_totals'].includes(p.kind)), []);
-});
-
-test('people in a Qabila who recited are counted for Qabila badges, and the audit agrees', async () => {
-  const root = await signup('qb_root');
-  for (let i = 0; i < 10; i++) { const u = await signup(`qb_${i}`, i < 5 ? 'qb_root' : 'qb_0'); await log(u, 10); }
-  const me = await api('GET', '/api/me', { token: root.token });
-  assert.ok(me.badges.includes('qabila10'), '10 people under me, at any depth');
-  assert.ok(!me.badges.includes('qabila50'));
-  assert.deepEqual(audit().problems.filter((p) => p.kind === 'tree_active'), []);
-  db.prepare("UPDATE users SET tree_active = tree_active + 1 WHERE username = 'qb_root'").run();
-  assert.ok(audit().problems.some((p) => p.kind === 'tree_active'));
-  db.prepare("UPDATE users SET tree_active = tree_active - 1 WHERE username = 'qb_root'").run();
 });
 
 test('special days: Fridays automatically, other days added by the admin; a bonus quest and the live counter', async () => {

@@ -28,3 +28,10 @@ Every member belongs to a caravan from sign-up. The invite code is the **caravan
 
 ## Defaults I chose (change if wrong)
 Navy/gold look unchanged; fields validated as now; phone/email not verified; admin reset links over WhatsApp, no mail provider; QA app not needed for the MVP.
+
+## Server notes (branch `durood-quest-wip`)
+- **Bootstrap:** a caravan needs an owner who is already a member, and sign-up needs a caravan, so the first one is made by an admin: `POST /api/admin/members/create` `{username,email,phone,password,cityId}` registers a member with no caravan, then `POST /api/admin/caravans` `{name, owner, displayName?}` makes that member the owner. Everyone after that signs up with the caravan's name (case-insensitive; the display name does not count) or with an admin code from `POST /api/admin/invites` `{caravan, label?, maxUses?}`.
+- **Limits:** `caravan_daily_cap` (default 200 new members per caravan name per Pakistan-time day, env `CARAVAN_DAILY_CAP`) and the sign-up kill switch are set with `POST /api/admin/signups` `{enabled?, dailyCap?}`. Admin codes ignore the daily cap.
+- **Locked in:** there is no leave, switch, join, invite or request route. The owner (`POST /api/caravan/remove`) or an admin (`POST /api/admin/caravans/:id/remove`, `.../:id/members`) moves members; a removed member has `caravan: null` until an admin adds them to one.
+- **One challenge:** `challenge_start`, `challenge_days` and `challenge_target` in settings, edited with `POST /api/admin/challenge`.
+- Old tables (ancestors, referrer/tree columns) stay in a fresh schema but nothing reads them. `scripts/e2e.mjs` and `scripts/guide-shots.mjs` drive the old browser client and need updating with it.

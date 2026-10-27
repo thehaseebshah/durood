@@ -2,17 +2,20 @@
 //   npm run stress
 import fs from 'node:fs'; import os from 'node:os'; import path from 'node:path';
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sq-stress-'));
-Object.assign(process.env, { DB_PATH: path.join(dir, 's.db'), ADMIN_KEY: 'stress-admin-key-long-enough-123', EDITION: 'internal', PUBLIC_FOUNDERS_CODE: 'STRESS1', NODE_ENV: 'test', FLAG_NEW_HIGH: '1000000000', REG_LIMIT_PER_HOUR: '100000' });
+Object.assign(process.env, { DB_PATH: path.join(dir, 's.db'), ADMIN_KEY: 'stress-admin-key-long-enough-123', EDITION: 'internal', NODE_ENV: 'test', FLAG_NEW_HIGH: '1000000000', REG_LIMIT_PER_HOUR: '100000' });
 const { createServer } = await import('../server/index.js');
 const server = createServer(); await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const B = `http://127.0.0.1:${server.address().port}`, J = { 'content-type': 'application/json' };
 const call = (m, p, body, tok) => fetch(B + p, { method: m, headers: { ...J, ...(tok ? { authorization: 'Bearer ' + tok } : {}) }, body: body && JSON.stringify(body) }).then(async (r) => ({ s: r.status, j: await r.json().catch(() => null) }));
+// every member joins a caravan at sign-up, so an admin makes one first (owner registered without a caravan, then the caravan)
+const adm = { ...J, 'x-admin-key': process.env.ADMIN_KEY };
+await fetch(B + '/api/admin/members/create', { method: 'POST', headers: adm, body: JSON.stringify({ username: 'stress_owner', email: 'stress_owner@x.pk', phone: '03069990000', password: 'secret12', cityId: 1172451 }) });
+await fetch(B + '/api/admin/caravans', { method: 'POST', headers: adm, body: JSON.stringify({ name: 'stresscv', owner: 'stress_owner' }) });
 const users = [];
-let prev = 'STRESS1';
 for (let i = 0; i < 60; i++) {
-  const r = await call('POST', '/api/register', { username: `st_${i}`, email: `st${i}@x.pk`, phone: `0306${String(1000000 + i)}`, password: 'secret12', cityId: 1172451, invite: i % 5 ? prev : 'STRESS1' });
+  const r = await call('POST', '/api/register', { username: `st_${i}`, email: `st${i}@x.pk`, phone: `0306${String(1000000 + i)}`, password: 'secret12', cityId: 1172451, invite: 'stresscv' });
   if (!r.j?.token) { console.log('reg fail', i, r.s, r.j); continue; }
-  users.push(r.j.token); prev = `st_${i}`;
+  users.push(r.j.token);
 }
 let n = 0, err5 = 0, codes = {};
 const t0 = Date.now();

@@ -6,9 +6,9 @@ process.env.DB_PATH = ':memory:';
 process.env.ADMIN_KEY = 'test-admin';
 process.env.REG_LIMIT_PER_HOUR = '1000';
 process.env.PUBLIC_CACHE_MS = '0';
-process.env.PUBLIC_FOUNDERS_CODE = 'TESTFOUND';
 
 const { createServer } = await import('../server/index.js');
+(await import('./helpers.js')).seedCaravan();
 const { db } = await import('../server/db.js');
 
 let server, base, n = 0;
@@ -19,7 +19,7 @@ async function api(method, path, { token, body, headers } = {}) {
   return { status: res.status, ...(await res.json().catch(() => ({}))) };
 }
 const key = { 'x-admin-key': 'test-admin' };
-const signup = (username) => { n += 1; return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0305${String(1000000 + n)}`, password: 'secret1', cityId: 1172451, invite: 'TESTFOUND' } }); };
+const signup = (username) => { n += 1; return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0305${String(1000000 + n)}`, password: 'secret1', cityId: 1172451, invite: 'testcv' } }); };
 const login = async (username, password = 'secret1') => { const r = await api('POST', '/api/admin/login', { body: { id: username, password } }); return r.token ? { 'x-admin-token': r.token } : r; };
 const as = (h) => (method, path, body) => api(method, `/api/admin${path}`, { headers: h, body });
 

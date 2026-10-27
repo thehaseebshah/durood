@@ -11,14 +11,13 @@ process.env.DB_PATH = ':memory:';
 process.env.ADMIN_KEY = 'test-admin-key-that-is-long-enough';
 process.env.REG_LIMIT_PER_HOUR = '1000';
 process.env.PUBLIC_CACHE_MS = '0';
-process.env.PUBLIC_FOUNDERS_CODE = 'TESTFOUND';
 
 const { createServer } = await import('../server/index.js');
+(await import('./helpers.js')).seedCaravan();
 const { db } = await import('../server/db.js');
 const { audit } = await import('../server/audit.js');
 const { CFG, dayOf } = await import('../server/game.js');
 const { clientIp } = await import('../server/auth.js');
-const { allowedPushEndpoint } = await import('../server/news.js');
 const { backupNow } = await import('../server/backup.js');
 const { outbox } = await import('../server/mail.js');
 
@@ -35,7 +34,7 @@ async function api(method, p, { token, body, headers } = {}) {
   return { status: res.status, ...(await res.json().catch(() => ({}))) };
 }
 const adm = { 'x-admin-key': process.env.ADMIN_KEY };
-const signup = (username, invite = 'TESTFOUND', headers) => {
+const signup = (username, invite = 'testcv', headers) => {
   n += 1;
   return api('POST', '/api/register', { headers, body: { username, email: `${username}@x.pk`, phone: `0305${String(6000000 + n)}`, password: 'secret1', cityId: 1172451, invite } });
 };
@@ -62,21 +61,22 @@ test('new members have a lower daily limit; established members have 50,000', as
 
 test('a flagged member’s durood is held out of every public total until an admin clears it, and nothing is lost', async () => {
   const root = await signup('hold_root');
-  const kid = await signup('hold_kid', 'hold_root'); age('hold_kid');
+  const kid = await signup('hold_kid'); age('hold_kid');
   await log(root, 100);
   await log(kid, 500);                                            // normal
   const pub0 = await api('GET', '/api/public');
-  const team0 = (await api('GET', '/api/me', { token: root.token })).team.total;
+  const cvTotal = async () => (await api('GET', '/api/caravan', { token: root.token })).caravan.total;
+  const team0 = await cvTotal();
   const r = await log(kid, 25_000);                               // over the 20,000 line: flagged
   assert.equal(r.me.hiddenFromRanks, true);
   assert.equal(r.me.total, 25_500, 'the member still sees all of their own durood');
   const pub1 = await api('GET', '/api/public');
   assert.equal(pub1.total, pub0.total - 500, 'their whole total leaves the public number');
   assert.equal(pub1.pending, pub0.pending + 25_500);
-  assert.equal((await api('GET', '/api/me', { token: root.token })).team.total, team0 - 500, 'and the caravan above them');
+  assert.equal(await cvTotal(), team0 - 500, 'and their caravan');
   assert.equal((await api('GET', '/api/challenge', { token: root.token })).summary.total, pub1.challenge.total);
-  await log(kid, 1000);                                           // more while held: ancestors unaffected
-  assert.equal((await api('GET', '/api/me', { token: root.token })).team.total, team0 - 500);
+  await log(kid, 1000);                                           // more while held: the caravan is unaffected
+  assert.equal(await cvTotal(), team0 - 500);
   assert.deepEqual(audit().problems, []);
 
   const flag = (await api('GET', '/api/admin/flags', { headers: adm })).flags.find((f) => f.username === 'hold_kid');
@@ -84,20 +84,8 @@ test('a flagged member’s durood is held out of every public total until an adm
   const pub2 = await api('GET', '/api/public');
   assert.equal(pub2.total, pub1.total + 26_500, 'cleared: everything counts again');
   assert.equal(pub2.pending, pub1.pending - 25_500);
-  assert.equal((await api('GET', '/api/me', { token: root.token })).team.total, team0 + 26_000);
+  assert.equal(await cvTotal(), team0 + 26_000);
   assert.deepEqual(audit().problems, []);
-});
-
-test('the public founders code has a daily sign-up limit the admin can change', async () => {
-  await api('POST', '/api/admin/public-code', { headers: adm, body: { dailyCap: 0 } });
-  assert.equal((await signup('cap_a')).error, 'public_full');
-  const root = await signup('cap_root', 'hold_root').catch(() => ({}));
-  await api('POST', '/api/admin/public-code', { headers: adm, body: { dailyCap: db.prepare("SELECT COUNT(*) n FROM users WHERE invited_via = 'public' AND created_day = ?").get(dayOf()).n + 1 } });
-  assert.equal((await signup('cap_b')).status, 200);
-  assert.equal((await signup('cap_c')).error, 'public_full');
-  assert.equal((await api('POST', '/api/admin/public-code', { headers: adm, body: { dailyCap: -1 } })).error, 'bad_cap');
-  await api('POST', '/api/admin/public-code', { headers: adm, body: { dailyCap: 200 } });
-  assert.ok(root !== null);
 });
 
 test('sessions: revoke signs out other devices; a password reset does too', async () => {
@@ -150,11 +138,6 @@ test('one account cannot be password-guessed from many addresses', async () => {
     for (let i = 0; i < 11; i++) last = await api('POST', '/api/login', { headers: { 'x-forwarded-for': `4.4.4.${i}` }, body: { id: 'guess_me', password: 'wrong' + i } });
   });
   assert.equal(last.error, 'rate_limited');
-});
-
-test('push subscriptions must point at a real browser push service', () => {
-  for (const ok of ['https://fcm.googleapis.com/fcm/send/abc', 'https://updates.push.services.mozilla.com/wpush/v2/x', 'https://web.push.apple.com/Q', 'https://db5p.notify.windows.com/?token=x']) assert.equal(allowedPushEndpoint(ok), true, ok);
-  for (const bad of ['http://fcm.googleapis.com/x', 'https://evil.example/x', 'https://localhost/x', 'https://169.254.169.254/latest', 'https://fcm.googleapis.com.evil.com/x', 'https://u:p@fcm.googleapis.com/x', 'https://fcm.googleapis.com:8443/x', 'not a url']) assert.equal(allowedPushEndpoint(bad), false, bad);
 });
 
 test('security headers, a CSP that matches the inline scripts, and safe static paths', async () => {

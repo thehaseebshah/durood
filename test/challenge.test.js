@@ -7,9 +7,9 @@ process.env.ADMIN_KEY = 'test-admin';
 process.env.REG_LIMIT_PER_HOUR = '1000';
 process.env.MAX_DAILY_NEW = '50000'; // first-week limit is tested on its own
 process.env.PUBLIC_CACHE_MS = '0';
-process.env.PUBLIC_FOUNDERS_CODE = 'TESTFOUND';
 
 const { createServer } = await import('../server/index.js');
+(await import('./helpers.js')).seedCaravan();
 const { db } = await import('../server/db.js');
 const { dayOf, challengeSummary } = await import('../server/game.js');
 
@@ -28,7 +28,7 @@ async function api(method, path, { token, body, headers } = {}) {
 }
 const A = { 'x-admin-key': 'test-admin' };
 const admin = (m, p, body) => api(m, '/api/admin' + p, { headers: A, body });
-const signup = (username, invite = 'TESTFOUND') => {
+const signup = (username, invite = 'testcv') => {
   n += 1;
   return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0303${String(4000000 + n)}`, password: 'secret1', cityId: 1172451, invite } });
 };
@@ -157,7 +157,7 @@ test('challenge boards cover the 40 days only and freeze after the end; all-time
   await admin('POST', '/challenge', { start: shift(dayOf(), -20), days: 10, target: 100_000_000, clearMilestones: true });
   clearDaily();
   const root = await signup('ch_root');
-  const kid = await signup('ch_kid', 'ch_root');
+  const kid = await signup('ch_kid');
   const out = await signup('ch_outside');
   seedDay('ch_root', 25, 777);           // before the challenge: not counted
   seedDay('ch_root', 15, 300);           // inside
@@ -169,8 +169,8 @@ test('challenge boards cover the 40 days only and freeze after the end; all-time
   assert.equal(score(ind.rows, 'ch_root'), 300);
   assert.equal(score(ind.rows, 'ch_kid'), 200);
   assert.equal(score(ind.rows, 'ch_outside'), undefined, 'activity after day 10 is outside the challenge boards');
-  const teams = await api('GET', '/api/leaderboard?type=teams&period=challenge', { token: tok });
-  assert.equal(score(teams.rows, 'ch_root'), 500, 'a caravan counts its members inside the window');
+  const cvs = await api('GET', '/api/leaderboard?type=caravans&period=challenge', { token: tok });
+  assert.equal(score(cvs.rows.map((r) => ({ username: r.name, score: r.score })), 'testcv'), 500, 'a caravan counts its members inside the window');
   const all = await api('GET', '/api/leaderboard?type=users&period=all', { token: tok });
   assert.equal(score(all.rows, 'ch_root'), 1077, 'all-time still counts everything');
   assert.ok(out.token);
@@ -191,4 +191,11 @@ test('admin sets the start date, length and target, with validation; members can
   assert.equal((await admin('GET', '/challenge')).summary.target, 50_000_000, 'rejected changes leave the settings alone');
   const me = await api('GET', '/api/me', { token: (await signup('pub_check')).token });
   assert.equal(me.pub.challenge.target, 50_000_000, 'members see the challenge in their profile data');
+});
+
+test('there is exactly one fixed challenge: no plans, names or past challenges, and the summary has no schedule', async () => {
+  const s = (await admin('GET', '/challenge'));
+  assert.deepEqual(Object.keys(s).filter((k) => k !== 'status').sort(), ['series', 'summary']);
+  for (const k of ['n', 'nameEn', 'nameUr', 'next', 'pastCount']) assert.ok(!(k in s.summary), k);
+  for (const [method, path] of [['POST', '/challenge/plans'], ['DELETE', '/challenge/plans/1'], ['PUT', '/challenge/name']]) assert.equal((await api(method, `/api/admin${path}`, { headers: { 'x-admin-key': 'test-admin' }, body: {} })).status, 404, path);
 });

@@ -7,9 +7,9 @@ process.env.DB_PATH = ':memory:';
 process.env.ADMIN_KEY = 'test-admin';
 process.env.REG_LIMIT_PER_HOUR = '1000';
 process.env.PUBLIC_CACHE_MS = '0';
-process.env.PUBLIC_FOUNDERS_CODE = 'TESTFOUND';
 
 const { createServer } = await import('../server/index.js');
+(await import('./helpers.js')).seedCaravan();
 const { audit } = await import('../server/audit.js');
 const { db } = await import('../server/db.js');
 
@@ -22,7 +22,7 @@ async function api(method, path, { token, body, headers, raw } = {}) {
   return { status: res.status, ...(await res.json().catch(() => ({}))) };
 }
 const admin = { 'x-admin-key': 'test-admin' };
-const signup = (username, invite = 'TESTFOUND') => { n += 1; return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0304${String(6000000 + n)}`, password: 'secret1', cityId: 1172451, invite } }); };
+const signup = (username, invite = 'testcv') => { n += 1; return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0304${String(6000000 + n)}`, password: 'secret1', cityId: 1172451, invite } }); };
 
 // a small square JPEG with camera metadata and trailing junk, like a phone would produce
 function jpeg({ w = 192, h = 192, size = 3000, junk = true, exif = true } = {}) {
@@ -50,9 +50,7 @@ test('display name and bio: short plain text, no links, can be cleared', async (
   // the name is shown to others where the person appears
   await put({ displayName: 'Amina Khan' });
   const v = await signup('pf_viewer');
-  await api('POST', '/api/reflections', { token: u.token, body: { text: 'a thought' } });
-  const item = (await api('GET', '/api/feed', { token: v.token })).items.find((i) => i.type === 'reflection' && i.username === 'pf_a');
-  assert.equal(item.displayName, 'Amina Khan');
+  assert.equal((await api('GET', '/api/caravan', { token: v.token })).members.find((m) => m.username === 'pf_a').displayName, 'Amina Khan', 'the caravan list shows it');
   const pub = await api('GET', '/api/members/pf_a', { token: v.token });
   assert.equal(pub.displayName, 'Amina Khan');
   assert.ok(!('email' in pub) && !('phone' in pub), 'the public profile has no contact details');
@@ -136,7 +134,7 @@ test('password change: needs the current password, signs out every other device,
   assert.equal((await api('POST', '/api/me/password', { token: w.token, body: { current: 'secret1', next: 'whatever1' } })).status, 429);
 });
 
-test('changing the WhatsApp number needs the password, is unique, normalised per country, rate limited, and resets the murabbi link', async () => {
+test('changing the WhatsApp number needs the password, is unique, normalised per country, and rate limited', async () => {
   const u = await signup('ph_a'), other = await signup('ph_b');
   const change = (body, tok = u.token) => api('POST', '/api/me/phone', { token: tok, body });
   assert.equal((await change({ phone: '0301 1112233', password: 'wrong' })).error, 'wrong_password');
@@ -145,12 +143,8 @@ test('changing the WhatsApp number needs the password, is unique, normalised per
   assert.equal((await change({ phone: taken, password: 'secret1' })).error, 'phone_taken');
   const me = db.prepare('SELECT id, phone FROM users WHERE username = ?').get('ph_a');
   assert.equal((await change({ phone: me.phone, password: 'secret1' })).error, 'no_change');
-  db.prepare("INSERT INTO murabbi_links (user_id, murabbi_phone, murabbi_name, checked_at, created_at) VALUES (?, '+923000000001', 'Hafiz', 1, 1)").run(me.id);
-  db.prepare("INSERT INTO mamulaat_days (user_id, day, percent) VALUES (?, '2026-10-20', 70)").run(me.id);
   const ok = await change({ phone: '0301 1112233', password: 'secret1' });
   assert.equal(ok.phone, '+923011112233');
-  assert.equal(db.prepare('SELECT COUNT(*) n FROM murabbi_links WHERE user_id = ?').get(me.id).n, 0, 'the old match no longer applies');
-  assert.equal(db.prepare('SELECT COUNT(*) n FROM mamulaat_days WHERE user_id = ?').get(me.id).n, 0);
   assert.equal((await change({ phone: '07911 123456', cc: 'GB', password: 'secret1' })).phone, '+447911123456', 'another country with its code');
   assert.ok((await api('POST', '/api/login', { body: { id: '+447911123456', password: 'secret1' } })).token, 'the new number is the login');
   assert.equal((await change({ phone: '0302 2223344', password: 'secret1' })).phone, '+923022223344');
@@ -160,7 +154,9 @@ test('changing the WhatsApp number needs the password, is unique, normalised per
 });
 
 test('admin moderation: find pictures and names, remove them, rename or delete a caravan, and every action is logged', async () => {
-  const a = await signup('md_a'), b = await signup('md_b'), c = await signup('md_c');
+  const a = await signup('md_a'), c = await signup('md_c');
+  const { makeCaravan } = await import('./helpers.js');
+  const b = await makeCaravan(api, 'md_bad_name', 'md_b');
   await upload(a, jpeg());
   await api('PUT', '/api/me/profile', { token: a.token, body: { displayName: 'Offensive Name', bio: 'a bad line' } });
   await api('PUT', '/api/me/profile', { token: b.token, body: { displayName: 'Just A Name' } });
@@ -179,8 +175,7 @@ test('admin moderation: find pictures and names, remove them, rename or delete a
   await api('POST', '/api/admin/members/md_a', { headers: admin, body: { action: 'clear-profile' } });
   assert.equal((await api('GET', '/api/me', { token: a.token })).displayName, '');
   // caravans: rename and delete
-  const mk = await api('POST', '/api/caravan', { token: b.token, body: { name: 'md_bad_name' } });
-  const id = mk.id;
+  const id = db.prepare("SELECT id FROM caravans WHERE name = 'md_bad_name'").get().id;
   assert.equal((await api('GET', '/api/admin/caravans?q=bad_name', { headers: admin })).caravans[0].owner, 'md_b');
   assert.equal((await api('PUT', `/api/admin/caravans/${id}`, { headers: admin, body: { name: 'md_c' } })).error, 'caravan_name_taken', "a member's username");
   assert.equal((await api('PUT', `/api/admin/caravans/${id}`, { headers: admin, body: { name: 'x' } })).error, 'bad_caravan_name');
@@ -188,7 +183,7 @@ test('admin moderation: find pictures and names, remove them, rename or delete a
   assert.equal((await api('GET', '/api/caravan', { token: b.token })).caravan.name, 'md_good_name');
   assert.equal((await api('DELETE', `/api/admin/caravans/${id}`, { headers: admin })).ok, true);
   assert.equal((await api('GET', '/api/caravan', { token: b.token })).caravan, null);
-  assert.equal((await api('POST', '/api/admin/content/reflection/999999', { headers: admin, body: { action: 'remove' } })).status, 404, 'a failed action is not logged');
+  assert.equal((await api('POST', '/api/admin/content/post/999999', { headers: admin, body: { action: 'remove' } })).status, 404, 'a failed action is not logged');
   const log = (await api('GET', '/api/admin/log', { headers: admin })).log;
   const kinds = log.map((l) => l.action);
   for (const k of ['remove-avatar', 'clear-profile', 'rename-caravan', 'delete-caravan']) assert.ok(kinds.includes(k), k);
@@ -284,7 +279,7 @@ test('WhatsApp: a chat link for members who have not hidden their number, never 
 
 test('WhatsApp: sign-up can start with the number hidden', async () => {
   n += 1;
-  const r = await api('POST', '/api/register', { body: { username: 'wa_hidden', email: 'wa_hidden@x.pk', phone: `0304${String(6000000 + n)}`, password: 'secret1', invite: 'TESTFOUND', hidePhone: true, cityId: 1172451 } });
+  const r = await api('POST', '/api/register', { body: { username: 'wa_hidden', email: 'wa_hidden@x.pk', phone: `0304${String(6000000 + n)}`, password: 'secret1', invite: 'testcv', hidePhone: true, cityId: 1172451 } });
   assert.equal(r.status, 200, JSON.stringify(r));
   const other = await signup('wa_viewer');
   assert.equal((await api('GET', '/api/members/wa_hidden', { token: other.token })).whatsapp, false);

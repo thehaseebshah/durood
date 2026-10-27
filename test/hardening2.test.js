@@ -6,10 +6,10 @@ process.env.DB_PATH = ':memory:';
 process.env.ADMIN_KEY = 'test-admin';
 process.env.REG_LIMIT_PER_HOUR = '1000';
 process.env.PUBLIC_CACHE_MS = '0';
-process.env.PUBLIC_FOUNDERS_CODE = 'TESTFOUND';
 process.env.EDITION = 'internal';
 
 const { createServer } = await import('../server/index.js');
+(await import('./helpers.js')).seedCaravan();
 const { db } = await import('../server/db.js');
 
 let server, base, port, n = 0;
@@ -19,19 +19,19 @@ async function api(method, path, { token, body, raw } = {}) {
   const res = await fetch(base + path, { method, headers: { 'Content-Type': 'application/json', ...(token && { Authorization: `Bearer ${token}` }) }, body: raw ?? (body && JSON.stringify(body)) });
   return { status: res.status, ...(await res.json().catch(() => ({}))) };
 }
-const signup = (username, phone) => { n += 1; return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: phone || `0307${String(2000000 + n)}`, password: 'secret1', cityId: 1172451, invite: 'TESTFOUND' } }); };
+const signup = (username, phone) => { n += 1; return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: phone || `0307${String(2000000 + n)}`, password: 'secret1', cityId: 1172451, invite: 'testcv' } }); };
 
 test('an oversized upload gets 413 and does not wedge the next request on the same connection', async () => {
   const agent = new http.Agent({ keepAlive: true, maxSockets: 1 });
   const u = await signup('big_u');
   const call = (body) => new Promise((resolve, reject) => {
-    const req = http.request({ host: '127.0.0.1', port, path: '/api/reflections', method: 'POST', agent, headers: { 'content-type': 'application/json', authorization: `Bearer ${u.token}` } }, (res) => { let d = ''; res.on('data', (c) => (d += c)); res.on('end', () => resolve({ status: res.statusCode, d })); });
+    const req = http.request({ host: '127.0.0.1', port, path: '/api/log', method: 'POST', agent, headers: { 'content-type': 'application/json', authorization: `Bearer ${u.token}` } }, (res) => { let d = ''; res.on('data', (c) => (d += c)); res.on('end', () => resolve({ status: res.statusCode, d })); });
     req.setTimeout(4000, () => { req.destroy(); reject(new Error('hung')); });
     req.on('error', (e) => resolve({ status: -1, d: String(e) }));
     req.end(body);
   });
-  assert.equal((await call(JSON.stringify({ text: 'x'.repeat(100000) }))).status, 413);
-  const next = await call(JSON.stringify({ text: 'a real reflection' }));
+  assert.equal((await call(JSON.stringify({ count: 1, rid: 'x'.repeat(100000) }))).status, 413);
+  const next = await call(JSON.stringify({ count: 1, rid: 'big-next-request-1' }));
   assert.equal(next.status, 200);
   agent.destroy();
 });
@@ -39,7 +39,7 @@ test('an oversized upload gets 413 and does not wedge the next request on the sa
 test('malformed requests are 4xx, never 500', async () => {
   const u = await signup('mal_u');
   for (const raw of ['null', '[]', '"x"', '{', '123']) assert.equal((await api('POST', '/api/log', { token: u.token, raw })).status, 400, raw);
-  assert.equal((await api('GET', '/api/burhan/saaliks/%E0%A4%A', { token: u.token })).status, 400);
+  assert.equal((await api('GET', '/api/members/%E0%A4%A', { token: u.token })).status, 400);
   for (const kind of ['constructor', '__proto__', 'toString']) {
     assert.equal((await api('POST', '/api/like', { token: u.token, body: { kind, id: 1 } })).status, 400, kind);
     assert.equal((await api('GET', `/api/replies?kind=${kind}&id=1`, { token: u.token })).status, 400, kind);
@@ -96,16 +96,12 @@ test('a city can be changed once a fortnight', async () => {
   assert.equal((await api('PATCH', '/api/me', { token: u.token, body: { cityId: 1172451 } })).cityId, 1172451);
 });
 
-test('deleting an account erases its Al-Burhan data, written text and push devices', async () => {
+test('deleting an account erases its written text', async () => {
   const u = await signup('del_u');
   const id = db.prepare('SELECT id FROM users WHERE username = ?').get('del_u').id;
-  db.prepare("INSERT INTO murabbi_links (user_id, murabbi_phone, murabbi_name, checked_at, created_at) VALUES (?, '+923000000000', 'Hafiz', 1, 1)").run(id);
-  db.prepare("INSERT INTO mamulaat_days (user_id, day, percent) VALUES (?, '2026-10-20', 70)").run(id);
-  db.prepare("INSERT INTO push_subs (endpoint, user_id, p256dh, auth, created_at) VALUES ('https://fcm.googleapis.com/x', ?, 'a', 'b', 1)").run(id);
-  await api('POST', '/api/reflections', { token: u.token, body: { text: 'a private thought' } });
+  db.prepare("INSERT INTO replies (kind, item_id, user_id, body, created_at) VALUES ('post', 1, ?, 'a private thought', 1)").run(id);
   assert.equal((await api('DELETE', '/api/me', { token: u.token, body: { password: 'secret1' } })).status, 200);
-  for (const t of ['murabbi_links', 'mamulaat_days', 'push_subs']) assert.equal(db.prepare(`SELECT COUNT(*) n FROM ${t} WHERE user_id = ?`).get(id).n, 0, t);
-  assert.equal(db.prepare('SELECT body FROM reflections WHERE user_id = ?').get(id).body, '');
+  assert.equal(db.prepare('SELECT body FROM replies WHERE user_id = ?').get(id).body, '');
 });
 
 test('a malformed stored password is a wrong password, not a crash', async () => {
@@ -123,7 +119,7 @@ test('phone numbers typed in Urdu (۰-۹) or Arabic (٠-٩) digits work for sign
   assert.equal((await api('GET', '/api/me', { token: r.token })).phone, '+923078881234');
   const login = await api('POST', '/api/login', { body: { id: '٠٣٠٧٨٨٨١٢٣٤', password: 'secret1' } });
   assert.ok(login.token, 'logs in with the same number in Arabic digits');
-  assert.equal((await api('POST', '/api/register', { body: { username: 'udigits2', email: 'udigits2@x.pk', phone: '03078881234', password: 'secret1', cityId: 1172451, invite: 'TESTFOUND' } })).error, 'account_exists', 'the same number in Western digits is the same number');
+  assert.equal((await api('POST', '/api/register', { body: { username: 'udigits2', email: 'udigits2@x.pk', phone: '03078881234', password: 'secret1', cityId: 1172451, invite: 'testcv' } })).error, 'account_exists', 'the same number in Western digits is the same number');
 });
 
 test('cities can be searched in Urdu (Arabic-keyboard letters and spaces do not matter), and every Urdu name finds a Pakistani city', async () => {

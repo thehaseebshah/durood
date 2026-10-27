@@ -7,9 +7,9 @@ process.env.ADMIN_KEY = 'test-admin';
 process.env.REG_LIMIT_PER_HOUR = '1000';
 process.env.MAX_DAILY_NEW = '50000'; // first-week limit is tested on its own
 process.env.PUBLIC_CACHE_MS = '0';
-process.env.PUBLIC_FOUNDERS_CODE = 'TESTFOUND';
 
 const { createServer } = await import('../server/index.js');
+(await import('./helpers.js')).seedCaravan();
 const { db } = await import('../server/db.js');
 const { audit } = await import('../server/audit.js');
 const { dayOf, weekStart } = await import('../server/game.js');
@@ -34,7 +34,7 @@ async function api(method, path, { token, body, headers } = {}) {
 }
 const A = { 'x-admin-key': 'test-admin' };
 const admin = (m, p, body) => api(m, '/api/admin' + p, { headers: A, body });
-const signup = (username, invite = 'TESTFOUND', extra = {}) => {
+const signup = (username, invite = 'testcv', extra = {}) => {
   n += 1;
   return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0302${String(3000000 + n)}`, password: 'secret1', cityId: 1172451, invite, ...extra } });
 };
@@ -48,42 +48,72 @@ function seedDay(username, daysAgo, count) {
   db.prepare('INSERT INTO daily (user_id, day, count) VALUES (?,?,?) ON CONFLICT(user_id, day) DO UPDATE SET count = count + excluded.count').run(id, day, count);
   db.prepare('UPDATE users SET total = total + ?, xp = xp + ? WHERE id = ?').run(count, count, id);
   db.prepare('INSERT INTO day_totals (day, total) VALUES (?, ?) ON CONFLICT(day) DO UPDATE SET total = total + excluded.total').run(day, count);
-  db.prepare('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ?)').run(count, id);
   return db.prepare('SELECT MAX(id) id FROM entries WHERE user_id = ?').get(id).id;
 }
 
-test('sign-up needs an invite code; the public founders code works and an admin can switch it off', async () => {
+test('sign-up needs a caravan name as the invite code: any member of the public may use it, the display name does not count', async () => {
   assert.equal((await signup('no_code', '')).error, 'invite_required');
   assert.equal((await signup('bad_code', 'NOPE1234')).error, 'bad_invite');
-  const ok = await signup('founder_a', 'testfound');
+  const ok = await signup('founder_a', 'TESTCV');
   assert.ok(ok.token, 'case-insensitive');
-  assert.equal(db.prepare("SELECT invited_via FROM users WHERE username = 'founder_a'").get().invited_via, 'public');
-  assert.equal((await api('GET', '/api/invite-check?code=TESTFOUND')).valid, true);
-  await admin('POST', '/public-code', { enabled: false });
-  assert.equal((await signup('founder_b')).error, 'bad_invite');
-  assert.equal((await api('GET', '/api/invite-check?code=TESTFOUND')).valid, false);
-  await admin('POST', '/public-code', { enabled: true });
-  assert.ok((await signup('founder_b')).token);
+  assert.equal(db.prepare("SELECT invited_via FROM users WHERE username = 'founder_a'").get().invited_via, 'caravan');
+  assert.equal(ok.me.caravan.name, 'testcv', 'the new member is in the caravan at once');
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM caravan_members WHERE user_id = ?").get(ok.me.id).n, 1);
+  db.prepare("UPDATE caravans SET display_name = 'قافلہ مثال' WHERE name = 'testcv'").run();
+  const chk = await api('GET', '/api/invite-check?code=TESTCV');
+  assert.deepEqual([chk.valid, chk.caravan, chk.displayName], [true, 'testcv', 'قافلہ مثال']);
+  assert.equal((await api('GET', '/api/invite-check?code=' + encodeURIComponent('قافلہ مثال'))).valid, false);
+  assert.equal((await signup('display_try', 'قافلہ مثال')).error, 'bad_invite');
+  assert.equal((await api('GET', '/api/invite-check?code=nobody')).valid, false);
   assert.equal((await api('GET', '/api/admin/invites')).status, 403);
+  assert.equal((await api('GET', '/api/config')).signupsOpen, true);
 });
 
-test('founder codes: issued by an admin, limited uses, revocable, roots of their own caravan', async () => {
-  const f = await admin('POST', '/invites', { label: 'Lahore lead', maxUses: 2 });
+test('the admin kill switch closes sign-ups; the daily cap per caravan stops a caravan name being used without end', async () => {
+  assert.equal((await admin('POST', '/signups', { enabled: false })).enabled, false);
+  assert.equal((await api('GET', '/api/config')).signupsOpen, false);
+  assert.equal((await signup('closed_a')).error, 'signups_closed');
+  assert.equal((await admin('POST', '/signups', { enabled: true })).enabled, true);
+  assert.ok((await signup('closed_a')).token);
+  const used = db.prepare("SELECT COUNT(*) n FROM users WHERE invited_via = 'caravan'").get().n;
+  assert.equal((await admin('POST', '/signups', { dailyCap: 'lots' })).status, 400);
+  assert.equal((await admin('POST', '/signups', { dailyCap: used + 1 })).dailyCap, used + 1);
+  assert.equal((await admin('GET', '/invites')).signups.dailyCap, used + 1);
+  assert.ok((await signup('cap_a')).token);
+  assert.equal((await signup('cap_b')).error, 'caravan_full');
+  assert.equal((await api('GET', '/api/invite-check?code=testcv')).valid, false);
+  await admin('POST', '/signups', { dailyCap: 200 });
+  assert.ok((await signup('cap_b')).token);
+});
+
+test('admin codes are tied to a caravan: limited uses, revocable; whoever registers with one joins that caravan', async () => {
+  assert.equal((await admin('POST', '/members/create', { username: 'second_owner', email: 'so@x.pk', phone: '03001234500', password: 'secret1', cityId: 1172451 })).ok, true);
+  assert.equal((await admin('POST', '/caravans', { name: 'second', owner: 'second_owner' })).name, 'second');
+  assert.equal((await admin('POST', '/invites', { label: 'no caravan' })).status, 404);
+  assert.equal((await admin('POST', '/invites', { label: 'no caravan', caravan: 'nope_cv' })).status, 404);
+  const f = await admin('POST', '/invites', { label: 'Lahore lead', maxUses: 2, caravan: 'Second' });
   assert.match(f.code, /^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+  assert.equal((await api('GET', '/api/invite-check?code=' + f.code)).caravan, 'second');
   const first = await signup('lahore_1', f.code);
-  assert.ok(first.token);
-  assert.equal(db.prepare("SELECT referrer_id, invited_via FROM users WHERE username = 'lahore_1'").get().referrer_id, null);
+  assert.equal(first.me.caravan.name, 'second');
+  assert.equal(db.prepare("SELECT referrer_id, invited_via, invite_code FROM users WHERE username = 'lahore_1'").get().invited_via, 'founder');
   assert.ok((await signup('lahore_2', f.code.toLowerCase().replace('-', ''))).token);
   assert.equal((await signup('lahore_3', f.code)).error, 'invite_used');
-  const g = await admin('POST', '/invites', { label: 'to revoke' });
+  const g = await admin('POST', '/invites', { label: 'to revoke', caravan: 'second' });
   assert.ok((await signup('rev_ok', g.code)).token);
   await admin('POST', `/invites/${g.code}/revoke`);
   assert.equal((await signup('rev_no', g.code)).error, 'invite_revoked');
   const list = await admin('GET', '/invites');
-  assert.equal(list.invites.find((i) => i.code === f.code).joined, 2);
+  const row = list.invites.find((i) => i.code === f.code);
+  assert.deepEqual([row.joined, row.caravan], [2, 'second']);
+  // admin codes ignore the caravan-name daily cap
+  await admin('POST', '/signups', { dailyCap: 0 });
+  assert.equal((await signup('capped_name')).error, 'caravan_full');
+  assert.ok((await signup('capped_code', (await admin('POST', '/invites', { caravan: 'second' })).code)).token);
+  await admin('POST', '/signups', { dailyCap: 200 });
 });
 
-test('waitlist: request, admin approves into a single-use code, rejection and repeats are handled', async () => {
+test('waitlist: request, admin approves into a single-use code for a caravan, rejection and repeats are handled', async () => {
   assert.equal((await api('POST', '/api/waitlist', { body: { name: 'A', phone: '0300 1111111' } })).error, 'bad_name');
   assert.equal((await api('POST', '/api/waitlist', { body: { name: 'Sara Khan', phone: 'abc' } })).error, 'bad_phone');
   assert.equal((await api('POST', '/api/waitlist', { body: { name: 'Sara Khan', phone: '0300 1111111', email: 'sara@x.pk', city: 'Multan' } })).ok, true);
@@ -92,68 +122,30 @@ test('waitlist: request, admin approves into a single-use code, rejection and re
   assert.equal(list.requests.length, 1);
   assert.equal(list.requests[0].phone, '+923001111111');
   outbox.length = 0;
-  const ap = await admin('POST', `/waitlist/${list.requests[0].id}`, { action: 'approve' });
+  assert.equal((await admin('POST', `/waitlist/${list.requests[0].id}`, { action: 'approve' })).status, 404, 'an approval names the caravan');
+  const ap = await admin('POST', `/waitlist/${list.requests[0].id}`, { action: 'approve', caravan: 'testcv' });
   assert.match(ap.code, /^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
   assert.equal(ap.emailed, false); // the test server only logs mail, and says so
   assert.equal(ap.mailOff, true);
   assert.ok(outbox.some((m) => m.to === 'sara@x.pk' && m.text.includes(ap.code)));
-  assert.ok((await signup('sara_k', ap.code)).token);
+  assert.equal((await signup('sara_k', ap.code)).me.caravan.name, 'testcv');
   assert.equal((await signup('sara_k2', ap.code)).error, 'invite_used');
-  assert.equal((await admin('POST', `/waitlist/${list.requests[0].id}`, { action: 'approve' })).error, 'already_resolved');
+  assert.equal((await admin('POST', `/waitlist/${list.requests[0].id}`, { action: 'approve', caravan: 'testcv' })).error, 'already_resolved');
   await api('POST', '/api/waitlist', { body: { name: 'No Thanks', phone: '03002222222' } });
   const w2 = (await admin('GET', '/waitlist')).requests[0];
   assert.equal((await admin('POST', `/waitlist/${w2.id}`, { action: 'reject' })).ok, true);
   assert.equal((await admin('GET', '/waitlist?status=rejected')).requests.length, 1);
 });
 
-test('member invite cap: 10 to start, more for level, active invitees and streaks; suspended members cannot invite', async () => {
-  const host = await signup('host_m');
-  const st = (await api('GET', '/api/me', { token: host.token })).invites;
-  assert.deepEqual([st.cap, st.used, st.left, st.nextAt], [10, 0, 10, 7]);
-  assert.deepEqual(st.from, { start: 10, level: 0, active: 0, streak: 0 });
-  for (let i = 0; i < 10; i++) assert.ok((await signup(`kid_${i}`, 'host_m')).token, `invite ${i}`);
-  assert.equal((await signup('kid_x', 'host_m')).error, 'invite_full');
-  assert.equal((await api('GET', '/api/invite-check?code=host_m')).valid, false);
-  db.prepare("UPDATE users SET best_streak = 7 WHERE username = 'host_m'").run();
-  const me = await api('GET', '/api/me', { token: host.token });
-  assert.deepEqual([me.invites.cap, me.invites.used, me.invites.left, me.invites.nextAt], [20, 10, 10, 14]);
-  assert.ok((await signup('kid_x', 'host_m')).token);
-  db.prepare("UPDATE users SET best_streak = 21 WHERE username = 'host_m'").run();
-  assert.equal((await api('GET', '/api/me', { token: host.token })).invites.cap, 40);
-  // points: level 3 (400 points) adds 2 levels x 3
-  db.prepare("UPDATE users SET xp = 400 WHERE username = 'host_m'").run();
-  assert.equal((await api('GET', '/api/me', { token: host.token })).invites.cap, 46);
-  // each invitee who reaches 100 durood adds 2
-  db.prepare("UPDATE users SET total = 100 WHERE username IN ('kid_0', 'kid_1')").run();
-  const g = (await api('GET', '/api/me', { token: host.token })).invites;
-  assert.equal(g.cap, 50); assert.equal(g.from.active, 4);
-  db.prepare("UPDATE users SET xp = 0, total = 0 WHERE username IN ('host_m', 'kid_0', 'kid_1')").run();
-  // founder-code and waitlist members never use up anyone's cap
-  assert.equal((await api('GET', '/api/me', { token: (await signup('free_m')).token })).invites.used, 0);
-});
-
-test('who invited you: a member who joined with a founder code links to their inviter once, early, and the tree and reward follow', async () => {
-  const grand = await signup('lk_grand'), host = await signup('lk_host', 'lk_grand'), kid = await signup('lk_kid');
-  assert.equal((await api('GET', '/api/me', { token: kid.token })).canLinkInviter, true);
-  await api('POST', '/api/log', { token: kid.token, body: { count: 150 } });
-  assert.equal((await api('POST', '/api/me/inviter', { token: kid.token, body: { username: 'lk_kid' } })).error, 'inviter_unknown');
-  assert.equal((await api('POST', '/api/me/inviter', { token: kid.token, body: { username: 'nobody_here' } })).error, 'inviter_unknown');
-  const r = await api('POST', '/api/me/inviter', { token: kid.token, body: { username: '@lk_host' } });
-  assert.equal(r.inviter, 'lk_host'); assert.equal(r.me.inviter, 'lk_host'); assert.equal(r.me.canLinkInviter, false);
-  const h = await api('GET', '/api/me', { token: host.token });
-  assert.equal(h.team.direct, 1); assert.equal(h.team.total, 150);
-  assert.equal(h.xp, 750); // the referral reward (500) and the weekly invite quest (250), as if the code had been used
-  assert.equal(h.invites.used, 1); assert.equal(h.invites.from.active, 2);
-  assert.equal((await api('GET', '/api/me', { token: grand.token })).team.total, 150); // the whole line above gets the total
-  // only once
-  assert.equal((await api('POST', '/api/me/inviter', { token: kid.token, body: { username: 'lk_grand' } })).error, 'link_closed');
-  // not after 14 days, and not once someone joined through you
-  const late = await signup('lk_late');
-  db.prepare("UPDATE users SET created_at = ? WHERE username = 'lk_late'").run(Date.now() - 15 * 864e5);
-  assert.equal((await api('POST', '/api/me/inviter', { token: late.token, body: { username: 'lk_host' } })).error, 'link_closed');
-  const top = await signup('lk_top'); await signup('lk_under', 'lk_top');
-  assert.equal((await api('POST', '/api/me/inviter', { token: top.token, body: { username: 'lk_host' } })).error, 'link_closed');
-  assert.deepEqual(audit().problems, []);
+test('members are locked into their caravan: there is no leave, switch, join or inviter route; referral fields are gone from /api/me', async () => {
+  const m = await signup('locked_m');
+  for (const [method, path] of [['POST', '/api/caravan/leave'], ['POST', '/api/caravan/join'], ['POST', '/api/caravan'], ['POST', '/api/caravan/invite'], ['POST', '/api/me/inviter']]) {
+    assert.equal((await api(method, path, { token: m.token, body: { name: 'second', username: 'x' } })).status, 404, `${method} ${path}`);
+  }
+  const me = await api('GET', '/api/me', { token: m.token });
+  for (const k of ['invites', 'inviter', 'canLinkInviter', 'team', 'circleUrl', 'circleTeach', 'reminderTime']) assert.ok(!(k in me), k);
+  assert.equal(me.caravan.name, 'testcv');
+  assert.ok(!me.quests.some((q) => ['invite', 'reflect', 'lecture'].includes(q.id)));
 });
 
 test('streak points: the daily streak quest pays more the longer the streak, once the day reaches 100, and edits take it back', async () => {
@@ -200,38 +192,27 @@ test('undo: an entry edited to 0 is removed; totals, quests and history follow, 
   assert.equal(u.history.days.flatMap((d) => d.entries).length, 0); // the entry is gone from the history
   assert.equal((await api('PATCH', `/api/entries/${r.entryId}`, { token: m.token, body: { count: 0, rid: 'undo-test-rid-2' } })).error, 'entry_superseded'); // only once
   assert.equal((await api('PATCH', `/api/entries/${r.entryId}`, { token: m.token, body: { count: -5, rid: 'undo-test-rid-3' } })).error, 'bad_count');
-  // an invited member's only entry taken back: the inviter's Qabila no longer counts them as active, and nothing is left over
-  const kid = await signup('undo_kid', 'undo_m');
-  const k = await api('POST', '/api/log', { token: kid.token, body: { count: 40 } });
-  assert.equal((await api('GET', '/api/me', { token: m.token })).team.total, 40);
-  await api('PATCH', `/api/entries/${k.entryId}`, { token: kid.token, body: { count: 0, rid: 'undo-test-kid-1' } });
-  assert.equal((await api('GET', '/api/me', { token: m.token })).team.total, 0);
   assert.deepEqual(audit().problems, []);
 });
 
-test('suspending a member, or a whole branch, locks them out but keeps their durood in the totals', async () => {
-  const root = await signup('branch_root');
-  const kid = await signup('branch_kid', 'branch_root');
-  const grand = await signup('branch_grand', 'branch_kid');
-  const other = await signup('branch_other');
-  await api('POST', '/api/log', { token: grand.token, body: { count: 500 } });
+test('suspending a member locks them out but keeps their durood in the totals; a suspended caravan name or member is not a way in', async () => {
+  const kid = await signup('susp_kid');
+  const other = await signup('susp_other');
+  await api('POST', '/api/log', { token: kid.token, body: { count: 500 } });
   const before = (await api('GET', '/api/public')).total;
-  assert.equal((await admin('POST', '/members/branch_kid', { action: 'suspend', branch: true })).affected, 2);
-  assert.equal((await api('POST', '/api/login', { body: { id: 'branch_grand', password: 'secret1' } })).error, 'suspended');
+  assert.equal((await admin('POST', '/members/susp_kid', { action: 'suspend' })).affected, 1);
+  assert.equal((await api('POST', '/api/login', { body: { id: 'susp_kid', password: 'secret1' } })).error, 'suspended');
   assert.equal((await api('GET', '/api/me', { token: kid.token })).error, 'suspended');
-  assert.ok((await api('GET', '/api/me', { token: root.token })).username, 'the root is untouched');
-  assert.equal((await signup('via_kid', 'branch_kid')).error, 'bad_invite');
   const board = await api('GET', '/api/leaderboard?type=users&period=all', { token: other.token });
-  assert.ok(!board.rows.some((r) => r.username === 'branch_grand'));
+  assert.ok(!board.rows.some((r) => r.username === 'susp_kid'));
   assert.equal((await api('GET', '/api/public')).total, before, 'totals are unchanged');
-  await admin('POST', '/members/branch_kid', { action: 'unsuspend', branch: true });
-  assert.ok((await api('POST', '/api/login', { body: { id: 'branch_grand', password: 'secret1' } })).token);
+  await admin('POST', '/members/susp_kid', { action: 'unsuspend' });
+  assert.ok((await api('POST', '/api/login', { body: { id: 'susp_kid', password: 'secret1' } })).token);
   assert.deepEqual(audit().problems, []);
 });
 
 test('editing an entry: reversing entry plus replacement, caches follow, history shows the change', async () => {
-  const root = await signup('ed_root');
-  const u = await signup('ed_user', 'ed_root');
+  const u = await signup('ed_user');
   const log = await api('POST', '/api/log', { token: u.token, body: { count: 3000 } });
   assert.equal(log.me.today, 3000);
   let h = await api('GET', '/api/history', { token: u.token });
@@ -243,8 +224,7 @@ test('editing an entry: reversing entry plus replacement, caches follow, history
   const e1 = await api('PATCH', `/api/entries/${entry.id}`, { token: u.token, body: { count: 300, rid } });
   assert.equal(e1.me.today, 300);
   assert.equal(e1.me.total, 300);
-  const rootMe = await api('GET', '/api/me', { token: root.token });
-  assert.equal(rootMe.team.total, 300, 'caravan totals follow the edit');
+  assert.equal((await api('GET', '/api/caravan', { token: u.token })).caravan.total >= 300, true, 'caravan totals follow the edit');
   const again = await api('PATCH', `/api/entries/${entry.id}`, { token: u.token, body: { count: 300, rid } });
   assert.equal(again.duplicate, true);
   assert.equal(again.me.today, 300, 'a retry is counted once');
@@ -401,12 +381,12 @@ test('email confirmation: a link is sent at sign-up, never blocks login, and con
 
 test('deleting an account anonymises the person but keeps their durood in every total', async () => {
   const root = await signup('del_root');
-  const u = await signup('del_user', 'del_root');
-  const kid = await signup('del_kid', 'del_user');
+  const u = await signup('del_user');
+  const kid = await signup('del_kid');
   await api('POST', '/api/log', { token: u.token, body: { count: 800 } });
   await api('POST', '/api/log', { token: kid.token, body: { count: 200 } });
   const before = await api('GET', '/api/public');
-  const rootBefore = (await api('GET', '/api/me', { token: root.token })).team.total;
+  const rootBefore = (await api('GET', '/api/caravan', { token: root.token })).caravan.total;
   assert.equal((await api('DELETE', '/api/me', { token: u.token, body: { password: 'wrong' } })).status, 401);
   assert.equal((await api('DELETE', '/api/me', { token: u.token, body: { password: 'secret1' } })).ok, true);
   const gone = db.prepare("SELECT * FROM users WHERE deleted_at IS NOT NULL ORDER BY id DESC LIMIT 1").get();
@@ -418,12 +398,11 @@ test('deleting an account anonymises the person but keeps their durood in every 
   const after = await api('GET', '/api/public');
   assert.equal(after.total, before.total, 'national durood unchanged');
   assert.equal(after.members, before.members - 1, 'members exclude the anonymised account');
-  assert.equal((await api('GET', '/api/me', { token: root.token })).team.total, rootBefore, 'caravan totals unchanged');
-  assert.equal((await signup('via_deleted', 'del_user')).error, 'bad_invite');
+  assert.equal((await api('GET', '/api/caravan', { token: root.token })).caravan.total, rootBefore - 800, 'the account leaves its caravan, so the caravan total no longer includes it (the national total does)');
   assert.equal((await signup('member_77')).error, 'bad_username', 'member_<id> is reserved for anonymised accounts');
   const board = await api('GET', '/api/leaderboard?type=users&period=all', { token: root.token });
   assert.ok(!board.rows.some((r) => /^member_\d+$/.test(r.username)));
-  assert.equal(db.prepare('SELECT referrer_id FROM users WHERE username = ?').get('del_kid').referrer_id, gone.id, 'the tree is intact');
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM caravan_members WHERE user_id = ?').get(gone.id).n, 0, 'the deleted account left its caravan');
   assert.deepEqual(audit().problems, []);
 });
 
@@ -436,31 +415,4 @@ test('audit catches a tampered edit chain', async () => {
   db.exec('DROP TRIGGER entries_no_update');
   db.prepare("UPDATE entries SET count = -999 WHERE kind = 'reverse' AND user_id = ?").run(uid('chain_u'));
   assert.ok(audit().problems.some((p) => p.kind === 'edit_chain'));
-});
-
-test('the public code can place everyone who joins under one member, without using up that member\'s own invites', async () => {
-  const host = await signup('pubhost');
-  assert.equal((await admin('POST', '/public-code', { referrer: 'nobody_here' })).status, 404);
-  assert.equal((await admin('POST', '/public-code', { referrer: 'pubhost' })).referrer, 'pubhost');
-  const a = await signup('pubkid_a'), b = await signup('pubkid_b');
-  const row = (u) => db.prepare('SELECT referrer_id, invited_via FROM users WHERE username = ?').get(u);
-  const hostId = db.prepare("SELECT id FROM users WHERE username = 'pubhost'").get().id;
-  assert.equal(row('pubkid_a').referrer_id, hostId);
-  assert.equal(row('pubkid_a').invited_via, 'public');
-  assert.equal(db.prepare('SELECT COUNT(*) n FROM ancestors WHERE ancestor_id = ? AND user_id != ?').get(hostId, hostId).n >= 2, true, 'they are in the host\'s Qabila');
-  const me = await api('GET', '/api/me', { token: host.token });
-  assert.equal(me.invites.used, 0, 'public sign-ups do not count against the host\'s own invites');
-  assert.ok(a.token && b.token);
-  await admin('POST', '/public-code', { referrer: '' });
-  assert.equal(row((await signup('pubkid_c'), 'pubkid_c')).referrer_id, null, 'cleared: nobody\'s again');
-});
-
-test('an admin can give a member extra invites on top of what they earn', async () => {
-  const m = await signup('gift_a');
-  const before = (await api('GET', '/api/me', { token: m.token })).invites.cap;
-  const r = await admin('POST', '/members/gift_a', { action: 'grant-invites', count: 500 });
-  assert.equal(r.invites.cap, before + 500);
-  assert.equal((await api('GET', '/api/me', { token: m.token })).invites.left, before + 500);
-  assert.equal((await admin('POST', '/members/gift_a', { action: 'grant-invites', count: 'lots' })).status, 400);
-  assert.equal((await admin('POST', '/members/nobody_here', { action: 'grant-invites', count: 5 })).status, 404);
 });

@@ -1,19 +1,22 @@
 // Sends malformed input to every API route, as a member and as an admin, on a throwaway database. No route may answer 5xx.
 //   npm run fuzz
-// (Linking a murabbi calls the Mamulaat app, which is not reachable here, so its 503 is expected and not counted.)
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sq-fuzz-'));
 Object.assign(process.env, { DB_PATH: path.join(dir, 'fuzz.db'), ADMIN_KEY: 'fuzz-admin-key-long-enough-1234', EDITION: 'internal',
-  PUBLIC_FOUNDERS_CODE: 'FUZZCODE', NODE_ENV: 'test', FLAG_NEW_HIGH: '1000000000', REG_LIMIT_PER_HOUR: '1000' });
+  NODE_ENV: 'test', FLAG_NEW_HIGH: '1000000000', REG_LIMIT_PER_HOUR: '1000' });
 const { createServer } = await import('../server/index.js');
 const server = createServer();
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const B = `http://127.0.0.1:${server.address().port}`;
 const json = { 'content-type': 'application/json' };
-const reg = (u) => fetch(B + '/api/register', { method: 'POST', headers: json, body: JSON.stringify({ username: u, email: `${u}@f.pk`, phone: `0305${String(Math.floor(Math.random() * 1e7)).padStart(7, '0')}`, password: 'secret12', cityId: 1172451, invite: 'FUZZCODE' }) }).then((r) => r.json());
+// every member joins a caravan at sign-up, so an admin makes one first (owner registered without a caravan, then the caravan)
+const adm = { ...json, 'x-admin-key': process.env.ADMIN_KEY };
+await fetch(B + '/api/admin/members/create', { method: 'POST', headers: adm, body: JSON.stringify({ username: 'fuzz_owner', email: 'fuzz_owner@x.pk', phone: '03069990000', password: 'secret12', cityId: 1172451 }) });
+await fetch(B + '/api/admin/caravans', { method: 'POST', headers: adm, body: JSON.stringify({ name: 'fuzzcv', owner: 'fuzz_owner' }) });
+const reg = (u) => fetch(B + '/api/register', { method: 'POST', headers: json, body: JSON.stringify({ username: u, email: `${u}@f.pk`, phone: `0305${String(Math.floor(Math.random() * 1e7)).padStart(7, '0')}`, password: 'secret12', cityId: 1172451, invite: 'fuzzcv' }) }).then((r) => r.json());
 const me = await reg('fuzz_me'); await reg('fuzz_other');
 
 const src = fs.readFileSync(new URL('../server/index.js', import.meta.url), 'utf8');
@@ -32,7 +35,7 @@ for (const [m, p] of routes) {
     const q = m === 'GET' ? `?q=${encodeURIComponent(String(w))}&type=${encodeURIComponent(String(w))}&period=${encodeURIComponent(String(w))}&metric=${encodeURIComponent(String(w))}` : '';
     const r = await fetch(B + fill(p, w) + q, { method: m, headers, body }).catch(() => ({ status: 'network error' }));
     n++;
-    if ((r.status === 'network error' || r.status >= 500) && !(p === '/api/burhan/murabbi' && r.status === 503)) bad.push(`${m} ${p} with ${JSON.stringify(w)?.slice(0, 30)} -> ${r.status}`);
+    if ((r.status === 'network error' || r.status >= 500)) bad.push(`${m} ${p} with ${JSON.stringify(w)?.slice(0, 30)} -> ${r.status}`);
   }
 }
 server.close();

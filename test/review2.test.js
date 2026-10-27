@@ -7,10 +7,10 @@ process.env.DB_PATH = ':memory:';
 process.env.ADMIN_KEY = 'test-admin';
 process.env.REG_LIMIT_PER_HOUR = '1000';
 process.env.PUBLIC_CACHE_MS = '0';
-process.env.PUBLIC_FOUNDERS_CODE = 'TESTFOUND';
 process.env.MAX_DAILY_NEW = '50000';
 
 const { createServer, normalizePhone } = await import('../server/index.js');
+(await import('./helpers.js')).seedCaravan();
 const { audit } = await import('../server/audit.js');
 const { db } = await import('../server/db.js');
 const { CFG, FLAG, dayOf, dayNum, dayStr, weekStart } = await import('../server/game.js');
@@ -24,7 +24,7 @@ async function api(method, path, { token, body, headers } = {}) {
   return { status: res.status, ...(await res.json().catch(() => ({}))) };
 }
 const admin = { 'x-admin-key': 'test-admin' };
-const signup = (username, invite = 'TESTFOUND') => { n += 1; return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0306${String(3000000 + n)}`, password: 'secret1', cityId: 1172451, invite } }); };
+const signup = (username, invite = 'testcv') => { n += 1; return api('POST', '/api/register', { body: { username, email: `${username}@x.pk`, phone: `0306${String(3000000 + n)}`, password: 'secret1', cityId: 1172451, invite } }); };
 const log = (u, count) => api('POST', '/api/log', { token: u.token, body: { count, rid: crypto.randomUUID() } });
 const xp = async (u) => (await api('GET', '/api/me', { token: u.token })).xp;
 const uid = (name) => db.prepare('SELECT id FROM users WHERE username = ?').get(name).id;
@@ -67,28 +67,6 @@ test('a new account with a big day is held for a look; a cleared flag is raised 
   } finally { FLAG.newHigh = old; }
 });
 
-test('an inviter is paid only when the invitee has really recited, not for a sign-up that logs one durood', async () => {
-  const a = await signup('rf_a');
-  const b = await signup('rf_b', 'rf_a');
-  const base0 = await xp(a);
-  await log(b, 1);
-  assert.equal(await xp(a), base0, 'one durood earns the inviter nothing');
-  await log(b, CFG.referralMin - 1);
-  const paid = (await xp(a)) - base0;
-  assert.ok(paid >= CFG.referralXp, 'the reward arrives when the invitee reaches the minimum (plus the weekly invite quest)');
-  await log(b, 50);
-  assert.equal((await xp(a)) - base0, paid, 'and only once');
-  const inviteQuest = (await api('GET', '/api/me', { token: a.token })).quests.find((q) => q.id === 'invite');
-  assert.equal(inviteQuest.cur, 1);
-  assert.deepEqual(audit().problems, []);
-});
-
-test('the invite quest ignores sign-ups that never recited', async () => {
-  const a = await signup('iq_a');
-  await signup('iq_b', 'iq_a');
-  assert.equal((await api('GET', '/api/me', { token: a.token })).quests.find((q) => q.id === 'invite').cur, 0);
-});
-
 test('the week is closed before the first durood of the new week, and weeks missed by downtime are caught up', async () => {
   db.prepare("DELETE FROM settings WHERE key LIKE 'week_closed:%'").run();
   const u = await signup('wk_u');
@@ -100,25 +78,6 @@ test('the week is closed before the first durood of the new week, and weeks miss
   const closed = db.prepare("SELECT COUNT(*) n FROM settings WHERE key LIKE 'week_closed:%'").get().n;
   assert.equal(closed, 4, 'the last four unclosed weeks are closed, oldest first');
   assert.equal(compete.ensureWeekClosed(), null, 'and nothing more happens when called again');
-});
-
-test('deleting a lecture with comments, replies and likes works, all or nothing', async () => {
-  const lec = await api('POST', '/api/admin/lectures', { headers: admin, body: { youtube_id: 'dQw4w9WgXcQ', title_en: 'To delete', min_seconds: 30 } });
-  const a = await signup('ld_a'), b = await signup('ld_b');
-  db.prepare("INSERT INTO lecture_starts (user_id, lecture_id, started_at) VALUES (?,?,1)").run(uid('ld_a'), lec.id);
-  await api('POST', `/api/lectures/${lec.id}/complete`, { token: a.token });
-  db.prepare('UPDATE lecture_starts SET started_at = 1').run();
-  const done = await api('POST', `/api/lectures/${lec.id}/complete`, { token: a.token });
-  assert.ok(done.xpGained >= 0);
-  const c = await api('POST', `/api/lectures/${lec.id}/comment`, { token: a.token, body: { text: 'nice' } });
-  if (c.id) {
-    await api('POST', '/api/like', { token: b.token, body: { kind: 'comment', id: c.id } });
-    await api('POST', '/api/replies', { token: b.token, body: { kind: 'comment', id: c.id, text: 'agreed' } });
-  }
-  assert.equal((await api('DELETE', `/api/admin/lectures/${lec.id}`, { headers: admin })).ok, true);
-  assert.equal(db.prepare('SELECT COUNT(*) n FROM lectures WHERE id = ?').get(lec.id).n, 0);
-  assert.equal(db.prepare('SELECT COUNT(*) n FROM lecture_comments WHERE lecture_id = ?').get(lec.id).n, 0);
-  assert.deepEqual(audit().problems, []);
 });
 
 test('phone numbers: country code rules apply per country, a pasted full number is not doubled', () => {

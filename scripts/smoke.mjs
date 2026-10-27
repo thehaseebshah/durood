@@ -1,5 +1,5 @@
 // Quick end-to-end check of a deployed server. Creates one test member, so run it against QA, not production.
-//   SMOKE_URL=https://your-app.fly.dev SMOKE_CODE=<founders code> ADMIN_KEY=<admin key> node scripts/smoke.mjs
+//   SMOKE_URL=https://your-app.fly.dev SMOKE_CODE=<a caravan's name> ADMIN_KEY=<admin key> node scripts/smoke.mjs
 const URL_ = (process.env.SMOKE_URL || '').replace(/\/$/, '');
 if (!URL_ || !process.env.SMOKE_CODE) { console.error('Set SMOKE_URL and SMOKE_CODE (and ADMIN_KEY to also check the admin API)'); process.exit(2); }
 let failed = 0;
@@ -19,14 +19,13 @@ check('public meter', typeof (await call('GET', '/api/public')).json.total === '
 
 const id = `smoke_${Date.now().toString(36)}`.slice(0, 20);
 const reg = await call('POST', '/api/register', { body: { username: id, email: `${id}@example.com`, phone: `+9230${String(Date.now()).slice(-8)}`, password: 'smoke-test-1', cityId: 1172451, invite: process.env.SMOKE_CODE } }); // Lahore: every member picks a city
-check('register with the founders code', reg.status === 200 && !!reg.json.token, reg.json.error || '');
+check('register with a caravan name', reg.status === 200 && !!reg.json.token, reg.json.error || '');
 const token = reg.json.token;
 if (token) {
   const log = await call('POST', '/api/log', { token, body: { count: 33, rid: `smoke-${Date.now()}-abcdef` } });
   check('log 33 durood', log.status === 200 && log.json.me?.today === 33, log.json.error || '');
-  check('me / team / boards / news', (await call('GET', '/api/me', { token })).status === 200 && (await call('GET', '/api/team', { token })).status === 200
-    && (await call('GET', '/api/leaderboard?type=teams&metric=average', { token })).status === 200 && (await call('GET', '/api/news', { token })).status === 200);
-  check('push key available', !!(await call('GET', '/api/push/key', { token })).json.key);
+  check('me / caravan / boards / news', (await call('GET', '/api/me', { token })).status === 200 && (await call('GET', '/api/caravan', { token })).status === 200
+    && (await call('GET', '/api/leaderboard?type=caravans&metric=average', { token })).status === 200 && (await call('GET', '/api/news', { token })).status === 200);
   check('old token rejected after revoke', await (async () => { const r = await call('POST', '/api/sessions/revoke', { token }); return r.status === 200 && (await call('GET', '/api/me', { token })).status === 401; })());
 }
 check('a request without a token is refused', (await call('GET', '/api/me')).status === 401);
