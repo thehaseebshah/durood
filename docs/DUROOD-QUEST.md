@@ -4,7 +4,7 @@ A separate, simpler app cut from Seerah Quest (branch `durood-quest`). New name,
 
 ## Keep
 - Durood counter, daily goal, streak, streak shields and streak points; tasbih sound, vibration, counter roll.
-- Points, levels, badges, celebrations and shareable badge cards; durood quests only (daily goal, weekly goal, 5 days a week, streak).
+- Points, levels, badges, celebrations and shareable badge cards; durood quests (daily goal, weekly goal, 5 days a week, streak) and Sunnah quests (the Sunnah of the day and its streaks).
 - Weekly leagues (bronze to diamond).
 - One fixed 40-day community challenge (10 crore) and its ranking. No scheduling of later challenges.
 - Competition: individual, city, caravan, Majlis, leagues.
