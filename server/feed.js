@@ -1,41 +1,15 @@
 import { db, tx } from './db.js';
 import { HttpError, photoSig, avatarUrl } from './auth.js';
-import { CFG, dayOf, weekStart, grant, settleQuests, publicQuiz, quizPassed } from './game.js';
+import { CFG, dayOf, grant } from './game.js';
 import { cityPodium } from './compete.js';
-import { themeFor } from './reflection-themes.js';
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
 const run = (sql, ...a) => db.prepare(sql).run(...a);
 
-// ---- the question of the day and written reflections ---------------------------------------------------------------
-export const REFLECTION_MAX = 280;
-// plain text only: no links, so a reflection can never be an advert or a way to lure members elsewhere
+// ---- plain text rules ---------------------------------------------------------------
 export const LINK = /(https?:\/\/|www\.|\b[a-z0-9-]+\.(com|net|org|pk|io|me|co|info|app|tv|xyz)\b)/i;
 
-export function setPrompt({ day, text_en, text_ur }) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(day)) || !String(text_en || '').trim()) throw new HttpError(400, 'bad_prompt');
-  run(`INSERT INTO prompts (day, text_en, text_ur) VALUES (?,?,?) ON CONFLICT(day) DO UPDATE SET text_en = excluded.text_en, text_ur = excluded.text_ur`,
-    day, String(text_en).trim().slice(0, 200), String(text_ur || '').trim().slice(0, 200));
-  return { ok: true };
-}
-export const listPrompts = () => all('SELECT * FROM prompts ORDER BY day DESC LIMIT 60');
-const promptOut = (p) => p && { day: p.day, textEn: p.text_en, textUr: p.text_ur, themeEn: null, themeUr: null };
-/** The question for a day: the one an administrator wrote, else that day's built-in theme (so it is never just "write something"). */
-export function promptFor(day) {
-  const own = one('SELECT * FROM prompts WHERE day = ?', day);
-  if (own) return promptOut(own);
-  const t = themeFor(day);
-  return { day, textEn: t.qEn, textUr: t.qUr, themeEn: t.en, themeUr: t.ur };
-}
-
-export function reflectionToday(userId) {
-  const day = dayOf();
-  const mine = one('SELECT * FROM reflections WHERE user_id = ? AND day = ?', userId, day);
-  return { prompt: promptFor(day), mine: mine && { id: mine.id, body: mine.body, likes: mine.likes, status: mine.status }, max: REFLECTION_MAX };
-}
-
-/** Plain text only: control characters out, no links, 1..max characters. */
 function cleanText(text, max) {
   const body = String(text ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g, '').replace(/[ \t]+/g, ' ').trim();
   const len = [...body].length;
@@ -45,22 +19,9 @@ function cleanText(text, max) {
   return body;
 }
 
-export function postReflection(userId, text) {
-  const body = cleanText(text, REFLECTION_MAX);
-  const day = dayOf();
-  return tx(() => {
-    if (one('SELECT 1 FROM reflections WHERE user_id = ? AND day = ?', userId, day)) throw new HttpError(409, 'already_posted');
-    const r = run('INSERT INTO reflections (user_id, day, body, created_at) VALUES (?,?,?,?)', userId, day, body, Date.now());
-    settleQuests(userId); // the daily reflection quest pays here
-    return { id: Number(r.lastInsertRowid) };
-  });
-}
-
 // ---- likes, reports, moderation -----------------------------------------------------------------------------------
 const ITEMS = {
   post: { table: 'posts', owner: 'user_id', live: "status = 'verified' AND purged_at IS NULL", gone: "status = 'removed'", restore: "status = 'verified'" },
-  reflection: { table: 'reflections', owner: 'user_id', live: "status = 'visible'", gone: "status = 'removed'", restore: "status = 'visible'" },
-  comment: { table: 'lecture_comments', owner: 'user_id', live: "status = 'visible'", gone: "status = 'removed'", restore: "status = 'visible'" },
   reply: { table: 'replies', owner: 'user_id', live: "status = 'visible'", gone: "status = 'removed'", restore: "status = 'visible'", noLikes: true },
 };
 const itemOf = (kind) => (Object.hasOwn(ITEMS, kind) && ITEMS[kind]) || (() => { throw new HttpError(400, 'bad_kind'); })();
@@ -116,16 +77,10 @@ export function reportedContent() {
   const posts = all(`SELECT p.id, p.status, p.reports, p.likes, p.created_at, p.purged_at, u.username, s.title_en text FROM posts p JOIN users u ON u.id = p.user_id JOIN sunnahs s ON s.id = p.sunnah_id
                      WHERE p.reports > 0 OR p.status = 'removed' ORDER BY p.id DESC LIMIT 50`)
     .map((p) => ({ kind: 'post', id: p.id, status: p.status, reports: p.reports, likes: p.likes, username: p.username, text: p.text, photoUrl: p.purged_at ? null : `/photos/${p.id}/${photoSig(p.id)}`, at: p.created_at }));
-  const refl = all(`SELECT r.id, r.status, r.reports, r.likes, r.created_at, r.body text, u.username FROM reflections r JOIN users u ON u.id = r.user_id
-                    WHERE r.reports > 0 OR r.status = 'removed' ORDER BY r.id DESC LIMIT 50`)
-    .map((r) => ({ kind: 'reflection', id: r.id, status: r.status, reports: r.reports, likes: r.likes, username: r.username, text: r.text, at: r.created_at }));
-  const comments = all(`SELECT c.id, c.status, c.reports, c.likes, c.created_at, c.body text, u.username FROM lecture_comments c JOIN users u ON u.id = c.user_id
-                        WHERE c.reports > 0 OR c.status = 'removed' ORDER BY c.id DESC LIMIT 50`)
-    .map((r) => ({ kind: 'comment', id: r.id, status: r.status, reports: r.reports, likes: r.likes, username: r.username, text: r.text, at: r.created_at }));
   const replies = all(`SELECT r.id, r.status, r.reports, r.created_at, r.body text, u.username FROM replies r JOIN users u ON u.id = r.user_id
                        WHERE r.reports > 0 OR r.status = 'removed' ORDER BY r.id DESC LIMIT 50`)
     .map((r) => ({ kind: 'reply', id: r.id, status: r.status, reports: r.reports, likes: 0, username: r.username, text: r.text, at: r.created_at }));
-  return [...posts, ...refl, ...comments, ...replies].sort((a, b) => b.at - a.at);
+  return [...posts, ...replies].sort((a, b) => b.at - a.at);
 }
 
 export function moderateContent(kind, itemId, action) {
@@ -141,30 +96,12 @@ export function moderateContent(kind, itemId, action) {
   return { ok: true };
 }
 
-// ---- comments on the weekly lecture, and short replies ---------------------------------------------------------------
-export const COMMENT_MAX = 280;
+// ---- short replies ---------------------------------------------------------------
 export const REPLY_MAX = 140;
 export const REPLIES_PER_POST = 3;
 
-/** One comment per member per lecture, and only after passing its quiz (a lecture without a quiz needs it watched). */
-export function postComment(userId, lectureId, text) {
-  const body = cleanText(text, COMMENT_MAX);
-  return tx(() => {
-    const l = one('SELECT * FROM lectures WHERE id = ?', lectureId);
-    if (!l) throw new HttpError(404, 'not_found');
-    const done = publicQuiz(l).length ? quizPassed(userId, l.id) : !!one("SELECT 1 FROM events WHERE user_id = ? AND kind = 'lecture' AND ref = ?", userId, String(l.id));
-    if (!done) throw new HttpError(403, 'quiz_first');
-    if (one('SELECT 1 FROM lecture_comments WHERE lecture_id = ? AND user_id = ?', l.id, userId)) throw new HttpError(409, 'already_posted');
-    const r = run('INSERT INTO lecture_comments (lecture_id, user_id, body, created_at) VALUES (?,?,?,?)', l.id, userId, body, Date.now());
-    grant(userId, 'comment', l.id, CFG.commentXp);
-    return { id: Number(r.lastInsertRowid), xp: CFG.commentXp };
-  });
-}
-
 const REPLY_TARGETS = {
   post: "SELECT user_id FROM posts WHERE id = ? AND status = 'verified' AND purged_at IS NULL",
-  reflection: "SELECT user_id FROM reflections WHERE id = ? AND status = 'visible'",
-  comment: "SELECT user_id FROM lecture_comments WHERE id = ? AND status = 'visible'",
 };
 
 /** Up to REPLIES_PER_POST short replies per member per post, one level deep; two points for the first replyDailyCap a day, never on your own post. */
@@ -196,30 +133,11 @@ export function listReplies(userId, kind, itemId) {
     .map((r) => ({ id: r.id, body: r.body, at: r.created_at, username: r.username, displayName: r.dn, avatar: avatarUrl(r.user_id, r.av), city: r.city, mine: r.user_id === userId, reported: !!r.reported }));
 }
 
-// ---- this week's lectures ------------------------------------------------------------------------------------------
-// every lecture belongs to the week it is featured in; rows from before weeks existed take the week they were added in
-for (const l of all('SELECT id, created_at FROM lectures WHERE week_start IS NULL')) run('UPDATE lectures SET week_start = ? WHERE id = ?', weekStart(dayOf(l.created_at)), l.id);
-
-/** Lectures of earlier weeks, newest first, for the Seerah page. */
-export const pastLectureList = (userId) => lectureList(userId, { before: weekStart() });
-export function lectureList(userId, { week = weekStart(), before = null } = {}) {
-  return all(`SELECT l.*, EXISTS(SELECT 1 FROM events e WHERE e.user_id = ? AND e.kind = 'lecture' AND e.ref = CAST(l.id AS TEXT)) done
-              FROM lectures l WHERE ${before ? 'l.week_start < ?' : 'l.week_start = ?'} ORDER BY l.week_start DESC, l.id DESC LIMIT ${before ? 30 : 20}`, userId, before || week).map((l) => {
-    const quiz = publicQuiz(l);
-    return { id: l.id, youtubeId: l.youtube_id, kind: l.youtube_id.startsWith('drive:') ? 'drive' : 'video', driveId: l.youtube_id.startsWith('drive:') ? l.youtube_id.slice(6) : null, titleEn: l.title_en, titleUr: l.title_ur, speaker: l.speaker, minSeconds: l.min_seconds, xp: l.xp, done: !!l.done,
-      week: l.week_start, quiz, quizPassed: quiz.length ? quizPassed(userId, l.id) : null,
-      canComment: quiz.length ? quizPassed(userId, l.id) : !!l.done,
-      myComment: (() => { const c = one('SELECT id, body, likes, status FROM lecture_comments WHERE lecture_id = ? AND user_id = ?', l.id, userId); return c && { id: c.id, body: c.body, likes: c.likes, status: c.status }; })(),
-      commentMax: COMMENT_MAX };
-  });
-}
-
-// ---- the feed -------------------------------------------------------------------------------------------------------
 const photo = (id) => `/photos/${id}/${photoSig(id)}`;
 export const FEED_PAGE = 20;
 
 /**
- * Newest first, five kinds of item: announcements, sunnah photos, lecture comments, reflections, milestones of the member's own caravan and each crore of the challenge. Paged by time.
+ * Newest first, kinds of item: announcements, sunnah photos, milestones of the member's own caravan and each crore of the challenge. Paged by time.
  */
 export function feed(userId, before = Date.now() + 1) {
   const cutoff = Number(before) || Date.now() + 1;
@@ -235,22 +153,6 @@ export function feed(userId, before = Date.now() + 1) {
       ORDER BY p.created_at DESC LIMIT ?`, userId, cutoff, FEED_PAGE + 1)) {
     items.push({ type: 'photo', kind: 'sunnah', id: p.id, replies: replyN('post', p.id), at: p.created_at, username: p.username, displayName: p.dn, avatar: avatarUrl(p.user_id, p.av), city: p.city, titleEn: p.title_en, titleUr: p.title_ur,
       photoUrl: photo(p.id), w: p.w || null, h: p.h || null, likes: p.likes, liked: !!p.liked, mine: p.user_id === userId });
-  }
-  for (const r of all(`SELECT r.id, r.user_id, r.body, r.likes, r.created_at, r.day, u.username, u.city, u.avatar_v av, u.display_name dn, pr.text_en, pr.text_ur,
-        EXISTS(SELECT 1 FROM likes l WHERE l.kind = 'reflection' AND l.item_id = r.id AND l.user_id = ?) liked
-      FROM reflections r JOIN users u ON u.id = r.user_id LEFT JOIN prompts pr ON pr.day = r.day
-      WHERE r.status = 'visible' AND r.created_at < ? AND u.deleted_at IS NULL AND u.suspended = 0
-      ORDER BY r.created_at DESC LIMIT ?`, userId, cutoff, FEED_PAGE + 1)) {
-    items.push({ type: 'reflection', id: r.id, replies: replyN('reflection', r.id), at: r.created_at, username: r.username, displayName: r.dn, avatar: avatarUrl(r.user_id, r.av), city: r.city, body: r.body, likes: r.likes, liked: !!r.liked, mine: r.user_id === userId,
-      promptEn: r.text_en || themeFor(r.day).qEn, promptUr: r.text_en ? r.text_ur : themeFor(r.day).qUr });
-  }
-  for (const c of all(`SELECT c.id, c.user_id, c.body, c.likes, c.created_at, u.username, u.city, u.avatar_v av, u.display_name dn, l.title_en, l.title_ur,
-        EXISTS(SELECT 1 FROM likes k WHERE k.kind = 'comment' AND k.item_id = c.id AND k.user_id = ?) liked
-      FROM lecture_comments c JOIN users u ON u.id = c.user_id JOIN lectures l ON l.id = c.lecture_id
-      WHERE c.status = 'visible' AND c.created_at < ? AND u.deleted_at IS NULL AND u.suspended = 0
-      ORDER BY c.created_at DESC LIMIT ?`, userId, cutoff, FEED_PAGE + 1)) {
-    items.push({ type: 'comment', id: c.id, at: c.created_at, username: c.username, displayName: c.dn, avatar: avatarUrl(c.user_id, c.av), city: c.city, body: c.body, likes: c.likes, liked: !!c.liked, mine: c.user_id === userId,
-      replies: replyN('comment', c.id), lectureEn: c.title_en, lectureUr: c.title_ur });
   }
   for (const e of all(`SELECT e.id, e.user_id, e.ref, e.created_at, u.username FROM feed_events e JOIN users u ON u.id = e.user_id
       WHERE e.kind = 'badge' AND e.created_at < ? AND u.deleted_at IS NULL AND u.suspended = 0

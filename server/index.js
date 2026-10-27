@@ -5,7 +5,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import crypto from 'node:crypto';
 import { gzipSync, brotliCompressSync, constants as zc } from 'node:zlib';
 import { db, tx, getSetting } from './db.js';
-import * as burhan from './burhan.js';
 import * as majlis from './majlis.js';
 import * as caravanApi from './caravan.js';
 import * as profile from './profile.js';
@@ -170,42 +169,11 @@ route('DELETE', '/api/admin/admins/:username', { auth: false, admin: true }, ({ 
 route('GET', '/api/admin/profiles', { auth: false, admin: true }, ({ query }) => ({ profiles: profile.adminProfiles({ q: query.get('q') || '', filter: query.get('filter') || 'photos' }) }));
 route('GET', '/api/admin/log', { auth: false, admin: true }, () => ({ log: profile.adminLog(60) }));
 
-// ---- Al-Burhan edition: murabbi, masul, mamulaat, tasks and routines (404 in the public edition) ----------------------------------
-const B = (fn) => (ctx) => { burhan.guard(); return fn(ctx); };
-route('GET', '/api/burhan', B(({ user }) => burhan.burhanState(user)));
+// ---- Majalis ------------------------------------------------------------------------------------------------------------
+const B = (fn) => fn;
 route('GET', '/api/majalis', B(({ user }) => majlis.listMajalis(user)));
 route('PUT', '/api/me/majlis', B(({ user, body }) => { majlis.setMajlis(user, body.id); return { ...majlis.listMajalis(user), me: getMe(user) }; }));
 route('POST', '/api/majalis', B(({ user, body }) => { rateLimit(`mj:${user}`, 5, 86400e3); majlis.proposeMajlis(user, body.name, body.nameUr); return majlis.listMajalis(user); }));
-route('POST', '/api/burhan/murabbi', B(async ({ user }) => { rateLimit(`bm:${user}`, 6, 3600e3); return { murabbi: await burhan.activateMurabbi(user) }; }));
-route('POST', '/api/burhan/murabbi/confirm', B(({ user }) => ({ murabbi: burhan.confirmMurabbi(user) })));
-route('DELETE', '/api/burhan/murabbi', B(({ user }) => burhan.unlinkMurabbi(user)));
-route('GET', '/api/burhan/requests', B(({ user }) => ({ requests: burhan.murabbiRequests(user) })));
-route('POST', '/api/burhan/requests/:username', B(({ user, params, body }) => burhan.answerRequest(user, params.username, body.accept === true)));
-route('PUT', '/api/burhan/masul', B(({ user, body }) => { rateLimit(`bms:${user}`, 20, 3600e3); return { masul: burhan.setMasul(user, body.username) }; }));
-route('DELETE', '/api/burhan/masul', B(({ user }) => burhan.clearMasul(user)));
-route('GET', '/api/burhan/usernames', B(({ user, query }) => { rateLimit(`bu:${user}`, 60, 60e3); return { usernames: burhan.searchUsernames(query.get('q'), user) }; }));
-route('POST', '/api/assignments', B(({ user, body }) => { rateLimit(`as:${user}`, 60, 3600e3); return body.everyone ? burhan.assignEveryone(user, body) : body.team ? burhan.assignTeam(user, body.team, body) : burhan.addAssignment(user, body.razakar, body); }));
-route('PUT', '/api/burhan/razakars/:username/tags', B(({ user, params, body }) => burhan.setTags(user, params.username, body.tags)));
-route('GET', '/api/burhan/tags', B(({ user }) => ({ tags: burhan.masulTags(user) })));
-route('POST', '/api/tasks', B(({ user, body }) => { rateLimit(`as:${user}`, 60, 3600e3); burhan.addOwnAssignment(user, body); return burhan.burhanState(user); })); // your own task or routine
-route('DELETE', '/api/assignments/:id', B(({ user, params }) => burhan.endAssignment(user, Number(params.id))));
-route('POST', '/api/assignments/:id/tick', B(({ user, params, body }) => burhan.tickAssignment(user, Number(params.id), body.done !== false)));
-route('PUT', '/api/assignments/:id/due', B(({ user, params, body }) => burhan.changeDue(user, Number(params.id), body.day)));
-route('POST', '/api/assignments/:id/due-request', B(({ user, params, body }) => {
-  rateLimit(`dr:${user}`, 20, 86400e3);
-  const r = burhan.requestDue(user, Number(params.id), body.day);
-  news.notifyDueRequest(r.masulId, one('SELECT username FROM users WHERE id = ?', user).username, r.title);
-  return { ok: true };
-}));
-route('POST', '/api/assignments/:id/due-answer', B(({ user, params, body }) => burhan.answerDue(user, Number(params.id), body.accept === true)));
-route('GET', '/api/burhan/saaliks', B(async ({ user }) => { rateLimit(`bsl:${user}`, 120, 3600e3); return { saaliks: await burhan.saalikList(user) }; }));
-route('GET', '/api/burhan/saaliks/:username', B(({ user, params }) => { rateLimit(`bsr:${user}`, 120, 3600e3); return burhan.saalikReport(user, params.username); }));
-route('GET', '/api/burhan/razakars', B(({ user }) => ({ razakars: burhan.razakarList(user), tags: burhan.masulTags(user) })));
-route('GET', '/api/burhan/razakars/:username', B(({ user, params }) => burhan.razakarReport(user, params.username)));
-route('DELETE', '/api/burhan/razakars/:username', B(({ user, params }) => burhan.removeRazakar(user, params.username)));
-route('DELETE', '/api/burhan/saaliks/:username', B(({ user, params }) => burhan.dropSaalik(user, params.username)));
-route('DELETE', '/api/burhan/notices/:kind', B(({ user, params }) => burhan.dismissNotice(user, params.kind)));
-
 route('GET', '/api/invite-check', { auth: false }, ({ query, ip }) => {
   rateLimit(`inv:${ip}`, 60, 60e3);
   try {
@@ -217,7 +185,7 @@ route('GET', '/api/invite-check', { auth: false }, ({ query, ip }) => {
   }
 });
 
-route('GET', '/api/config', { auth: false }, () => ({ inviteOnly: access.INVITE_ONLY(), edition: burhan.edition() }));
+route('GET', '/api/config', { auth: false }, () => ({ inviteOnly: access.INVITE_ONLY(), edition: 'public' }));
 
 route('POST', '/api/waitlist', { auth: false }, ({ body, ip }) => {
   rateLimit(`wl:${ip}`, 5, 3600e3);
@@ -262,7 +230,6 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
     const uid = Number(res.lastInsertRowid);
     startChallengeIfNeeded(); // day 1 of the challenge is the day the first member joins
     run('INSERT INTO ancestors (user_id, ancestor_id, depth) VALUES (?,?,0)', uid, uid);
-    if (burhan.internal()) burhan.linkWaitingMurabbis(uid, phone); // a murabbi who signs up completes the links of the saliks waiting for them (Al-Burhan only)
     if (referrerId) {
       run(`INSERT INTO ancestors (user_id, ancestor_id, depth)
            SELECT ?, ancestor_id, depth + 1 FROM ancestors WHERE user_id = ?`, uid, referrerId);
@@ -328,14 +295,6 @@ route('POST', '/api/login', { auth: false }, async ({ body, ip }) => {
 route('GET', '/api/public', { auth: false }, () => publicStats());
 route('GET', '/api/me', ({ user }) => getMe(user));
 // "Who invited you?": a member who joined with the public or a founder code names the person who brought them (game.js linkInviter)
-route('POST', '/api/me/inviter', ({ user, body }) => {
-  rateLimit(`inviter:${user}`, 10, 3600e3);
-  const r = linkInviter(user, body.username);
-  const who = one('SELECT username FROM users WHERE id = ?', user).username;
-  setImmediate(() => news.notifyJoined(r.inviterId, who));
-  return { ok: true, inviter: r.inviter, me: getMe(user) };
-});
-
 route('PATCH', '/api/me', async ({ user, body }) => {
   // validate every field first so a bad one cannot leave the others half-applied
   let email = null, place = null, goal = null;
@@ -483,7 +442,7 @@ route('GET', '/api/leaderboard', ({ user, query }) => {
   const period = p === 'all' ? 'all' : p === 'challenge' ? 'challenge' : 'week';
   const metric = query.get('metric');
   if (t === 'cities') return compete.cityBoard(user, metric === 'average' || metric === 'growth' ? metric : 'total');
-  if (t === 'majalis') { burhan.guard(); return majlis.majlisBoard(user, metric === 'average' || metric === 'growth' ? metric : 'total'); }
+  if (t === 'majalis') { return majlis.majlisBoard(user, metric === 'average' || metric === 'growth' ? metric : 'total'); }
   if (type === 'caravans') return caravanApi.board(user, period, metric === 'average' || metric === 'growth' ? metric : 'total');
   if (type === 'trees' && (metric === 'average' || metric === 'growth')) return qabilaBoard(user, metric);
   return leaderboard(user, type, period);
@@ -491,25 +450,6 @@ route('GET', '/api/leaderboard', ({ user, query }) => {
 
 route('GET', '/api/challenge', ({ user }) => ({ summary: challengeSummary(), series: challengeSeries() }));
 route('GET', '/api/league', ({ user }) => { compete.ensureWeekClosed(); return compete.leagueView(user); });
-route('GET', '/api/team', ({ user }) => teamView(user));
-
-route('GET', '/api/lectures', ({ user, query }) => ({ lectures: query.get('past') ? feedApi.pastLectureList(user) : feedApi.lectureList(user), circleUrl: circleUrl(), circleXp: CFG.circleXp }));
-route('POST', '/api/lectures/:id/quiz', ({ user, params, body }) => {
-  rateLimit(`quiz:${user}`, 60, 60e3);
-  // a few checks per lecture per half hour: enough to think again, too few to find the answers by trying every option
-  if (!Array.isArray(body.answers) || lockedOut(`quizl:${user}:${params.id}`, 3)) throw new HttpError(429, 'rate_limited');
-  const r = answerQuiz(user, Number(params.id), body.answers);
-  if (!r.passed) recordFailure(`quizl:${user}:${params.id}`, 1800e3);
-  return r;
-});
-route('POST', '/api/lectures/:id/start', ({ user, params }) => startLecture(user, Number(params.id)));
-route('POST', '/api/lectures/:id/complete', ({ user, params }) => {
-  const r = completeLecture(user, Number(params.id));
-  return { ...r, me: getMe(user) };
-});
-route('POST', '/api/circle/claim', ({ user }) => ({ ...claimCircle(user), me: getMe(user) }));
-route('POST', '/api/circle/teach', ({ user, body }) => { rateLimit(`teach:${user}`, 5, 86400e3); requestTeach(user, body.note); return { me: getMe(user) }; });
-
 route('GET', '/api/sunnah/today', ({ user }) => sunnah.today(user));
 route('GET', '/api/sunnah/mine', ({ user }) => ({ posts: sunnah.mine(user) }));
 route('POST', '/api/sunnah/post', { maxBody: 400_000 }, ({ user, body }) => {
@@ -523,17 +463,7 @@ route('GET', '/api/feed', ({ user, query }) => {
   const page = feedApi.feed(user, before || undefined);
   if (before) return page; // later pages are only the stream
   const seenAt = one('SELECT news_seen_at s FROM users WHERE id = ?', user).s;
-  return { ...page, seenAt, lectures: feedApi.lectureList(user), today: sunnah.today(user), reflection: feedApi.reflectionToday(user) };
-});
-route('POST', '/api/reflections', ({ user, body }) => {
-  rateLimit(`refl:${user}`, 10, 60e3);
-  const r = feedApi.postReflection(user, body.text);
-  return { ...r, reflection: feedApi.reflectionToday(user), me: getMe(user) };
-});
-route('POST', '/api/lectures/:id/comment', ({ user, params, body }) => {
-  rateLimit(`lcom:${user}`, 10, 60e3);
-  const r = feedApi.postComment(user, Number(params.id), body.text);
-  return { ...r, lectures: feedApi.lectureList(user), me: getMe(user) };
+  return { ...page, seenAt, today: sunnah.today(user) };
 });
 route('GET', '/api/replies', ({ user, query }) => ({ replies: feedApi.listReplies(user, query.get('kind'), Number(query.get('id'))) }));
 route('POST', '/api/replies', ({ user, body }) => {
@@ -557,14 +487,8 @@ route('GET', '/api/admin/sunnahs', { auth: false, admin: true }, () => ({ sunnah
 route('DELETE', '/api/admin/sunnahs/:day', { auth: false, admin: true }, ({ params }) => sunnah.deleteSunnah(params.day));
 route('GET', '/api/admin/reported', { auth: false, admin: true }, () => ({ items: feedApi.reportedContent() }));
 route('POST', '/api/admin/content/:kind/:id', { auth: false, admin: true }, ({ params, body, admin }) => { const r = feedApi.moderateContent(params.kind, Number(params.id), body.action); profile.logAdmin(`content-${body.action}`, `${params.kind}:${params.id}`, '', admin.actor); return r; });
-route('GET', '/api/admin/prompts', { auth: false, admin: true }, () => ({ prompts: feedApi.listPrompts() }));
-route('POST', '/api/admin/prompts', { auth: false, admin: true }, ({ body }) => feedApi.setPrompt(body));
 route('GET', '/api/news', ({ user }) => news.listNews(user));
 route('POST', '/api/news/seen', ({ user }) => news.markNewsSeen(user));
-route('GET', '/api/push/key', () => news.pushKey());
-route('POST', '/api/push/subscribe', ({ user, body }) => news.subscribe(user, body));
-route('DELETE', '/api/push', ({ user }) => news.unsubscribe(user));
-
 // ---- admin ----
 const adm = { auth: false, admin: true };
 route('GET', '/api/admin/invites', adm, () => ({ invites: access.listInvites(), publicCode: access.publicCode() }));
@@ -637,87 +561,19 @@ route('POST', '/api/admin/members/:username', adm, async ({ params, body, admin 
 route('GET', '/api/admin/flags', adm, ({ query }) => ({ flags: listFlags(query.get('status') || 'open') }));
 route('POST', '/api/admin/flags/:id', adm, ({ params, body }) => resolveFlag(Number(params.id), body.action));
 route('GET', '/api/admin/challenge', adm, () => challengeAdminView());
-route('POST', '/api/admin/challenge/plans', adm, ({ body, admin }) => { const r = planChallenge(body); profile.logAdmin('challenge-plan', String(body.start || ''), '', admin.actor); return r; });
-route('DELETE', '/api/admin/challenge/plans/:id', adm, ({ params, admin }) => { const r = unplanChallenge(params.id); profile.logAdmin('challenge-unplan', params.id, '', admin.actor); return r; });
-route('PUT', '/api/admin/challenge/name', adm, ({ body }) => nameChallenge(body));
-route('GET', '/api/challenges/past', ({ }) => ({ past: pastChallenges() }));
 route('POST', '/api/admin/challenge', adm, ({ body }) => ({ summary: setChallenge({ start: body.start, days: body.days, target: body.target, clearMilestones: !!body.clearMilestones }) }));
 route('GET', '/api/admin/news', adm, () => ({ items: db.prepare('SELECT * FROM announcements ORDER BY id DESC LIMIT 50').all() }));
 route('POST', '/api/admin/news', adm, ({ body }) => news.postNews(body));
 route('DELETE', '/api/admin/news/:id', adm, ({ params }) => news.deleteNews(Number(params.id)));
 route('GET', '/api/admin/export', adm, ({ query }) => ({ csv: news.exportCsv(query.get('kind')) }));
-route('GET', '/api/admin/circle-teachers', adm, () => ({ teachers: listTeachRequests() }));
-route('POST', '/api/admin/circle-teachers/:username', adm, ({ params, body, admin }) => { if (!['approve', 'reject'].includes(body.action)) throw new HttpError(400, 'bad_action'); const r = decideTeach(params.username, body.action === 'approve'); profile.logAdmin(`teacher-${body.action === 'approve' ? 'approve' : 'reject'}`, params.username, '', admin.actor); return r; });
-route('GET', '/api/admin/circle', adm, () => ({ circleUrl: circleUrl(), fromEnv: !getSetting('circle_url', '') && !!CFG.circleUrl }));
-route('POST', '/api/admin/circle', adm, ({ body }) => setCircleUrl(body.url));
 route('GET', '/api/admin/special-days', adm, () => ({ days: listSpecialDays() }));
 route('POST', '/api/admin/special-days', adm, ({ body }) => setSpecialDay(body));
 route('DELETE', '/api/admin/special-days/:day', adm, ({ params }) => deleteSpecialDay(params.day));
 // Al-Burhan oversight: phone numbers are not verified, so a moderator must be able to see who follows whom and break a wrong link
-route('GET', '/api/admin/majalis', { auth: false, admin: true }, () => { burhan.guard(); return { majalis: majlis.adminMajalis() }; });
-route('POST', '/api/admin/majalis/:id', { auth: false, admin: true }, ({ params, body, admin }) => { burhan.guard(); if (!['approve', 'reject'].includes(body.action)) throw new HttpError(400, 'bad_action'); const r = majlis.decideMajlis(params.id, body.action === 'approve'); profile.logAdmin(`majlis-${body.action === 'approve' ? 'approve' : 'reject'}`, r.name, '', admin.actor); return r; });
-route('GET', '/api/admin/burhan-links', { auth: false, admin: true }, () => { burhan.guard(); return burhan.adminLinks(); });
-route('DELETE', '/api/admin/burhan-links/:kind/:username', { auth: false, admin: true }, ({ params, admin }) => {
-  burhan.guard();
-  const r = burhan.adminBreak(params.kind, params.username);
-  profile.logAdmin(`break-${params.kind}`, params.username, '', admin.actor);
-  return r;
-});
+route('GET', '/api/admin/majalis', { auth: false, admin: true }, () => { return { majalis: majlis.adminMajalis() }; });
+route('POST', '/api/admin/majalis/:id', { auth: false, admin: true }, ({ params, body, admin }) => { if (!['approve', 'reject'].includes(body.action)) throw new HttpError(400, 'bad_action'); const r = majlis.decideMajlis(params.id, body.action === 'approve'); profile.logAdmin(`majlis-${body.action === 'approve' ? 'approve' : 'reject'}`, r.name, '', admin.actor); return r; });
 route('GET', '/api/admin/audit', { auth: false, admin: true }, () => auditAsync());
 route('GET', '/api/admin/status', adm, () => ({ lastAudit: getSetting('last_audit') ? JSON.parse(getSetting('last_audit')) : null, lastBackup: Number(getSetting('last_backup_at', '0')) || null }));
-// a YouTube video id, or a Google Drive share link (a PDF or audio file kept on Drive, not on our server); stored as "drive:<id>"
-function lectureSource(raw) {
-  const v = String(raw || '').trim();
-  if (/^[\w-]{11}$/.test(v)) return v;
-  let u;
-  try { u = new URL(v); } catch { return null; }
-  if (u.protocol !== 'https:' || u.hostname !== 'drive.google.com') return null;
-  const id = u.pathname.match(/^\/file\/(?:u\/\d+\/)?d\/([\w-]{10,80})(?:\/|$)/)?.[1] || u.searchParams.get('id');
-  return id && /^[\w-]{10,80}$/.test(id) ? `drive:${id}` : null;
-}
-// one reading of the lecture form, for adding and for editing
-function lectureFields(body) {
-  const yt = lectureSource(body.youtube_id);
-  if (!yt || !String(body.title_en || '').trim()) throw new HttpError(400, 'bad_lecture');
-  const questions = parseQuestions(body.questions);
-  if (body.week && (!/^\d{4}-\d{2}-\d{2}$/.test(String(body.week)) || Number.isNaN(Date.parse(`${body.week}T00:00:00Z`)))) throw new HttpError(400, 'bad_lecture');
-  return [yt, String(body.title_en).trim(), String(body.title_ur || ''), String(body.speaker || ''),
-    Math.max(30, Number(body.min_seconds) || 600), Math.min(CFG.lectureXpMax, Math.max(1, Number(body.xp) || CFG.lectureXp)),
-    questions.length ? JSON.stringify(questions) : '', body.week ? weekStart(String(body.week)) : weekStart()];
-}
-route('POST', '/api/admin/lectures', { auth: false, admin: true }, ({ body }) => {
-  const r = run('INSERT INTO lectures (youtube_id, title_en, title_ur, speaker, min_seconds, xp, questions, week_start, created_at) VALUES (?,?,?,?,?,?,?,?,?)', ...lectureFields(body), Date.now());
-  return { id: Number(r.lastInsertRowid) };
-});
-// fixing a typo or a quiz answer keeps the comments, likes, quiz passes and points already earned (deleting would wipe them)
-route('PUT', '/api/admin/lectures/:id', { auth: false, admin: true }, ({ params, body }) => {
-  const r = run('UPDATE lectures SET youtube_id = ?, title_en = ?, title_ur = ?, speaker = ?, min_seconds = ?, xp = ?, questions = ?, week_start = ? WHERE id = ?', ...lectureFields(body), Number(params.id));
-  if (!r.changes) throw new HttpError(404, 'not_found');
-  return { ok: true };
-});
-route('GET', '/api/admin/lectures', { auth: false, admin: true }, () => ({ lectures: db.prepare('SELECT id, youtube_id, title_en, title_ur, speaker, week_start, min_seconds, xp, questions FROM lectures ORDER BY week_start DESC, id DESC LIMIT 60').all()
-  .map((l) => ({ ...l, questions: l.questions ? JSON.parse(l.questions) : [] })) }));
-route('DELETE', '/api/admin/lectures/:id', { auth: false, admin: true }, ({ params }) => {
-  const id = Number(params.id);
-  tx(() => { // all or nothing: comments, their replies, likes and reports go with the lecture
-    // the points the comments and their likes paid go with them, so every member's XP still equals their events
-    const gone = all(`SELECT user_id, kind, ref, xp FROM events WHERE (kind = 'comment' AND ref = ?) OR (kind = 'like' AND ref IN
-                      (SELECT 'comment:' || c.id || ':' || l.user_id FROM lecture_comments c JOIN likes l ON l.kind = 'comment' AND l.item_id = c.id WHERE c.lecture_id = ?))`, String(id), id);
-    for (const e of gone) {
-      run('DELETE FROM events WHERE user_id = ? AND kind = ? AND ref = ?', e.user_id, e.kind, e.ref);
-      run('UPDATE users SET xp = xp - ? WHERE id = ?', e.xp, e.user_id);
-    }
-    run("DELETE FROM replies WHERE kind = 'comment' AND item_id IN (SELECT id FROM lecture_comments WHERE lecture_id = ?)", id);
-    run("DELETE FROM likes WHERE kind = 'comment' AND item_id IN (SELECT id FROM lecture_comments WHERE lecture_id = ?)", id);
-    run("DELETE FROM content_reports WHERE kind = 'comment' AND item_id IN (SELECT id FROM lecture_comments WHERE lecture_id = ?)", id);
-    run('DELETE FROM lecture_comments WHERE lecture_id = ?', id);
-    run('DELETE FROM lecture_starts WHERE lecture_id = ?', id);
-    run('DELETE FROM lecture_quiz WHERE lecture_id = ?', id);
-    run('DELETE FROM lectures WHERE id = ?', id);
-  });
-  return { ok: true };
-});
-
 // ---- server ---------------------------------------------------------------
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8' };
 
