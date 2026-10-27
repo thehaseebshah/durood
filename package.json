@@ -1,7 +1,7 @@
 {
-  "name": "seerah-quest",
+  "name": "durood-quest",
   "version": "0.1.0",
-  "description": "Seerah Quest - a social RPG for daily durood Shareef, supporting Seerat Circles",
+  "description": "Durood Quest - recite durood Shareef every day with your caravan",
   "type": "module",
   "private": true,
   "engines": {

@@ -35,19 +35,14 @@ const S = {
   refName: null,
   pending: Number(ls.get('pending')) || 0,
   board: { type: 'users', period: 'week', metric: 'total', data: null },
-  feed: null, feedSeen: null, reflDraft: '', tapOpen: false, geo: null, league: null,
+  feed: null, feedSeen: null, tapOpen: false, geo: null, league: null,
   drawer: false, sheet: null, sideHidden: ls.get('side') === '0', folds: (() => { try { return JSON.parse(ls.get('folds') || '{}'); } catch { return {}; } })(),
   intro: ls.get('intro') ? null : 0,
-  team: null,
-  learn: null,
-  player: null,
   sunnah: null,
   draft: null,
   error: '',
 };
 if (S.lang === 'ur') await loadUr().catch(() => {}); // before the first screen, so an Urdu member never sees English first
-
-const MILESTONES = [10_000, 100_000, 1_000_000, 10_000_000, 100_000_000];   // referral tree
 
 const t = (k) => (I18N[S.lang] || I18N.en)[k] ?? I18N.en[k] ?? k;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -155,21 +150,15 @@ const keepDevice = (r) => { if (r?.device) ls.set('device', r.device); };
 function setSession(token, me) {
   S.token = token; S.me = me; S.lang = me.lang;
   ls.set('token', token); ls.set('lang', me.lang); ls.del('ref');
-  S.ref = ''; S.error = '';
-  setTimeout(initBurhan, 0);
+  S.ref = ''; S.refName = null; S.error = '';
 }
 
-function logout(render = true, byUser = false) {
-  if (byUser && S.token && pushSupported()) { // this device stops getting the last member's notifications
-    const tok = S.token;
-    fetch('/api/push', { method: 'DELETE', headers: { Authorization: `Bearer ${tok}` } }).catch(() => {});
-    navigator.serviceWorker.ready.then((reg) => reg.pushManager.getSubscription()).then((sub) => sub?.unsubscribe()).catch(() => {});
-  }
-  S.bh = null; S.bhDetail = null; S.bhLists = null; S.profile = null;
+function logout(render = true) {
+  S.profile = null;
   // nothing of one member's is left for the next person on a shared phone
-  S.pending = 0; ls.del('pending'); S.draft = null; S.draftKind = null; S.reflDraft = ''; S.cDraft = {}; S.threads = {}; S.history = null; S.editing = null;
+  S.pending = 0; ls.del('pending'); S.draft = null; S.draftKind = null; S.threads = {}; S.history = null; S.editing = null;
   S.token = null; S.me = null; ls.del('token'); ls.del('meCache'); cachedMe = null;
-  S.tab = 'home'; S.team = S.cv = S.learn = S.feed = S.board.data = null; boardCache.clear();
+  S.tab = 'home'; S.cv = S.feed = S.sunnahMine = S.majalis = S.board.data = null; boardCache.clear();
   if (render) draw();
 }
 
@@ -201,7 +190,7 @@ async function undoLog(entryId) {
     S.rollFrom = S.me.today; S.me = r.me; S.history = r.history; haptic('light'); toast(t('log_undone')); draw();
   } catch (e) { toast(errText(e)); }
 }
-const SHAREABLE = new Set(['d1k', 'd10k', 'd100k', 'd1m', 'streak7', 'streak30', 'streak100', 'recruit5', 'recruit25', 'karwan7', 'karwan30', 'qabila10', 'qabila50', 'qabila250', 'league_silver', 'league_gold', 'league_diamond', 'city_podium', 'city_champion', 'group10k', 'group100k', 'group1m', 'caravan10k', 'caravan100k', 'caravan1m', 'caravan10m']);
+const SHAREABLE = new Set(['d1k', 'd10k', 'd100k', 'd1m', 'streak7', 'streak30', 'streak100', 'karwan7', 'karwan30', 'league_silver', 'league_gold', 'league_diamond', 'city_podium', 'city_champion', 'group10k', 'group100k', 'group1m']);
 
 // ---- views (Swiss style: type, hairline rules, flat colour) --------------------------
 
@@ -285,9 +274,10 @@ function authView() {
       <p class="linkrow"><button type="button" class="linkbtn" data-act="mode" data-mode="forgot">${t('forgot')}</button></p></form>`;
   } else if (mode === 'register') {
     body = `<form novalidate class="sec" data-form="register" autocomplete="on">${err}
+      ${S.signupsOpen === false ? `<div class="notice" role="status">${t('signups_closed_note')}</div>` : ''}
       <label for="f-invite">${t('invite_code')}</label>
-      <input id="f-invite" type="text" name="invite" value="${esc(S.ref)}" autocapitalize="characters" autocomplete="off" required data-check="invite" dir="ltr">
-      <div class="hint" id="rcheck">${S.refName ? `${t('invited_by')} <b>${esc(S.refName)}</b> ✓` : t('invite_hint')}</div>
+      <input id="f-invite" type="text" name="invite" value="${esc(S.ref)}" autocapitalize="none" autocomplete="off" required data-check="invite" dir="ltr" aria-describedby="rcheck">
+      <div class="hint ${S.refName ? 'ok' : ''}" id="rcheck">${S.refName ? `${t('joining')} <bdi>${esc(S.refName)}</bdi> ✓` : t('invite_hint')}</div>
       <p class="linkrow">${t('no_code')} <button type="button" class="linkbtn" data-act="mode" data-mode="waitlist">${t('request_access')}</button></p>
       <label for="f-username">${t('username')}</label>
       <input id="f-username" type="text" name="username" data-check="username" autocapitalize="none" autocomplete="username" maxlength="20" required dir="ltr">
@@ -345,7 +335,7 @@ function cityModal() {
 }
 
 // ---- the frame: a sidebar (a drawer on phones, like Todoist), the bottom bar and the + button ---------------------------------------
-const NAV_GLYPH = { home: 'home', feed: 'feed', rank: 'bars', caravan: 'caravan', qabila: 'nodes', sunnah: 'leaf', seerah: 'book', tasks: 'check', people: 'chain', progress: 'me', settings: 'gear', browse: 'me' };
+const NAV_GLYPH = { home: 'home', feed: 'feed', rank: 'bars', caravan: 'caravan', sunnah: 'leaf', progress: 'me', settings: 'gear', browse: 'me' };
 const navIcon = (k, size = 22) => uiIcon(NAV_GLYPH[k] || 'star', size, 1.7);
 const openQuests = () => (S.me.quests || []).filter((q) => !q.info && !q.done).length;
 function sideItem(k, count = 0, dot = false) {
@@ -353,27 +343,23 @@ function sideItem(k, count = 0, dot = false) {
 }
 function sidebar() {
   const m = S.me, title = t('titles')[Math.min(m.level - 1, 9)];
-  const cvCount = (m.caravanInvites || 0) + (m.caravanRequests || 0);
-  const dueToday = (S.bh?.today || []).filter((a) => !(a.kind === 'routine' ? a.doneToday : a.done)).length;
   return `<aside class="side ${S.drawer ? 'open' : ''}" aria-label="${esc(t('menu'))}" id="side">
     <div class="sidetop"><button class="sprof" data-act="go" data-tab="progress">${av(m, 40, false)}<span><b>${esc(m.displayName || m.username)}</b><small>${t('level')} ${m.level} · ${esc(title)}</small></span></button>
       <button class="pill icon sclose" data-act="drawerx" aria-label="${esc(t('close'))}">✕</button></div>
     <button class="sadd" data-act="addsheet">${uiIcon('plus', 20, 2.4)}<span>${t('add_durood')}</span></button>
     <div class="sgroup">${sideItem('home', openQuests())}${sideItem('feed', m.unreadNews || 0)}${sideItem('rank')}</div>
-    <div class="slabel">${t('grp_learn')}</div>
-    <div class="sgroup">${sideItem('sunnah')}${sideItem('seerah')}</div>
     <div class="slabel">${t('grp_groups')}</div>
-    <div class="sgroup">${sideItem('caravan', cvCount)}${sideItem('qabila')}${inBurhan() ? sideItem('people', S.bh?.roles?.requests || 0) : ''}</div>
+    <div class="sgroup">${sideItem('sunnah')}${sideItem('caravan')}</div>
     <div class="slabel">${t('grp_you')}</div>
-    <div class="sgroup">${sideItem('progress', 0, !!(S.bh?.notices || []).length)}${inBurhan() ? sideItem('tasks', dueToday) : ''}${sideItem('settings', 0, !m.emailVerified)}</div>
+    <div class="sgroup">${sideItem('progress')}${sideItem('settings', 0, !m.emailVerified)}</div>
     <div class="sfoot"><button class="chip" data-act="setlang" data-l="${S.lang === 'ur' ? 'en' : 'ur'}">${S.lang === 'ur' ? 'English' : 'اردو'}</button><button class="chip" data-act="logout">${t('logout')}</button></div>
   </aside>${S.drawer ? `<div class="scrim" data-act="drawerx" aria-hidden="true"></div>` : ''}`;
 }
 function shell() {
   const tabs = ['home', 'feed', 'rank'];
   // quick add sits in the top bar (iOS keeps add actions there, never floating over a list); pages with their own main action leave it out
-  const fab = !['settings', 'home', 'qabila', 'caravan', 'people', 'sunnah', 'seerah'].includes(S.tab);
-  const addLabel = esc(t(S.tab === 'tasks' ? 'own_new' : 'add_durood'));
+  const fab = !['settings', 'home', 'caravan', 'sunnah'].includes(S.tab);
+  const addLabel = esc(t('add_durood'));
   return `
   <a class="skip" href="#main">${t('skip_to')}</a>
   ${sidebar()}
@@ -381,19 +367,15 @@ function shell() {
     <span class="row">${fab ? `<button class="pill icon hadd" data-act="addsheet" aria-label="${addLabel}" title="${addLabel}">${uiIcon('plus', 20, 2.4)}</button>` : ''}<span class="stk" title="${esc(t('streak'))}" aria-label="${S.me.streak} ${esc(t('streak'))}">${uiIcon('flame', 16, 1.8)} ${S.me.streak}</span><button class="pill icon bell" data-act="news" aria-label="${t('news_title')}" title="${t('news_title')}">${ICON_BELL}${S.me.unreadNews ? `<i class="dot">${S.me.unreadNews > 9 ? '9+' : S.me.unreadNews}</i>` : ''}</button></span></header>
   <main id="main" tabindex="-1" class="wrap tab-${S.tab}${Date.now() - (S.enterAt || 0) < 900 ? ' enter' : ''}"><h1 class="sr">${t('nav_' + S.tab)}</h1><div class="ltitle" aria-hidden="true">${t('nav_' + S.tab)}</div>${S.offlineMode || outbox().length ? `<div class="offbar" role="status">${uiIcon('refresh', 14, 2)} ${S.offlineMode ? t('offline_bar') : ''} ${outbox().length ? t('outbox_n')(fmt(outbox().reduce((n, x) => n + x.count, 0))) : ''}</div>` : ''}${view()}</main>
   <nav class="tabs" aria-label="${esc(t('app'))}">${tabs.map((k) => `<button class="${S.tab === k ? 'on' : ''}" ${S.tab === k ? 'aria-current="page"' : ''} data-act="tab" data-tab="${k}">${navIcon(k)}<em>${t('nav_' + k)}</em></button>`).join('')}
-    <button class="${['sunnah', 'seerah', 'caravan', 'qabila', 'tasks', 'people', 'progress', 'settings'].includes(S.tab) ? 'on' : ''}" data-act="drawer" aria-label="${esc(t('menu'))}">${uiIcon('menu', 22, 1.7)}<em>${t('nav_browse')}</em>${S.me.caravanInvites || S.me.caravanRequests || S.bh?.roles?.requests ? '<i class="pip" aria-hidden="true"></i>' : ''}</button></nav>
+    <button class="${['sunnah', 'caravan', 'progress', 'settings'].includes(S.tab) ? 'on' : ''}" data-act="drawer" aria-label="${esc(t('menu'))}">${uiIcon('menu', 22, 1.7)}<em>${t('nav_browse')}</em></button></nav>
   ${S.sheet === 'add' ? addSheet() : ''}
-  ${S.sheet === 'resched' ? reschedSheet() : ''}
-  ${S.player ? playerModal() : ''}
-  ${S.bhDetail ? detailModal() : ''}
   ${S.profile ? profileModal() : ''}
-  ${S.pastCh ? pastModal() : ''}
   ${S.celebrate && !(S.celebrateHold > Date.now()) ? celebrateModal() : ''}
   ${S.me.needsCity ? cityModal() : ''}`;
 }
 
 function view() {
-  return ({ home, feed: feedView, rank, sunnah: sunnahPage, seerah: seerahPage, caravan, qabila, tasks: tasksPage, people: burhanCaravan, progress, settings }[S.tab] || home)();
+  return ({ home, feed: feedView, rank, sunnah: sunnahPage, caravan, progress, settings }[S.tab] || home)();
 }
 
 // a section that folds away, like a Todoist section; what is open is remembered on this device
@@ -439,29 +421,6 @@ function addSheet() {
 const bar = (pct) => `<div class="bar"><i style="width:${pct > 0 ? Math.max(2, Math.min(100, pct)) : 0}%"></i></div>`;
 
 // ---- Today: the counter, then everything to do today in folding sections -------------------------------------------------------
-// Seerat Circle: part of Sunnah & Seerah until the member has joined one (then only the teacher claim remains, on Me)
-function circleCard(m) {
-  if (!m.circleUrl || m.badges.includes('circle')) return '';
-  return `<div class="circlecard">
-    <b>${t('circle_title')}</b><p>${t('circle_text')}</p>
-    <a class="blk fill1" href="${esc(m.circleUrl)}" target="_blank" rel="noopener"><span>${t('circle_open')}</span><b class="ar">↗</b></a>
-    <div class="row wrapx"><button class="chip" data-act="circle">${t('circle_claim')}</button>${teachButton()}</div></div>`;
-}
-// first steps for a new member: each one ticks itself off; the card goes once all are done, or when dismissed
-function startCard(m) {
-  if (ls.get('started') === '1' || (m.joinedDay && Date.now() - Date.parse(`${m.joinedDay}T00:00:00Z`) > 21 * 864e5)) return '';
-  const steps = [
-    [!!m.caravan, 'st_caravan', 'caravan'],
-    [m.team.direct > 0, 'st_invite', 'qabila'],
-    ...(m.canLinkInviter ? [[false, 'st_inviter', 'qabila']] : []),
-    ...(m.circleUrl ? [[m.badges.includes('circle'), 'st_circle', 'home']] : []),
-  ];
-  const left = steps.filter(([ok]) => !ok).length;
-  if (!left) return '';
-  return `<section class="startcard"><div class="row between"><b>${t('st_title')}</b><button class="linkbtn" data-act="startx">${t('st_hide')}</button></div>
-    <div class="bar small">${''}<i style="width:${((steps.length - left) / steps.length) * 100}%"></i></div>
-    <ol>${steps.map(([ok, key, tab]) => `<li class="${ok ? 'ok' : ''}">${ok ? `<span class="tick">✓</span><s>${t(key)}</s>` : `<button class="linkbtn" data-act="tab" data-tab="${tab}">${t(key)} →</button>`}</li>`).join('')}</ol></section>`;
-}
 function home() {
   const m = S.me, f = S.feed;
   if (!f && !S.feedLoading) { S.feedLoading = true; loadFeed().catch(() => {}).finally(() => { S.feedLoading = false; if (S.tab === 'home') draw(); }); } // first screen after sign-in
@@ -470,26 +429,16 @@ function home() {
     // a running streak and nothing yet today: a gentle nudge (stronger in the evening, Pakistan time)
     m.streak > 0 && !m.today ? `<div class="streaknudge ${new Date(serverNow() + 5 * 3600e3).getUTCHours() >= 18 ? 'late' : ''}">${uiIcon('flame', 16, 2)} ${t(new Date(serverNow() + 5 * 3600e3).getUTCHours() >= 18 ? 'streak_nudge_late' : 'streak_nudge')(m.streak)}</div>` : '',
     m.special ? `<div class="special">${uiIcon('star', 14, 2)} ${t('special_banner')(esc(pick(m.special.nameEn, m.special.nameUr)))}</div>` : '',
-    m.caravanInvites ? `<button class="rowlink" data-act="tab" data-tab="caravan"><span>${uiIcon('caravan', 14, 2)} ${t('cv_home_invited')(m.caravanInvites)}</span><b class="ar">→</b></button>` : '',
-    m.caravanRequests ? `<button class="rowlink" data-act="tab" data-tab="caravan"><span>${uiIcon('caravan', 14, 2)} ${t('cv_requests_home')(m.caravanRequests)}</span><b class="ar">→</b></button>` : '',
-    S.bh?.roles?.requests ? `<button class="rowlink" data-act="tab" data-tab="people"><span>${uiIcon('chain', 14, 2)} ${t('bh_requests_home')(S.bh.roles.requests)}</span><b class="ar">→</b></button>` : '',
-    pushPromptDue() ? `<div class="circlecard push"><b>${t('push_card_title')}</b><p>${t('push_card_text')}</p>
-      <div class="row"><button class="blk fill1" data-act="pushon"><span>${t('push_enable')}</span><b class="ar">→</b></button><button class="chip" data-act="pushno">${t('push_later')}</button></div></div>` : '',
   ].join('');
 
-  // Sunnah & Seerah: today's Sunnah, this week's lecture, today's reflection
-  let sunnahBody = skel(), seerahBody = skel(), reflBody = skel(), sunnahMeta = '', seerahMeta = '', reflMeta = '';
+  // today's Sunnah (tick or photo); its page holds the history and the community's photos
+  let sunnahBody = skel(), sunnahMeta = '';
   if (f) {
     sunnahBody = `${sunnahCard(f.today)}<button class="rowlink" data-act="tab" data-tab="sunnah"><span>${t('sn_more')}</span><b class="ar">→</b></button>`;
-    seerahBody = `${lecturesNow(f)}${circleCard(m)}<button class="rowlink" data-act="tab" data-tab="seerah"><span>${t('sr_more')}</span><b class="ar">→</b></button>`;
-    reflBody = reflectionCard(f.reflection);
     sunnahMeta = f.today?.sunnah ? N(`${f.today.ticked || f.today.mine ? 1 : 0} / 1`) : '';
-    seerahMeta = f.lectures.length ? N(`${f.lectures.filter((l) => l.done).length} / ${f.lectures.length}`) : '';
-    reflMeta = N(`${f.reflection?.mine ? 1 : 0} / 1`);
   }
-  // durood quests here; the Sunnah & Seerah items show what they pay in their own cards
-  const quests = m.quests.filter((q) => q.group === 'durood');
-  const assigned = burhanToday();
+  // durood quests first, then the Sunnah quest (it is ticked in the Sunnah card below)
+  const quests = m.quests;
   // the live line never shows less than the member's own day (the shared numbers are cached for a few seconds)
   const liveToday = Math.max(m.pub.today || 0, m.today || 0), liveMembers = Math.max(m.pub.membersToday || 0, m.today ? 1 : 0);
 
@@ -497,13 +446,9 @@ function home() {
   <section class="counterbox">${counter()}
   ${liveToday ? `<div class="live">${uiIcon('feed', 13, 2)} ${t('live_today')(fmt(liveToday), membersN(liveMembers))}</div>` : ''}
   ${logBox()}</section>
-  ${startCard(m)}
   ${fold('quests', t('grp_quests'), N(`${quests.filter((q) => q.done).length} / ${quests.length}`),
     `${quests.filter((q) => q.period === 'day').every((q) => q.done) ? `<div class="alldone">${uiIcon('star', 14, 2)} ${t('quests_all_done')}</div>` : ''}${quests.map((q) => quest(q)).join('')}`)}
-  ${assigned ? fold('assigned', t('grp_tasks_today'), N(String(S.bh.today.length)), `${assigned}<button class="rowlink" data-act="tab" data-tab="tasks"><span>${t('tasks_all')}</span><b class="ar">→</b></button>`) : ''}
   ${fold('sunnah', t('nav_sunnah'), sunnahMeta, sunnahBody)}
-  ${fold('seerah', t('nav_seerah'), seerahMeta, seerahBody)}
-  ${fold('reflect', t('reflect_title'), reflMeta, reflBody)}
   ${fold('challenge', chTitle(m.pub.challenge || {}), '', challengeCard(m), false)}
   <p class="note">${t('reminder_note')}</p>`;
 }
@@ -539,13 +484,7 @@ function liveHome() {
   if ($('#pend')) { $('#pend').textContent = fmt(S.pending); $('#submitp').disabled = !S.pending; }
 }
 
-const chTitle = (c) => pick(c.nameEn, c.nameUr) || t('challenge_title');
-function pastModal() {
-  const rows = S.pastCh.rows;
-  return `<div class="modal msheet"><div class="box"><div class="row between"><h3 class="in">${t('ch_past')}</h3><button class="chip" data-act="closepast">${t('close')}</button></div>
-    ${!rows ? '<p class="muted center">…</p>' : rows.map((p) => `<div class="circlecard"><b>${esc(chTitle(p))} · ${N('#' + p.n)}</b><div class="muted">${esc(dayText(p.start, { day: 'numeric', month: 'short', year: 'numeric' }))} – ${esc(dayText(p.end, { day: 'numeric', month: 'short', year: 'numeric' }))}</div>
-      <div>${fmt(p.total)} ${t('of')} ${human(p.target)}${unit('durood')}</div>${p.top.length ? `<div class="muted">${t('ch_top')}: ${p.top.map((x) => esc(x.displayName || x.username)).join(' · ')}</div>` : ''}</div>`).join('')}</div></div>`;
-}
+const chTitle = () => t('challenge_title');
 function challengeCard(m) {
   const c = m.pub.challenge;
   if (!c || c.state === 'waiting') return '';
@@ -569,9 +508,7 @@ function challengeCard(m) {
   } else if (c.state === 'done') {
     body = `<div class="cstatus ahead">${t('done_msg')(human(c.target))}</div>`;
   }
-  const next = c.next ? `<div class="cnote">${t('ch_next')(esc(pick(c.next.nameEn, c.next.nameUr) || t('challenge_title')), esc(dayText(c.next.start, { day: 'numeric', month: 'long' })))}</div>` : '';
-  const past = c.pastCount ? `<button class="linkbtn" data-act="pastch">${t('ch_past')} (${fmt(c.pastCount)})</button>` : '';
-  return `<div class="challenge">${head}${tot}${barEl}${body}${next}<div class="cnote">${membersN(m.pub.members)} · ${t('self_reported')}</div>${past}</div>`;
+  return `<div class="challenge">${head}${tot}${barEl}${body}<div class="cnote">${membersN(m.pub.members)} · ${t('self_reported')}</div></div>`;
 }
 
 // ---- celebration: each crore reached, and the finish ---------------------------------------------------------------
@@ -642,16 +579,16 @@ async function shareCard() {
     g.fillStyle = soft; g.font = `600 44px ${family}`; g.fillText(S.me.username, left, 1190);
   }
   const blob = await new Promise((ok) => cv.toBlob(ok, 'image/png'));
-  const file = new File([blob], 'seerah-quest.png', { type: 'image/png' });
+  const file = new File([blob], 'durood-quest.png', { type: 'image/png' });
   const text = x.kind ? `${c.title}: ${c.text}. ${location.origin}` : `${t('share_crore')(x.done ? human(x.target).split(' ')[0] : x.k, x.day)} ${location.origin}`;
   try {
     if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], text }); return; }
   } catch (e) { if (e.name === 'AbortError') return; }
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'seerah-quest.png'; a.click(); // no file sharing here: save the image
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'durood-quest.png'; a.click(); // no file sharing here: save the image
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
 }
 
-const QUEST_UNIT = { goal: 'durood', weekgoal: 'durood', special: 'durood', days5: 'days', invite: 'people' };
+const QUEST_UNIT = { goal: 'durood', weekgoal: 'durood', special: 'durood', days5: 'days' };
 function quest(q, dim) {
   return `<div class="q ${q.done ? 'd' : ''} ${dim ? 'dim' : ''}" data-q="${q.id}">
     <span class="bx"></span>
@@ -659,23 +596,6 @@ function quest(q, dim) {
     <span class="qxp" title="${esc(t('q_reward'))}">${N(`+${fmt(q.xp)}`)}${unit('pts')}</span>
   </div>`;
 }
-
-// ---- reminders (web push) ------------------------------------------------------------------------------------
-const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
-const keyBytes = (b64) => Uint8Array.from(atob(b64.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
-async function enablePush() {
-  if (!pushSupported()) throw new Error('push_unsupported');
-  if ((await Notification.requestPermission()) !== 'granted') throw new Error('push_denied');
-  const reg = await navigator.serviceWorker.ready;
-  const { key } = await api('/push/key');
-  const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
-  await api('/push/subscribe', 'POST', sub.toJSON());
-}
-async function disablePush() {
-  try { const reg = await navigator.serviceWorker.ready; await (await reg.pushManager.getSubscription())?.unsubscribe(); } catch { /* none */ }
-  await api('/push', 'DELETE');
-}
-const pushPromptDue = () => S.me.streak >= 2 && pushSupported() && Notification.permission === 'default' && !ls.get('pushNo');
 
 // ---- people: a picture (or their initial) and a name; tap to see their profile -------------------------------------------------------
 const hueOf = (name) => [...String(name)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
@@ -709,8 +629,6 @@ function ago(at) {
   const m = Math.max(0, Math.round((serverNow() - at) / 60000));
   return m < 1 ? t('ago_now') : m < 60 ? t('ago_m')(m) : m < 1440 ? t('ago_h')(Math.floor(m / 60)) : t('ago_d')(Math.floor(m / 1440));
 }
-// the author's own post, hidden after reports or by a moderator: say so, rather than let it look live
-const hiddenNote = (st) => (st === 'removed' ? `<p class="note">${t('hidden_mine')}</p>` : '');
 const statusTag = (st) => `<span class="tag ${st}">${t('st_' + st)}</span>`;
 
 function sunnahCard(d) {
@@ -731,31 +649,6 @@ function sunnahCard(d) {
     ${mine ? '' : `<p class="note">${t('photo_rules')}</p>`}</div>`;
 }
 
-function reflectionCard(r) {
-  const prompt = r.prompt ? pick(r.prompt.textEn, r.prompt.textUr) : t('reflect_default');
-  const theme = r.prompt?.themeEn ? pick(r.prompt.themeEn, r.prompt.themeUr) : '';
-  const body = r.mine
-    ? `<div class="reflbody" dir="auto">${esc(r.mine.body)}</div>${hiddenNote(r.mine.status)}<div class="muted">${uiIcon('heart', 14, 2)} ${fmt(r.mine.likes)}</div>`
-    : `<textarea id="refl" aria-label="${esc(t('reflect_title'))}" maxlength="${r.max}" rows="3" placeholder="${t('reflect_ph')}" dir="auto">${esc(S.reflDraft || '')}</textarea>
-       <div class="row between"><small class="muted">${t('reflect_rules')}</small><button class="chip solid" data-act="reflect">${t('reflect_post')}</button></div>`;
-  return `<div class="fcard"><h3>${uiIcon('pen', 14, 2)} ${t('reflect_title')}</h3><div class="head qprompt">${theme ? `<small class="theme">${t('theme_today')}: <b>${esc(theme)}</b></small>` : ''}${esc(prompt)}</div>${body}</div>`;
-}
-
-const lecturesNow = (f) => (f.lectures.length ? f.lectures.map(lectureCard).join('') : `<div class="fcard"><h3>${uiIcon('book', 14, 2)} ${t('lectures')}</h3><p class="muted">${t('no_lectures')}</p></div>`);
-function lectureCard(x) {
-  let talk = '';
-  if (x.myComment) talk = `<div class="reflbody" dir="auto">${esc(x.myComment.body)}</div>${hiddenNote(x.myComment.status)}<div class="muted">${uiIcon('heart', 14, 2)} ${fmt(x.myComment.likes)}</div>`;
-  else if (x.canComment) talk = `<textarea aria-label="${esc(t('comment_title'))}" data-cbox="${x.id}" maxlength="${x.commentMax}" rows="2" placeholder="${t('comment_ph')}" dir="auto">${esc((S.cDraft || {})[x.id] || '')}</textarea>
-      <div class="row between"><small class="muted">${t('comment_rules')}</small><button class="chip solid" data-act="comment" data-id="${x.id}">${t('reflect_post')}</button></div>`;
-  else talk = `<small class="muted">${t(x.quiz && x.quiz.length ? 'comment_locked' : 'comment_locked_watch')}</small>`;
-  return `<div class="fcard"><h3>${uiIcon('play', 14, 2)} ${t('lecture_week')}</h3>
-    <div class="q ${x.done ? 'd' : ''}"><span class="bx"></span>
-      <span class="t">${esc(pick(x.titleEn, x.titleUr))}<small>${esc(x.speaker)}</small></span>
-      <button class="chip ${x.done ? '' : 'solid'}" data-act="watch" data-id="${x.id}">${x.done ? t('watched') : `${uiIcon('play', 13, 2)} ${t('watch')}`}</button>
-    </div>
-    <div class="spacer"></div><b>${t('comment_title')}</b><div class="ctalk">${talk}</div></div>`;
-}
-
 // ---- the Sunnah page and the Seerah page ----------------------------------------------------------------------------------------
 function sunnahPage() {
   const f = S.feed;
@@ -768,16 +661,6 @@ function sunnahPage() {
     <h3>${t('sn_community')}</h3>
     ${photos.length ? `<div class="stream">${photos.map(feedItem).join('')}</div>` : `<p class="muted padx">${t('sn_community_empty')}</p>`}`;
 }
-function seerahPage() {
-  const f = S.feed;
-  if (!f) return skel();
-  const past = S.pastLec;
-  return `${lecturesNow(f)}<div class="padx">${circleCard(S.me)}</div>
-    <h3>${t('sr_earlier')}</h3>
-    ${!past ? skel() : past.length ? past.map((x) => `<div class="fcard"><div class="q ${x.done ? 'd' : ''}"><span class="bx"></span><span class="t">${esc(pick(x.titleEn, x.titleUr))}<small>${esc(x.speaker)} · ${esc(dayText(x.week, { day: 'numeric', month: 'short' }))}</small></span>
-      <button class="chip ${x.done ? '' : 'solid'}" data-act="watch" data-id="${x.id}">${x.done ? t('watched') : `${uiIcon('play', 13, 2)} ${t('watch')}`}</button></div></div>`).join('') : `<p class="muted padx">${t('sr_earlier_empty')}</p>`}`;
-}
-
 // replies: short, one level, opened under the item they belong to
 const replyKind = (it) => (it.type === 'photo' ? 'post' : it.type);
 const threadKey = (it) => `${replyKind(it)}:${it.id}`;
@@ -807,14 +690,6 @@ function feedItem(it) {
     return `<div class="fitem"><div class="flabel">${uiIcon('leaf', 12, 2)} ${esc(pick(it.titleEn, it.titleUr))}</div>${who()}
       <img class="shot" loading="lazy" src="${esc(it.photoUrl)}"${it.w && it.h ? ` width="${Number(it.w)}" height="${Number(it.h)}"` : ''} alt="">${acts}</div>`;
   }
-  if (it.type === 'reflection') {
-    return `<div class="fitem"><div class="flabel">${uiIcon('pen', 12, 2)} ${t('reflect_title')}</div>${who()}
-      ${it.promptEn ? `<div class="muted fprompt">${esc(pick(it.promptEn, it.promptUr))}</div>` : ''}<div class="reflbody" dir="auto">${esc(it.body)}</div>${acts}</div>`;
-  }
-  if (it.type === 'comment') {
-    return `<div class="fitem"><div class="flabel">${uiIcon('play', 12, 2)} ${esc(pick(it.lectureEn, it.lectureUr))}</div>${who()}
-      <div class="reflbody" dir="auto">${esc(it.body)}</div>${acts}</div>`;
-  }
   if (it.type === 'milestone') {
     const b = t('badge')[it.code] || [it.code, ''];
     return `<div class="fitem ms ${it.mine ? 'mine' : ''}"><div class="flabel">${uiIcon('star', 12, 2)} ${t('ms_label')}<small class="when">${ago(it.at)}</small></div>
@@ -842,12 +717,12 @@ function feedView() {
   const f = S.feed;
   if (!f) return skel();
   // posting happens on Today; the feed is for reading what everyone shared
-  return `<button class="rowlink" data-act="tab" data-tab="home"><span>${uiIcon('pen', 14, 2)} ${t('feed_share')}</span><b class="ar">→</b></button>
+  return `<button class="rowlink" data-act="tab" data-tab="home"><span>${uiIcon('camera', 14, 2)} ${t('feed_share')}</span><b class="ar">→</b></button>
     <div class="stream">${f.items.length ? feedList(f.items) : empty('feed', t('feed_empty'))}</div>
     ${f.next ? `<button class="chip more" data-act="more">${t('more')}</button>` : ''}`;
 }
 
-// ---- compete: the challenge, the weekly league, and rankings of people, caravans, Qabilas and cities ----------------------------
+// ---- compete: the challenge, the weekly league, and rankings of people, caravans, majalis and cities ----------------------------
 const TIER_KEYS = ['bronze', 'silver', 'gold', 'diamond'];
 function leagueView() {
   const L = S.board.data;
@@ -864,7 +739,7 @@ function leagueView() {
 
 function rank() {
   const b = S.board, rows = b.data?.rows;
-  const grp = ['caravans', 'trees', 'cities', 'majalis'].includes(b.type);
+  const grp = ['caravans', 'cities', 'majalis'].includes(b.type);
   const list = b.type === 'league' ? leagueView() : !rows ? skel() : rows.length ? `<ul class="lb">${rows.map((r) => `
     <li class="${r.me ? 'me' : ''}"><span class="rank">${r.rank}</span>${r.avatar !== undefined ? av(r, 34) : ''}
       <span class="name"><bdi>${esc(r.displayName || (r.name != null ? (b.type === 'cities' ? cityName(r.name) : r.name) : (r.nameUr ? pick(r.username, r.nameUr) : r.username)))}</bdi>${r.me ? ` <em class="tag">${t(b.type === 'caravans' ? 'cv_yours' : 'you')}</em>` : ''}<small>${r.city ? `${esc(cityName(r.city))}` : ''}${grp ? `${r.city ? ' · ' : ''}${membersN(r.members)}${b.metric === 'average' ? ` · ${fmt(r.active)} ${t('active')}` : ''}` : ''}</small></span>
@@ -872,7 +747,7 @@ function rank() {
     <li class="gap" aria-hidden="true">⋯</li>
     <li class="me"><span class="rank${b.data.you.rank > 999 ? ' long' : b.data.you.rank > 99 ? ' mid' : ''}">${fmt(b.data.you.rank)}</span>${av(S.me, 34)}<span class="name">${esc(S.me.username)} <em class="tag">${t('you')}</em><small>${esc(cityName(S.me.city) || '')}</small></span>
       <span class="score">${U(b.data.you.score, 'durood')}</span></li>` : ''}</ul>` : `<p class="muted center">${t(b.type === 'cities' ? 'empty_cities' : 'empty_board')}</p>`;
-  const kinds = [['users', 'rk_people'], ['league', 'rk_league'], ['caravans', 'rk_caravans'], ['trees', 'rk_trees'], ['cities', 'rk_cities'], ...(inBurhan() ? [['majalis', 'rk_majalis']] : [])];
+  const kinds = [['users', 'rk_people'], ['league', 'rk_league'], ['caravans', 'rk_caravans'], ['cities', 'rk_cities'], ['majalis', 'rk_majalis']];
   const note = b.type === 'league' ? '' : grp ? `${t('rk_note_' + b.type)} ${t('cv_note_' + b.metric)}` : (b.period === 'challenge' ? t('challenge_note') : '');
   return `
   ${challengeCard(S.me)}
@@ -890,33 +765,14 @@ function rank() {
   <p class="note">${t('reminder_note')}</p>`;
 }
 
-function uplineBlock(tm) {
-  if (!tm?.upline?.length) return '';
-  return `<h3>${t('upline_title')}</h3>
-  <ul class="lb upline">${tm.upline.map((u) => `<li><span class="name">${esc(u.username)}<small>${u.city ? `${esc(cityName(u.city))} · ` : ''}${membersN(u.members)}</small></span><span class="score">${U(u.team, 'durood')}</span></li>`).join('')}</ul>`;
-}
-
-// ---- caravans: a group you create and name, joined by invitation or by asking ----------------------------------------------------
+// ---- caravans: a named group an admin creates; members join it at sign-up with its name ----------------------------------------------------
 const cvRow = (r, extra = '') => `<li>${av(r, 34)}<span class="name">${esc(r.username)}${r.owner ? ` <em class="tag">${t('cv_owner')}</em>` : ''}<small>${r.city ? `${esc(cityName(r.city))} · ` : ''}${t('this_week')} ${U(r.week, 'durood')}${r.today ? ` <span class="didtoday" role="img" aria-label="${esc(t('cv_today'))}" title="${esc(t('cv_today'))}">${uiIcon('check', 12, 2.6)}</span>` : ''}</small></span><span class="score">${U(r.total, 'durood')}</span>${extra}</li>`;
-function cvJoinOrCreate(cv) {
-  return `<h3 class="first-d">${t('caravan_title')}</h3>
-  <p class="muted">${t('cv_intro')}</p>
-  ${cv.invitations.length ? `<h3>${t('cv_invitations')}</h3>${cv.invitations.map((i) => `<div class="circlecard"><b>${esc(i.name)}</b> · ${membersN(i.members)}
-      <div class="row" style="margin-top:8px"><button class="blk fill1" data-act="cvaccept" data-id="${i.id}"><span>${t('cv_join_it')}</span><b class="ar">→</b></button><button class="chip" data-act="cvdecline" data-id="${i.id}">${t('decline')}</button></div></div>`).join('')}` : ''}
-  <form novalidate class="cname" data-form="cvcreate"><label for="cv-new">${t('cv_create')}</label>
-    <div class="row"><input id="cv-new" name="name" type="text" maxlength="20" autocomplete="off" autocapitalize="off" dir="ltr" placeholder="${esc(t('cv_name_ph'))}"><button class="chip solid" type="submit">${t('cv_create_btn')}</button></div>
-    <div class="hint" id="cvcheck">${t('cv_name_hint')}</div></form>
-  <h3>${t('cv_join_title')}</h3>
-  <div class="padx bh"><p class="muted">${t('cv_join_text')}</p>
-    <input id="cvjoinq" type="text" aria-label="${esc(t('cv_join_ph'))}" autocomplete="off" autocapitalize="off" dir="ltr" placeholder="${esc(t('cv_join_ph'))}"><div id="cvjoinres" class="chips"></div>
-    ${cv.requests.length ? `<b>${t('cv_my_requests')}</b>${cv.requests.map((r) => `<div class="row between"><span>${esc(r.name)}</span><button class="chip" data-act="cvcancelreq" data-id="${r.id}">${t('cv_cancel')}</button></div>`).join('')}` : ''}</div>`;
-}
 function cvHome(cv) {
   const c = cv.caravan, ks = cv.streak, shown = S.cvAll ? cv.members : cv.members.slice(0, 8);
-  const pending = cv.pending || [];
   return `<h3 class="first-d">${t('caravan_title')}</h3>
   <div class="uname cvname"${c.displayName ? ' dir="auto"' : ''}>${esc(c.displayName || c.name)}</div>
   <div class="muted padx">${c.displayName ? `${N('@' + esc(c.name))} · ` : ''}${t('cv_owner_is')(esc(c.ownerName))}</div>
+  <p class="note first">${t('cv_name_is_code')(`<b dir="ltr">${esc(c.name)}</b>`)}</p>
   <div class="stats">${cell(c.members, t('c_members'))}${cell(c.total, t('c_total'), 'durood')}${cell(c.week, t('c_week'), 'durood')}</div>
   <div class="lvl"><div class="row between"><span>${t('next_milestone')}</span><b>${U(c.next, 'durood')}</b></div>${bar(c.next === c.prev ? 100 : ((c.total - c.prev) / (c.next - c.prev)) * 100)}</div>
   ${ks.active ? `<div class="karwan"><b>${uiIcon('flame', 16, 1.8)} ${t('karwan_streak')(ks.streak)}</b>
@@ -927,56 +783,16 @@ function cvHome(cv) {
   <h3>${t('cv_members')} (${fmt(c.members)})</h3>
   <ul class="lb">${shown.map((m) => cvRow(m, c.owner && !m.owner ? `<button class="chip" data-act="cvremove" data-u="${esc(m.username)}" aria-label="${esc(t('cv_remove'))}" title="${esc(t('cv_remove'))}">✕</button>` : c.owner ? '<span class="xslot" aria-hidden="true"></span>' : '')).join('')}</ul>
   ${cv.members.length > 8 && !S.cvAll ? `<button class="chip more" data-act="cvall">${t('cv_show_all')(fmt(cv.members.length))}</button>` : ''}
-  ${c.owner ? `<h3>${t('cv_invite_title')}</h3><div class="padx bh">
-      <input id="cvinvq" type="text" aria-label="${esc(t('cv_invite_ph'))}" autocomplete="off" autocapitalize="off" dir="ltr" placeholder="${esc(t('cv_invite_ph'))}"><div id="cvinvres" class="chips"></div>
-      ${pending.length ? `<b>${t('cv_pending')}</b>${pending.map((p) => `<div class="circlecard"><b>${esc(p.username)}</b>${p.city ? ` · ${esc(cityName(p.city))}` : ''}
-        <p class="muted">${p.kind === 'request' ? t('cv_asked') : t('cv_invited')}</p>
-        <div class="row">${p.kind === 'request' ? `<button class="blk fill1" data-act="cvreqyes" data-u="${esc(p.username)}"><span>${t('accept')}</span><b class="ar">→</b></button><button class="chip" data-act="cvreqno" data-u="${esc(p.username)}">${t('decline')}</button>` : `<button class="chip" data-act="cvcancelinv" data-u="${esc(p.username)}">${t('cv_cancel')}</button>`}</div></div>`).join('')}` : ''}</div>
-    <form novalidate class="cname" data-form="cvrename"><label for="cv-rename">${t('cv_rename')}</label>
+  ${c.owner ? `<form novalidate class="cname" data-form="cvrename"><label for="cv-rename">${t('cv_rename')}</label>
       <div class="row"><input id="cv-rename" name="name" type="text" maxlength="20" autocomplete="off" autocapitalize="off" dir="ltr" value="${esc(c.name)}"><button class="chip solid" type="submit">${t('save')}</button></div>
       <div class="hint" id="cvcheck">${t('cv_name_hint')}</div></form>
     <form novalidate class="cname" data-form="cvdisplay"><label for="cv-display">${t('cv_display')}</label>
       <div class="row"><input id="cv-display" name="displayName" type="text" maxlength="40" autocomplete="off" dir="auto" placeholder="${esc(t('cv_display_ph'))}" value="${esc(c.displayName || '')}"><button class="chip solid" type="submit">${t('save')}</button></div>
-      <div class="hint">${t('cv_display_hint')}</div></form>` : ''}
-  <div class="padx" style="margin-top:14px"><button class="chip" data-act="cvleave">${t('cv_leave')}</button></div>`;
+      <div class="hint">${t('cv_display_hint')}</div></form>` : ''}`;
 }
 function caravan() {
   const cv = S.cv;
-  return `${!cv ? skel() : cv.caravan ? cvHome(cv) : cvJoinOrCreate(cv)}
-  <button class="rowlink" data-act="tab" data-tab="qabila"><span>${uiIcon('nodes', 14, 2)} ${t('cv_vs_qabila')}</span><b class="ar">→</b></button>`;
-}
-
-// where a member's invites come from, and how to get more: their level (points), people they brought in who recite, and streaks
-function invitesBox(m) {
-  const v = m.invites, f = v.from, row = (label, n, how) => `<li><span>${label}${how ? `<small>${how}</small>` : ''}</span><b>${N(`+${fmt(n)}`)}</b></li>`;
-  return `<div class="invleft"><b>${fmt(v.left)}</b> <span>${t('invites_left')} · ${t('invites_of')(N(`${fmt(v.used)} / ${fmt(v.cap)}`))}</span></div>
-    <ul class="invsrc">
-      ${row(t('inv_start'), f.start)}
-      ${row(t('inv_level')(m.level), f.level, t('inv_level_how')(v.per.level, N(fmt(v.next.levelXp)), v.next.level))}
-      ${row(t('inv_active'), f.active, t('inv_active_how')(v.per.active))}
-      ${row(t('inv_streak'), f.streak, t('inv_streak_how')(v.per.streak, v.next.streak))}
-    </ul>`;
-}
-
-// ---- Qabila: your invite code, the people you brought in, everyone under you, and who is above you ---------------------------------------
-function qabila() {
-  const m = S.me, tm = S.team;
-  const link = `${location.origin}/?invite=${m.username}`;
-  const down = m.team.total - m.total, nx = MILESTONES.find((x) => x > down) || MILESTONES.at(-1), pv = MILESTONES.filter((x) => x <= down).at(-1) || 0;
-  return `<p class="note first">${t('tree_sub')}</p>
-  ${m.canLinkInviter ? `<form novalidate class="linkinv" data-form="inviter"><b>${t('who_invited')}</b><p class="muted">${t('who_invited_text')}</p>
-    <div class="row"><input type="text" name="username" required maxlength="30" autocomplete="off" autocapitalize="none" dir="ltr" placeholder="${esc(t('who_invited_ph'))}" aria-label="${esc(t('who_invited'))}"><button class="chip solid" type="submit">${t('who_invited_btn')}</button></div></form>` : ''}
-  <div class="stats">${cell(m.team.members, t('tree_people'))}${cell(m.team.total, t('tree_total'), 'durood')}${tm ? cell(tm.week, t('tree_week'), 'durood') : `<div><b>…</b><span>${t('tree_week')}</span></div>`}</div>
-  <div class="lvl"><div class="row between"><span>${t('tree_next')}</span><b>${U(nx, 'durood')}</b></div>${bar(nx === pv ? 100 : ((down - pv) / (nx - pv)) * 100)}</div>
-  ${fold('qcode', t('your_code'), '', `<p class="note first">${t('cq_def')}</p>
-    <div class="code">${esc(m.username)}</div>
-    <div class="muted" style="margin-top:12px">${t('your_link')}</div>
-    <div class="link">${esc(link)}</div>
-    <div class="row" style="margin-top:12px"><button class="blk wa fill1" data-act="wa"><span class="lab">${uiIcon('share', 22, 1.8)} ${t('share_wa')}</span><b class="ar">→</b></button>${navigator.share ? `<button class="chip" data-act="shareinv">${t('share_other')}</button>` : ''}<button class="chip" data-act="copy" data-text="${esc(link)}">${t('copy')}</button></div>`)}
-  ${fold('qinv', t('invites_title'), N(`${fmt(m.invites.left)}`), invitesBox(m), true)}
-  ${fold('qdirect', `${t('direct_list')}`, N(fmt(m.team.direct)), !tm ? '…' : tm.direct.length ? `<ul class="lb">${tm.direct.map((d) => `
-    <li>${av(d, 34)}<span class="name">${esc(d.username)}<small>${d.city ? `${esc(cityName(d.city))} · ` : ''}${t('this_week')} ${U(d.week, 'durood')}</small></span><span class="score">${U(d.total, 'durood')}</span></li>`).join('')}</ul>` : empty('nodes', t('none_yet')))}
-  ${tm?.upline?.length ? fold('qup', t('upline_title'), '', uplineBlock(tm).replace(/^<h3>.*?<\/h3>/, ''), false) : ''}`;
+  return !cv ? skel() : cv.caravan ? cvHome(cv) : `<h3 class="first-d">${t('caravan_title')}</h3>${empty('caravan', t('cv_none'))}`;
 }
 
 function historyBlock() {
@@ -996,11 +812,10 @@ function historyBlock() {
       </div>`).join('')}`).join('');
 }
 
-// three families of achievements, plus the city podium: personal, caravan (people you invited yourself), Qabila (everyone under you)
+// achievements: personal, caravan (your caravan's totals and streaks), and the city podium
 const BADGE_FAMILIES = [
-  ['personal', ['first_step', 'd1k', 'd10k', 'd100k', 'd1m', 'streak7', 'streak30', 'streak100', 'scholar1', 'scholar10', 'circle', 'circle_teacher', 'sunnah1', 'sunnah7', 'sunnah30', 'league_silver', 'league_gold', 'league_diamond']],
-  ['karwan', ['recruit1', 'recruit5', 'recruit25', 'group10k', 'group100k', 'group1m', 'karwan7', 'karwan30']],
-  ['qabila', ['qabila10', 'qabila50', 'qabila250', 'caravan10k', 'caravan100k', 'caravan1m', 'caravan10m']],
+  ['personal', ['first_step', 'd1k', 'd10k', 'd100k', 'd1m', 'streak7', 'streak30', 'streak100', 'sunnah1', 'sunnah7', 'sunnah30', 'league_silver', 'league_gold', 'league_diamond']],
+  ['karwan', ['group10k', 'group100k', 'group1m', 'karwan7', 'karwan30']],
   ['city', ['city_podium', 'city_champion']],
 ];
 
@@ -1015,12 +830,7 @@ function progress() {
   ${fold('badges', t('badges'), `<span class="minibadges" aria-hidden="true">${m.badges.slice(-3).reverse().map((c) => badgeSvg(c, true)).join('')}</span>${N(`${m.badges.length} / ${BADGE_FAMILIES.reduce((n, [, l]) => n + l.length, 0)}`)}`, `${BADGE_FAMILIES.map(([fam, list]) => `<h3>${t('fam_' + fam)}</h3>
   <div class="badges">${list.slice().sort((x, y) => m.badges.includes(y) - m.badges.includes(x)).map((c) => { const got = m.badges.includes(c); return `<div class="badge ${got ? 'got' : ''}" title="${esc(t('badge')[c][1])}">${badgeSvg(c, got)}<b>${esc(t('badge')[c][0])}</b><span>${esc(t('badge')[c][1])}</span></div>`; }).join('')}</div>`).join('')}`, false)}
   ${fold('history', t('hist_title'), '', `<p class="note first">${t('hist_hint')}</p>${historyBlock()}`, false)}
-  ${inBurhan() ? fold('majlis', t('majlis_title'), m.majlis ? esc(pick(m.majlis.name, m.majlis.nameUr)) : '', majlisBox(), !m.majlis) : ''}
-  ${inBurhan() ? fold('guides', t('guides_title'), (S.bh?.notices || []).length ? '•' : '', burhanMe() || skel()) : ''}
-  ${m.circleUrl && m.badges.includes('circle') ? fold('circle', t('circle_title'), m.circleTeach === 'approved' ? t('teach_done') : m.badges.includes('circle') ? '✓' : '', `<p class="muted">${t('circle_text')}</p>
-    <div class="row wrapx"><a class="chip" href="${esc(m.circleUrl)}" target="_blank" rel="noopener">${t('circle_open')} ↗</a>
-    ${m.badges.includes('circle') ? `<span class="ok">✓ ${t('circle_done')}</span>` : `<button class="chip" data-act="circle">${t('circle_claim')}</button>`}</div>
-    <p class="muted">${t('teach_text')}</p><div class="row wrapx">${teachButton()}</div>`, false) : ''}
+  ${fold('majlis', t('majlis_title'), m.majlis ? esc(pick(m.majlis.name, m.majlis.nameUr)) : '', majlisBox(), !m.majlis)}
   ${fold('points', t('points_title'), '', `<ul class="how">${t('points_list').map((x) => `<li>${x}</li>`).join('')}</ul>`, false)}`;
 }
 
@@ -1037,14 +847,6 @@ function majlisBox() {
       <form novalidate data-form="majlisnew"><input name="name" type="text" maxlength="40" placeholder="${esc(t('majlis_propose_ph'))}" aria-label="${esc(t('majlis_propose_ph'))}" dir="auto">
       <input name="nameUr" type="text" maxlength="40" placeholder="${esc(t('majlis_propose_ur'))}" aria-label="${esc(t('majlis_propose_ur'))}" dir="rtl">
       <button class="chip solid" type="submit">${t('majlis_send')}</button></form></details>`}</div>`;
-}
-
-// teaching a Seerat Circle: asked for once, confirmed by an organiser, then paid
-function teachButton() {
-  const st = S.me.circleTeach;
-  if (st === 'approved') return `<span class="ok">✓ ${t('teach_done')}</span>`;
-  if (st === 'pending') return `<span class="muted">${t('teach_pending')}</span>`;
-  return `${st === 'rejected' ? `<span class="muted">${t('teach_rejected')}</span>` : ''}<button class="chip" data-act="teach">${t('teach_btn')}</button>`;
 }
 
 // ---- Settings: profile, preferences, security, and leaving ------------------------------------------------------------------------
@@ -1069,8 +871,6 @@ function settings() {
   <label class="padx">${t('display')}</label>
   <div class="seg"><button class="${isDark() ? '' : 'on'}" data-act="setmode" data-m="light">${t('mode_light')}</button><button class="${isDark() ? 'on' : ''}" data-act="setmode" data-m="dark">${t('mode_dark_name')}</button></div>
 
-  ${pushSupported() ? `<div class="hint" style="margin-top:12px;padding-inline:20px">${Notification.permission === 'granted' ? t('push_on') : Notification.permission === 'denied' ? t('push_denied') : t('push_off')}</div>
-  <div class="row" style="padding-inline:20px">${Notification.permission === 'granted' ? `<button class="chip" data-act="pushoff">${t('push_disable')}</button>` : Notification.permission === 'denied' ? '' : `<button class="chip solid" data-act="pushon">${t('push_enable')}</button>`}</div>` : `<div class="hint" style="margin-top:12px">${t('push_unsupported')}</div>`}
   <h3 id="settings">${t('profile_title')}</h3>
   <form novalidate data-form="profile">
     <label for="p-name">${t('display_name')}</label>
@@ -1085,9 +885,6 @@ function settings() {
     <label for="s-goal">${t('daily_goal')}</label>
     <input id="s-goal" type="number" name="dailyGoal" min="1" max="100000" value="${m.dailyGoal}" dir="ltr">
     ${cityPicker(t('city'), m.city)}
-    <label for="s-time">${t('reminder_time')}</label>
-    <input id="s-time" type="time" name="reminderTime" value="${esc(m.reminderTime || '')}" dir="ltr">
-    <div class="hint">${t('reminder_hint')}</div>
     <label for="s-email">${t('email')} <span class="tag ${m.emailVerified ? 'verified' : ''}">${m.emailVerified ? t('email_ok') : '!'}</span></label>
     <input id="s-email" type="email" name="email" value="${esc(m.email)}" dir="ltr" required>
     <label for="s-pw">${t('pw_for_email')}</label>
@@ -1121,335 +918,8 @@ function settings() {
 `, false)}
   ${footerLinks()}`;
 }
-
-function quizBlock(p, x) {
-  if (!x.quiz?.length) return '';
-  if (x.quizPassed || p.passed) return `<div class="note ok">${t('quiz_passed')}</div>`;
-  const pick = (en, ur) => (S.lang === 'ur' && ur) || en;
-  const wrong = p.wrong || [];
-  return `<div class="quiz"><h3>${t('quiz_title')}</h3>
-    ${x.quiz.map((q, i) => `<fieldset class="${wrong.includes(i) ? 'bad' : ''}"><legend>${esc(pick(q.q_en, q.q_ur))}</legend>
-      ${q.options_en.map((o, j) => `<label class="opt"><input type="radio" name="qz${i}" value="${j}" data-quiz="${i}" ${p.answers?.[i] === j ? 'checked' : ''}> <span>${esc(pick(o, q.options_ur?.[j]))}</span></label>`).join('')}
-      ${wrong.includes(i) ? `<small class="err">${t('quiz_wrong')}</small>` : ''}</fieldset>`).join('')}
-    <button class="chip solid" data-act="quizcheck">${t('quiz_check')}</button></div>`;
-}
-
-function playerModal() {
-  const p = S.player, x = p.lecture;
-  const left = Math.max(0, x.minSeconds - p.elapsed);
-  return `<div class="modal"><div class="box">
-    ${x.driveId ? `<iframe src="https://drive.google.com/file/d/${esc(x.driveId)}/preview" allow="autoplay" title="${esc(pick(x.titleEn, x.titleUr))}"></iframe>
-    <a class="linkbtn" href="https://drive.google.com/file/d/${esc(x.driveId)}/view" target="_blank" rel="noopener">${t('open_drive')}</a>`
-      : `<iframe src="https://www.youtube-nocookie.com/embed/${esc(x.youtubeId)}?rel=0&playsinline=1" allow="accelerometer; encrypted-media; picture-in-picture" allowfullscreen title="lecture"></iframe>`}
-    <div class="spacer"></div>
-    <div class="muted" id="ptimer">${x.done ? `✓ ${t('watched')}` : left ? `${t('watching')} · ${t('min_left')(left)}` : x.quiz?.length && !p.passed && !x.quizPassed ? t('now_quiz') : t('ready_claim')}</div>
-    ${bar((p.elapsed / x.minSeconds) * 100).replace('class="bar"', 'class="bar" id="pbar"')}
-    ${quizBlock(p, x)}
-    <div class="spacer"></div>
-    <div class="row">${x.done ? '' : `<button class="blk fill1" id="pclaim" data-act="pclaim" ${left || (x.quiz?.length && !p.passed && !x.quizPassed) ? 'disabled' : ''}><span>${t('can_claim')}</span></button>`}
-    <button class="chip" data-act="pclose">${t('close')}</button></div>
-  </div></div>`;
-}
-
-
-// ---- Al-Burhan (internal edition only): murabbi, masul, mamulaat percentages, tasks and routines ------------------------------------------
-const inBurhan = () => S.edition === 'internal';
-async function initBurhan() {
-  if (!S.me) return;
-  if (S.edition === undefined) { try { S.edition = (await api('/config')).edition; } catch { return; } }
-  await loadBurhan();
-}
-async function loadBurhan() {
-  if (!inBurhan() || !S.me) return;
-  try { S.bh = await api('/burhan'); draw(); } catch { /* the app works without it */ }
-}
-const wdName = (d) => t('weekdays')[d];
-const mamulaatBars = (m) => !m ? '' : `<div class="mam"><div class="row between"><b>${t('mam_title')}</b><span class="muted">${m.average == null ? '' : t('mam_avg')(m.average)}</span></div>
-  <div class="bars" aria-label="${esc(t('mam_title'))}">${m.series.map((x) => `<i title="${esc(dayText(x.day, { weekday: 'short', day: 'numeric', month: 'short' }))}${x.percent == null ? '' : ` · \u2066${x.percent}%\u2069`}" class="${x.percent == null ? 'none' : ''}" style="height:${x.percent == null ? 6 : Math.max(6, x.percent)}%"></i>`).join('')}</div>
-  <div class="muted">${m.today == null ? t('mam_none_today') : t('mam_today')(m.today)}</div></div>`;
-const wdList = (a) => a.weekdays || (a.weekday == null ? [] : [a.weekday]);
-// "Every day", "Every Friday", or "Every Sat, Sun" (the week starts on Monday here, as in Pakistan)
-const daysLabel = (days) => days.length === 7 ? t('every_day') : days.length === 1 ? t('every')(wdName(days[0])) : t('every')([1, 2, 3, 4, 5, 6, 0].filter((d) => days.includes(d)).map((d) => t('weekdays_short')[d]).join(', '));
-// a deadline in words: today, tomorrow, a weekday this week, or the date; past ones are marked
-function dayWords(day) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(day || '')) return esc(day || '');
-  const diff = Math.round((Date.parse(`${day}T00:00:00Z`) - Date.parse(`${pkDay()}T00:00:00Z`)) / 864e5);
-  const words = diff === 0 ? t('today') : diff === 1 ? t('rs_tomorrow') : diff === -1 ? t('yesterday')
-    : diff > 1 && diff < 7 ? t('weekdays')[new Date(`${day}T00:00:00Z`).getUTCDay()]
-    : new Date(`${day}T00:00:00Z`).toLocaleDateString(S.lang === 'ur' ? 'ur-PK' : 'en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
-  return diff < 0 ? `<span class="late">${words}</span>` : words;
-}
-const asgLabel = (a) => a.kind === 'routine' ? daysLabel(wdList(a)) : a.dueDay ? t('due')(dayWords(a.dueDay)) : t('task_word');
-// the days a routine falls on: seven buttons (Monday first) and "Every day"
-const dayPicker = (id, picked = [new Date(serverNow() + 5 * 3600e3).getUTCDay()]) => `<fieldset class="daypick" id="${id}"><legend>${t('weekdays_pick')}</legend>
-  <div class="chips">${[1, 2, 3, 4, 5, 6, 0].map((d) => `<label class="chip daychip"><input type="checkbox" name="wd" value="${d}" ${picked.includes(d) ? 'checked' : ''}><span>${esc(t('weekdays_short')[d])}</span></label>`).join('')}
-  <button type="button" class="chip" data-act="everyday" data-for="${id}">${t('every_day')}</button></div></fieldset>`;
-const pickedDays = (form) => [...form.querySelectorAll('input[name=wd]:checked')].map((x) => Number(x.value));
-
 // a deadline input defaulting to a few days ahead (Pakistan time), never before today
 const pkDay = (plus = 0) => new Date(serverNow() + 5 * 3600e3 + plus * 864e5).toISOString().slice(0, 10);
-const dueInput = (id, name = 'dueDay', value = pkDay(3)) => `<input id="${id}" type="date" name="${name}" min="${pkDay()}" value="${esc(value)}" required dir="ltr">`;
-
-// the doer's own row, after Todoist: a round checkbox on the left, swipe right to complete, swipe left to reschedule, ⋯ for the rest
-const CHECK_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><circle class="ring" cx="12" cy="12" r="10"/><path class="tick" d="M7 12.5l3.2 3.2L17 9"/></svg>';
-function taskRow(a) {
-  const isTask = a.kind === 'task';
-  const done = isTask ? a.done : a.doneToday;
-  const tickable = isTask || a.dueToday;
-  const giver = a.from ? ` · ${t('from_masul')(esc(a.from))}` : '';
-  let meta;
-  if (!isTask) meta = a.dueToday || !a.last4.due ? '' : t('routine_stats')(a.last4.done, a.last4.due);
-  else if (a.done) meta = `${t('done_on')(N(esc(a.doneOn)))}${a.xpEarned != null ? ` · ${t('points_gained')(fmt(a.xpEarned))}` : ''}`;
-  else meta = [a.daysLate ? `<span class="bad">${t('days_late')(a.daysLate)}</span>` : '', a.extensions ? t('moved_n')(a.extensions) : '',
-    a.xpNow != null ? (a.xpNow < a.xpFull ? t('pts_now_less')(a.xpNow, a.xpFull) : t('pts_now')(a.xpNow)) : '', a.askedDay ? t('asked_for')(N(esc(a.askedDay))) : ''].filter(Boolean).join(' · ');
-  const canResched = isTask && !a.done && (a.own || !a.askedDay);
-  const menu = `<details class="menu"><summary aria-label="${esc(t('more_actions'))}" title="${esc(t('more_actions'))}">⋯</summary><div class="menupop">
-      ${canResched ? `<button data-act="resched" data-id="${a.id}">${uiIcon('flag', 16, 2)} ${t(a.own ? 'move_date' : 'ask_date')}</button>` : ''}
-      ${tickable && done ? `<button data-act="atick" data-id="${a.id}" data-done="0">${t('undo')}</button>` : ''}
-      ${a.own ? `<button data-act="endown" data-id="${a.id}" class="danger">✕ ${t('end_assign')}</button>` : ''}
-      ${!canResched && !a.own && !(tickable && done) ? `<span class="muted">${t('from_masul')(esc(a.from || ''))}</span>` : ''}</div></details>`;
-  return `<div class="trow ${done ? 'd' : ''} ${a.daysLate ? 'late' : ''}" data-swipe="${a.id}" data-can-done="${tickable && !done ? 1 : 0}" data-can-move="${canResched ? 1 : 0}">
-    <div class="swipebg"><span class="sw-done">${uiIcon('check', 20, 2.4)} ${t('mark_done')}</span><span class="sw-move">${t(a.own ? 'move_date' : 'ask_date')} ${uiIcon('flag', 20, 2)}</span></div>
-    <div class="tfront">
-      <button class="tcheck ${done ? 'on' : ''}" ${tickable ? '' : 'disabled'} data-act="atick" data-id="${a.id}" data-done="${done ? 0 : 1}" role="checkbox" aria-checked="${done}" aria-label="${esc(a.title)}">${CHECK_SVG}</button>
-      <span class="ttext"><span class="ttitle">${esc(a.title)}</span><small>${asgLabel(a)}${giver}</small>${meta ? `<small class="tmeta">${meta}</small>` : ''}</span>
-      ${menu}
-    </div></div>`;
-}
-
-// the reschedule sheet: quick days, or a date; your own you move, one from your masul you ask for
-function reschedSheet() {
-  const a = (S.bh?.assignments || []).find((x) => x.id === S.reschedId);
-  if (!a) return '';
-  const opts = [['today', pkDay(0)], ['tomorrow', pkDay(1)], ['in_3_days', pkDay(3)], ['next_week', pkDay(7)]].filter(([, d]) => d !== a.dueDay);
-  return `<div class="modal sheetm"><div class="box sheetbox" aria-label="${esc(t(a.own ? 'move_date' : 'ask_date'))}">
-    <div class="row between"><b class="sheettitle">${t(a.own ? 'move_date' : 'ask_date')}</b><button class="chip" data-act="sheetx">${t('close')}</button></div>
-    <p class="padx muted">${esc(a.title)} · ${t('due')(dayWords(a.dueDay))}</p>
-    <div class="reschopts">${opts.map(([k, d]) => `<button class="rowlink" data-act="reschpick" data-day="${d}"><span>${t('rs_' + k)}</span><b>${new Date(`${d}T00:00:00Z`).toLocaleDateString(S.lang === 'ur' ? 'ur-PK' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })}</b></button>`).join('')}</div>
-    <div class="row padx duerow">${dueInput('resch-day', 'day', pkDay(2))}<button class="chip solid" data-act="reschpick">${t(a.own ? 'save' : 'ask_send')}</button></div>
-    <p class="padx hint">${t(a.own ? 'move_warn' : 'ask_warn')}</p>
-  </div></div>`;
-}
-
-function assignRow(a, mode) { // mode: 'mine' (the doer: ticks, moves or asks), 'masul' (can end and move what they gave), 'view' (murabbi)
-  const isTask = a.kind === 'task';
-  let state;
-  if (!isTask) state = a.dueToday || !a.last4.due ? '' : `<small class="muted">${t('routine_stats')(a.last4.done, a.last4.due)}</small>`;
-  else if (a.done) state = `<small class="ok">${t('done_on')(N(esc(a.doneOn)))}${a.xpEarned != null ? ` · ${t('points_gained')(fmt(a.xpEarned))}` : ''}</small>`;
-  else {
-    const bits = [a.daysLate ? `<span class="bad">${t('days_late')(a.daysLate)}</span>` : '', a.extensions ? t('moved_n')(a.extensions) : '',
-      a.xpNow != null ? (a.xpNow < a.xpFull ? t('pts_now_less')(a.xpNow, a.xpFull) : t('pts_now')(a.xpNow)) : '', a.askedDay && mode !== 'masul' ? t('asked_for')(N(esc(a.askedDay))) : ''].filter(Boolean);
-    state = bits.length ? `<small class="muted">${bits.join(' · ')}</small>` : '';
-  }
-  const tickable = mode === 'mine' && (a.kind === 'routine' ? a.dueToday : true);
-  const done = a.kind === 'routine' ? a.doneToday : a.done;
-  const giver = mode === 'mine' ? (a.from ? ` · ${t('from_masul')(esc(a.from))}` : '') : a.own ? ` · ${t('own_tag')}` : '';
-  // moving a deadline: your own you move; one your masul gave you ask for; the masul moves theirs
-  const canMove = isTask && !a.done && ((mode === 'mine' && a.own) || (mode === 'masul' && !a.own));
-  const canAsk = isTask && !a.done && mode === 'mine' && !a.own && !a.askedDay;
-  const editing = S.dueEdit === a.id;
-  const dueForm = editing ? `<div class="row duerow">${dueInput(`due-${a.id}`, 'day', a.dueDay && a.dueDay >= pkDay() ? a.dueDay : pkDay(1))}
-      <button class="chip solid" data-act="${canMove ? 'duesave' : 'dueask'}" data-id="${a.id}">${t(canMove ? 'save' : 'ask_send')}</button><button class="chip" data-act="duex">${t('cancel')}</button></div>
-      ${mode === 'mine' ? `<small class="muted">${t(canMove ? 'move_warn' : 'ask_warn')}</small>` : ''}` : '';
-  const answer = mode === 'masul' && a.askedDay && !a.done ? `<div class="row duerow"><small>${t('asked_for')(N(esc(a.askedDay)))}</small><button class="chip solid" data-act="dueyes" data-id="${a.id}">${t('agree')}</button><button class="chip" data-act="dueno" data-id="${a.id}">${t('keep_date')}</button></div>` : '';
-  // the tick stays on the right; moving, asking, answering and removing sit on a line of their own under the title
-  const extra = [(canMove || canAsk) && !editing ? `<button class="chip" data-act="dueedit" data-id="${a.id}">${t(canMove ? 'move_date' : 'ask_date')}</button>` : '',
-    (mode === 'masul' && !a.own) || (mode === 'mine' && a.own) ? `<button class="chip endbtn" data-act="${mode === 'mine' ? 'endown' : 'endassign'}" data-id="${a.id}">${t('end_assign')}</button>` : ''].join('');
-  return `<div class="q ${done ? 'd' : ''}"><span class="bx"></span>
-    <span class="t">${esc(a.title)}<small>${asgLabel(a)}${giver}</small>${state}${answer}${dueForm}${extra ? `<span class="qacts">${extra}</span>` : ''}</span>
-    ${tickable ? `<button class="chip ${done ? '' : 'solid'}" data-act="atick" data-id="${a.id}" data-done="${done ? 0 : 1}">${done ? t('undo') : t('mark_done')}</button>` : ''}</div>`;
-}
-
-function burhanToday() {
-  const b = S.bh;
-  if (!b || (!b.today.length && !(b.mamulaat && b.mamulaat.today != null))) return '';
-  return `${b.today.map(taskRow).join('')}
-  ${b.mamulaat && b.mamulaat.today != null ? `<button class="rowlink" data-act="tab" data-tab="progress"><span>${t('mam_title')}</span><b>${N(`${b.mamulaat.today}%`)}</b></button>` : ''}`;
-}
-
-function whoSees() {
-  const b = S.bh;
-  const last = (x) => (x && x.lastViewed ? ` <small class="muted">${t('last_viewed')(ago(x.lastViewed))}</small>` : '');
-  return `<div class="circlecard who"><b>${t('who_title')}</b>
-    <p><b>${t('murabbi_word')}${b.murabbi && !b.murabbi.waiting ? ` (${esc(b.murabbi.username)})` : ''}:</b> ${t('who_murabbi')}${last(b.murabbi)}</p>
-    <p><b>${t('masul_word')}${b.masul ? ` (${esc(b.masul.username)})` : ''}:</b> ${t('who_masul')}${last(b.masul)}</p>
-    <p class="muted">${t('who_nobody')}</p></div>`;
-}
-
-function burhanMe() {
-  const b = S.bh;
-  if (!b) return '';
-  const mu = b.murabbi;
-  const err = S.bhError ? `<div class="notice" role="alert">${esc(S.bhError)}</div>` : '';
-  let murabbiBox;
-  if (!mu) murabbiBox = `${err}<p class="muted">${t('murabbi_text')}</p><button class="blk" data-act="bhactivate"><span>${t('murabbi_find')}</span><b class="ar">→</b></button>`;
-  else if (mu.stage === 'waiting') murabbiBox = `<div class="notice">${t('murabbi_waiting')(esc(mu.name || '—'))}</div><div class="row"><button class="chip solid" data-act="bhactivate">${t('check_again')}</button><button class="chip" data-act="bhunlink">${t('unlink')}</button></div>`;
-  else if (mu.stage === 'confirm') murabbiBox = `<div class="circlecard"><b>${t('murabbi_is_it')}</b>
-      <p><b>${esc(mu.username)}</b>${mu.city ? ` · ${esc(cityName(mu.city))}` : ''}<br><small class="muted">${t('murabbi_listed_as')(esc(mu.name || '—'))}</small></p>
-      <p class="muted">${t('murabbi_sees')}</p>
-      <div class="row"><button class="blk fill1" data-act="bhconfirm"><span>${t('yes_mine')}</span><b class="ar">→</b></button><button class="chip" data-act="bhunlink">${t('not_mine')}</button></div></div>`;
-  else if (mu.stage === 'pending') murabbiBox = `<div class="notice">${t('murabbi_pending')(esc(mu.username))}</div><div class="row"><button class="chip" data-act="bhunlink">${t('unlink')}</button></div>`;
-  else murabbiBox = `<div class="row between"><span>${t('murabbi_word')}: <b>${esc(mu.username)}</b></span><button class="chip" data-act="bhunlink">${t('unlink')}</button></div>`;
-  const pick = S.masulPick;
-  const masulBox = b.masul
-    ? `<div class="row between"><span>${t('masul_word')}: <b>${esc(b.masul.username)}</b></span><button class="chip" data-act="bhmasulclear">${t('unlink')}</button></div>`
-    : pick ? `<div class="circlecard"><b>${t('masul_add_q')(esc(pick))}</b><p class="muted">${t('masul_sees')}</p>
-        <div class="row"><button class="blk fill1" data-act="bhmasulyes"><span>${t('yes_add')}</span><b class="ar">→</b></button><button class="chip" data-act="bhmasulno">${t('cancel')}</button></div></div>`
-    : `<p class="muted">${t('masul_text')}</p><div class="row"><input id="masulq" type="text" aria-label="${esc(t('masul_ph'))}" autocomplete="off" autocapitalize="off" dir="ltr" placeholder="${esc(t('masul_ph'))}"></div><div id="masulres" class="chips"></div>`;
-  const notes = (b.notices || []).map((n) => `<div class="notice row between"><span>${t('bh_n_' + n.kind)(esc(n.byName))}</span><button class="chip" data-act="bhnotice" data-k="${esc(n.kind)}">${t('ok_got_it')}</button></div>`).join('');
-  return `<div class="padx bh">
-    ${notes}
-    ${whoSees()}
-    <div class="spacer"></div><b>${t('murabbi_word')}</b>${murabbiBox}
-    ${mu?.stage === 'active' ? mamulaatBars(b.mamulaat) : ''}
-    <div class="spacer"></div><b>${t('masul_word')}</b>${masulBox}
-  </div>`;
-}
-
-function burhanCaravan() {
-  const b = S.bh;
-  if (!b) return skel();
-  const sa = S.bhLists?.saaliks || [], ra = S.bhLists?.razakars || [], rq = S.bhLists?.requests || [];
-  const loading = !S.bhLists && (b.roles.saaliks || b.roles.razakars || b.roles.requests);
-  if (loading) return skel();
-  const reqs = rq.map((r) => `<div class="circlecard"><b>${esc(r.username)}</b>${r.city ? ` · ${esc(cityName(r.city))}` : ''}<p class="muted">${t('request_text')}</p><div class="row"><button class="blk fill1" data-act="bhaccept" data-u="${esc(r.username)}"><span>${t('accept')}</span><b class="ar">→</b></button><button class="chip" data-act="bhdecline" data-u="${esc(r.username)}">${t('decline')}</button></div></div>`).join('');
-  const saliks = sa.length ? `<ul class="lb">${sa.map((x) => `<li><button class="rowbtn" data-act="opensaalik" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(cityName(x.city))} · ` : ''}${t('durood_week')(fmt(x.duroodWeek))}${x.mamulaatToday == null ? '' : ` · ${t('mam_short')} ${N(`${x.mamulaatToday}%`)}`}</small></span><span class="score">${U(x.duroodToday, 'durood')}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('saaliks_none')}</p>`;
-  const allTags = S.bhLists?.tags || [], tf = S.teamFilter && allTags.some((x) => x.tag === S.teamFilter) ? S.teamFilter : null;
-  const shown = tf ? ra.filter((x) => (x.tags || []).includes(tf)) : ra;
-  const chips = allTags.length ? `<div class="chips tagbar"><button class="chip ${tf ? '' : 'solid'}" data-act="teamf" data-tag="">${t('team_all')} ${N(String(ra.length))}</button>${allTags.map((x) => `<button class="chip ${tf === x.tag ? 'solid' : ''}" data-act="teamf" data-tag="${esc(x.tag)}">#${esc(x.tag)} ${N(String(x.n))}</button>`).join('')}</div>` : (ra.length ? `<p class="hint padx">${t('team_hint')}</p>` : '');
-  const teamForm = tf ? assignForm('teamassign', t('team_assign')(esc(tf))) : '';
-  // "everyone I lead": the same task form, for all of this masul's razakars at once (shown when no team is picked)
-  const everyoneBox = !ra.length || tf ? '' : `<button class="rowlink" data-act="assignall" aria-expanded="${!!S.assignAll}"><span>${t('assign_everyone_btn')}</span><b class="ar">${S.assignAll ? '↑' : '→'}</b></button>${S.assignAll ? assignForm('everyoneassign', t('assign_everyone')(ra.length)) : ''}`;
-  const razakars = ra.length ? `${chips}${teamForm}${everyoneBox}<ul class="lb">${shown.map((x) => `<li><button class="rowbtn" data-act="openrazakar" data-u="${esc(x.username)}">${av(x, 34, false)}<span class="name">${esc(x.username)}<small>${x.city ? `${esc(cityName(x.city))} · ` : ''}${t('open_tasks')(x.openTasks)}${x.overdue ? ` · <span class="bad">${t('overdue_n')(x.overdue)}</span>` : ''}${x.asks ? ` · <b>${t('asks_n')(x.asks)}</b>` : ''}${x.routinePercent == null ? '' : ` · ${t('routines_short')} ${N(`${x.routinePercent}%`)}`}${(x.tags || []).length ? `<span class="tagline">${x.tags.map((g) => `<em class="ttag">#${esc(g)}</em>`).join(' ')}</span>` : ''}</small></span><span class="score">${U(x.duroodWeek, 'durood')}</span></button></li>`).join('')}</ul>` : `<p class="muted padx">${t('razakars_none')}</p>`;
-  return `${rq.length ? fold('preq', t('requests_title'), N(String(rq.length)), reqs) : ''}
-  ${fold('psaliks', t('saaliks_title'), N(String(sa.length)), saliks)}
-  ${fold('prazakars', t('razakars_title'), N(String(ra.length)), razakars)}`;
-}
-
-// the masul's form for giving a task or routine, to one razakar ('assign') or a whole team ('teamassign')
-function assignForm(name, title) {
-  const f = S.assignForm || { kind: 'task' };
-  return `<form novalidate data-form="${name}" class="assign"><b>${title}</b>
-      <div class="seg thin"><button type="button" class="${f.kind === 'task' ? 'on' : ''}" data-act="assignkind" data-k="task">${t('task_word')}</button><button type="button" class="${f.kind === 'routine' ? 'on' : ''}" data-act="assignkind" data-k="routine">${t('routine_word')}</button></div>
-      <input type="text" name="title" maxlength="80" aria-label="${esc(t('assign_ph'))}" placeholder="${esc(t('assign_ph'))}" dir="auto">
-      ${f.kind === 'routine'
-        ? dayPicker(`${name}-wd`, [5])
-        : `<label for="${name}-due">${t('due_word')}</label>${dueInput(`${name}-due`)}`}
-      <button class="blk" type="submit"><span>${t('assign_btn')}</span><b class="ar">→</b></button></form>`;
-}
-// a razakar's team tags, edited by their masul
-function tagEditor(r) {
-  const tags = r.tags || [];
-  return `<div class="tagedit"><b>${t('team_tags')}</b>
-    <div class="chips">${tags.map((g) => `<span class="chip ttagchip">#${esc(g)} <button class="linkbtn" data-act="tagdel" data-tag="${esc(g)}" aria-label="${esc(t('end_assign'))} #${esc(g)}">✕</button></span>`).join('')}</div>
-    <div class="row"><input id="tag-new" type="text" maxlength="25" list="tag-list" autocomplete="off" autocapitalize="off" placeholder="${esc(t('team_add_ph'))}" aria-label="${esc(t('team_add_ph'))}" dir="auto"><button class="chip solid" data-act="tagadd">${t('add')}</button></div>
-    <datalist id="tag-list">${(r.allTags || []).filter((g) => !tags.includes(g)).map((g) => `<option value="#${esc(g)}">`).join('')}</datalist>
-    <small class="muted">${t('team_hint')}</small></div>`;
-}
-
-// ticking a task: the circle fills, the row settles, then the server is told; undo for five seconds
-async function tickTask(id, done, row) {
-  if (done && row) { row.classList.add('completing'); haptic('done'); sound('done'); await new Promise((r) => setTimeout(r, reduceMotion() ? 0 : 420)); }
-  try {
-    const r = await api(`/assignments/${id}/tick`, 'POST', { done });
-    await loadBurhan(); await refreshMe(); draw();
-    if (done) toast(r.xpGained ? `${t('task_done')} · ${t('points_gained')(fmt(r.xpGained))}` : t('task_done'), null, { label: t('undo'), run: () => tickTask(id, false) });
-  } catch (e) { row?.classList.remove('completing'); toast(errText(e)); }
-}
-
-// ---- swiping a task row: right completes, left reschedules (touch and mouse), like Todoist ---------------------------------------
-{
-  let sw = null;
-  const end = (commit) => {
-    if (!sw) return;
-    const { row, front, dx } = sw; sw = null;
-    const w = row.offsetWidth, rtl = document.documentElement.dir === 'rtl', fwd = rtl ? -dx : dx;
-    front.style.transition = 'transform .2s ease'; front.style.transform = '';
-    row.classList.remove('sw-right', 'sw-left');
-    if (!commit || Math.abs(dx) < w * 0.33) return;
-    if (fwd > 0 && row.dataset.canDone === '1') tickTask(Number(row.dataset.swipe), true, row);
-    else if (fwd < 0 && row.dataset.canMove === '1') { S.reschedId = Number(row.dataset.swipe); S.sheet = 'resched'; draw(); }
-  };
-  document.addEventListener('pointerdown', (ev) => {
-    const row = ev.target.closest('.trow[data-swipe]');
-    if (!row || ev.target.closest('button, summary, .menupop, a, input')) return;
-    sw = { row, front: row.querySelector('.tfront'), x: ev.clientX, y: ev.clientY, dx: 0, locked: null, id: ev.pointerId };
-  });
-  document.addEventListener('pointermove', (ev) => {
-    if (!sw || ev.pointerId !== sw.id) return;
-    const dx = ev.clientX - sw.x, dy = ev.clientY - sw.y;
-    if (sw.locked === null && Math.abs(dx) + Math.abs(dy) > 8) sw.locked = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
-    if (sw.locked !== 'x') return;
-    const rtl = document.documentElement.dir === 'rtl', fwd = rtl ? -dx : dx;
-    if ((fwd > 0 && sw.row.dataset.canDone !== '1') || (fwd < 0 && sw.row.dataset.canMove !== '1')) return;
-    sw.dx = dx;
-    sw.front.style.transition = 'none'; sw.front.style.transform = `translateX(${dx}px)`;
-    sw.row.classList.toggle('sw-right', fwd > 0); sw.row.classList.toggle('sw-left', fwd < 0);
-    sw.row.classList.toggle('sw-armed', Math.abs(dx) >= sw.row.offsetWidth * 0.33);
-  });
-  document.addEventListener('pointerup', () => end(true));
-  document.addEventListener('pointercancel', () => end(false));
-  // close an open ⋯ menu when tapping elsewhere
-  document.addEventListener('click', (ev) => { for (const d of document.querySelectorAll('details.menu[open]')) if (!d.contains(ev.target)) d.removeAttribute('open'); });
-}
-
-// ---- Tasks: your own tasks and routines and the ones your masul gives you, like a Todoist list ------------------------------------
-function tasksPage() {
-  const b = S.bh;
-  if (!b) return skel();
-  const f = S.ownForm || { kind: 'task' };
-  const list = b.assignments, routines = list.filter((a) => a.kind === 'routine'), tasks = list.filter((a) => a.kind === 'task');
-  const open = tasks.filter((a) => !a.done).sort((x, y) => String(x.due || '9').localeCompare(String(y.due || '9'))), done = tasks.filter((a) => a.done); // soonest deadline (and overdue) first
-  const form = `<form novalidate data-form="owntask" class="assign"><b>${t('own_new')}</b>
-      <div class="seg thin"><button type="button" class="${f.kind === 'task' ? 'on' : ''}" data-act="ownkind" data-k="task">${t('task_word')}</button><button type="button" class="${f.kind === 'routine' ? 'on' : ''}" data-act="ownkind" data-k="routine">${t('routine_word')}</button></div>
-      <input type="text" name="title" maxlength="80" aria-label="${esc(t('own_ph'))}" placeholder="${esc(t('own_ph'))}" dir="auto">
-      ${f.kind === 'routine'
-        ? dayPicker('o-wd')
-        : `<label for="o-due">${t('due_word')}</label>${dueInput('o-due')}`}
-      <button class="blk" type="submit"><span>${t('own_add')}</span><b class="ar">→</b></button>
-      <p class="hint">${b.masul || (b.murabbi && b.murabbi.stage === 'active') ? t('own_seen_by') : t('own_private')}</p></form>`;
-  return `${fold('tnew', t('own_new'), '', form, !list.length)}
-  ${fold('ttasks', t('tasks_open'), N(String(open.length)), open.length ? open.map(taskRow).join('') : empty('check', t('tasks_none')))}
-  ${fold('troutines', t('routines_title'), N(String(routines.length)), routines.length ? routines.map(taskRow).join('') : empty('check', t('routines_none')))}
-  ${done.length ? fold('tdone', t('tasks_done'), N(String(done.length)), done.map(taskRow).join(''), false) : ''}`;
-}
-
-function progressGrid(g) {
-  const c = cell;
-  return `<div class="stats">${c(g.durood.total, t('total'), 'durood')}${c(g.durood.today, t('today'), 'durood')}${c(g.durood.week, t('week'), 'durood')}</div>
-    <div class="stats">${c(g.streak, t('streak_l'))}${c(g.xp, t('xp'))}${c(g.level, t('level'))}</div>
-    <div class="stats">${c(g.sunnahs, t('sunnah_word'))}${c(g.lectures, t('lectures_word'))}${c(g.reflections, t('reflect_title'))}</div>`;
-}
-
-function detailModal() {
-  const d = S.bhDetail, r = d.data;
-  const head = `<div class="row between"><h3 class="in">${esc(d.username)}</h3><button class="chip" data-act="closedetail">${t('close')}</button></div>`;
-  if (!r) return `<div class="modal msheet"><div class="box">${head}<p class="muted center">…</p></div></div>`;
-  if (d.type === 'saalik') {
-    const p = r.profile;
-    return `<div class="modal msheet"><div class="box wide">${head}
-      <p class="muted" dir="ltr">${esc(p.phone)} · ${esc(p.email)}<br>${esc(cityName(p.city) || '')}${p.country ? ` · ${esc(p.country)}` : ''} · ${t('joined')} ${esc(dayText(p.joined, SINCE))}</p>
-      ${progressGrid(r.progress)}
-      <p class="muted">${t('nav_caravan')}: <b>${r.extra.caravan ? esc(r.extra.caravan) : t('none_word')}</b></p>
-      <div class="stats"><div><b>${fmt(r.extra.invited)}</b><span>${t('invited_word')}</span></div><div><b>${fmt(r.extra.qabila)}</b><span>${t('rk_trees')}</span></div><div><b>${fmt(r.extra.badges)}</b><span>${t('badges_word')}</span></div></div>
-      ${r.extra.badgeList?.length ? `<p class="chips">${r.extra.badgeList.map((c) => `<span class="tag">${esc((t('badge')[c] || [c])[0])}</span>`).join(' ')}</p>` : ''}
-      ${r.extra.reflections?.length ? `<b>${t('reflect_title')}</b>${r.extra.reflections.map((x) => `<div class="reflbody" dir="auto"><small class="muted">${esc(dayText(x.day, { weekday: 'short', day: 'numeric', month: 'short' }))}</small><br>${esc(x.body)}</div>`).join('')}` : ''}
-      ${mamulaatBars(r.mamulaat)}${r.mamulaat.stale ? `<small class="muted">${t('mam_stale')}</small>` : ''}
-      ${r.masul ? `<p class="muted">${t('masul_word')}: <b>${esc(r.masul)}</b></p>` : ''}
-      ${r.assignments.length ? `<b>${t('assigned_view')}</b>${r.assignments.map((a) => assignRow(a, 'view')).join('')}` : ''}
-      <div class="spacer"></div><button class="chip" data-act="bhdrop" data-u="${esc(d.username)}">${t('stop_murabbi')}</button></div></div>`;
-  }
-  const f = S.assignForm || { kind: 'task' };
-  return `<div class="modal msheet"><div class="box wide">${head}
-    <p class="muted">${esc(cityName(r.city) || '')} · ${t('joined')} ${esc(dayText(r.joined, SINCE))}</p>
-    ${progressGrid(r.progress)}
-    <b>${t('assigned_view')}</b>
-    ${r.assignments.length ? r.assignments.map((a) => assignRow(a, 'masul')).join('') : empty('check', t('none_assigned'))}
-    ${tagEditor(r)}
-    ${assignForm('assign', t('assign_new'))}
-    <div class="row dangerrow"><button class="chip" data-act="bhremove" data-u="${esc(d.username)}">${t('remove_razakar')}</button></div>
-  </div></div>`;
-}
 
 // ---- drawing + data loading -----------------------------------------------------
 let liveAt = 0;
@@ -1460,8 +930,8 @@ async function loadLive() {
   try { S.live = await api('/public'); if (!S.me) draw(); } catch { /* the welcome screen works without it */ }
 }
 // Every redraw rebuilds the page. So what the person typed, and where their cursor was, is carried over by name.
-const fieldKey = (el) => `${el.closest('form')?.dataset.form || ''}|${el.name || el.id || (el.hasAttribute('data-city') ? 'city' : '') || el.dataset.cbox || el.dataset.rbox || ''}`;
-const FIELDS = 'input[name]:not([type=file]):not([type=hidden]), textarea, input[data-city], input[data-cbox], input[data-rbox], #cv-new, #cv-rename, #cvinvq, #cvjoinq, #masulq, select[name]';
+const fieldKey = (el) => `${el.closest('form')?.dataset.form || ''}|${el.name || el.id || (el.hasAttribute('data-city') ? 'city' : '') || el.dataset.rbox || ''}`;
+const FIELDS = 'input[name]:not([type=file]):not([type=hidden]), textarea, input[data-city], input[data-rbox], #cv-rename, select[name]';
 function snapshotFields() {
   const snap = new Map();
   app.querySelectorAll(FIELDS).forEach((el) => { const k = fieldKey(el); if (k.endsWith('|')) return; snap.set(k, el.type === 'radio' || el.type === 'checkbox' ? el.checked : el.value); });
@@ -1505,7 +975,7 @@ document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape' && S.drawer && !app.querySelector('.modal')) { S.drawer = false; draw(); ($('.burger')?.offsetParent ? $('.burger') : $('nav.tabs [data-act=drawer]'))?.focus(); return; }
   const m = app.querySelector('.modal');
   if (!m) return;
-  if (ev.key === 'Escape') { m.querySelector('[data-act=pclose],[data-act=celebrateX],[data-act=closedetail],[data-act=closeprofile],[data-act=sheetx]')?.click(); return; }
+  if (ev.key === 'Escape') { m.querySelector('[data-act=celebrateX],[data-act=closeprofile],[data-act=sheetx]')?.click(); return; }
   if (ev.key !== 'Tab') return;
   const f = [...m.querySelectorAll('button:not([disabled]), [href], input:not([disabled]):not([type=hidden]), select, textarea, [tabindex]:not([tabindex="-1"])')].filter((e) => e.offsetParent !== null);
   if (!f.length) return;
@@ -1591,16 +1061,10 @@ const boardUrl = (b) => (b.type === 'users' ? `/leaderboard?type=users&period=${
   : b.type === 'league' ? '/league'
   : b.type === 'cities' || b.type === 'majalis' ? `/leaderboard?type=${b.type}&metric=${b.metric}`
   : b.metric === 'total' ? `/leaderboard?type=${b.type}&period=week` : `/leaderboard?type=${b.type}&metric=${b.metric}`);
-async function loadFeed() { S.feed = await api('/feed'); S.learn = { lectures: S.feed.lectures }; S.feedSeen = S.feed.seenAt; }
-async function loadBurhanLists() {
-  if (!S.bh || !(S.bh.roles.saaliks || S.bh.roles.razakars || S.bh.roles.requests)) return;
-  S.bhLists = { saaliks: S.bh.roles.saaliks ? (await api('/burhan/saaliks')).saaliks : [], razakars: S.bh.roles.razakars ? (await api('/burhan/razakars')).razakars : [], tags: S.bh.roles.razakars ? (await api('/burhan/tags')).tags : [], requests: S.bh.roles.requests ? (await api('/burhan/requests')).requests : [] };
-}
+async function loadFeed() { S.feed = await api('/feed'); S.feedSeen = S.feed.seenAt; }
 const boardCache = new Map();
 async function enterTab(tab) {
   if (tab === 'me') tab = 'progress'; // older links
-  if (tab === 'burhan') tab = 'tasks'; // the old Al-Burhan page became Tasks, My people and Me
-  if (['tasks', 'people'].includes(tab) && !inBurhan()) tab = 'home';
   // the page you are on, scrolled down: glide back to the top, as iOS tab bars do (at the top, the tap reloads it)
   if (tab === S.tab && !S.drawer && window.scrollY > 40) { window.scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' }); return; }
   S.tab = tab; S.drawer = false; S.enterAt = Date.now();
@@ -1618,16 +1082,14 @@ async function enterTab(tab) {
       if (boardUrl(S.board) !== url) return;
       S.board.data = d;
     }
-    if (inBurhan() && ['home', 'tasks', 'people', 'progress'].includes(tab)) loadBurhan().then(async () => { if (tab === 'people') { await loadBurhanLists(); S.bhLists ||= { saaliks: [], razakars: [], requests: [] }; if (S.tab === 'people') draw(); } });
     if (tab === 'home') { await loadFeed(); return S.tab === 'home' && draw(); }
-    if (tab === 'sunnah' || tab === 'seerah') {
-      const more = tab === 'sunnah' ? api('/sunnah/mine').then((r) => { S.sunnahMine = r.posts; }) : api('/lectures?past=1').then((r) => { S.pastLec = r.lectures; });
+    if (tab === 'sunnah') {
+      const more = api('/sunnah/mine').then((r) => { S.sunnahMine = r.posts; });
       if (!S.feed) { await loadFeed(); draw(); }
       await more.catch(() => {});
       return S.tab === tab && draw();
     }
     if (tab === 'caravan') S.cv = await api('/caravan');
-    if (tab === 'qabila') S.team = await api('/team');
     if (tab === 'progress') S.history = await api('/history');
     if (tab === 'feed') {
       if (!S.feed) draw(); // the feed already on screen stays while the newest loads
@@ -1745,16 +1207,12 @@ app.addEventListener('click', async (ev) => {
   if (act === 'drawerx') { S.drawer = false; return draw(); }
   if (act === 'addsheet') {
     S.drawer = false;
-    if (S.tab === 'tasks') { // on Tasks the + adds a task, as in Todoist
-      S.folds.tnew = true; draw();
-      const box = $('[data-form=owntask] input[name=title]'); box?.scrollIntoView({ block: 'center', behavior: 'smooth' }); box?.focus({ preventScroll: true }); return;
-    }
     if (S.tab === 'home' && $('#manual')) { $('#manual').scrollIntoView({ block: 'center', behavior: 'smooth' }); $('#manual').focus({ preventScroll: true }); return draw(); } // Today has the box already
     S.sheet = 'add'; draw(); $('#manual')?.focus(); return;
   }
   if (act === 'sheetx') { S.sheet = null; return draw(); }
   if (act === 'fold') { haptic('tap'); const k = el.dataset.k; S.folds[k] = el.getAttribute('aria-expanded') !== 'true'; ls.set('folds', JSON.stringify(S.folds)); return draw(); }
-  if (act === 'logout') return logout(true, true);
+  if (act === 'logout') return logout(true);
   if (act === 'logoutall') {
     if (!confirm(t('logout_all_ask'))) return;
     try { const r = await api('/sessions/revoke', 'POST'); S.token = r.token; ls.set('token', r.token); toast(t('logout_all_done')); } catch (e) { toast(errText(e)); }
@@ -1762,7 +1220,7 @@ app.addEventListener('click', async (ev) => {
   }
   if (act === 'retry') {
     el.disabled = true;
-    try { await refreshMe(); S.offline = false; initBurhan(); } catch (e) { if (e.message !== 'network') S.offline = false; }
+    try { await refreshMe(); S.offline = false; } catch (e) { if (e.message !== 'network') S.offline = false; }
     return draw();
   }
   if (act === 'allms') { S.allMs = true; return draw(); }
@@ -1812,9 +1270,6 @@ app.addEventListener('click', async (ev) => {
     return;
   }
   if (act === 'news') return enterTab('feed');
-  if (act === 'pushno') { ls.set('pushNo', '1'); return draw(); }
-  if (act === 'pushon') { try { await enablePush(); toast(t('push_on')); } catch (e) { toast(errText(e)); } return draw(); }
-  if (act === 'pushoff') { try { await disablePush(); toast(t('push_off')); } catch (e) { toast(errText(e)); } return draw(); }
   if (act === 'taptoggle') { S.tapOpen = !S.tapOpen; return draw(); }
   if (act === 'fill') { const f = $('#manual'); f.value = (Number(f.value) || 0) + Number(el.dataset.n); f.focus(); return; }
   if (act === 'manual') {
@@ -1830,7 +1285,6 @@ app.addEventListener('click', async (ev) => {
     if (el.dataset.metric) S.board.metric = el.dataset.metric;
     return enterTab('rank');
   }
-  if (act === 'wa') return window.open(`https://wa.me/?text=${encodeURIComponent(t('share_text')(S.me.username, `${location.origin}/?invite=${S.me.username}`))}`, '_blank', 'noopener');
   if (act === 'cheer') {
     el.disabled = true; el.classList.add('on', 'pop'); haptic('light');
     try {
@@ -1839,16 +1293,6 @@ app.addEventListener('click', async (ev) => {
       if (item) Object.assign(item, r);
       draw();
     } catch (e) { el.disabled = false; el.classList.remove('on'); toast(errText(e)); }
-    return;
-  }
-  if (act === 'startx') { ls.set('started', '1'); return draw(); }
-  if (act === 'shareinv') {
-    const url = `${location.origin}/?invite=${S.me.username}`;
-    try { await navigator.share({ title: 'Seerah Quest', text: t('share_text')(S.me.username, ''), url }); } catch { /* closed */ }
-    return;
-  }
-  if (act === 'copy') {
-    try { await navigator.clipboard.writeText(el.dataset.text); toast(t('copied')); } catch { prompt('', el.dataset.text); }
     return;
   }
 
@@ -1867,19 +1311,6 @@ app.addEventListener('click', async (ev) => {
       await loadFeed(); return draw();
     } catch (e) { toast(errText(e)); if (e.message === 'bad_image' || e.message === 'duplicate_image') S.draft = null; return draw(); }
   }
-  if (act === 'reflect') {
-    const text = $('#refl').value;
-    S.reflDraft = text;
-    el.disabled = true;
-    try {
-      const before = S.me.xp;
-      const r = await api('/reflections', 'POST', { text });
-      S.me = r.me; S.reflDraft = '';
-      toast(`${t('reflect_posted')} · ${t('points_gained')(fmt(gainedSince(before)))}`);
-      await loadFeed(); return draw();
-    } catch (e) { toast(errText(e)); el.disabled = false; }
-    return;
-  }
   if (act === 'profile') {
     S.profile = { username: el.dataset.u, data: null }; draw();
     try { S.profile.data = await api(`/members/${encodeURIComponent(el.dataset.u)}`); } catch (e) { S.profile = null; toast(errText(e)); }
@@ -1894,136 +1325,21 @@ app.addEventListener('click', async (ev) => {
     try { S.me = await api('/me', 'PATCH', { hidePhone: v }); toast(t(v ? 'wa_hidden' : 'saved')); } catch (e) { toast(errText(e)); }
     return draw();
   }
-  if (act === 'pastch') { S.pastCh = { rows: null }; draw(); try { S.pastCh.rows = (await api('/challenges/past')).past; } catch (e) { S.pastCh = null; toast(errText(e)); } return draw(); }
-  if (act === 'closepast') { S.pastCh = null; return draw(); }
   if (act === 'closeprofile') { S.profile = null; return draw(); }
   if (act === 'rmavatar') { try { S.me = await api('/me/avatar', 'DELETE'); toast(t('saved')); } catch (e) { toast(errText(e)); } return draw(); }
   if (act.startsWith('cv')) {
-    const call = async (path, body, after) => { try { const r = await api(path, 'POST', body); if (r.view) S.cv = r.view; if (r.me) S.me = r.me; if (after) after(r); } catch (e) { toast(errText(e)); } draw(); };
     if (act === 'cvall') { S.cvAll = true; return draw(); }
-    if (act === 'cvinvite') return call('/caravan/invite', { username: el.dataset.u }, (r) => toast(r.joined ? t('saved') : t('cv_invited')));
-    if (act === 'cvjoin') return call('/caravan/join', { name: el.dataset.name }, (r) => toast(r.joined ? t('saved') : t('cv_asked_sent')));
-    if (act === 'cvaccept' || act === 'cvdecline') return call(`/caravan/invitations/${el.dataset.id}`, { accept: act === 'cvaccept' });
-    if (act === 'cvreqyes' || act === 'cvreqno') return call(`/caravan/requests/${encodeURIComponent(el.dataset.u)}`, { accept: act === 'cvreqyes' });
-    if (act === 'cvcancelreq') return call('/caravan/cancel', { caravanId: Number(el.dataset.id) });
-    if (act === 'cvcancelinv') return call('/caravan/cancel', { username: el.dataset.u });
-    if (act === 'cvremove') { if (!confirm(t('cv_remove_ask')(el.dataset.u))) return; return call('/caravan/remove', { username: el.dataset.u }); }
-    if (act === 'cvleave') { if (!confirm(t('cv_leave_ask'))) return; S.cvAll = false; return call('/caravan/leave', {}); }
+    if (act === 'cvremove') {
+      if (!confirm(t('cv_remove_ask')(el.dataset.u))) return;
+      try { const r = await api('/caravan/remove', 'POST', { username: el.dataset.u }); if (r.view) S.cv = r.view; } catch (e) { toast(errText(e)); }
+      return draw();
+    }
   }
-  if (act === 'bhactivate') {
-    el.disabled = true; S.bhError = '';
-    try { await api('/burhan/murabbi', 'POST'); await loadBurhan(); } catch (e) { S.bhError = errText(e); draw(); }
-    return;
-  }
-  if (act === 'bhconfirm') { try { await api('/burhan/murabbi/confirm', 'POST'); await loadBurhan(); toast(t('saved')); } catch (e) { toast(errText(e)); } return; }
-  if (act === 'bhaccept' || act === 'bhdecline') {
-    try {
-      await api(`/burhan/requests/${encodeURIComponent(el.dataset.u)}`, 'POST', { accept: act === 'bhaccept' });
-      await loadBurhan();
-      S.bhLists = { ...S.bhLists, requests: (await api('/burhan/requests')).requests, saaliks: (await api('/burhan/saaliks')).saaliks };
-      toast(t('saved')); draw();
-    } catch (e) { toast(errText(e)); }
-    return;
-  }
-  if (act === 'bhmasulpick') { S.masulPick = el.dataset.u; return draw(); }
-  if (act === 'bhmasulno') { S.masulPick = null; return draw(); }
-  if (act === 'bhmasulyes') {
-    try { await api('/burhan/masul', 'PUT', { username: S.masulPick }); S.masulPick = null; await loadBurhan(); toast(t('saved')); } catch (e) { toast(errText(e)); }
-    return;
-  }
-  if (act === 'bhunlink') { if (!confirm(t('unlink_ask'))) return; try { await api('/burhan/murabbi', 'DELETE'); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
-  if (act === 'bhmasulclear') { if (!confirm(t('unlink_ask'))) return; try { await api('/burhan/masul', 'DELETE'); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
-  if (act === 'atick') { el.closest('details')?.removeAttribute('open'); return tickTask(Number(el.dataset.id), el.dataset.done === '1', el.closest('.trow')); }
-  if (act === 'resched') { el.closest('details')?.removeAttribute('open'); S.reschedId = Number(el.dataset.id); S.sheet = 'resched'; return draw(); }
-  if (act === 'reschpick') {
-    const a = (S.bh?.assignments || []).find((x) => x.id === S.reschedId), day = el.dataset.day || $('#resch-day')?.value;
-    if (!a || !day) return;
-    try {
-      if (a.own) await api(`/assignments/${a.id}/due`, 'PUT', { day }); else await api(`/assignments/${a.id}/due-request`, 'POST', { day });
-      S.sheet = null; S.reschedId = null; toast(a.own ? t('rs_moved')(day) : t('ask_sent')); haptic('light'); await loadBurhan();
-    } catch (e) { toast(errText(e)); }
-    return;
-  }
-  if (act === 'dueedit') { S.dueEdit = Number(el.dataset.id); return draw(); }
-  if (act === 'duex') { S.dueEdit = null; return draw(); }
-  if (act === 'duesave' || act === 'dueask') {
-    const day = $(`#due-${el.dataset.id}`)?.value;
-    try {
-      if (act === 'duesave') await api(`/assignments/${el.dataset.id}/due`, 'PUT', { day });
-      else await api(`/assignments/${el.dataset.id}/due-request`, 'POST', { day });
-      S.dueEdit = null; toast(t(act === 'duesave' ? 'saved' : 'ask_sent'));
-      if (S.bhDetail?.type === 'razakar') S.bhDetail.data = await api(`/burhan/razakars/${encodeURIComponent(S.bhDetail.username)}`);
-      await loadBurhan(); draw();
-    } catch (e) { toast(errText(e)); }
-    return;
-  }
-  if (act === 'dueyes' || act === 'dueno') {
-    try {
-      await api(`/assignments/${el.dataset.id}/due-answer`, 'POST', { accept: act === 'dueyes' });
-      S.bhDetail.data = await api(`/burhan/razakars/${encodeURIComponent(S.bhDetail.username)}`);
-      toast(t('saved')); draw();
-    } catch (e) { toast(errText(e)); }
-    return;
-  }
-  if (act === 'opensaalik' || act === 'openrazakar') {
-    const type = act === 'opensaalik' ? 'saalik' : 'razakar';
-    S.bhDetail = { type, username: el.dataset.u, data: null }; S.assignForm = { kind: 'task' }; draw();
-    try { S.bhDetail.data = await api(`/burhan/${type === 'saalik' ? 'saaliks' : 'razakars'}/${encodeURIComponent(el.dataset.u)}`); } catch (e) { S.bhDetail = null; toast(errText(e)); }
-    return draw();
-  }
-  if (act === 'closedetail') { S.bhDetail = null; return draw(); }
-  if (act === 'bhdrop' || act === 'bhremove') {
-    if (!confirm(t(act === 'bhdrop' ? 'stop_murabbi_ask' : 'remove_razakar_ask')(el.dataset.u))) return;
-    try {
-      await api(`/burhan/${act === 'bhdrop' ? 'saaliks' : 'razakars'}/${encodeURIComponent(el.dataset.u)}`, 'DELETE');
-      S.bhDetail = null; await loadBurhan();
-      S.bhLists = { ...S.bhLists, saaliks: (await api('/burhan/saaliks')).saaliks, razakars: (await api('/burhan/razakars')).razakars };
-      toast(t('saved'));
-    } catch (e) { toast(errText(e)); }
-    return draw();
-  }
-  if (act === 'bhnotice') { try { await api(`/burhan/notices/${el.dataset.k}`, 'DELETE'); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
-  if (act === 'assignkind') { S.assignForm = { kind: el.dataset.k }; return draw(); }
   if (act === 'majlisset') {
     try { const r = await api('/me/majlis', 'PUT', { id: $('#mj-pick').value || null }); S.me = r.me; S.majalis = { majalis: r.majalis, mine: r.mine, proposal: r.proposal }; toast(t('saved')); draw(); } catch (e) { toast(errText(e)); }
     return;
   }
   if (act === 'setfeel') { setPref(el.dataset.k, el.dataset.v === '1'); if (el.dataset.v === '1') { haptic('round'); sound('round'); } return draw(); }
-  if (act === 'everyday') { const box = $(`#${el.dataset.for}`); const all = [...box.querySelectorAll('input[name=wd]')]; const on = !all.every((x) => x.checked); all.forEach((x) => { x.checked = on; }); return; }
-  if (act === 'teamf') { S.teamFilter = el.dataset.tag || null; S.assignForm = { kind: 'task' }; return draw(); }
-  if (act === 'assignall') { S.assignAll = !S.assignAll; S.assignForm = { kind: 'task' }; return draw(); }
-  if (act === 'tagadd' || act === 'tagdel') {
-    const d = S.bhDetail, cur = d?.data?.tags || [];
-    const next = act === 'tagadd' ? [...cur, ($('#tag-new')?.value || '').trim()].filter(Boolean) : cur.filter((g) => g !== el.dataset.tag);
-    try {
-      d.data.tags = (await api(`/burhan/razakars/${encodeURIComponent(d.username)}/tags`, 'PUT', { tags: next })).tags;
-      const r = await api('/burhan/razakars'); S.bhLists = { ...S.bhLists, razakars: r.razakars, tags: r.tags };
-      draw(); $('#tag-new')?.focus();
-    } catch (e) { toast(errText(e)); }
-    return;
-  }
-  if (act === 'ownkind') { S.ownForm = { kind: el.dataset.k }; return draw(); }
-  if (act === 'endown') { if (!confirm(t('end_own_ask'))) return; try { await api(`/assignments/${el.dataset.id}`, 'DELETE'); await loadBurhan(); } catch (e) { toast(errText(e)); } return; }
-  if (act === 'endassign') {
-    try {
-      await api(`/assignments/${el.dataset.id}`, 'DELETE');
-      S.bhDetail.data = await api(`/burhan/razakars/${encodeURIComponent(S.bhDetail.username)}`);
-      S.bhLists = { ...S.bhLists, razakars: (await api('/burhan/razakars')).razakars };
-    } catch (e) { toast(errText(e)); }
-    return draw();
-  }
-  if (act === 'comment') {
-    const box = document.querySelector(`[data-cbox="${el.dataset.id}"]`);
-    S.cDraft = { ...(S.cDraft || {}), [el.dataset.id]: box.value };
-    el.disabled = true;
-    try {
-      const r = await api(`/lectures/${el.dataset.id}/comment`, 'POST', { text: box.value });
-      S.me = r.me; S.feed.lectures = r.lectures; S.cDraft[el.dataset.id] = '';
-      toast(`${t('comment_posted')}${r.xp ? ` · ${t('points_gained')(fmt(r.xp))}` : ''}`);
-      S.feed = { ...S.feed, ...(await api('/feed')) };
-    } catch (e) { toast(errText(e)); el.disabled = false; return; }
-    return draw();
-  }
   if (act === 'thread') {
     const key = `${el.dataset.kind}:${el.dataset.id}`;
     S.threads = S.threads || {};
@@ -2082,66 +1398,7 @@ app.addEventListener('click', async (ev) => {
     } catch (e) { toast(errText(e)); }
     return draw();
   }
-  if (act === 'teach') {
-    if (!confirm(t('teach_ask'))) return;
-    try { const r = await api('/circle/teach', 'POST', {}); S.me = r.me; toast(t('teach_pending')); draw(); } catch (e) { toast(errText(e)); }
-    return;
-  }
-  if (act === 'circle') {
-    try { const r = await api('/circle/claim', 'POST'); S.me = r.me; celebrate(r); draw(); } catch (e) { toast(errText(e)); }
-    return;
-  }
-  if (act === 'watch') {
-    const lecture = [...S.learn.lectures, ...(S.pastLec || [])].find((x) => x.id === Number(el.dataset.id));
-    try {
-      await api(`/lectures/${lecture.id}/start`, 'POST');
-      S.player = { lecture, elapsed: lecture.done ? lecture.minSeconds : 0 };
-      draw();
-      startPlayerTimer();
-    } catch (e) { toast(errText(e)); }
-    return;
-  }
-  if (act === 'quizcheck') {
-    const p = S.player, n = p.lecture.quiz.length;
-    const answers = Array.from({ length: n }, (_, i) => { const c = document.querySelector(`input[name="qz${i}"]:checked`); return c ? Number(c.value) : -1; });
-    p.answers = answers;
-    try {
-      const r = await api(`/lectures/${p.lecture.id}/quiz`, 'POST', { answers });
-      p.passed = r.passed; p.wrong = r.wrong;
-      toast(r.passed ? t('quiz_passed') : t('quiz_retry'));
-    } catch (e) { toast(errText(e)); }
-    return draw();
-  }
-  if (act === 'pclose') { stopPlayerTimer(); S.player = null; return draw(); }
-  if (act === 'pclaim') {
-    try {
-      const r = await api(`/lectures/${S.player.lecture.id}/complete`, 'POST');
-      S.me = r.me; celebrate(r);
-      stopPlayerTimer(); S.player = null;
-      S.learn = await api('/lectures');
-      if (S.feed) S.feed.lectures = S.learn.lectures;
-      draw();
-    } catch (e) { toast(errText(e)); }
-  }
 });
-
-let playerTimer;
-function stopPlayerTimer() { clearInterval(playerTimer); }
-function startPlayerTimer() {
-  stopPlayerTimer();
-  playerTimer = setInterval(() => {
-    const p = S.player;
-    if (!p || document.hidden) return; // only counts while the tab is visible
-    p.elapsed += 1;
-    const left = Math.max(0, p.lecture.minSeconds - p.elapsed);
-    const tm = $('#ptimer'), pb = $('#pbar > i'), pc = $('#pclaim');
-    const quizLeft = !!p.lecture.quiz?.length && !p.passed && !p.lecture.quizPassed; // the reward also needs the quiz passed
-    if (p.lecture.done) return;
-    if (tm) tm.textContent = left ? `${t('watching')} · ${t('min_left')(left)}` : quizLeft ? t('now_quiz') : t('ready_claim');
-    if (pb) pb.style.width = `${Math.min(100, (p.elapsed / p.lecture.minSeconds) * 100)}%`;
-    if (pc) pc.disabled = left > 0 || quizLeft;
-  }, 1000);
-}
 
 app.addEventListener('submit', async (ev) => {
   const form = ev.target.closest('form[data-form]');
@@ -2177,38 +1434,15 @@ app.addEventListener('submit', async (ev) => {
       keepDevice(r); setSession(r.token, r.me); toast(t('reset_done'));
       draw();
     } else if (kind === 'settings') {
-      S.me = await api('/me', 'PATCH', { dailyGoal: Number(f.dailyGoal), ...(f.cityId ? { cityId: Number(f.cityId) } : {}), email: f.email, ...(f.password ? { password: f.password } : {}), reminderTime: f.reminderTime || '' });
+      S.me = await api('/me', 'PATCH', { dailyGoal: Number(f.dailyGoal), ...(f.cityId ? { cityId: Number(f.cityId) } : {}), email: f.email, ...(f.password ? { password: f.password } : {}) });
       toast(t('saved'));
       draw();
     } else if (kind === 'citysave') {
       if (!f.cityId) throw new Error('city_required');
       S.me = await api('/me', 'PATCH', { cityId: Number(f.cityId) });
       toast(t('saved')); draw();
-    } else if (kind === 'everyoneassign') {
-      const k = (S.assignForm || {}).kind || 'task';
-      const r = await api('/assignments', 'POST', { everyone: true, kind: k, title: f.title, ...(k === 'routine' ? { weekdays: pickedDays(form) } : { dueDay: f.dueDay }) });
-      const rl = await api('/burhan/razakars'); S.bhLists = { ...S.bhLists, razakars: rl.razakars, tags: rl.tags };
-      form.reset(); S.assignAll = false; toast(r.skipped ? `${t('team_given')(r.count)} · ${t('team_skipped')(r.skipped)}` : t('team_given')(r.count)); draw();
-    } else if (kind === 'teamassign') {
-      const k = (S.assignForm || {}).kind || 'task';
-      const r = await api('/assignments', 'POST', { team: S.teamFilter, kind: k, title: f.title, ...(k === 'routine' ? { weekdays: pickedDays(form) } : { dueDay: f.dueDay }) });
-      const rl = await api('/burhan/razakars'); S.bhLists = { ...S.bhLists, razakars: rl.razakars, tags: rl.tags };
-      form.reset(); toast(r.skipped ? `${t('team_given')(r.count)} \u00b7 ${t('team_skipped')(r.skipped)}` : t('team_given')(r.count)); draw();
-    } else if (kind === 'inviter') {
-      const r = await api('/me/inviter', 'POST', { username: f.username });
-      S.me = r.me; S.team = await api('/team'); toast(t('who_invited_done')(r.inviter)); haptic('done'); draw();
     } else if (kind === 'majlisnew') {
       S.majalis = await api('/majalis', 'POST', { name: f.name, nameUr: f.nameUr });
-      toast(t('saved')); draw();
-    } else if (kind === 'owntask') {
-      const k = (S.ownForm || {}).kind || 'task';
-      S.bh = await api('/tasks', 'POST', { kind: k, title: f.title, ...(k === 'routine' ? { weekdays: pickedDays(form) } : f.dueDay ? { dueDay: f.dueDay } : {}) });
-      form.reset(); toast(t('saved')); draw();
-    } else if (kind === 'assign') {
-      const k = (S.assignForm || {}).kind || 'task';
-      await api('/assignments', 'POST', { razakar: S.bhDetail.username, kind: k, title: f.title, ...(k === 'routine' ? { weekdays: pickedDays(form) } : { dueDay: f.dueDay }) });
-      S.bhDetail.data = await api(`/burhan/razakars/${encodeURIComponent(S.bhDetail.username)}`);
-      S.bhLists = { ...S.bhLists, razakars: (await api('/burhan/razakars')).razakars };
       toast(t('saved')); draw();
     } else if (kind === 'profile') {
       S.me = await api('/me/profile', 'PUT', { displayName: f.displayName, bio: f.bio });
@@ -2220,9 +1454,6 @@ app.addEventListener('submit', async (ev) => {
     } else if (kind === 'phone') {
       S.me = await api('/me/phone', 'POST', { phone: f.phone, cc: f.phoneCountry, password: f.password });
       form.reset(); toast(t('saved')); draw();
-    } else if (kind === 'cvcreate') {
-      const r = await api('/caravan', 'POST', { name: f.name });
-      S.cv = r.view; S.me = r.me; toast(t('saved')); draw();
     } else if (kind === 'cvrename') {
       S.cv = (await api('/caravan/name', 'PUT', { name: f.name })).view; toast(t('saved')); draw();
     } else if (kind === 'cvdisplay') {
@@ -2233,11 +1464,11 @@ app.addEventListener('submit', async (ev) => {
       logout(false); S.authMode = 'login'; draw(); toast(t('deleted'));
     }
   } catch (e) {
-    if (kind === 'settings' || kind === 'delete' || kind === 'citysave' || kind === 'profile' || kind === 'password' || kind === 'phone' || kind === 'cvcreate' || kind === 'cvrename' || kind === 'cvdisplay' || kind === 'assign' || kind === 'owntask' || kind === 'majlisnew' || kind === 'teamassign' || kind === 'inviter') { toast(errText(e)); btn.disabled = false; }
+    if (['settings', 'delete', 'citysave', 'profile', 'password', 'phone', 'cvrename', 'cvdisplay', 'majlisnew'].includes(kind)) { toast(errText(e)); btn.disabled = false; }
     else {
       S.error = errText(e); draw();
       // point at the field the message is about
-      const FIELD = { invite_required: 'invite', bad_invite: 'invite', invite_revoked: 'invite', invite_used: 'invite', invite_full: 'invite', public_full: 'invite',
+      const FIELD = { invite_required: 'invite', bad_invite: 'invite', invite_revoked: 'invite', invite_used: 'invite', caravan_full: 'invite',
         bad_username: 'username', username_taken: 'username', bad_email: 'email', bad_phone: 'phone', account_exists: 'email', city_required: 'city', bad_password: 'password' };
       const name = FIELD[e.message], el = name && app.querySelector(`form[data-form="${kind}"] ${name === 'city' ? '[data-city]' : `[name="${name}"]`}`);
       if (el) { el.setAttribute('aria-invalid', 'true'); el.classList.add('shake'); el.scrollIntoView({ block: 'center', behavior: reduceMotion() ? 'auto' : 'smooth' }); el.focus({ preventScroll: true }); }
@@ -2319,33 +1550,7 @@ app.addEventListener('input', (ev) => {
 
 let checkTimer;
 app.addEventListener('input', (ev) => {
-  const mq = ev.target.closest('#masulq');
-  if (mq) {
-    clearTimeout(checkTimer);
-    checkTimer = setTimeout(async () => {
-      const out = $('#masulres'), v = mq.value.trim();
-      if (v.length < 2) { out.innerHTML = ''; return; }
-      try { out.innerHTML = (await api(`/burhan/usernames?q=${encodeURIComponent(v)}`)).usernames.map((u) => `<button class="chip" data-act="bhmasulpick" data-u="${esc(u)}">${esc(u)}</button>`).join(''); } catch { /* ignore */ }
-    }, 300);
-    return;
-  }
-  const cs = ev.target.closest('#cvinvq, #cvjoinq');
-  if (cs) {
-    clearTimeout(checkTimer);
-    checkTimer = setTimeout(async () => {
-      const out = cs.id === 'cvinvq' ? $('#cvinvres') : $('#cvjoinres'), v = cs.value.trim();
-      if (v.length < 2) { out.innerHTML = ''; return; }
-      try {
-        const r = await api(`/caravan/search?q=${encodeURIComponent(v)}`);
-        out.innerHTML = cs.id === 'cvinvq'
-          ? r.usernames.map((u) => `<button class="chip" data-act="cvinvite" data-u="${esc(u)}">${esc(u)}</button>`).join('')
-          : r.caravans.map((c) => `<button class="chip" data-act="cvjoin" data-name="${esc(c.name)}"><span>${c.displayName ? `<bdi class="cvdn">${esc(c.displayName)}</bdi> <span class="muted">@${esc(c.name)}</span>` : esc(c.name)} · ${membersN(c.members)}</span></button>`).join('');
-        if (!out.innerHTML) out.innerHTML = `<small class="muted">${t(cs.id === 'cvinvq' ? 'cv_none_found' : 'cv_none_join')}</small>`;
-      } catch { /* ignore */ }
-    }, 300);
-    return;
-  }
-  const cn = ev.target.closest('#cv-new, #cv-rename');
+  const cn = ev.target.closest('#cv-rename');
   if (cn) {
     clearTimeout(checkTimer);
     checkTimer = setTimeout(async () => {
@@ -2377,8 +1582,9 @@ app.addEventListener('input', (ev) => {
       if (!v) { out.className = 'hint'; out.textContent = t('invite_hint'); return; }
       try {
         const r = await api(`/invite-check?code=${encodeURIComponent(v)}`);
+        if ($('#f-invite')?.value.trim() !== v) return; // typed on since: a newer check is coming
         out.className = 'hint ' + (r.valid ? 'ok' : 'bad');
-        out.innerHTML = r.valid ? (r.from ? `${t('invited_by')} <b>${esc(r.from)}</b> ✓` : `✓ ${t('invite_ok')}`) : esc(t('err')[r.reason] || t('err').bad_invite);
+        out.innerHTML = r.valid ? `${t('joining')} <bdi>${esc(r.displayName || r.caravan || r.from)}</bdi> ✓` : esc(t('err')[r.reason] || t('err').bad_invite);
       } catch { /* ignore */ }
     }
   }, 350);
@@ -2425,13 +1631,14 @@ addEventListener('scroll', () => document.body.classList.toggle('scrolled', scro
 
 // ---- boot -----------------------------------------------------------------------
 window.addEventListener('online', () => {
-  if (S.offline || S.offlineMode) refreshMe().then(() => { S.offline = false; S.offlineMode = false; draw(); initBurhan(); flushOutbox(); }).catch(() => {});
+  if (S.offline || S.offlineMode) refreshMe().then(() => { S.offline = false; S.offlineMode = false; draw(); flushOutbox(); }).catch(() => {});
   else flushOutbox();
 });
 window.addEventListener('offline', () => { if (S.me) { S.offlineMode = true; draw(); } });
 async function boot() {
   applyLang();
-  if (S.ref) api(`/invite-check?code=${encodeURIComponent(S.ref)}`).then((r) => { if (r.valid && r.from) { S.refName = r.from; if (!S.me) draw(); } }).catch(() => {});
+  if (S.ref) api(`/invite-check?code=${encodeURIComponent(S.ref)}`).then((r) => { if (r.valid && (r.displayName || r.caravan)) { S.refName = r.displayName || r.caravan; if (!S.me) draw(); } }).catch(() => {});
+  api('/config').then((c) => { if (c.signupsOpen === false) { S.signupsOpen = false; if (!S.me) draw(); } }).catch(() => {});
   if (S.resetToken) logout(false); // a reset link always starts from signed-out
   if (S.token) {
     try { await refreshMe(); } catch (e) {
@@ -2440,7 +1647,6 @@ async function boot() {
     }
   }
   draw();
-  initBurhan();
   if (!S.offlineMode) flushOutbox();
   const confirmToken = params.get('confirm');
   if (confirmToken) {
@@ -2457,7 +1663,6 @@ if (nativeApp) {
   nativeApp.addListener('backButton', () => {
     if (S.drawer) { S.drawer = false; return draw(); }
     if (S.sheet) { S.sheet = null; return draw(); }
-    if (S.player) { stopPlayerTimer(); S.player = null; return draw(); }
     if (S.profile) { S.profile = null; return draw(); }
     if (S.editing) { S.editing = null; return draw(); }
     if (S.token && S.tab !== 'home') return enterTab('home');

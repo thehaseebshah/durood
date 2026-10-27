@@ -1,4 +1,4 @@
-# Seerah Quest: no npm dependencies, so the image is just Node plus the app.
+# Durood Quest: no npm dependencies, so the image is just Node plus the app.
 FROM node:22-slim
 ENV NODE_ENV=production PORT=8080 DB_PATH=/data/durood.db UPLOAD_DIR=/data/uploads BACKUP_DIR=/data/backups
 WORKDIR /app

@@ -1,7 +1,7 @@
-# Fly.io: one machine in Singapore with a persistent volume. Change `app` to your own unique name.
-# The app keeps its scheduler (reminders, backups, photo clean-up) in the process and its database on one disk,
+# Fly.io: Durood Quest. One machine in Singapore with a persistent volume.
+# The app keeps its scheduler (backups, photo clean-up, weekly leagues) in the process and its database on one disk,
 # so it must stay a single, always-running machine.
-app = "seerah-quest-qa"
+app = "durood-quest"
 primary_region = "sin"
 
 [build]
@@ -14,10 +14,9 @@ swap_size_mb = 512   # headroom for the nightly audit and housekeeping on a 256 
   DB_PATH = "/data/durood.db"
   UPLOAD_DIR = "/data/uploads"
   BACKUP_DIR = "/data/backups"
-  PUBLIC_URL = "https://seerah-quest-qa.fly.dev"
+  PUBLIC_URL = "https://durood-quest.fly.dev"
   TRUST_PROXY = "1"
   CLIENT_IP_HEADER = "fly-client-ip"
-  EDITION = "internal"
   FORCE_HSTS = "1"
 
 [mounts]

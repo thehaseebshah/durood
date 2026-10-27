@@ -1,7 +1,7 @@
 {
-  "name": "Seerah Quest — سیرت کوئسٹ",
-  "short_name": "Seerah Quest",
-  "description": "Recite durood Shareef daily, grow your caravan, support Seerat Circles.",
+  "name": "Durood Quest — درود کوئسٹ",
+  "short_name": "Durood Quest",
+  "description": "Recite durood Shareef every day with your caravan.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
