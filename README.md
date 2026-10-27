@@ -36,7 +36,7 @@ This branch holds content only; the app lives on the main branch. PDF guides can
 
 | # | Title | Size | Kind |
 |---|---|---|---|
-| 001 | [Seerah Quest has launched](posters/001-launched/post.md) | 1080 × 1920 | Launch: founder's codes for those who intend to register 20 people |
+| 001 | [Seerah Quest has launched](posters/001-launched/post.md) | 1080 × 1920 | Launch: founder's codes for those who intend to register 20 people and monitor their durood for 7 days |
 
 ## Making or changing a video
 

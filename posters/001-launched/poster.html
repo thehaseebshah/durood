@@ -24,10 +24,10 @@ body { position: relative; font-family: 'Inter', sans-serif; color: var(--ink); 
 
 /* ---------- background ---------- */
 #bg { inset: 0; background:
-  radial-gradient(900px 700px at 50% 960px, rgba(240, 207, 134, .26) 0%, rgba(240, 207, 134, .07) 40%, rgba(240, 207, 134, 0) 70%),
+  radial-gradient(900px 700px at 50% 930px, rgba(240, 207, 134, .26) 0%, rgba(240, 207, 134, .07) 40%, rgba(240, 207, 134, 0) 70%),
   radial-gradient(1200px 900px at 50% 1950px, #0f5a3f 0%, rgba(10, 60, 42, .5) 40%, rgba(4, 20, 15, 0) 75%),
   linear-gradient(#020b08 0%, #05190f 40%, #072419 70%, #062016 100%); }
-#rays { left: 50%; top: 960px; width: 2600px; height: 2600px; margin: -1300px 0 0 -1300px; border-radius: 50%;
+#rays { left: 50%; top: 930px; width: 2600px; height: 2600px; margin: -1300px 0 0 -1300px; border-radius: 50%;
   background: repeating-conic-gradient(from 0deg, rgba(255, 233, 184, .075) 0deg 2.2deg, rgba(255, 233, 184, 0) 2.2deg 11.25deg);
   -webkit-mask: radial-gradient(closest-side, #000 8%, rgba(0, 0, 0, .55) 35%, transparent 72%); mask: radial-gradient(closest-side, #000 8%, rgba(0, 0, 0, .55) 35%, transparent 72%); }
 #girih { inset: 0; opacity: .1; -webkit-mask: linear-gradient(#000, rgba(0, 0, 0, .25) 30%, rgba(0, 0, 0, .1) 55%, #000 100%); mask: linear-gradient(#000, rgba(0, 0, 0, .25) 30%, rgba(0, 0, 0, .1) 55%, #000 100%); }
@@ -53,7 +53,7 @@ body { position: relative; font-family: 'Inter', sans-serif; color: var(--ink); 
 #headUr { left: 84px; right: 84px; top: 604px; font-size: 42px; line-height: 1.9; color: var(--soft); text-align: right; }
 
 /* ---------- the founder's card ---------- */
-#cardWrap { left: 50%; top: 742px; width: 790px; height: 440px; margin-left: -395px; perspective: 1700px; }
+#cardWrap { left: 50%; top: 742px; width: 760px; height: 410px; margin-left: -380px; perspective: 1700px; }
 #card { position: absolute; inset: 0; border-radius: 34px; transform: rotateX(16deg) rotateY(-14deg) rotateZ(-5deg); transform-style: preserve-3d;
   background: linear-gradient(118deg, #8a6424 0%, #d7ac58 14%, #fff0c4 30%, #e3b965 44%, #b88732 58%, #f6dc98 74%, #fff5d8 82%, #c5953f 100%);
   box-shadow: 0 2px 0 #fff7df inset, 0 -3px 0 rgba(90, 60, 15, .45) inset, 0 60px 90px rgba(0, 0, 0, .65), 0 24px 40px rgba(0, 0, 0, .45), 0 0 160px rgba(240, 207, 134, .35); overflow: hidden; color: #10291e; }
@@ -68,29 +68,29 @@ body { position: relative; font-family: 'Inter', sans-serif; color: var(--ink); 
 #emblem .star { position: absolute; inset: 0; font-size: 104px; }
 #emblem .star i { background: none; border: 4px solid currentColor; }
 #emblem .in { position: absolute; inset: 30px; font-size: 44px; }
-#code { left: 52px; right: 52px; top: 236px; display: flex; align-items: center; gap: 26px; font-weight: 800; font-size: 64px; letter-spacing: 4px; text-shadow: 0 1px 0 rgba(255, 248, 225, .75), 0 -1px 0 rgba(80, 50, 10, .35); }
+#code { left: 52px; right: 52px; top: 218px; display: flex; align-items: center; gap: 26px; font-weight: 800; font-size: 64px; letter-spacing: 4px; text-shadow: 0 1px 0 rgba(255, 248, 225, .75), 0 -1px 0 rgba(80, 50, 10, .35); }
 #code .dots { display: flex; gap: 14px; }
 #code .dots b { width: 26px; height: 26px; border-radius: 50%; background: #10291e; box-shadow: 0 1px 0 rgba(255, 248, 225, .7); }
 #code .sep { width: 26px; height: 5px; background: #10291e; opacity: .6; }
 #cBot { left: 52px; right: 52px; bottom: 40px; display: flex; justify-content: space-between; align-items: flex-end; font-weight: 700; font-size: 22px; letter-spacing: 5px; text-transform: uppercase; opacity: .75; }
 #cBot .ur { font-size: 34px; letter-spacing: 0; text-transform: none; line-height: 1.4; }
 
-/* ---------- the condition ---------- */
-#cond { left: 84px; right: 84px; top: 1262px; }
-#cond .k { display: flex; align-items: center; gap: 18px; font-weight: 800; font-size: 28px; letter-spacing: 9px; text-transform: uppercase; color: var(--gold); }
-#cond .k::after { content: ''; flex: 1; height: 2px; background: linear-gradient(90deg, rgba(240, 207, 134, .6), transparent); }
-#cond .row { display: flex; align-items: center; gap: 36px; margin-top: 22px; }
-#n20 { font-weight: 900; font-size: 196px; line-height: .78; letter-spacing: -10px; color: transparent; -webkit-text-stroke: 4px var(--gold); text-shadow: 0 0 50px rgba(240, 207, 134, .25); }
-#cond .txt { font-weight: 700; font-size: 40px; line-height: 1.2; letter-spacing: -.5px; }
+/* ---------- the condition: two intentions ---------- */
+#cond { left: 84px; right: 84px; top: 1214px; }
+#cond .k { display: flex; align-items: center; gap: 18px; font-weight: 800; font-size: 28px; letter-spacing: 8px; text-transform: uppercase; color: var(--gold); white-space: nowrap; }
+#cond .k::after { content: ''; flex: 1; order: 1; height: 2px; background: linear-gradient(90deg, rgba(240, 207, 134, .6), transparent); }
+#cond .k .ur { order: 2; font-size: 30px; letter-spacing: 0; text-transform: none; font-weight: 700; line-height: 1.6; }
+#cond .row { display: flex; align-items: center; gap: 30px; margin-top: 20px; }
+#cond .row + .row { margin-top: 16px; padding-top: 18px; border-top: 1px solid rgba(240, 207, 134, .22); }
+#cond .num { width: 200px; flex: none; text-align: center; }
+#cond .num b { display: block; font-weight: 900; font-size: 142px; line-height: .8; letter-spacing: -7px; color: transparent; -webkit-text-stroke: 4px var(--gold); text-shadow: 0 0 50px rgba(240, 207, 134, .25); }
+#cond .num span { display: block; margin-top: 12px; font-weight: 800; font-size: 22px; letter-spacing: 8px; text-transform: uppercase; color: var(--gold); }
+#cond .txt { flex: 1; font-weight: 700; font-size: 38px; line-height: 1.18; letter-spacing: -.5px; }
 #cond .txt b { font-weight: 900; color: var(--gold2); }
-#people { left: 84px; right: 84px; top: 1478px; display: grid; grid-template-columns: repeat(20, 1fr); gap: 8px; }
-#people span { font-size: 30px; color: var(--gold); justify-self: center; }
-#people span { opacity: .8; }
-#people span i { background: none; border: 2.5px solid currentColor; }
-#condUr { left: 84px; right: 84px; top: 1522px; font-size: 35px; line-height: 1.9; color: var(--soft); text-align: right; }
+#cond .txt .ur { display: block; margin-top: 6px; font-weight: 400; font-size: 30px; line-height: 1.85; color: var(--soft); letter-spacing: 0; text-align: right; }
 
 /* ---------- call to action ---------- */
-#cta { left: 84px; right: 84px; top: 1680px; height: 132px; display: flex; align-items: center; gap: 26px; padding: 0 34px 0 26px; border-radius: 26px; color: #0b2318;
+#cta { left: 84px; right: 84px; top: 1690px; height: 132px; display: flex; align-items: center; gap: 26px; padding: 0 34px 0 26px; border-radius: 26px; color: #0b2318;
   background: linear-gradient(100deg, #e7c174 0%, #fff0c8 38%, #f0cf86 60%, #d6a957 100%); box-shadow: 0 2px 0 #fff7df inset, 0 24px 60px rgba(0, 0, 0, .45), 0 0 80px rgba(240, 207, 134, .3); }
 #cta .ic { width: 84px; height: 84px; flex: none; border-radius: 50%; background: #0b2318; display: grid; place-items: center; }
 #cta .ic svg { width: 46px; height: 46px; }
@@ -120,10 +120,10 @@ body { position: relative; font-family: 'Inter', sans-serif; color: var(--ink); 
 
 <i class="spark" style="left:196px;top:880px"></i>
 <i class="spark" style="left:930px;top:842px;opacity:.7"></i>
-<i class="spark" style="left:120px;top:1290px;opacity:.6"></i>
-<i class="spark" style="left:968px;top:1316px"></i>
+<i class="spark" style="left:150px;top:720px;opacity:.6"></i>
+<i class="spark" style="left:968px;top:1160px"></i>
 <i class="spark x" style="left:878px;top:868px"></i>
-<i class="spark x" style="left:132px;top:1210px;transform:scale(.7)"></i>
+<i class="spark x" style="left:110px;top:1150px;transform:scale(.7)"></i>
 
 <div class="abs" id="brand">
   <div class="l"><img src="../../assets/icon-512.png" alt="">Seerah Quest</div>
@@ -153,14 +153,16 @@ body { position: relative; font-family: 'Inter', sans-serif; color: var(--ink); 
 </div>
 
 <div class="abs" id="cond">
-  <div class="k">Who gets one</div>
+  <div class="k">Only if you intend to<span class="ur">نیت کریں کہ</span></div>
   <div class="row">
-    <div id="n20">20</div>
-    <div class="txt">Make the <b>intention</b> to register <b>20&nbsp;people</b>, messaging each one <b>yourself</b>.</div>
+    <div class="num"><b>20</b><span>people</span></div>
+    <div class="txt">Register <b>20&nbsp;people</b>, messaging each one <b>yourself</b>.<span class="ur">20 لوگوں کو خود ایک ایک کر کے میسج کر کے رجسٹر کروائیں گے</span></div>
+  </div>
+  <div class="row">
+    <div class="num"><b>7</b><span>days</span></div>
+    <div class="txt">Then <b>monitor their durood</b> for <b>7&nbsp;days</b>.<span class="ur">پھر 7 دن تک اُن کے درود کی نگرانی کریں گے</span></div>
   </div>
 </div>
-<div class="abs" id="people"></div>
-<div class="abs ur" id="condUr">صرف اُن کے لیے جو 20 لوگوں کو خود ایک ایک کر کے<br>میسج کر کے رجسٹر کروانے کی نیت کریں</div>
 
 <div class="abs" id="cta">
   <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#f0cf86" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"><path d="M20 11.5a8 8 0 0 1-11.6 7.1L4 20l1.4-4.2A8 8 0 1 1 20 11.5Z"/><path d="M8.5 10h7M8.5 13.5h4.5"/></svg></div>
@@ -179,9 +181,6 @@ for (let k = 0; k < 26; k++) {
   }
   const p = document.createElementNS('http://www.w3.org/2000/svg', 'path'); p.setAttribute('d', d); g.appendChild(p);
 }
-// twenty people: the first one is you
-const pp = document.getElementById('people');
-for (let i = 0; i < 20; i++) pp.insertAdjacentHTML('beforeend', '<span class="star"><i></i><i></i></span>');
 </script>
 </body>
 </html>
