@@ -57,17 +57,6 @@ test('without an email provider, members and admins are told nothing was emailed
   assert.equal((await api('POST', '/api/email/resend', { token: u.token })).sent, false);
 });
 
-test('after "keep held" the member gets a final word instead of "being checked" for ever', async () => {
-  const u = await signup('fl_member');
-  const id = db.prepare('SELECT id FROM users WHERE username = ?').get('fl_member').id;
-  db.prepare("INSERT INTO flags (user_id, reason, day, detail, day_total, created_at) VALUES (?, 'daily_20k', ?, 'test', 25000, ?)").run(id, today, Date.now());
-  db.prepare('UPDATE users SET hidden_from_ranks = 1 WHERE id = ?').run(id);
-  assert.equal((await api('GET', '/api/me', { token: u.token })).flagState, 'open');
-  const f = db.prepare('SELECT id FROM flags WHERE user_id = ?').get(id);
-  await K('POST', `/flags/${f.id}`, { action: 'confirm' });
-  assert.equal((await api('GET', '/api/me', { token: u.token })).flagState, 'decided');
-});
-
 test('only an owner deletes an account from the admin page, never an admin\'s, and it is anonymised like a self-deletion', async () => {
   const u = await signup('dl_target'); await signup('dl_org');
   await K('POST', '/admins', { username: 'dl_org', role: 'organiser' });

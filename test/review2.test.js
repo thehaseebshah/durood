@@ -46,27 +46,6 @@ test('logging a big number and editing it down gives back the quest XP it earned
   assert.deepEqual(audit().problems, []);
 });
 
-test('a new account with a big day is held for a look; a cleared flag is raised again only for a clearly bigger day', async () => {
-  const old = FLAG.newHigh; FLAG.newHigh = 5000;
-  try {
-    const u = await signup('nf_u');
-    await log(u, 6000);
-    assert.equal(db.prepare('SELECT held FROM users WHERE username = ?').get('nf_u').held, 1);
-    const f = db.prepare("SELECT * FROM flags WHERE user_id = ?").get(uid('nf_u'));
-    assert.equal(f.day_total, 6000);
-    await api('POST', `/api/admin/flags/${f.id}`, { headers: admin, body: { action: 'clear' } });
-    assert.equal(db.prepare('SELECT held FROM users WHERE username = ?').get('nf_u').held, 0);
-    await log(u, 1000);                                          // 7,000 is not 1.5x the cleared 6,000
-    assert.equal(db.prepare('SELECT held FROM users WHERE username = ?').get('nf_u').held, 0);
-    await log(u, 4000);                                          // 11,000 is
-    assert.equal(db.prepare('SELECT held FROM users WHERE username = ?').get('nf_u').held, 1);
-    // an established account is not caught by the new-account rule
-    const v = await signup('nf_old'); age('nf_old', 30);
-    await log(v, 6000);
-    assert.equal(db.prepare('SELECT held FROM users WHERE username = ?').get('nf_old').held, 0);
-  } finally { FLAG.newHigh = old; }
-});
-
 test('the week is closed before the first durood of the new week, and weeks missed by downtime are caught up', async () => {
   db.prepare("DELETE FROM settings WHERE key LIKE 'week_closed:%'").run();
   const u = await signup('wk_u');

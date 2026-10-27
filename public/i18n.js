@@ -303,8 +303,6 @@ export const I18N = {
     edited: 'edited',
     was: 'was',
     hist_empty: 'No entries yet.',
-    flagged: 'Your recent total is being checked by an organiser. It stays on your record but is not added to the public numbers while it is being checked; if it checks out, it is added. Until then you are hidden from the ranks.',
-    flagged_decided: 'An organiser reviewed your recent total and kept it out of the public numbers. It stays on your own record. If you think this is a mistake, speak to your organiser.',
     member1: 'member',
     log_undone: 'Taken back. Your count is as it was.',
     streak_nudge: (n) => `Keep your ${n}-day streak: recite today.`,

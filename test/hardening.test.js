@@ -59,35 +59,6 @@ test('new members have a lower daily limit; established members have 50,000', as
   assert.equal((await log(old, 1)).error, 'daily_cap');
 });
 
-test('a flagged member’s durood is held out of every public total until an admin clears it, and nothing is lost', async () => {
-  const root = await signup('hold_root');
-  const kid = await signup('hold_kid'); age('hold_kid');
-  await log(root, 100);
-  await log(kid, 500);                                            // normal
-  const pub0 = await api('GET', '/api/public');
-  const cvTotal = async () => (await api('GET', '/api/caravan', { token: root.token })).caravan.total;
-  const team0 = await cvTotal();
-  const r = await log(kid, 25_000);                               // over the 20,000 line: flagged
-  assert.equal(r.me.hiddenFromRanks, true);
-  assert.equal(r.me.total, 25_500, 'the member still sees all of their own durood');
-  const pub1 = await api('GET', '/api/public');
-  assert.equal(pub1.total, pub0.total - 500, 'their whole total leaves the public number');
-  assert.equal(pub1.pending, pub0.pending + 25_500);
-  assert.equal(await cvTotal(), team0 - 500, 'and their caravan');
-  assert.equal((await api('GET', '/api/challenge', { token: root.token })).summary.total, pub1.challenge.total);
-  await log(kid, 1000);                                           // more while held: the caravan is unaffected
-  assert.equal(await cvTotal(), team0 - 500);
-  assert.deepEqual(audit().problems, []);
-
-  const flag = (await api('GET', '/api/admin/flags', { headers: adm })).flags.find((f) => f.username === 'hold_kid');
-  await api('POST', `/api/admin/flags/${flag.id}`, { headers: adm, body: { action: 'clear' } });
-  const pub2 = await api('GET', '/api/public');
-  assert.equal(pub2.total, pub1.total + 26_500, 'cleared: everything counts again');
-  assert.equal(pub2.pending, pub1.pending - 25_500);
-  assert.equal(await cvTotal(), team0 + 26_000);
-  assert.deepEqual(audit().problems, []);
-});
-
 test('sessions: revoke signs out other devices; a password reset does too', async () => {
   const u = await signup('sess_u');
   assert.equal((await api('GET', '/api/me', { token: u.token })).status, 200);

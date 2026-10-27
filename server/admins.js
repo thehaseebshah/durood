@@ -20,7 +20,6 @@ export const ADMIN_PERMS = {
   'POST /api/admin/caravans': 'organise', 'POST /api/admin/caravans/:id/members': 'organise', 'POST /api/admin/caravans/:id/remove': 'moderate',
   'GET /api/admin/profiles': 'moderate', 'GET /api/admin/log': 'log',
   'GET /api/admin/reported': 'moderate', 'POST /api/admin/content/:kind/:id': 'moderate',
-  'GET /api/admin/flags': 'moderate', 'POST /api/admin/flags/:id': 'moderate',
   'GET /api/admin/members': 'members', 'POST /api/admin/members/:username': 'members',   // the action inside decides (see index.js)
   'POST /api/admin/members/create': 'organise',
   'POST /api/admin/sunnahs': 'organise', 'GET /api/admin/sunnahs': 'organise', 'DELETE /api/admin/sunnahs/:day': 'organise',

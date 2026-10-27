@@ -26,7 +26,7 @@ const can = (p) => !!ME?.can.includes(p);
 let tab = 'challenge';
 let notice = '';
 // [id, label, permission(s): the tab shows if the role has any of them]
-const TABS = [['challenge', 'Challenge', ['status']], ['invites', 'Invite codes', ['organise']], ['members', 'Members', ['members']], ['caravans', 'Caravans', ['organise', 'moderate']], ['flags', 'Flagged totals', ['moderate']], ['reported', 'Reported', ['moderate']], ['profiles', 'Pictures and names', ['moderate']], ['news', 'News', ['organise']], ['sunnahs', 'Sunnahs', ['organise']], ['majalis', 'Majalis', ['organise']], ['exports', 'Exports', ['organise']], ['waitlist', 'Waitlist', ['organise']], ['admins', 'Admins', ['manage_admins']], ['audit', 'Audit', ['audit']], ['log', 'Log', ['log']]];
+const TABS = [['challenge', 'Challenge', ['status']], ['invites', 'Invite codes', ['organise']], ['members', 'Members', ['members']], ['caravans', 'Caravans', ['organise', 'moderate']], ['reported', 'Reported', ['moderate']], ['profiles', 'Pictures and names', ['moderate']], ['news', 'News', ['organise']], ['sunnahs', 'Sunnahs', ['organise']], ['majalis', 'Majalis', ['organise']], ['exports', 'Exports', ['organise']], ['waitlist', 'Waitlist', ['organise']], ['admins', 'Admins', ['manage_admins']], ['audit', 'Audit', ['audit']], ['log', 'Log', ['log']]];
 const tabOk = ([, , perms]) => perms.some(can);
 
 // what an error code means, in words an organiser can act on
@@ -167,17 +167,6 @@ const views = {
         <td dir="ltr">${esc(r.phone)}<br>${esc(r.email)}</td><td>${date(r.createdAt)}</td>
         <td>${r.status === 'pending' ? `<button class="chip solid" data-a="approve" data-id="${r.id}">Approve</button><button class="chip" data-a="reject" data-id="${r.id}">Reject</button>`
           : r.code ? `<span class="code2">${esc(r.code)}</span> <a class="chip" target="_blank" rel="noopener" href="https://wa.me/${esc(r.phone.replace(/\D/g, ''))}?text=${encodeURIComponent('Assalamu alaikum. Your Durood Quest code: ' + r.code)}">WhatsApp</a>` : esc(r.status)}</td></tr>`).join('')}</table>` : `<p class="empty">Nothing ${status}.</p>`}`;
-  },
-  async flags() {
-    const status = window.__fl || 'open';
-    const { flags } = await api('GET', `/flags?status=${status}`);
-    return `<h3>Flagged totals</h3>
-      <p class="muted">A member is flagged over 20,000 in a day, or over 10 times their recent average. Flagged members are hidden from public ranks and their durood is held out of the national, challenge and caravan totals (it stays in their own total). <b>Release</b> counts it again and shows them. <b>Keep held</b> keeps it out until you unhide the member.</p>
-      <div class="inline">${['open', 'confirmed', 'cleared'].map((s) => `<button class="chip ${s === status ? 'solid' : ''}" data-a="flfilter" data-s="${s}">${s}</button>`).join('')}</div>
-      ${flags.length ? `<table><tr><th>Member</th><th>Why</th><th>Total</th><th></th></tr>${flags.map((f) => `<tr>
-        <td><b>${esc(f.username)}</b><br><span class="muted">${esc(f.city)} · joined ${esc(f.joined)}</span></td>
-        <td>${esc(f.reason)}<br><span class="muted">${esc(f.day)} · ${esc(f.detail)}</span></td><td>${fmt(f.total)}</td>
-        <td>${f.status === 'open' ? `<button class="chip solid" data-a="flclear" data-id="${f.id}">Release</button><button class="chip" data-a="flconfirm" data-id="${f.id}">Keep held</button>` : `<span class="pillbox">${esc(f.status)}</span>`}</td></tr>`).join('')}</table>` : `<p class="empty">No ${status} flags.</p>`}`;
   },
   async profiles() {
     const q = window.__mq || '', filter = window.__mf || 'photos';
@@ -326,8 +315,6 @@ document.addEventListener('click', (ev) => {
     },
     reject: async () => { await api('POST', `/waitlist/${d.id}`, { action: 'reject' }); say('Rejected.'); },
     flfilter: async () => { window.__fl = d.s; },
-    flclear: async () => { await api('POST', `/flags/${d.id}`, { action: 'clear' }); say('Released.'); },
-    flconfirm: async () => { await api('POST', `/flags/${d.id}`, { action: 'confirm' }); say('Kept held.'); },
     msearch: async () => { window.__mq = $('#mq').value; },
     mfilter: async () => { window.__mf = d.f; window.__mq = $('#mq')?.value || ''; },
     csearch: async () => { window.__cq = $('#cq').value; },

@@ -131,7 +131,7 @@ test('audit: every statistic reconciles with the ledger, detects tampering, and 
   assert.equal(audit().ok, true);
   const pub = await api('GET', '/api/public');
   assert.equal(pub.total + pub.pending, audit().ledgerTotal, 'public total plus durood on hold equals the ledger');
-  assert.equal(pub.pending, 50_000, 'the 50,000 day above the 20,000 line is on hold, not lost');
+  assert.equal(pub.pending, 0, 'nothing is held back: all members are trusted');
 
   db.prepare("UPDATE users SET total = total + 1000, xp = xp + 7 WHERE username = 'retrier'").run();
   db.prepare("UPDATE daily SET count = count + 1 WHERE user_id = (SELECT id FROM users WHERE username = 'reciter')").run();

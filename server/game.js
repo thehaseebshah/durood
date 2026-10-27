@@ -251,7 +251,6 @@ export function logDurood(userId, count, rid) {
          shields = ?, last_day = ? WHERE id = ?`, count, count, streak, streak, shields, day, userId);
 
     if (!u.held) bumpDay(day, count);
-    evaluateFlags(userId, day);
 
     settleQuests(userId);
     evalBadges(userId, fresh);
@@ -270,40 +269,7 @@ export function logDurood(userId, count, rid) {
   };
 }
 
-// ---- flags: implausible totals ----------------------------------------------------------------------------
-export const FLAG = {
-  daily: 20_000,        // more than this in one day is flagged
-  spikeMult: 10,        // or more than 10x the member's average day over the previous 7 days
-  newHigh: Number(process.env.FLAG_NEW_HIGH) || 5_000, // a new account (under newWindow days old) with this much in one day is held for a look
-  newWindow: 14,
-  spikeMin: 2_000,      // ...but only once the day is at least this big, so 15 -> 200 never trips it
-  newMemberDays: 7,     // a member's first 7 days are flagged by the daily line only
-};
-
-/** Raises a flag (and hides the member from public ranks) when a day's total looks implausible. Call inside the transaction. */
-export function evaluateFlags(userId, day) {
-  const dayTotal = one('SELECT count FROM daily WHERE user_id = ? AND day = ?', userId, day)?.count ?? 0;
-  const u = one('SELECT created_day FROM users WHERE id = ?', userId);
-  let reason = null, detail = '';
-  if (dayTotal > FLAG.daily) {
-    reason = 'daily_20k'; detail = `${dayTotal} in one day`;
-  } else if (dayNum(day) - dayNum(u.created_day) < FLAG.newWindow && dayTotal >= FLAG.newHigh) {
-    reason = 'spike_10x'; detail = `new account (${dayNum(day) - dayNum(u.created_day)} days old): ${dayTotal} in one day`; // the cheapest way to fake numbers is a fresh account
-  } else if (dayNum(day) - dayNum(u.created_day) >= FLAG.newMemberDays && dayTotal >= FLAG.spikeMin) {
-    const prior = one('SELECT COALESCE(SUM(count), 0) n FROM daily WHERE user_id = ? AND day < ? AND day >= ?', userId, day, dayStr(dayNum(day) - 7)).n;
-    const avg = prior / 7;
-    if (avg > 0 && dayTotal > FLAG.spikeMult * avg) { reason = 'spike_10x'; detail = `${dayTotal} against a recent average of ${Math.round(avg)} a day`; }
-  }
-  if (!reason) return null;
-  // one open flag per reason and day; after an admin cleared one, a clearly bigger day (half as much again) is looked at again
-  if (one("SELECT 1 FROM flags WHERE user_id = ? AND reason = ? AND day = ? AND status IN ('open','confirmed')", userId, reason, day)) return null;
-  const cleared = one("SELECT MAX(day_total) m FROM flags WHERE user_id = ? AND reason = ? AND day = ? AND status = 'cleared'", userId, reason, day).m;
-  if (cleared && dayTotal <= cleared * 1.5) return null;
-  run('INSERT INTO flags (user_id, reason, day, detail, day_total, created_at) VALUES (?,?,?,?,?,?)', userId, reason, day, detail, dayTotal, Date.now());
-  run('UPDATE users SET hidden_from_ranks = 1 WHERE id = ?', userId);
-  setHeld(userId, true);
-  return reason;
-}
+// ---- hiding a member from the boards (admin action; there is no automatic flagging: all members are trusted) -------------------------
 
 /**
  * Puts a member's durood on hold (or releases it). Held durood stays in their own total and in the ledger, but is left out of
@@ -320,22 +286,6 @@ function refreshHidden(userId) {
   const hidden = !!one("SELECT 1 FROM flags WHERE user_id = ? AND status IN ('open','confirmed')", userId);
   run('UPDATE users SET hidden_from_ranks = ? WHERE id = ?', hidden ? 1 : 0, userId);
   setHeld(userId, !!one("SELECT 1 FROM flags WHERE user_id = ? AND status IN ('open','confirmed') AND reason != 'manual'", userId));
-}
-
-export const listFlags = (status = 'open') => all(`SELECT f.*, u.username, u.city, u.total, u.created_day FROM flags f JOIN users u ON u.id = f.user_id
-    WHERE f.status = ? ORDER BY f.created_at DESC LIMIT 200`, status)
-  .map((f) => ({ id: f.id, username: f.username, city: f.city, total: f.total, joined: f.created_day, reason: f.reason, day: f.day, detail: f.detail, status: f.status, createdAt: f.created_at }));
-
-/** clear: the numbers are fine, show them again. confirm: keep them hidden until an admin unhides the member. */
-export function resolveFlag(id, action) {
-  const f = one('SELECT * FROM flags WHERE id = ?', id);
-  if (!f) throw new HttpError(404, 'not_found');
-  if (action !== 'clear' && action !== 'confirm') throw new HttpError(400, 'bad_action');
-  tx(() => {
-    run('UPDATE flags SET status = ?, resolved_at = ? WHERE id = ?', action === 'clear' ? 'cleared' : 'confirmed', Date.now(), id);
-    refreshHidden(f.user_id);
-  });
-  return { ok: true };
 }
 
 export function setHidden(username, hidden) {
@@ -385,7 +335,6 @@ export function editEntry(userId, entryId, newCount, ridIn) {
     run('UPDATE daily SET count = count + ? WHERE user_id = ? AND day = ?', delta, userId, e.day);
     run('UPDATE users SET total = total + ?, xp = xp + ? WHERE id = ?', delta, delta, userId);
     if (!eu.held) bumpDay(e.day, delta);
-    evaluateFlags(userId, e.day);
     if (delta < 0) {
       revokeQuests(userId, e.day);
       // durood badges no longer met are taken back, for the member and for everyone whose caravan total this number counted in
@@ -580,8 +529,7 @@ export function getMe(userId) {
   return {
     id: u.id, username: u.username, displayName: u.display_name, bio: u.bio, avatar: avatarUrl(u.id, u.avatar_v), email: u.email, phone: u.phone, lang: u.lang, city: u.city, cityId: u.city_id, country: u.country, needsCity: !u.city_id,
     dailyGoal: u.daily_goal, hidePhone: !!u.hide_phone, hiddenFromRanks: !!u.hidden_from_ranks,
-    // 'decided' once an organiser looked and kept it out ("keep held"), so the member isn't told "being checked" for ever
-    flagState: !u.hidden_from_ranks ? null : one("SELECT 1 FROM flags WHERE user_id = ? AND status = 'open'", u.id) ? 'open' : one("SELECT 1 FROM flags WHERE user_id = ? AND status = 'confirmed'", u.id) ? 'decided' : 'open', emailVerified: !!u.email_verified_at,
+    emailVerified: !!u.email_verified_at,
     joinedDay: u.created_day,
     total: u.total, today, week,
     streak: streakAlive ? u.streak : 0, bestStreak: u.best_streak, shields: u.shields,

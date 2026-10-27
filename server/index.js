@@ -19,7 +19,7 @@ import * as news from './news.js';
 import * as feedApi from './feed.js';
 import * as geo from './geo.js';
 import * as compete from './compete.js';
-import { dayOf, challengeAdminView, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, getMe, setSpecialDay, deleteSpecialDay, listSpecialDays, leaderboard, publicStats } from './game.js';
+import { dayOf, challengeAdminView, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, setHidden, logDurood, getMe, setSpecialDay, deleteSpecialDay, listSpecialDays, leaderboard, publicStats } from './game.js';
 
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -547,8 +547,6 @@ route('POST', '/api/admin/members/:username', adm, async ({ params, body, admin 
   }
   throw new HttpError(400, 'bad_action');
 });
-route('GET', '/api/admin/flags', adm, ({ query }) => ({ flags: listFlags(query.get('status') || 'open') }));
-route('POST', '/api/admin/flags/:id', adm, ({ params, body }) => resolveFlag(Number(params.id), body.action));
 route('GET', '/api/admin/challenge', adm, () => challengeAdminView());
 route('POST', '/api/admin/challenge', adm, ({ body }) => ({ summary: setChallenge({ start: body.start, days: body.days, target: body.target, clearMilestones: !!body.clearMilestones }) }));
 route('GET', '/api/admin/news', adm, () => ({ items: db.prepare('SELECT * FROM announcements ORDER BY id DESC LIMIT 50').all() }));

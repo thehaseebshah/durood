@@ -272,65 +272,6 @@ test('edit window: yesterday is editable, anything older is locked; the daily ca
   assert.deepEqual(audit().problems, [], 'edits to yesterday keep the ledger consistent');
 });
 
-test('flags: over 20,000 in a day hides the member from ranks until an admin reviews; clear, confirm, hide, unhide', async () => {
-  const u = await signup('flag_big');
-  const watcher = await signup('flag_watcher');
-  await api('POST', '/api/log', { token: u.token, body: { count: 15000 } });
-  assert.equal((await api('GET', '/api/me', { token: u.token })).hiddenFromRanks, false);
-  const r = await api('POST', '/api/log', { token: u.token, body: { count: 6000 } });
-  assert.equal(r.me.hiddenFromRanks, true);
-  assert.equal(r.me.total, 21000, 'still counted');
-  let board = await api('GET', '/api/leaderboard?type=users&period=week', { token: watcher.token });
-  assert.ok(!board.rows.some((x) => x.username === 'flag_big'));
-  const open = (await admin('GET', '/flags')).flags.filter((f) => f.username === 'flag_big');
-  assert.equal(open.length, 1);
-  assert.equal(open[0].reason, 'daily_20k');
-  await admin('POST', `/flags/${open[0].id}`, { action: 'clear' });
-  assert.equal((await api('GET', '/api/me', { token: u.token })).hiddenFromRanks, false);
-  board = await api('GET', '/api/leaderboard?type=users&period=week', { token: watcher.token });
-  assert.ok(board.rows.some((x) => x.username === 'flag_big'), 'visible again once cleared');
-
-  const v = await signup('flag_conf');
-  await api('POST', '/api/log', { token: v.token, body: { count: 30000 } }).catch(() => {});
-  await api('POST', '/api/log', { token: v.token, body: { count: 100 } });
-  const fv = (await admin('GET', '/flags')).flags.find((f) => f.username === 'flag_conf');
-  await admin('POST', `/flags/${fv.id}`, { action: 'confirm' });
-  assert.equal((await api('GET', '/api/me', { token: v.token })).hiddenFromRanks, true);
-  await admin('POST', '/members/flag_conf', { action: 'unhide' });
-  assert.equal((await api('GET', '/api/me', { token: v.token })).hiddenFromRanks, false);
-  await admin('POST', '/members/flag_big', { action: 'hide' });
-  assert.equal((await api('GET', '/api/me', { token: u.token })).hiddenFromRanks, true);
-  await admin('POST', '/members/flag_big', { action: 'unhide' });
-  assert.deepEqual(audit().problems, []);
-});
-
-test('flags: a 10x spike over the recent average is flagged for established members only, with a floor', async () => {
-  const u = await signup('spike_u');
-  for (let d = 1; d <= 7; d++) seedDay('spike_u', d, 100);          // average 100 a day
-  db.prepare("UPDATE users SET created_day = ? WHERE username = 'spike_u'").run(shift(dayOf(), -10));
-  await api('POST', '/api/log', { token: u.token, body: { count: 1500 } });
-  assert.equal((await api('GET', '/api/me', { token: u.token })).hiddenFromRanks, false, 'below the 2,000 floor');
-  const r = await api('POST', '/api/log', { token: u.token, body: { count: 600 } });  // 2,100 > 10 x 100
-  assert.equal(r.me.hiddenFromRanks, true);
-  assert.equal((await admin('GET', '/flags')).flags.find((f) => f.username === 'spike_u').reason, 'spike_10x');
-
-  const fresh = await signup('fresh_spike');
-  const rf = await api('POST', '/api/log', { token: fresh.token, body: { count: 5000 } });
-  assert.equal(rf.me.hiddenFromRanks, false, 'new members are only flagged above 20,000');
-  const back = await signup('spike_back');                          // returning after a quiet week: no baseline, no spike flag
-  db.prepare("UPDATE users SET created_day = ? WHERE username = 'spike_back'").run(shift(dayOf(), -30));
-  assert.equal((await api('POST', '/api/log', { token: back.token, body: { count: 5000 } })).me.hiddenFromRanks, false);
-});
-
-test('an edit that pushes a day over 20,000 is flagged too', async () => {
-  const u = await signup('edit_flag');
-  const first = await api('POST', '/api/log', { token: u.token, body: { count: 100 } });
-  const id = (await api('GET', '/api/history', { token: u.token })).days[0].entries[0].id;
-  const r = await api('PATCH', `/api/entries/${id}`, { token: u.token, body: { count: 25000 } });
-  assert.equal(first.me.hiddenFromRanks, false);
-  assert.equal(r.me.hiddenFromRanks, true);
-});
-
 test('password reset: link by email, single use, expires, same answer for unknown addresses', async () => {
   const u = await signup('reset_u');
   outbox.length = 0;
