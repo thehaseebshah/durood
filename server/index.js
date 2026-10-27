@@ -600,6 +600,16 @@ route('POST', '/api/admin/members/:username', adm, async ({ params, body, admin 
     return { ok: true };
   }
   if (a === 'suspend' || a === 'unsuspend') { const r = access.setSuspended(params.username, a === 'suspend', !!body.branch, admin.role === 'owner'); profile.logAdmin(body.branch ? `${a}-branch` : a, params.username, '', admin.actor); return r; }
+  if (a === 'grant-invites') { // extra invites on top of what the member earns (negative takes some back)
+    const n = Number(body.count);
+    if (!Number.isInteger(n) || n < -100_000 || n > 100_000) throw new HttpError(400, 'bad_count');
+    const u = one('SELECT id, invite_bonus FROM users WHERE username = ? AND deleted_at IS NULL', params.username);
+    if (!u) throw new HttpError(404, 'not_found');
+    const bonus = Math.max(0, u.invite_bonus + n);
+    run('UPDATE users SET invite_bonus = ? WHERE id = ?', bonus, u.id);
+    profile.logAdmin('grant-invites', params.username, String(n), admin.actor);
+    return { ok: true, bonus, invites: access.inviteStatus(u.id) };
+  }
   if (a === 'hide-phone' || a === 'show-phone') { // after a complaint: stop offering this member's number to other members (they can change it back themselves)
     const u = one('SELECT id FROM users WHERE username = ? AND deleted_at IS NULL', params.username);
     if (!u) throw new HttpError(404, 'not_found');

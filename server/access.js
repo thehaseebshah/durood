@@ -24,10 +24,10 @@ export const showCode = (c) => (c.length === 8 ? `${c.slice(0, 4)}-${c.slice(4)}
 const levelOf = (xp) => Math.floor(Math.sqrt(Math.max(0, xp) / 100)) + 1; // the same curve as game.js levelFor (no import: game.js imports this file)
 /** Invites a member may issue, and where they come from. */
 export function inviteSources(userId) {
-  const u = one('SELECT xp, best_streak FROM users WHERE id = ?', userId) ?? { xp: 0, best_streak: 0 };
+  const u = one('SELECT xp, best_streak, invite_bonus FROM users WHERE id = ?', userId) ?? { xp: 0, best_streak: 0, invite_bonus: 0 };
   const level = levelOf(u.xp), active = one('SELECT COUNT(*) n FROM users WHERE referrer_id = ? AND total >= ?', userId, CAP.activeMin).n;
   const weeks = Math.floor(u.best_streak / CAP.streakDays);
-  return { start: CAP.start, level: CAP.perLevel * (level - 1), active: CAP.perActive * active, streak: CAP.perStreak * weeks,
+  return { start: CAP.start + u.invite_bonus, level: CAP.perLevel * (level - 1), active: CAP.perActive * active, streak: CAP.perStreak * weeks,
     next: { level: level + 1, levelXp: 100 * level ** 2, streak: CAP.streakDays * (weeks + 1) } };
 }
 // only people who joined with this member's own invite count against it (those who came through the public code and were placed under them do not)

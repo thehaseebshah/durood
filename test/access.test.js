@@ -454,3 +454,13 @@ test('the public code can place everyone who joins under one member, without usi
   await admin('POST', '/public-code', { referrer: '' });
   assert.equal(row((await signup('pubkid_c'), 'pubkid_c')).referrer_id, null, 'cleared: nobody\'s again');
 });
+
+test('an admin can give a member extra invites on top of what they earn', async () => {
+  const m = await signup('gift_a');
+  const before = (await api('GET', '/api/me', { token: m.token })).invites.cap;
+  const r = await admin('POST', '/members/gift_a', { action: 'grant-invites', count: 500 });
+  assert.equal(r.invites.cap, before + 500);
+  assert.equal((await api('GET', '/api/me', { token: m.token })).invites.left, before + 500);
+  assert.equal((await admin('POST', '/members/gift_a', { action: 'grant-invites', count: 'lots' })).status, 400);
+  assert.equal((await admin('POST', '/members/nobody_here', { action: 'grant-invites', count: 5 })).status, 404);
+});

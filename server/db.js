@@ -425,6 +425,7 @@ addCol('sunnahs', 'kind', "TEXT NOT NULL DEFAULT 'daily'");        // 'daily' su
 
 addCol('users', 'held', 'INTEGER NOT NULL DEFAULT 0');             // an open/confirmed automatic flag: durood stays in the ledger but is left out of public totals
 addCol('users', 'token_ver', 'INTEGER NOT NULL DEFAULT 0');       // bumped to sign a member out of every device
+addCol('users', 'invite_bonus', 'INTEGER NOT NULL DEFAULT 0');  // extra invites an admin gave this member on top of what they earn
 addCol('users', 'placed', 'INTEGER NOT NULL DEFAULT 0');       // 1 = put under a member by the public code's host setting, not invited by them (does not use up their invites)
 addCol('users', 'hide_phone', 'INTEGER NOT NULL DEFAULT 0');   // 1 = this member's number is not offered to other members (WhatsApp button)
 addCol('posts', 'purged_at', 'INTEGER');

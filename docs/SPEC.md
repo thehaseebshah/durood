@@ -491,3 +491,4 @@ Also: the big counter and the celebration number are measured after drawing and 
 - Members read or play it in Drive's own viewer inside the same player, with an **Open in Google Drive** link. The minimum time, XP, quiz and comments work as for video lectures. Time open is the only measure (Drive gives no page or play events); the quiz is the real check.
 - The admin must set sharing to **Anyone with the link**, or members see "You need access". A very popular file may be throttled by Drive. Not built: separate "material" listing apart from lectures.
 - **Public code under a member:** an admin can set a username on the Invite codes tab; everyone who joins with the public code goes into that member's Qabila (`users.placed = 1`, does not use up the member's own invites, no join notification per sign-up).
+- **Extra invites:** an admin can give a member extra invites (Members tab, "Give invites"; `users.invite_bonus`, added to what they start with).

@@ -250,6 +250,7 @@ const views = {
           <button class="chip" data-a="${m.suspended ? 'unsuspend' : 'suspend'}" data-u="${esc(m.username)}">${m.suspended ? 'Unsuspend' : 'Suspend'}</button>
           <button class="chip" data-a="${m.suspended ? 'unsuspendb' : 'suspendb'}" data-u="${esc(m.username)}">${m.suspended ? 'Unsuspend branch' : 'Suspend branch'}</button>
           <button class="chip" data-a="${m.hidden ? 'unhide' : 'hide'}" data-u="${esc(m.username)}">${m.hidden ? 'Unhide' : 'Hide from ranks'}</button>
+          <button class="chip" data-a="grantinv" data-u="${esc(m.username)}">Give invites</button>
           <button class="chip" data-a="${m.phoneHidden ? 'showphone' : 'hidephone'}" data-u="${esc(m.username)}">${m.phoneHidden ? 'Show number to members' : 'Hide number from members'}</button>
           ${can('reset_link') ? `<button class="chip" data-a="resetlink" data-u="${esc(m.username)}">Reset link</button>` : ''}
           ${can('delete_member') ? `<button class="chip" data-a="memdel" data-u="${esc(m.username)}">Delete account</button>` : ''}</div></details>`}</td></tr>`).join('')}</table>` : '<p class="empty">No members match.</p>'}`;
@@ -386,6 +387,7 @@ document.addEventListener('click', (ev) => {
     unsuspendb: () => api('POST', `/members/${d.u}`, { action: 'unsuspend', branch: true }).then((r) => say(`${r.affected} members restored.`)),
     hide: () => api('POST', `/members/${d.u}`, { action: 'hide' }),
     unhide: () => api('POST', `/members/${d.u}`, { action: 'unhide' }),
+    grantinv: async () => { const n = Number(prompt(`How many extra invites for ${d.u}? (a negative number takes some back)`, '100')); if (!Number.isInteger(n) || !n) return 'stay'; const r = await api('POST', `/members/${d.u}`, { action: 'grant-invites', count: n }); say(`${d.u} can now invite ${r.invites.cap} in total (${r.invites.left} left).`); },
     hidephone: () => api('POST', `/members/${d.u}`, { action: 'hide-phone' }).then(() => say(`${d.u}'s number is no longer offered to other members.`)),
     showphone: () => api('POST', `/members/${d.u}`, { action: 'show-phone' }).then(() => say(`${d.u}'s number is offered to members again.`)),
     adgrant: async () => { const username = $('#adu').value.trim(), role = $('#adr').value; await api('POST', '/admins', { username, role }); say(`${username} is now ${role}.`); },
