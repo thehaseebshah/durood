@@ -3,7 +3,7 @@ import { mkdirSync, chmodSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { isMainThread } from 'node:worker_threads';
 
-// the database holds password hashes, contact details and the push signing key: files this process creates are readable by it alone
+// the database holds password hashes, contact details: files this process creates are readable by it alone
 if (isMainThread) process.umask(0o077); // not allowed inside a worker thread, which loads this file too (the audit)
 const file = process.env.DB_PATH || 'data/durood.db';
 if (file !== ':memory:') mkdirSync(path.dirname(file), { recursive: true });
@@ -145,25 +145,6 @@ CREATE TABLE IF NOT EXISTS badges (
   PRIMARY KEY (user_id, code)
 ) WITHOUT ROWID;
 
-CREATE TABLE IF NOT EXISTS lectures (
-  id          INTEGER PRIMARY KEY,
-  youtube_id  TEXT NOT NULL,
-  title_en    TEXT NOT NULL,
-  title_ur    TEXT NOT NULL DEFAULT '',
-  speaker     TEXT NOT NULL DEFAULT '',
-  min_seconds INTEGER NOT NULL DEFAULT 600,
-  xp          INTEGER NOT NULL DEFAULT 300,
-  created_at  INTEGER NOT NULL
-);
-
--- a member passes a lecture's quiz once; the reward is only paid after a pass
-CREATE TABLE IF NOT EXISTS lecture_quiz (
-  user_id    INTEGER NOT NULL REFERENCES users(id),
-  lecture_id INTEGER NOT NULL REFERENCES lectures(id),
-  passed_at  INTEGER NOT NULL,
-  PRIMARY KEY (user_id, lecture_id)
-) WITHOUT ROWID;
-
 -- places of 5,000+ people (GeoNames, CC BY 4.0), loaded on first start; members must pick one
 CREATE TABLE IF NOT EXISTS cities (
   id     INTEGER PRIMARY KEY,
@@ -202,38 +183,9 @@ CREATE TABLE IF NOT EXISTS special_days (
   name_ur TEXT NOT NULL DEFAULT ''
 ) WITHOUT ROWID;
 
--- the feed: likes (one per member per item, never taken back, so the points they earn stay exact), a short written reflection per
--- member per day, the question of the day, reports on either kind of content, and milestone events shown to a member's caravan
-CREATE TABLE IF NOT EXISTS reflections (
-  id         INTEGER PRIMARY KEY,
-  user_id    INTEGER NOT NULL REFERENCES users(id),
-  day        TEXT NOT NULL,
-  body       TEXT NOT NULL,
-  likes      INTEGER NOT NULL DEFAULT 0,
-  reports    INTEGER NOT NULL DEFAULT 0,
-  status     TEXT NOT NULL DEFAULT 'visible' CHECK (status IN ('visible','removed')),
-  created_at INTEGER NOT NULL,
-  UNIQUE (user_id, day)
-);
-CREATE INDEX IF NOT EXISTS reflections_feed ON reflections(status, created_at);
-CREATE TABLE IF NOT EXISTS prompts (
-  day     TEXT PRIMARY KEY,
-  text_en TEXT NOT NULL,
-  text_ur TEXT NOT NULL DEFAULT ''
-) WITHOUT ROWID;
--- one comment per member on each week's lecture (only after passing its quiz), and short replies to photos, reflections and comments
-CREATE TABLE IF NOT EXISTS lecture_comments (
-  id         INTEGER PRIMARY KEY,
-  lecture_id INTEGER NOT NULL REFERENCES lectures(id),
-  user_id    INTEGER NOT NULL REFERENCES users(id),
-  body       TEXT NOT NULL,
-  likes      INTEGER NOT NULL DEFAULT 0,
-  reports    INTEGER NOT NULL DEFAULT 0,
-  status     TEXT NOT NULL DEFAULT 'visible' CHECK (status IN ('visible','removed')),
-  created_at INTEGER NOT NULL,
-  UNIQUE (lecture_id, user_id)
-);
-CREATE INDEX IF NOT EXISTS lecture_comments_feed ON lecture_comments(status, created_at);
+-- the feed: likes (one per member per photo, never taken back, so the points they earn stay exact), short replies, reports,
+-- and milestone events shown to a member's caravan
+-- short replies to photos
 CREATE TABLE IF NOT EXISTS replies (
   id         INTEGER PRIMARY KEY,
   kind       TEXT NOT NULL CHECK (kind IN ('post','reflection','comment')),
@@ -272,35 +224,11 @@ CREATE TABLE IF NOT EXISTS announcements (
   created_at INTEGER NOT NULL
 );
 
--- browser push subscriptions (one per device) and a log so a reminder is never sent twice for the same thing
-CREATE TABLE IF NOT EXISTS push_subs (
-  endpoint   TEXT PRIMARY KEY,
-  user_id    INTEGER NOT NULL REFERENCES users(id),
-  p256dh     TEXT NOT NULL,
-  auth       TEXT NOT NULL,
-  created_at INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS push_subs_user ON push_subs(user_id);
-CREATE TABLE IF NOT EXISTS push_log (
-  user_id INTEGER NOT NULL,
-  kind    TEXT NOT NULL,
-  ref     TEXT NOT NULL,
-  at      INTEGER NOT NULL,
-  PRIMARY KEY (user_id, kind, ref)
-) WITHOUT ROWID;
-
-CREATE TABLE IF NOT EXISTS lecture_starts (
-  user_id    INTEGER NOT NULL REFERENCES users(id),
-  lecture_id INTEGER NOT NULL REFERENCES lectures(id),
-  started_at INTEGER NOT NULL,
-  PRIMARY KEY (user_id, lecture_id)
-) WITHOUT ROWID;
-
--- invite-only access ------------------------------------------------------------------------------
+-- access ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 
--- founder codes (issued by admins) and single-use codes created when a waitlist request is approved.
--- A member's own invite code is simply their username and has no row here.
+-- codes issued by admins (plain codes and single-use waitlist approvals), each tied to one caravan (caravan_id, added below).
+-- A caravan's own invite code is its name and has no row here.
 CREATE TABLE IF NOT EXISTS invites (
   code       TEXT PRIMARY KEY,
   kind       TEXT NOT NULL CHECK (kind IN ('founder','waitlist')),
@@ -420,7 +348,7 @@ addCol('users', 'deleted_at', 'INTEGER');
 addCol('users', 'invited_via', "TEXT NOT NULL DEFAULT 'member'");
 addCol('users', 'invite_code', 'TEXT');
 
-addCol('lectures', 'questions', "TEXT NOT NULL DEFAULT ''");        // JSON: [{q_en,q_ur,options_en,options_ur,answer}]
+addCol('invites', 'caravan_id', 'INTEGER REFERENCES caravans(id)'); // the caravan a registration with this code joins
 addCol('sunnahs', 'kind', "TEXT NOT NULL DEFAULT 'daily'");        // 'daily' sunnah or the weekly 'class' photo slot
 
 addCol('users', 'held', 'INTEGER NOT NULL DEFAULT 0');             // an open/confirmed automatic flag: durood stays in the ledger but is left out of public totals
@@ -432,13 +360,10 @@ addCol('posts', 'purged_at', 'INTEGER');
 addCol('posts', 'w', 'INTEGER');                                  // photo size, so the feed keeps its place while the photo loads
 addCol('posts', 'h', 'INTEGER');                          // photo file deleted (retention or account deletion)
 addCol('posts', 'likes', 'INTEGER NOT NULL DEFAULT 0');
-addCol('lectures', 'week_start', 'TEXT');                          // the Monday of the week this lecture is featured
 addCol('users', 'city_id', 'INTEGER');                              // the place the member chose (cities.id); required for new members
 addCol('users', 'country', "TEXT NOT NULL DEFAULT ''");           // country code of that place
 db.exec('CREATE INDEX IF NOT EXISTS users_city ON users(city_id)');
 addCol('users', 'league', 'INTEGER NOT NULL DEFAULT 0');           // 0 Bronze, 1 Silver, 2 Gold, 3 Diamond
-addCol('users', 'tree_active', 'INTEGER NOT NULL DEFAULT 0');     // people under this member (any depth) who have recited at least once
-addCol('users', 'reminder_time', "TEXT NOT NULL DEFAULT ''");       // 'HH:MM' Pakistan time, '' = no daily reminder
 addCol('users', 'news_seen_at', 'INTEGER NOT NULL DEFAULT 0');
 addCol('users', 'caravan_name', 'TEXT');
 addCol('users', 'city_changed_at', 'INTEGER');
@@ -453,47 +378,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY, at INTEGE
 addCol('admin_log', 'actor', "TEXT NOT NULL DEFAULT ''");                 // who did it: a member's username, or 'admin key'
 addCol('flags', 'day_total', 'INTEGER');                               // the day's total when the flag was raised
 db.exec('CREATE INDEX IF NOT EXISTS events_kind_ref ON events(kind, ref)'); // payouts are looked up by what they paid for                        // a member may change city once a fortnight
-// ---- Al-Burhan edition: murabbi / masul links, mamulaat percentages, tasks and routines -------------------------------------
 db.exec(`
-CREATE TABLE IF NOT EXISTS murabbi_links (
-  user_id        INTEGER PRIMARY KEY REFERENCES users(id),
-  murabbi_phone  TEXT NOT NULL,                       -- the murabbi's WhatsApp number as the Mamulaat app reports it (+E.164)
-  murabbi_name   TEXT NOT NULL DEFAULT '',
-  murabbi_id     INTEGER REFERENCES users(id),        -- NULL until the murabbi has an account here
-  checked_at     INTEGER NOT NULL,
-  created_at     INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS murabbi_links_murabbi ON murabbi_links(murabbi_id);
--- members who say they teach a Seerat Circle; an organiser confirms before the teacher's reward is paid
-CREATE TABLE IF NOT EXISTS circle_teachers (
-  user_id    INTEGER PRIMARY KEY REFERENCES users(id),
-  status     TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
-  note       TEXT NOT NULL DEFAULT '',
-  created_at INTEGER NOT NULL,
-  decided_at INTEGER
-);
--- a one-line notice for a salik whose request was declined or whose murabbi ended the link, or a razakar their masul removed
-CREATE TABLE IF NOT EXISTS burhan_notices (
-  user_id INTEGER NOT NULL REFERENCES users(id),
-  kind    TEXT NOT NULL CHECK (kind IN ('declined','ended','removed')),
-  by_name TEXT NOT NULL DEFAULT '',
-  at      INTEGER NOT NULL,
-  PRIMARY KEY (user_id, kind)
-);
-CREATE INDEX IF NOT EXISTS murabbi_links_phone ON murabbi_links(murabbi_phone);
-CREATE TABLE IF NOT EXISTS mamulaat_days (
-  user_id INTEGER NOT NULL REFERENCES users(id),
-  day     TEXT NOT NULL,
-  percent INTEGER NOT NULL CHECK (percent BETWEEN 0 AND 100),
-  PRIMARY KEY (user_id, day)
-);
-CREATE TABLE IF NOT EXISTS mamulaat_sync (user_id INTEGER PRIMARY KEY REFERENCES users(id), fetched_at INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS masul_links (
-  razakar_id INTEGER PRIMARY KEY REFERENCES users(id),
-  masul_id   INTEGER NOT NULL REFERENCES users(id),
-  created_at INTEGER NOT NULL
-);
-CREATE INDEX IF NOT EXISTS masul_links_masul ON masul_links(masul_id);
 -- who opened whose WhatsApp chat from a profile, kept 90 days so a complaint can be looked into
 CREATE TABLE IF NOT EXISTS wa_opens (
   id        INTEGER PRIMARY KEY,
@@ -502,54 +387,12 @@ CREATE TABLE IF NOT EXISTS wa_opens (
   at        INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS wa_opens_at ON wa_opens(at);
-CREATE TABLE IF NOT EXISTS assignments (
-  id         INTEGER PRIMARY KEY,
-  masul_id   INTEGER NOT NULL REFERENCES users(id),
-  razakar_id INTEGER NOT NULL REFERENCES users(id),
-  kind       TEXT NOT NULL CHECK (kind IN ('task','routine')),
-  title      TEXT NOT NULL,
-  weekday    INTEGER CHECK (weekday BETWEEN 0 AND 6),   -- routines: 0 = Sunday ... 6 = Saturday, every week
-  due_day    TEXT,                                      -- tasks: optional due date
-  created_at INTEGER NOT NULL,
-  ended_at   INTEGER
-);
-CREATE INDEX IF NOT EXISTS assignments_razakar ON assignments(razakar_id, ended_at);
-CREATE TABLE IF NOT EXISTS assignment_ticks (
-  assignment_id INTEGER NOT NULL REFERENCES assignments(id),
-  day           TEXT NOT NULL,
-  created_at    INTEGER NOT NULL,
-  PRIMARY KEY (assignment_id, day)
-);
--- the last time a murabbi or masul opened someone's report, shown to that person
-CREATE TABLE IF NOT EXISTS burhan_views (
-  viewer_id  INTEGER NOT NULL REFERENCES users(id),
-  subject_id INTEGER NOT NULL REFERENCES users(id),
-  kind       TEXT NOT NULL CHECK (kind IN ('murabbi','masul')),
-  at         INTEGER NOT NULL,
-  PRIMARY KEY (viewer_id, subject_id, kind)
-);
 `);
-addCol('murabbi_links', 'salik_ok', 'INTEGER NOT NULL DEFAULT 0');       // the salik confirmed the person they were shown
-addCol('murabbi_links', 'murabbi_ok', 'INTEGER NOT NULL DEFAULT 0');      // that person accepted. Nothing is shared until both are 1
-addCol('assignments', 'extensions', 'INTEGER NOT NULL DEFAULT 0');
-addCol('assignments', 'days', 'INTEGER');                                 // routines: the weekdays it falls on, bit 0 = Sunday ... bit 6 = Saturday
-db.exec("UPDATE assignments SET days = 1 << weekday WHERE kind = 'routine' AND days IS NULL AND weekday IS NOT NULL"); // routines from before: their one day        // times the deadline was pushed later at the doer's wish: each one lowers the points
-db.exec(`CREATE TABLE IF NOT EXISTS team_tags (              -- a masul's own sub-teams for their razakars: #tags
-  masul_id   INTEGER NOT NULL REFERENCES users(id),
-  razakar_id INTEGER NOT NULL REFERENCES users(id),
-  tag        TEXT NOT NULL,
-  PRIMARY KEY (masul_id, razakar_id, tag)
-)`);
-db.exec(`CREATE TABLE IF NOT EXISTS due_requests (               -- a razakar asks their masul to move a task's deadline
-  assignment_id INTEGER PRIMARY KEY REFERENCES assignments(id),
-  day           TEXT NOT NULL,
-  created_at    INTEGER NOT NULL
-)`);
                               // the member's own name for their caravan; shares one namespace with usernames
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS users_caravan_name ON users(caravan_name COLLATE NOCASE) WHERE caravan_name IS NOT NULL');
 
-// ---- caravans: a group a member creates and names, joined by invitation or request (one each) ---------------------------------
-// Names share one namespace with usernames (index.js: handleTaken). The referral tree (Qabila) is separate and unchanged.
+// ---- caravans: a named group an admin creates for an owner; a member joins one at sign-up (its name is the invite code) -----------------
+// Names share one namespace with usernames (handles.js: handleTaken).
 db.exec(`
 CREATE TABLE IF NOT EXISTS caravans (
   id             INTEGER PRIMARY KEY,
@@ -558,31 +401,6 @@ CREATE TABLE IF NOT EXISTS caravans (
   created_at     INTEGER NOT NULL,
   streak_awarded INTEGER NOT NULL DEFAULT 0,   -- highest caravan-streak badge already given to the members (7, 30)
   total_awarded  INTEGER NOT NULL DEFAULT 0    -- highest caravan-total badge already given (10000, 100000, 1000000)
-);
--- challenges after the current one: scheduled ahead by an admin, taken up on their start day
-CREATE TABLE IF NOT EXISTS challenge_plans (
-  id         INTEGER PRIMARY KEY,
-  name_en    TEXT NOT NULL DEFAULT '',
-  name_ur    TEXT NOT NULL DEFAULT '',
-  start      TEXT NOT NULL,
-  days       INTEGER NOT NULL,
-  target     INTEGER NOT NULL,
-  created_at INTEGER NOT NULL
-);
--- challenges that have finished, kept with their result
-CREATE TABLE IF NOT EXISTS challenge_past (
-  id          INTEGER PRIMARY KEY,
-  n           INTEGER NOT NULL,
-  name_en     TEXT NOT NULL DEFAULT '',
-  name_ur     TEXT NOT NULL DEFAULT '',
-  start       TEXT NOT NULL,
-  days        INTEGER NOT NULL,
-  target      INTEGER NOT NULL,
-  total       INTEGER NOT NULL,
-  reached     INTEGER NOT NULL DEFAULT 0,
-  done_at     INTEGER,
-  top         TEXT NOT NULL DEFAULT '[]',
-  archived_at INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS caravan_members (
   user_id    INTEGER PRIMARY KEY REFERENCES users(id),   -- one caravan per member
@@ -598,14 +416,6 @@ CREATE TABLE IF NOT EXISTS caravan_past (
   left_at    INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS caravan_past_caravan ON caravan_past(caravan_id, left_at);
-CREATE TABLE IF NOT EXISTS caravan_invites (
-  caravan_id INTEGER NOT NULL REFERENCES caravans(id),
-  user_id    INTEGER NOT NULL REFERENCES users(id),
-  kind       TEXT NOT NULL CHECK (kind IN ('invite','request')),   -- the owner asked the member, or the member asked the caravan
-  created_at INTEGER NOT NULL,
-  PRIMARY KEY (caravan_id, user_id)
-);
-CREATE INDEX IF NOT EXISTS caravan_invites_user ON caravan_invites(user_id, kind);
 `);
 addCol('caravans', 'display_name', "TEXT NOT NULL DEFAULT ''");   // optional name in any script (e.g. Urdu); `name` stays the unique English handle
 // the old per-member caravan name is replaced by real caravans; free those names

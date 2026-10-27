@@ -1,4 +1,4 @@
-// Competition beyond the personal board: cities, weekly leagues, the caravan streak, and the weekly close that decides them.
+// Competition beyond the personal board: cities, weekly leagues, and the weekly close that decides them.
 import { db, tx, getSetting, setSetting } from './db.js';
 import { CFG, dayOf, dayNum, dayStr, weekStart, hooks, award, grant, evalBadges, person } from './game.js';
 import { cityLabel } from './geo.js';
@@ -136,7 +136,7 @@ export function ensureWeekClosed() {
 }
 
 // runs inside the transaction that records durood
-hooks.inTx = (userId, referrerId, fresh) => {
+hooks.inTx = (userId, fresh) => {
   joinLeague(userId);
   caravanHooks.afterLog?.(userId, fresh); // the caravan's shared milestones (caravan.js)
 };

@@ -85,17 +85,13 @@ export async function changePassword(userId, current, next) {
   return { ok: true };
 }
 
-/** Writes a new, already-normalised number. The old Mamulaat match no longer applies, so this member's murabbi link and numbers start over. */
+/** Writes a new, already-normalised number. */
 export function setPhone(userId, phone) {
   return tx(() => {
     const cur = one('SELECT phone FROM users WHERE id = ?', userId).phone;
     if (cur === phone) throw new HttpError(400, 'no_change');
     if (one('SELECT 1 FROM users WHERE phone = ? AND id != ?', phone, userId)) throw new HttpError(409, 'phone_taken');
     run('UPDATE users SET phone = ?, phone_changed_at = ? WHERE id = ?', phone, Date.now(), userId);
-    run('DELETE FROM murabbi_links WHERE user_id = ?', userId);
-    run('DELETE FROM mamulaat_days WHERE user_id = ?', userId);
-    run('DELETE FROM mamulaat_sync WHERE user_id = ?', userId);
-    run("DELETE FROM burhan_views WHERE subject_id = ? AND kind = 'murabbi'", userId);
     return { ok: true };
   });
 }

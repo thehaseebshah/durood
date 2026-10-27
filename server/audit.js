@@ -21,20 +21,15 @@ function auditChecks({ fix }) {
   const problems = [];
   const note = (kind, detail) => { if (problems.length < 100) problems.push({ kind, ...detail }); };
 
-  const users = all(`SELECT u.id, u.username, u.total, u.team_total, u.xp,
+  const users = all(`SELECT u.id, u.username, u.total, u.xp,
       COALESCE((SELECT SUM(count) FROM entries e WHERE e.user_id = u.id), 0) l_total,
-      COALESCE((SELECT SUM(e.count) FROM entries e JOIN users hu ON hu.id = e.user_id AND hu.held = 0 JOIN ancestors a ON a.user_id = e.user_id
-                WHERE a.ancestor_id = u.id AND a.depth <= ?), 0) l_team,
-      u.held, u.tree_active,
-      (SELECT COUNT(*) FROM ancestors a2 JOIN users d2 ON d2.id = a2.user_id WHERE a2.ancestor_id = u.id AND a2.depth > 0 AND d2.total > 0) l_tree_active,
+      u.held,
       EXISTS(SELECT 1 FROM flags f WHERE f.user_id = u.id AND f.status IN ('open','confirmed') AND f.reason != 'manual') should_hold,
       COALESCE((SELECT SUM(xp) FROM events ev WHERE ev.user_id = u.id), 0) ev_xp
-    FROM users u`, CFG.teamMaxDepth);
+    FROM users u`);
   for (const u of users) {
     if (u.total !== u.l_total) note('user_total', { user: u.username, stored: u.total, ledger: u.l_total });
     if (!!u.held !== !!u.should_hold) note('held', { user: u.username, held: u.held, shouldHold: u.should_hold });
-    if (u.team_total !== u.l_team) note('team_total', { user: u.username, stored: u.team_total, ledger: u.l_team });
-    if (u.tree_active !== u.l_tree_active) note('tree_active', { user: u.username, stored: u.tree_active, ledger: u.l_tree_active });
     if (u.xp !== u.l_total + u.ev_xp) note('xp', { user: u.username, stored: u.xp, ledger: u.l_total + u.ev_xp });
   }
 
@@ -70,18 +65,9 @@ function auditChecks({ fix }) {
     if (p.paid !== 1) note('post_payout', { post: p.id, paid: p.paid });
     if (p.likes !== p.l) note('post_likes', { post: p.id, stored: p.likes, ledger: p.l });
   }
-  for (const r of all(`SELECT r.id, r.likes, (SELECT COUNT(*) FROM likes l WHERE l.kind = 'reflection' AND l.item_id = r.id) l FROM reflections r WHERE r.likes != l LIMIT 50`)) {
-    note('reflection_likes', { reflection: r.id, stored: r.likes, ledger: r.l });
-  }
-  for (const r of all(`SELECT c.id, c.likes, (SELECT COUNT(*) FROM likes l WHERE l.kind = 'comment' AND l.item_id = c.id) l FROM lecture_comments c WHERE c.likes != l LIMIT 50`)) {
-    note('comment_likes', { comment: r.id, stored: r.likes, ledger: r.l });
-  }
-  // the referral closure must agree with the referrer chain: every member has a row for each ancestor and nothing else
-  const closureBad = one(`SELECT COUNT(*) n FROM users u WHERE u.referrer_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM ancestors a WHERE a.user_id = u.id AND a.ancestor_id = u.referrer_id AND a.depth = 1)`).n;
-  if (closureBad) note('ancestors', { problem: 'members whose referrer is missing from the closure table', count: closureBad });
-  // like points: the poster earned likeXp for each of the first likeCap likes on every item, and nothing else
+  // like points: the poster earned likeXp for each of the first likeCap likes on every photo, and nothing else
   const likeEvents = one("SELECT COUNT(*) n FROM events WHERE kind = 'like'").n;
-  const likeExpected = one(`SELECT COALESCE(SUM(MIN(likes, ?)), 0) n FROM (SELECT likes FROM posts UNION ALL SELECT likes FROM reflections UNION ALL SELECT likes FROM lecture_comments)`, CFG.likeCap).n;
+  const likeExpected = one('SELECT COALESCE(SUM(MIN(likes, ?)), 0) n FROM posts', CFG.likeCap).n;
   if (likeEvents !== likeExpected) note('like_payout', { events: likeEvents, expected: likeExpected });
 
   const national = {
@@ -97,10 +83,7 @@ function auditChecks({ fix }) {
       db.exec('INSERT INTO daily (user_id, day, count) SELECT user_id, day, SUM(count) FROM entries GROUP BY user_id, day');
       db.exec(`UPDATE users SET total = COALESCE((SELECT SUM(count) FROM entries e WHERE e.user_id = users.id), 0)`);
       db.exec(`UPDATE users SET held = EXISTS(SELECT 1 FROM flags f WHERE f.user_id = users.id AND f.status IN ('open','confirmed') AND f.reason != 'manual')`);
-      db.prepare(`UPDATE users SET team_total = COALESCE((SELECT SUM(e.count) FROM entries e JOIN users hu ON hu.id = e.user_id AND hu.held = 0 JOIN ancestors a ON a.user_id = e.user_id
-                  WHERE a.ancestor_id = users.id AND a.depth <= ?), 0)`).run(CFG.teamMaxDepth);
       rebuildDayTotals();
-      db.exec(`UPDATE users SET tree_active = (SELECT COUNT(*) FROM ancestors a JOIN users u ON u.id = a.user_id WHERE a.ancestor_id = users.id AND a.depth > 0 AND u.total > 0)`);
       db.exec(`UPDATE users SET xp = total + COALESCE((SELECT SUM(xp) FROM events ev WHERE ev.user_id = users.id), 0)`);
     });
   }

@@ -1,9 +1,9 @@
-// Caravans: a group a member creates and names. Members join by the owner's invitation, or by asking and the owner agreeing.
-// One caravan per member, no size limit. The referral tree ("Qabila") is separate (game.js) and untouched by any of this.
+// Caravans: a named group an admin creates for an owner. A member joins one caravan at sign-up (its name is the invite code) and stays
+// until the owner or an admin removes them. One caravan per member, no size limit.
 import { db, tx } from './db.js';
 import { HttpError } from './auth.js';
 import { avatarUrl } from './auth.js';
-import { CFG, hooks, deleteHooks, award, evalBadges, dayOf, dayNum, dayStr, weekStart, challengeConfig, cachedBoard, person } from './game.js';
+import { CFG, hooks, deleteHooks, award, evalBadges, dayOf, dayNum, dayStr, weekStart, challengeConfig, cachedBoard } from './game.js';
 import { validHandle, handleTaken } from './handles.js';
 import { caravanHooks } from './compete.js';
 import { suspendHooks } from './access.js';
@@ -14,8 +14,6 @@ const all = (sql, ...a) => db.prepare(sql).all(...a);
 const run = (sql, ...a) => db.prepare(sql).run(...a);
 
 export const MIN_BOARD_MEMBERS = 2;         // a caravan appears on the boards once it has this many members
-const MAX_PENDING = 100;                    // open invitations and requests per caravan
-const MAX_MY_REQUESTS = 5;                  // open requests one member may have
 const LIVE = 'u.deleted_at IS NULL AND u.suspended = 0';
 
 const caravanOf = (userId) => one(`SELECT c.*, cm.joined_at FROM caravan_members cm JOIN caravans c ON c.id = cm.caravan_id WHERE cm.user_id = ?`, userId);
@@ -27,20 +25,36 @@ const cleanName = (raw) => {
 const userByName = (username) => one(`SELECT u.id, u.username FROM users u WHERE u.username = ? AND ${LIVE}`, String(username ?? '').trim());
 
 // ---- membership --------------------------------------------------------------------------------------------------------------
-function join(caravanId, userId) {
+/** Puts a member into a caravan. Call inside the transaction that creates or changes the member. */
+export function join(caravanId, userId) {
   run('INSERT INTO caravan_members (user_id, caravan_id, joined_at) VALUES (?,?,?)', userId, caravanId, Date.now());
-  run('DELETE FROM caravan_invites WHERE user_id = ?', userId);       // everything else pending for this member is now moot
   evalBadges(userId, []);                                              // a caravan that is already past a total milestone shares it with the newcomer
 }
 
-export function create(userId, rawName) {
+/** An admin creates a caravan and makes an existing member (who is in no caravan yet) its owner. */
+export function adminCreate({ name: rawName, owner, displayName }) {
   const name = cleanName(rawName);
+  const dn = displayName === undefined || displayName === '' ? '' : plain(displayName, NAME_MAX, 2);
   return tx(() => {
-    if (caravanOf(userId)) throw new HttpError(409, 'already_in_caravan');
+    const u = userByName(owner);
+    if (!u) throw new HttpError(404, 'member_not_found');
+    if (caravanOf(u.id)) throw new HttpError(409, 'already_in_caravan');
     if (handleTaken(name)) throw new HttpError(409, 'caravan_name_taken');
-    const id = Number(run('INSERT INTO caravans (name, owner_id, created_at) VALUES (?,?,?)', name, userId, Date.now()).lastInsertRowid);
-    join(id, userId);
-    return { id };
+    const id = Number(run('INSERT INTO caravans (name, display_name, owner_id, created_at) VALUES (?,?,?,?)', name, dn, u.id, Date.now()).lastInsertRowid);
+    join(id, u.id);
+    return { id, name, owner: u.username };
+  });
+}
+
+/** An admin puts a member who is in no caravan (a new owner, or someone removed) into one. */
+export function adminAddMember(caravanId, username) {
+  return tx(() => {
+    if (!one('SELECT 1 FROM caravans WHERE id = ?', caravanId)) throw new HttpError(404, 'not_found');
+    const u = userByName(username);
+    if (!u) throw new HttpError(404, 'member_not_found');
+    if (caravanOf(u.id)) throw new HttpError(409, 'already_in_caravan');
+    join(caravanId, u.id);
+    return { ok: true };
   });
 }
 
@@ -64,80 +78,7 @@ export function setDisplayName(userId, raw) {
   return { ok: true };
 }
 
-/** The owner asks a member by username. If that member had already asked to join, they simply join. */
-export function invite(ownerId, username) {
-  return tx(() => {
-    const c = caravanOf(ownerId);
-    if (!c || c.owner_id !== ownerId) throw new HttpError(403, 'owner_only');
-    const u = userByName(username);
-    if (!u) throw new HttpError(404, 'member_not_found');
-    if (u.id === ownerId) throw new HttpError(400, 'own_invite');
-    if (one('SELECT 1 FROM caravan_members WHERE user_id = ?', u.id)) throw new HttpError(409, 'in_a_caravan');
-    const open = one('SELECT kind FROM caravan_invites WHERE caravan_id = ? AND user_id = ?', c.id, u.id);
-    if (open?.kind === 'request') { join(c.id, u.id); return { joined: true }; }
-    if (open) throw new HttpError(409, 'already_invited');
-    if (one('SELECT COUNT(*) n FROM caravan_invites WHERE caravan_id = ?', c.id).n >= MAX_PENDING) throw new HttpError(429, 'too_many_pending');
-    run("INSERT INTO caravan_invites (caravan_id, user_id, kind, created_at) VALUES (?,?,'invite',?)", c.id, u.id, Date.now());
-    return { joined: false };
-  });
-}
-
-/** A member asks to join a caravan by its name. If the owner had already invited them, they simply join. */
-export function requestJoin(userId, rawName) {
-  const name = String(rawName ?? '').trim();
-  return tx(() => {
-    if (caravanOf(userId)) throw new HttpError(409, 'already_in_caravan');
-    const c = one('SELECT id FROM caravans WHERE name = ?', name);
-    if (!c) throw new HttpError(404, 'caravan_not_found');
-    const open = one('SELECT kind FROM caravan_invites WHERE caravan_id = ? AND user_id = ?', c.id, userId);
-    if (open?.kind === 'invite') { join(c.id, userId); return { joined: true }; }
-    if (open) throw new HttpError(409, 'already_requested');
-    if (one("SELECT COUNT(*) n FROM caravan_invites WHERE user_id = ? AND kind = 'request'", userId).n >= MAX_MY_REQUESTS) throw new HttpError(429, 'too_many_requests');
-    if (one('SELECT COUNT(*) n FROM caravan_invites WHERE caravan_id = ?', c.id).n >= MAX_PENDING) throw new HttpError(429, 'too_many_pending');
-    run("INSERT INTO caravan_invites (caravan_id, user_id, kind, created_at) VALUES (?,?,'request',?)", c.id, userId, Date.now());
-    return { joined: false };
-  });
-}
-
-/** The invited member answers an invitation. */
-export function answerInvitation(userId, caravanId, accept) {
-  return tx(() => {
-    const row = one("SELECT 1 FROM caravan_invites WHERE caravan_id = ? AND user_id = ? AND kind = 'invite'", caravanId, userId);
-    if (!row) throw new HttpError(404, 'not_found');
-    if (!accept) { run('DELETE FROM caravan_invites WHERE caravan_id = ? AND user_id = ?', caravanId, userId); return { ok: true }; }
-    if (caravanOf(userId)) throw new HttpError(409, 'already_in_caravan');
-    join(caravanId, userId);
-    return { ok: true };
-  });
-}
-
-/** The owner answers a request to join. */
-export function answerRequest(ownerId, username, accept) {
-  return tx(() => {
-    const c = caravanOf(ownerId);
-    if (!c || c.owner_id !== ownerId) throw new HttpError(403, 'owner_only');
-    const u = userByName(username);
-    const row = u && one("SELECT 1 FROM caravan_invites WHERE caravan_id = ? AND user_id = ? AND kind = 'request'", c.id, u.id);
-    if (!row) throw new HttpError(404, 'not_found');
-    if (!accept) { run('DELETE FROM caravan_invites WHERE caravan_id = ? AND user_id = ?', c.id, u.id); return { ok: true }; }
-    if (caravanOf(u.id)) { run('DELETE FROM caravan_invites WHERE caravan_id = ? AND user_id = ?', c.id, u.id); throw new HttpError(409, 'in_a_caravan'); }
-    join(c.id, u.id);
-    return { ok: true };
-  });
-}
-
-/** Withdraw an invitation (owner) or one's own request (member). */
-export function cancelPending(userId, { username, caravanId }) {
-  if (username) {
-    const c = caravanOf(userId);
-    if (!c || c.owner_id !== userId) throw new HttpError(403, 'owner_only');
-    const u = userByName(username);
-    if (!u || !run('DELETE FROM caravan_invites WHERE caravan_id = ? AND user_id = ?', c.id, u.id).changes) throw new HttpError(404, 'not_found');
-  } else if (!run("DELETE FROM caravan_invites WHERE caravan_id = ? AND user_id = ? AND kind = 'request'", Number(caravanId), userId).changes) throw new HttpError(404, 'not_found');
-  return { ok: true };
-}
-
-/** Leaving hands the caravan to the longest-standing member, and closes it when nobody is left. */
+/** Removing a member (or an account being deleted) hands the caravan on to the longest-standing member if it was the owner's, and closes it when nobody is left. */
 function removeMember(caravanId, userId) {
   const was = one('SELECT joined_at FROM caravan_members WHERE user_id = ? AND caravan_id = ?', userId, caravanId);
   if (was) run('INSERT INTO caravan_past (caravan_id, user_id, joined_at, left_at) VALUES (?,?,?,?)', caravanId, userId, was.joined_at, Date.now());
@@ -149,16 +90,17 @@ function removeMember(caravanId, userId) {
   if (c.owner_id === userId) run('UPDATE caravans SET owner_id = ? WHERE id = ?', next.user_id, caravanId);
 }
 function dissolve(caravanId) {
-  run('DELETE FROM caravan_invites WHERE caravan_id = ?', caravanId);
+  run('DELETE FROM invites WHERE caravan_id = ?', caravanId);
   run('DELETE FROM caravan_members WHERE caravan_id = ?', caravanId);
   run('DELETE FROM caravan_past WHERE caravan_id = ?', caravanId);
   run('DELETE FROM caravans WHERE id = ?', caravanId);
 }
-export function leave(userId) {
+/** An admin removes a member from a caravan (the owner too: the role passes on). */
+export function adminRemove(caravanId, username) {
   return tx(() => {
-    const c = caravanOf(userId);
-    if (!c) throw new HttpError(404, 'not_found');
-    removeMember(c.id, userId);
+    const u = userByName(username);
+    if (!u || !one('SELECT 1 FROM caravan_members WHERE user_id = ? AND caravan_id = ?', u.id, caravanId)) throw new HttpError(404, 'not_found');
+    removeMember(caravanId, u.id);
     return { ok: true };
   });
 }
@@ -176,7 +118,6 @@ export function removeByOwner(ownerId, username) {
 deleteHooks.push((userId) => {
   const c = caravanOf(userId);
   if (c) removeMember(c.id, userId);
-  run('DELETE FROM caravan_invites WHERE user_id = ?', userId);
 });
 
 // a suspended owner can't look after the caravan: the owner role passes to the longest-standing active member, and the suspended
@@ -187,24 +128,6 @@ suspendHooks.push((userId) => {
   const next = one(`SELECT cm.user_id FROM caravan_members cm JOIN users u ON u.id = cm.user_id WHERE cm.caravan_id = ? AND ${LIVE} ORDER BY cm.joined_at, cm.user_id LIMIT 1`, c.id);
   if (next) run('UPDATE caravans SET owner_id = ? WHERE id = ?', next.user_id, c.id);
 });
-
-/** Members who could be invited: not in any caravan, matching the start of what was typed. */
-export function searchInvitees(userId, q) {
-  const s = String(q ?? '').trim().replace(/[^a-z0-9_]/gi, '');
-  if (s.length < 2) return [];
-  return all(`SELECT u.username FROM users u WHERE u.username LIKE ? ESCAPE '\\' AND ${LIVE} AND u.id != ?
-              AND NOT EXISTS (SELECT 1 FROM caravan_members cm WHERE cm.user_id = u.id) ORDER BY u.username LIMIT 8`, `${s}%`, userId).map((r) => r.username);
-}
-export function searchCaravans(q) {
-  // by handle (from its start) or by display name (anywhere in it, any script: an Urdu name finds its caravan)
-  const raw = String(q ?? '').trim().slice(0, 40);
-  const s = raw.replace(/[^a-z0-9_]/gi, '');
-  if (s.length < 2 && [...raw].length < 2) return [];
-  const like = raw.replace(/[\\%_]/g, (m) => `\\${m}`);
-  return all(`SELECT c.name, c.display_name displayName, (SELECT COUNT(*) FROM caravan_members cm JOIN users u ON u.id = cm.user_id WHERE cm.caravan_id = c.id AND ${LIVE}) members
-              FROM caravans c WHERE (? = 1 AND c.name LIKE ? ESCAPE '\\') OR (c.display_name != '' AND c.display_name LIKE ? ESCAPE '\\')
-              ORDER BY c.name LIMIT 8`, s.length >= 2 ? 1 : 0, `${s.replace(/_/g, '\\_')}%`, `%${like}%`);
-}
 
 // ---- the caravan streak -------------------------------------------------------------------------------------------------------
 const streakCache = new Map();
@@ -248,7 +171,7 @@ export function streakStatus(caravanId, today = dayOf()) {
 const TOTAL_BADGES = [[10_000, 'group10k'], [100_000, 'group100k'], [1_000_000, 'group1m']];
 const STREAK_BADGES = [[7, 'karwan7'], [30, 'karwan30']];
 function awardAll(caravanId, code, fresh) {
-  for (const m of all(`SELECT u.id FROM caravan_members cm JOIN users u ON u.id = cm.user_id WHERE cm.caravan_id = ? AND ${LIVE} AND u.total >= ?`, caravanId, CFG.referralMin)) award(m.id, code, fresh); // active members only
+  for (const m of all(`SELECT u.id FROM caravan_members cm JOIN users u ON u.id = cm.user_id WHERE cm.caravan_id = ? AND ${LIVE} AND u.total >= ?`, caravanId, CFG.activeMin)) award(m.id, code, fresh); // active members only
 }
 /** Runs inside the transaction that records durood: shares a crossed total or streak milestone with every member, once. */
 export function afterLog(userId, fresh) {
@@ -281,12 +204,7 @@ function lagging(caravanId, members, ownerName, today) {
 }
 export function view(userId) {
   const c = caravanOf(userId);
-  const invitations = all(`SELECT c.id, c.name, (SELECT COUNT(*) FROM caravan_members cm JOIN users u ON u.id = cm.user_id WHERE cm.caravan_id = c.id AND ${LIVE}) members, ci.created_at at
-                           FROM caravan_invites ci JOIN caravans c ON c.id = ci.caravan_id WHERE ci.user_id = ? AND ci.kind = 'invite' ORDER BY ci.created_at DESC LIMIT 20`, userId);
-  if (!c) {
-    const requests = all(`SELECT c.id, c.name FROM caravan_invites ci JOIN caravans c ON c.id = ci.caravan_id WHERE ci.user_id = ? AND ci.kind = 'request' ORDER BY ci.created_at DESC`, userId);
-    return { caravan: null, invitations, requests };
-  }
+  if (!c) return { caravan: null };
   const wk = weekStart(), today = dayOf();
   const members = all(`SELECT u.id uid, u.username, u.city, u.total, u.held, u.avatar_v av, u.display_name dn, cm.joined_at,
         COALESCE((SELECT SUM(d.count) FROM daily d WHERE d.user_id = u.id AND d.day >= ?), 0) week,
@@ -305,17 +223,14 @@ export function view(userId) {
   };
   for (const m of out.members) m.owner = m.username === out.caravan.ownerName;
   if (owner) out.lagging = lagging(c.id, members, out.caravan.ownerName, today);
-  if (owner) out.pending = all(`SELECT u.id uid, u.avatar_v av, u.username, u.city, ci.kind, ci.created_at at FROM caravan_invites ci JOIN users u ON u.id = ci.user_id WHERE ci.caravan_id = ? AND ${LIVE} ORDER BY ci.created_at DESC LIMIT 100`, c.id).map(person);
   return out;
 }
-/** Small summary for the profile: which caravan, and how many invitations are waiting. */
+/** Small summary for the profile: which caravan the member belongs to (null only for a member an admin created or removed from one). */
 hooks.profileExtra = (userId) => summary(userId);
 export function summary(userId) {
   const c = caravanOf(userId);
-  const invites = one("SELECT COUNT(*) n FROM caravan_invites WHERE user_id = ? AND kind = 'invite'", userId).n;
-  const requests = c && c.owner_id === userId ? one("SELECT COUNT(*) n FROM caravan_invites WHERE caravan_id = ? AND kind = 'request'", c.id).n : 0;
-  if (!c) return { caravan: null, caravanInvites: invites, caravanRequests: 0 };
-  return { caravanInvites: invites, caravanRequests: requests, caravan: { id: c.id, name: c.name, owner: c.owner_id === userId, members: one(`SELECT COUNT(*) n FROM caravan_members cm JOIN users u ON u.id = cm.user_id WHERE cm.caravan_id = ? AND ${LIVE}`, c.id).n }, };
+  if (!c) return { caravan: null };
+  return { caravan: { id: c.id, name: c.name, displayName: c.display_name || '', owner: c.owner_id === userId, members: one(`SELECT COUNT(*) n FROM caravan_members cm JOIN users u ON u.id = cm.user_id WHERE cm.caravan_id = ? AND ${LIVE}`, c.id).n } };
 }
 
 // ---- rankings ----------------------------------------------------------------------------------------------------------------------

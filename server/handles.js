@@ -3,7 +3,7 @@ import { db } from './db.js';
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 
-const RESERVED = new Set(['admin', 'root', 'support', 'durood', 'qafila', 'quest', 'seerah', 'seerat', 'api', 'null', 'undefined']);
+const RESERVED = new Set(['admin', 'root', 'support', 'durood', 'qafila', 'quest', 'seerah', 'seerat', 'api', 'null', 'undefined', 'create']);
 export const USERNAME = /^[a-z0-9_]{3,20}$/i;
 /** member_<id> is what deleted accounts become; all digits could be taken for a phone number at login. */
 export const isReserved = (u) => RESERVED.has(u.toLowerCase()) || /^member_\d+$/i.test(u) || /^\d+$/.test(u);

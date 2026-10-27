@@ -1,22 +1,16 @@
 import { db, tx, getSetting, setSetting } from './db.js';
 import { HttpError, avatarUrl } from './auth.js';
-import { inviteStatus } from './access.js';
-
-export const LINK_DAYS = 14; // a member who joined without a member's code can name who invited them within this many days
 
 // ---- tunables -------------------------------------------------------------
 export const CFG = {
   maxDaily: Number(process.env.MAX_DAILY) || 50_000,          // ceiling per person per day (about 8 hours at 100 a minute)
   maxDailyNew: Number(process.env.MAX_DAILY_NEW) || 10_000,   // ceiling during a member's first 7 days
   newMemberDays: 7,
-  referralXp: 500,           // paid to the referrer when the invitee has recited this many in all (referralMin)...
-  referralMin: 100,          // ...so a sign-up that logs one durood earns the inviter nothing
+  activeMin: 100,            // a caravan badge is shared only with members who have recited this many in all
   // Durood is the primary activity (1 XP per durood plus the milestone/quest bonuses below). Sunnah and seerah
   // rewards are deliberately small so they can never outweigh reciting.
   specialXp: 150,            // the bonus quest on a special day (every Friday, and days the admin marks)
   cityMinActive: 5,          // a city appears on the city boards only with this many members who recited this week
-  circleXp: 300,             // one-time, for registering with a Seerat Circle (self-declared)
-  circleTeachXp: 1_000,      // one-time, for teaching a Seerat Circle, once an organiser confirms it
   sunnahTickXp: 20,          // "I did today's sunnah"
   sunnahXp: 40,              // added when the photo is verified, so a verified day is worth 3x the tick (60)
   replyXp: 2,                // for a short reply, never on your own post...
@@ -24,30 +18,15 @@ export const CFG = {
   streakXpPer: 5,            // the daily streak quest pays this much per day of streak...
   streakXpCap: 30,           // ...up to day 30 (150 points a day from then on)
   questMinDurood: 100,       // a durood quest needs at least this many a day, whatever personal goal a member sets (a goal of 1 must not pay)
-  lectureXp: 150,            // default for a weekly lecture (admin can set up to lectureXpMax)
-  lectureXpMax: 200,
-  lectureQuestXp: 50,        // the daily "watch a lecture" quest, on top of the lecture itself
-  commentXp: 20,             // for a lecture comment (once per lecture)
-  likeXp: 2,                 // the poster earns this for each like on a photo or reflection...
+  likeXp: 2,                 // the poster earns this for each like on a photo...
   likeCap: 10,               // ...for the first 10 likes on each (liking itself earns nothing)
-  reflectXp: 15,             // the daily written reflection (a quest)
-  teamMaxDepth: Math.floor(Number(process.env.TEAM_MAX_DEPTH)) || 1000, // 1000 = effectively unlimited
   nationalTarget: Number(process.env.NATIONAL_TARGET || 100_000_000),
-  circleUrl: process.env.CIRCLE_URL || '',
 };
 
 CFG.maxSingle = CFG.maxDaily; // one submission can never exceed the daily ceiling
 
 // ---- time: everything is bucketed by Pakistan time (UTC+5) -----------------
 const PK = 5 * 3600e3;
-/** The Seerat Circle sign-up link: set by an organiser on the admin page, or CIRCLE_URL. Empty hides the card. */
-export const circleUrl = () => getSetting('circle_url', '') || CFG.circleUrl;
-export function setCircleUrl(url) {
-  const u = String(url ?? '').trim();
-  if (u && !/^https:\/\/[^\s]{4,300}$/.test(u)) throw new HttpError(400, 'bad_url');
-  setSetting('circle_url', u);
-  return { circleUrl: circleUrl() };
-}
 export const dayOf = (ts = Date.now()) => new Date(ts + PK).toISOString().slice(0, 10);
 export const dayNum = (d) => Math.floor(Date.parse(d + 'T00:00:00Z') / 86400e3);
 export const dayStr = (n) => new Date(n * 86400e3).toISOString().slice(0, 10);
@@ -74,58 +53,43 @@ const BADGES = {
   streak7: (s) => s.best_streak >= 7,
   streak30: (s) => s.best_streak >= 30,
   streak100: (s) => s.best_streak >= 100,
-  recruit1: (s) => s.referrals >= 1,
-  recruit5: (s) => s.referrals >= 5,
-  recruit25: (s) => s.referrals >= 25,
-  scholar1: (s) => s.lectures >= 1,
-  scholar10: (s) => s.lectures >= 10,
-  circle: (s) => s.circle,
-  circle_teacher: (s) => s.teacher,
   sunnah1: (s) => s.sunnahs >= 1,
   sunnah7: (s) => s.sunnahs >= 7,
   sunnah30: (s) => s.sunnahs >= 30,
   karwan7: (s) => s.karwanStreak >= 7,
   karwan30: (s) => s.karwanStreak >= 30,
-  qabila10: (s) => s.treeActive >= 10,
-  qabila50: (s) => s.treeActive >= 50,
-  qabila250: (s) => s.treeActive >= 250,
   league_silver: (s) => s.league >= 1,
   league_gold: (s) => s.league >= 2,
   league_diamond: (s) => s.league >= 3,
   city_podium: (s) => s.cityPodiums >= 1,
   city_champion: (s) => s.cityWins >= 1,
-  group10k: (s) => s.caravanTotal >= 10_000 && s.total >= CFG.referralMin,        // the named caravan's total, for members who recite themselves
-  group100k: (s) => s.caravanTotal >= 100_000 && s.total >= CFG.referralMin,
-  group1m: (s) => s.caravanTotal >= 1_000_000 && s.total >= CFG.referralMin,
-  caravan10k: (s) => s.downline >= 10_000,
-  caravan100k: (s) => s.downline >= 100_000,
-  caravan1m: (s) => s.downline >= 1_000_000,
-  caravan10m: (s) => s.downline >= 10_000_000,
+  group10k: (s) => s.caravanTotal >= 10_000 && s.total >= CFG.activeMin,        // the named caravan's total, for members who recite themselves
+  group100k: (s) => s.caravanTotal >= 100_000 && s.total >= CFG.activeMin,
+  group1m: (s) => s.caravanTotal >= 1_000_000 && s.total >= CFG.activeMin,
 };
 // one-time XP paid when a durood-driven badge is first earned
 const MILESTONE_XP = {
   d1k: 100, d10k: 500, d100k: 2_500, d1m: 10_000,
   streak7: 100, streak30: 500, streak100: 2_000,
   group10k: 300, group100k: 1_500, group1m: 6_000,
-  karwan7: 150, karwan30: 600, qabila10: 200, qabila50: 800, qabila250: 3_000,
+  karwan7: 150, karwan30: 600,
   league_silver: 150, league_gold: 300, league_diamond: 600, city_podium: 200, city_champion: 500,
-  caravan10k: 500, caravan100k: 2_500, caravan1m: 10_000, caravan10m: 50_000, // the whole referral tree (internally: qabila)
 };
 export const BADGE_CODES = Object.keys(BADGES);
 // badges announced to a member's caravan in the feed (the personal and group milestones, not the small ones)
-const FEED_BADGES = new Set(['d1k', 'd10k', 'd100k', 'd1m', 'streak7', 'streak30', 'streak100', 'recruit1', 'recruit5', 'recruit25', 'group10k', 'group100k', 'group1m', 'karwan7', 'karwan30', 'qabila10', 'qabila50', 'qabila250', 'league_silver', 'league_gold', 'league_diamond', 'city_podium', 'city_champion', 'caravan10k', 'caravan100k', 'caravan1m', 'caravan10m']);
+const FEED_BADGES = new Set(['d1k', 'd10k', 'd100k', 'd1m', 'streak7', 'streak30', 'streak100', 'group10k', 'group100k', 'group1m', 'karwan7', 'karwan30', 'league_silver', 'league_gold', 'league_diamond', 'city_podium', 'city_champion']);
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
 const all = (sql, ...a) => db.prepare(sql).all(...a);
 const run = (sql, ...a) => db.prepare(sql).run(...a);
 
 function stats(userId) {
-  const u = one('SELECT total, best_streak, team_total, league, tree_active FROM users WHERE id = ?', userId);
+  const u = one('SELECT total, best_streak, league FROM users WHERE id = ?', userId);
   const count = (kind) => one('SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = ?', userId, kind).n;
-  // caravanTotal = everyone in the member's named caravan; downline = the whole referral tree (Qabila). Durood on hold is left out of both.
+  // caravanTotal = everyone in the member's caravan. Durood on hold is left out.
   const caravanTotal = one(`SELECT COALESCE(SUM(u.total), 0) n FROM caravan_members me JOIN caravan_members cm ON cm.caravan_id = me.caravan_id JOIN users u ON u.id = cm.user_id
                            WHERE me.user_id = ? AND u.held = 0 AND u.deleted_at IS NULL AND u.suspended = 0`, userId).n;
-  return { ...u, treeActive: u.tree_active, caravanTotal, downline: u.team_total - u.total, referrals: count('referral'), lectures: count('lecture'), sunnahs: count('sunnah'), circle: count('circle') > 0, teacher: count('circle_teach') > 0 };
+  return { ...u, caravanTotal, sunnahs: count('sunnah') };
 }
 
 const bumpDay = (day, delta) => run('INSERT INTO day_totals (day, total) VALUES (?, ?) ON CONFLICT(day) DO UPDATE SET total = total + excluded.total', day, delta);
@@ -135,23 +99,22 @@ export function rebuildDayTotals() {
   run('INSERT INTO day_totals (day, total) SELECT d.day, SUM(d.count) FROM daily d JOIN users u ON u.id = d.user_id AND u.held = 0 GROUP BY d.day');
 }
 
-/** Side effects that must not run inside a write transaction (push messages) hook in here. */
-export const hooks = { milestone: null, badge: null, inTx: null, profileExtra: null, majlis: null };
+/** Other modules hook in here (they import this file, so it cannot import them). */
+export const hooks = { inTx: null, profileExtra: null, majlis: null };
 /** Functions that run first when an account is deleted (leave the caravan, remove the profile picture...). */
 export const deleteHooks = [];
 
-/** Gives a badge once, with its one-time points, a feed line for the member's caravan and (for group badges) a push. Returns true when it was new. */
+/** Gives a badge once, with its one-time points, and a feed line for the member's caravan. Returns true when it was new. */
 export function award(userId, code, fresh = []) {
   if (!run('INSERT OR IGNORE INTO badges (user_id, code, earned_at) VALUES (?,?,?)', userId, code, Date.now()).changes) return false;
   fresh.push({ userId, code });
   if (MILESTONE_XP[code]) grant(userId, 'milestone', code, MILESTONE_XP[code]);
-  if (code.startsWith('caravan') || code.startsWith('group')) hooks.badge?.(userId, code);
   if (FEED_BADGES.has(code)) run('INSERT OR IGNORE INTO feed_events (user_id, kind, ref, created_at) VALUES (?,?,?,?)', userId, 'badge', code, Date.now());
   return true;
 }
 
 // badges that rest on a durood total, which an edit can lower: logging a big number and editing it down must not keep them
-const DUROOD_BADGES = ['recruit1', 'recruit5', 'recruit25', 'd1k', 'd10k', 'd100k', 'd1m', 'group10k', 'group100k', 'group1m', 'caravan10k', 'caravan100k', 'caravan1m', 'caravan10m'];
+const DUROOD_BADGES = ['d1k', 'd10k', 'd100k', 'd1m', 'group10k', 'group100k', 'group1m'];
 function revokeDuroodBadges(userId) {
   const held = all(`SELECT code FROM badges WHERE user_id = ? AND code IN (${DUROOD_BADGES.map(() => '?').join(',')})`, userId, ...DUROOD_BADGES);
   if (!held.length) return;
@@ -175,31 +138,6 @@ export function grant(userId, kind, ref, xp) {
   const r = run('INSERT OR IGNORE INTO events (user_id, kind, ref, day, xp, created_at) VALUES (?,?,?,?,?,?)', userId, kind, String(ref), dayOf(), xp, Date.now());
   if (r.changes) run('UPDATE users SET xp = xp + ? WHERE id = ?', xp, userId);
   return r.changes > 0;
-}
-
-// ---- "Who invited you?": a member who joined through the public or a founder code links up to the person who brought them --------
-/** Whether the member may still name their inviter: no inviter yet, joined in the last LINK_DAYS, and nobody below them yet. */
-export function canLinkInviter(u) {
-  return !u.referrer_id && Date.now() - u.created_at < LINK_DAYS * 864e5 && !one('SELECT 1 FROM users WHERE referrer_id = ?', u.id);
-}
-/** Puts the member under their inviter: the tree, team totals and the referral reward all follow as if they had used that code. */
-export function linkInviter(userId, rawName) {
-  return tx(() => {
-    const u = one('SELECT * FROM users WHERE id = ?', userId);
-    if (!canLinkInviter(u)) throw new HttpError(409, 'link_closed');
-    const r = one('SELECT id, username, suspended, deleted_at FROM users WHERE username = ?', String(rawName ?? '').trim().replace(/^@/, ''));
-    if (!r || r.suspended || r.deleted_at || r.id === u.id) throw new HttpError(404, 'inviter_unknown');
-    if (inviteStatus(r.id).left <= 0) throw new HttpError(409, 'invite_full');
-    run('UPDATE users SET referrer_id = ? WHERE id = ?', r.id, u.id);
-    // nobody is below the member yet (canLinkInviter), so only their own ancestry changes
-    run('INSERT INTO ancestors (user_id, ancestor_id, depth) SELECT ?, ancestor_id, depth + 1 FROM ancestors WHERE user_id = ?', u.id, r.id);
-    if (!u.held && u.total) run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth > 0 AND depth <= ?)', u.total, u.id, CFG.teamMaxDepth);
-    if (u.total > 0) run('UPDATE users SET tree_active = tree_active + 1 WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth > 0)', u.id);
-    const fresh = [];
-    if (u.total >= CFG.referralMin && grant(r.id, 'referral', String(u.id), CFG.referralXp)) settleQuests(r.id);
-    for (const a of all('SELECT ancestor_id id FROM ancestors WHERE user_id = ? AND depth > 0', u.id)) evalBadges(a.id, fresh);
-    return { ok: true, inviter: r.username, inviterId: r.id };
-  });
 }
 
 // ---- special days: Fridays automatically, other days (Ramadan, Rabi ul Awwal...) added by the admin ----------------------------
@@ -229,12 +167,9 @@ function questState(u) {
   const day = dayOf(), wk = weekStart();
   const today = one('SELECT count FROM daily WHERE user_id = ? AND day = ?', u.id, day)?.count ?? 0;
   const weekSum = one('SELECT COALESCE(SUM(count), 0) n FROM daily WHERE user_id = ? AND day >= ?', u.id, wk).n;
-  const lecturesToday = one("SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = 'lecture' AND day = ?", u.id, day).n;
   const daysWeek = one('SELECT COUNT(*) n FROM daily WHERE user_id = ? AND day >= ? AND count >= ?', u.id, wk, CFG.questMinDurood).n;
   const goal = Math.max(u.daily_goal, CFG.questMinDurood);
-  const invitedWeek = one('SELECT COUNT(*) n FROM users WHERE referrer_id = ? AND created_day >= ? AND total >= ?', u.id, wk, CFG.referralMin).n; // an invitee counts once they have really recited
   const tickedToday = one("SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = 'sunnah_tick' AND day = ?", u.id, day).n;
-  const reflectedToday = one('SELECT COUNT(*) n FROM reflections WHERE user_id = ? AND day = ?', u.id, day).n;
   const done = (id, key) => !!one("SELECT 1 FROM events WHERE user_id = ? AND kind = 'quest' AND ref = ?", u.id, `${id}:${key}`);
   // an "info" quest is a view of something paid elsewhere (the tick), so it never pays a second time
   const q = (id, group, period, xp, cur, goal, info = false) => {
@@ -242,17 +177,14 @@ function questState(u) {
     return { id, group, period, xp, cur: Math.min(cur, goal), goal, done: info ? cur >= goal : done(id, key), key, info };
   };
   return [
-    // durood quests first and richest; sunnah / seerah quests are small bonuses
+    // durood quests first and richest; Sunnah quests are a small bonus
     q('goal', 'durood', 'day', 100, today, goal),
     q('weekgoal', 'durood', 'week', 300, weekSum, goal * 7),
     q('days5', 'durood', 'week', 200, daysWeek, 5),
-    q('invite', 'durood', 'week', 250, invitedWeek, 1),
     // the longer the streak, the more a day of reciting is worth (paid once the day reaches the quest minimum)
     { ...q('streak', 'durood', 'day', streakXp(streakIfToday(u, day)), today, CFG.questMinDurood), streakDay: streakIfToday(u, day) },
     ...(specialToday(day) ? [q('special', 'durood', 'day', CFG.specialXp, today, goal)] : []),
     q('sunnah', 'bonus', 'day', CFG.sunnahTickXp, tickedToday, 1, true),
-    q('reflect', 'bonus', 'day', CFG.reflectXp, reflectedToday, 1),
-    q('lecture', 'bonus', 'day', CFG.lectureQuestXp, lecturesToday, 1),
   ];
 }
 
@@ -273,27 +205,6 @@ function revokeQuests(userId, day) {
     if (!ev) continue;
     run("DELETE FROM events WHERE user_id = ? AND kind = 'quest' AND ref = ?", userId, ref);
     run('UPDATE users SET xp = xp - ? WHERE id = ?', ev.xp, userId);
-  }
-}
-
-/**
- * When an invitee's total is edited back under referralMin, the inviter's referral reward and the weekly invite quest it completed are taken back,
- * so a fake account that logs 100 and edits it down to 1 earns its inviter nothing. They are paid again if the invitee really reaches the line.
- */
-function revokeReferral(userId) {
-  const u = one('SELECT total, referrer_id FROM users WHERE id = ?', userId);
-  if (!u.referrer_id || u.total >= CFG.referralMin) return;
-  const take = (kind, ref) => {
-    const ev = one('SELECT xp FROM events WHERE user_id = ? AND kind = ? AND ref = ?', u.referrer_id, kind, ref);
-    if (!ev) return;
-    run('DELETE FROM events WHERE user_id = ? AND kind = ? AND ref = ?', u.referrer_id, kind, ref);
-    run('UPDATE users SET xp = xp - ? WHERE id = ?', ev.xp, u.referrer_id);
-  };
-  take('referral', String(userId));
-  const today = dayOf();
-  for (const wk of new Set([weekStart(today), weekStart(dayStr(dayNum(today) - 1))])) { // the edit window reaches yesterday, which may be last week
-    const still = one('SELECT COUNT(*) n FROM users WHERE referrer_id = ? AND created_day >= ? AND total >= ?', u.referrer_id, wk, CFG.referralMin).n;
-    if (!still) take('quest', `invite:${wk}`);
   }
 }
 
@@ -339,24 +250,12 @@ export function logDurood(userId, count, rid) {
     run(`UPDATE users SET total = total + ?, xp = xp + ?, streak = ?, best_streak = MAX(best_streak, ?),
          shields = ?, last_day = ? WHERE id = ?`, count, count, streak, streak, shields, day, userId);
 
-    if (!u.held) {
-      run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth <= ?)', count, userId, CFG.teamMaxDepth);
-      bumpDay(day, count);
-    }
+    if (!u.held) bumpDay(day, count);
     evaluateFlags(userId, day);
-
-    // the first durood a member ever reports: it counts them as an active person in every tree above them
-    if (u.total === 0) run('UPDATE users SET tree_active = tree_active + 1 WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth > 0)', userId);
-    // the referrer is paid only once the invitee has really recited (referralMin in all): a fake sign-up that logs 1 earns nothing
-    if (u.total < CFG.referralMin && u.total + count >= CFG.referralMin && u.referrer_id && grant(u.referrer_id, 'referral', userId, CFG.referralXp)) {
-      settleQuests(u.referrer_id);
-      evalBadges(u.referrer_id, fresh);
-    }
 
     settleQuests(userId);
     evalBadges(userId, fresh);
-    for (const a of all('SELECT ancestor_id id FROM ancestors WHERE user_id = ? AND depth > 0', userId)) evalBadges(a.id, fresh);
-    hooks.inTx?.(userId, u.referrer_id, fresh); // weekly league, caravan streak
+    hooks.inTx?.(userId, fresh); // weekly league, caravan badges
   });
 
   if (!duplicate) recordChallenge();
@@ -408,13 +307,11 @@ export function evaluateFlags(userId, day) {
 
 /**
  * Puts a member's durood on hold (or releases it). Held durood stays in their own total and in the ledger, but is left out of
- * the national and challenge totals, the caravan totals above them and the caravan boards until an admin clears the flag.
- * Their ancestors' team_total is corrected by the member's whole total, so the caches stay exact.
+ * the national and challenge totals and the caravan boards until an admin clears the flag.
  */
 export function setHeld(userId, held) {
   const u = one('SELECT total, held FROM users WHERE id = ?', userId);
   if (!u || !!u.held === held) return;
-  run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth <= ?)', held ? -u.total : u.total, userId, CFG.teamMaxDepth);
   run('UPDATE users SET held = ? WHERE id = ?', held ? 1 : 0, userId);
   for (const d of all('SELECT day, count FROM daily WHERE user_id = ?', userId)) bumpDay(d.day, held ? -d.count : d.count);
 }
@@ -459,7 +356,7 @@ export function setHidden(username, hidden) {
 /**
  * Changes one of the member's own entries from today or yesterday. Nothing is overwritten: the ledger gets a reversing
  * entry for the old number and a replacement entry for the new one, so the whole history stays on record.
- * Quest rewards whose condition no longer holds are taken back (revokeQuests); so are the inviter's referral reward and invite quest when the total falls back under referralMin (revokeReferral), and durood badges no longer met, for the member and the groups above them (revokeDuroodBadges). A day can't be edited down to nothing.
+ * Quest rewards whose condition no longer holds are taken back (revokeQuests), and durood badges no longer met, for the member and their caravan (revokeDuroodBadges). A day can't be edited down to nothing.
  */
 export function editEntry(userId, entryId, newCount, ridIn) {
   // 0 removes the entry (a mistyped number undone): only the reversing row is written
@@ -487,27 +384,16 @@ export function editEntry(userId, entryId, newCount, ridIn) {
     if (newCount > 0) run("INSERT INTO entries (user_id, day, count, rid, created_at, kind, ref_id) VALUES (?,?,?,?,?, 'replace', ?)", userId, e.day, newCount, `${base}:n`, now, e.id);
     run('UPDATE daily SET count = count + ? WHERE user_id = ? AND day = ?', delta, userId, e.day);
     run('UPDATE users SET total = total + ?, xp = xp + ? WHERE id = ?', delta, delta, userId);
-    // a removal can bring the member back to nothing recited: they no longer count as active in the trees above them
-    if (one('SELECT total FROM users WHERE id = ?', userId).total === 0) run('UPDATE users SET tree_active = tree_active - 1 WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth > 0)', userId);
-    if (!eu.held) {
-      run('UPDATE users SET team_total = team_total + ? WHERE id IN (SELECT ancestor_id FROM ancestors WHERE user_id = ? AND depth <= ?)', delta, userId, CFG.teamMaxDepth);
-      bumpDay(e.day, delta);
-    }
+    if (!eu.held) bumpDay(e.day, delta);
     evaluateFlags(userId, e.day);
     if (delta < 0) {
-      revokeQuests(userId, e.day); revokeReferral(userId);
-      // durood badges no longer met are taken back, for the member and for everyone whose group total this number counted in
-      const touched = [userId, ...all('SELECT ancestor_id id FROM ancestors WHERE user_id = ? AND depth > 0', userId).map((r) => r.id),
-        ...all('SELECT cm.user_id id FROM caravan_members cm WHERE cm.caravan_id = (SELECT caravan_id FROM caravan_members WHERE user_id = ?)', userId).map((r) => r.id)];
+      revokeQuests(userId, e.day);
+      // durood badges no longer met are taken back, for the member and for everyone whose caravan total this number counted in
+      const touched = [userId, ...all('SELECT cm.user_id id FROM caravan_members cm WHERE cm.caravan_id = (SELECT caravan_id FROM caravan_members WHERE user_id = ?)', userId).map((r) => r.id)];
       for (const id of new Set(touched)) revokeDuroodBadges(id);
     } else {
-      // edited back up: what the number really supports is paid again, the same as when it is first logged
-      const now = one('SELECT total, referrer_id FROM users WHERE id = ?', userId);
-      if (now.referrer_id && now.total - delta < CFG.referralMin && now.total >= CFG.referralMin && grant(now.referrer_id, 'referral', String(userId), CFG.referralXp)) {
-        settleQuests(now.referrer_id); evalBadges(now.referrer_id, []);
-      }
-      // (the member's own quests are not paid by an edit, only by a later log: a standing rule, so editing up and down can't be used to bounce)
-      for (const id of [userId, ...all('SELECT ancestor_id id FROM ancestors WHERE user_id = ? AND depth > 0', userId).map((r) => r.id)]) evalBadges(id, []);
+      // edited back up: the member's own quests are not paid by an edit, only by a later log (a standing rule, so editing up and down can't be used to bounce)
+      evalBadges(userId, []);
     }
   });
   if (!duplicate) recordChallenge();
@@ -548,75 +434,9 @@ export function anonymiseUser(userId, passHash) {
     run(`UPDATE users SET display_name = '', bio = '', avatar_v = -ABS(avatar_v), username = ?, email = ?, phone = ?, pass = ?, city = '', deleted_at = ?, hidden_from_ranks = 1, suspended = 0
          WHERE id = ?`, `member_${userId}`, `deleted-${userId}@deleted.invalid`, `deleted-${userId}`, passHash, Date.now(), userId);
     run('DELETE FROM tokens WHERE user_id = ?', userId);
-    // everything personal goes with the name: push devices, written text, and all Al-Burhan links, reports and assignments
-    run('DELETE FROM push_subs WHERE user_id = ?', userId);
-    run("UPDATE reflections SET body = '', status = 'removed' WHERE user_id = ?", userId);
-    run("UPDATE lecture_comments SET body = '', status = 'removed' WHERE user_id = ?", userId);
+    // everything personal goes with the name: written text
     run("UPDATE replies SET body = '', status = 'removed' WHERE user_id = ?", userId);
-    run('DELETE FROM mamulaat_days WHERE user_id = ?', userId);
-    run('DELETE FROM mamulaat_sync WHERE user_id = ?', userId);
-    run('DELETE FROM murabbi_links WHERE user_id = ?', userId);
-    run("UPDATE murabbi_links SET murabbi_id = NULL, murabbi_phone = '', murabbi_name = '' WHERE murabbi_id = ?", userId);
-    run('DELETE FROM masul_links WHERE razakar_id = ? OR masul_id = ?', userId, userId);
-    run('DELETE FROM assignment_ticks WHERE assignment_id IN (SELECT id FROM assignments WHERE masul_id = ? OR razakar_id = ?)', userId, userId);
-    run('DELETE FROM assignments WHERE masul_id = ? OR razakar_id = ?', userId, userId);
-    run('DELETE FROM burhan_views WHERE viewer_id = ? OR subject_id = ?', userId, userId);
   });
-}
-
-// ---- seerah lectures: watch, pass the quiz, claim ---------------------------------------------------------------
-/** Validates quiz questions supplied by an admin. Each question: q_en, optional q_ur, 2-5 options per language, answer = index. */
-export function parseQuestions(raw) {
-  if (raw == null || raw === '') return [];
-  if (!Array.isArray(raw) || raw.length > 10) throw new HttpError(400, 'bad_quiz');
-  return raw.map((q) => {
-    const opts = (v) => (Array.isArray(v) ? v.map((x) => String(x).trim().slice(0, 200)).filter(Boolean) : []);
-    const en = opts(q.options_en), ur = opts(q.options_ur);
-    if (!String(q.q_en || '').trim() || en.length < 2 || en.length > 5 || (ur.length && ur.length !== en.length)) throw new HttpError(400, 'bad_quiz');
-    const answer = Number(q.answer);
-    if (!Number.isInteger(answer) || answer < 0 || answer >= en.length) throw new HttpError(400, 'bad_quiz');
-    return { q_en: String(q.q_en).trim().slice(0, 300), q_ur: String(q.q_ur || '').trim().slice(0, 300), options_en: en, options_ur: ur, answer };
-  });
-}
-const quizOf = (l) => { try { return l.questions ? JSON.parse(l.questions) : []; } catch { return []; } };
-/** What members may see: the questions and options, never the answers. */
-export const publicQuiz = (l) => quizOf(l).map(({ answer, ...q }) => q);
-
-// a lecture scheduled for a later week can't be watched, answered or claimed before its week (the id is easy to guess)
-const liveLecture = (lectureId) => one('SELECT * FROM lectures WHERE id = ? AND (week_start IS NULL OR week_start <= ?)', lectureId, weekStart());
-export function startLecture(userId, lectureId) {
-  const l = liveLecture(lectureId);
-  if (!l) throw new HttpError(404, 'not_found');
-  run('INSERT OR IGNORE INTO lecture_starts (user_id, lecture_id, started_at) VALUES (?,?,?)', userId, lectureId, Date.now());
-  return { minSeconds: l.min_seconds };
-}
-
-/** Marks which answers are wrong (by position) but never reveals the right ones, so a member can think again and retry. */
-export function answerQuiz(userId, lectureId, answers) {
-  const l = liveLecture(lectureId);
-  if (!l || !one('SELECT 1 FROM lecture_starts WHERE user_id = ? AND lecture_id = ?', userId, lectureId)) throw new HttpError(404, 'not_found'); // answered while watching
-  const quiz = quizOf(l);
-  if (!quiz.length) throw new HttpError(400, 'no_quiz');
-  if (!Array.isArray(answers) || answers.length !== quiz.length) throw new HttpError(400, 'bad_answers');
-  const wrong = quiz.map((q, i) => (Number(answers[i]) === q.answer ? -1 : i)).filter((i) => i >= 0);
-  if (!wrong.length) run('INSERT OR IGNORE INTO lecture_quiz (user_id, lecture_id, passed_at) VALUES (?,?,?)', userId, lectureId, Date.now());
-  return { passed: wrong.length === 0, wrong };
-}
-export const quizPassed = (userId, lectureId) => !!one('SELECT 1 FROM lecture_quiz WHERE user_id = ? AND lecture_id = ?', userId, lectureId);
-
-export function completeLecture(userId, lectureId) {
-  const l = liveLecture(lectureId);
-  const s = one('SELECT started_at FROM lecture_starts WHERE user_id = ? AND lecture_id = ?', userId, lectureId);
-  if (!l || !s) throw new HttpError(404, 'not_found');
-  if (Date.now() - s.started_at < l.min_seconds * 1000) throw new HttpError(400, 'too_soon');
-  if (quizOf(l).length && !quizPassed(userId, lectureId)) throw new HttpError(400, 'quiz_needed');
-  const fresh = [];
-  const ok = tx(() => {
-    const g = grant(userId, 'lecture', lectureId, l.xp);
-    if (g) { settleQuests(userId); evalBadges(userId, fresh); }
-    return g;
-  });
-  return { xpGained: ok ? l.xp : 0, already: !ok, newBadges: fresh.map((b) => b.code) };
 }
 
 /** "I did today's sunnah": a small, private, self-declared reward. A verified photo later adds the rest. */
@@ -629,38 +449,6 @@ export function tickSunnah(userId, sunnahId) {
   return { xpGained: ok ? CFG.sunnahTickXp : 0, already: !ok };
 }
 
-export function claimCircle(userId) {
-  const fresh = [];
-  const ok = tx(() => {
-    const g = grant(userId, 'circle', 'join', CFG.circleXp);
-    if (g) evalBadges(userId, fresh);
-    return g;
-  });
-  return { xpGained: ok ? CFG.circleXp : 0, already: !ok, newBadges: fresh.map((b) => b.code) };
-}
-
-/** "I teach a Seerat Circle": waits for an organiser, who knows the teachers. A refused request can be made again. */
-export function requestTeach(userId, note = '') {
-  const cur = one('SELECT status FROM circle_teachers WHERE user_id = ?', userId);
-  if (cur?.status === 'approved') throw new HttpError(409, 'already_teacher');
-  run(`INSERT INTO circle_teachers (user_id, status, note, created_at) VALUES (?, 'pending', ?, ?)
-       ON CONFLICT(user_id) DO UPDATE SET status = 'pending', note = excluded.note, created_at = excluded.created_at, decided_at = NULL`, userId, String(note ?? '').trim().slice(0, 200), Date.now());
-  return { teach: 'pending' };
-}
-export const teachStatus = (userId) => one('SELECT status FROM circle_teachers WHERE user_id = ?', userId)?.status ?? null;
-export const listTeachRequests = () => all(`SELECT u.username, u.city, c.status, c.note, c.created_at at, c.decided_at FROM circle_teachers c JOIN users u ON u.id = c.user_id
-  WHERE u.deleted_at IS NULL ORDER BY c.status = 'pending' DESC, c.created_at DESC LIMIT 200`);
-export function decideTeach(username, approve) {
-  const u = one('SELECT u.id FROM users u JOIN circle_teachers c ON c.user_id = u.id WHERE u.username = ? AND u.deleted_at IS NULL', String(username));
-  if (!u) throw new HttpError(404, 'not_found');
-  const fresh = [];
-  tx(() => {
-    run('UPDATE circle_teachers SET status = ?, decided_at = ? WHERE user_id = ?', approve ? 'approved' : 'rejected', Date.now(), u.id);
-    if (approve && grant(u.id, 'circle_teach', 'teach', CFG.circleTeachXp)) evalBadges(u.id, fresh);
-  });
-  return { ok: true };
-}
-
 // ---- the 40-day challenge ---------------------------------------------------------------------------------
 // 10 crore (100,000,000) durood in 40 days. The clock starts when the first member joins; an admin can correct the date.
 // The meter counts everything reported since the start day and keeps counting after day 40. Challenge boards cover the
@@ -668,7 +456,6 @@ export function decideTeach(username, approve) {
 export const CRORE = 10_000_000;
 
 export function challengeConfig() {
-  rollIfDue();
   return {
     start: getSetting('challenge_start'),
     days: Number(getSetting('challenge_days', 40)),
@@ -700,77 +487,7 @@ export function setChallenge({ start, days, target, clearMilestones }) {
   return challengeSummary();
 }
 
-// ---- more than one challenge --------------------------------------------------------------------------------------
-// The running challenge lives in settings (as it always did, and is "Challenge 1" for the one already under way). An admin can
-// schedule the next ones; on a plan's start day the finished challenge is filed away with its result and the plan takes over.
-const dateOk = (d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d)) && !Number.isNaN(Date.parse(d + 'T00:00:00Z'));
-const endOf = (start, days) => dayStr(dayNum(start) + days - 1);
-const forgetMilestones = () => db.prepare("DELETE FROM settings WHERE key LIKE 'ch_m_%' OR key = 'ch_done_at'").run();
-const cleanName = (v) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, 60);
-
-/** Files the running challenge away with its final figures (inside its own days) and returns its number. */
-function archiveCurrent() {
-  const { start, days, target } = { start: getSetting('challenge_start'), days: Number(getSetting('challenge_days', 40)), target: Number(getSetting('challenge_target', CFG.nationalTarget)) };
-  const n = Number(getSetting('challenge_n', 1));
-  if (!start) return n;
-  const end = endOf(start, days);
-  const total = one('SELECT COALESCE(SUM(total), 0) n FROM day_totals WHERE day >= ? AND day <= ?', start, end).n;
-  const top = all(`SELECT u.username, u.display_name dn, SUM(d.count) score FROM daily d JOIN users u ON u.id = d.user_id
-                   WHERE d.day >= ? AND d.day <= ? AND ${VISIBLE} GROUP BY u.id ORDER BY score DESC LIMIT 3`, start, end).map((r) => ({ username: r.username, displayName: r.dn, score: r.score }));
-  db.prepare(`INSERT INTO challenge_past (n, name_en, name_ur, start, days, target, total, reached, done_at, top, archived_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
-    .run(n, getSetting('challenge_name_en', ''), getSetting('challenge_name_ur', ''), start, days, target, total, Math.floor(total / CRORE), getSetting('ch_done_at') ? Number(getSetting('ch_done_at')) : null, JSON.stringify(top), Date.now());
-  return n;
-}
-function activate(plan) {
-  const n = archiveCurrent() + 1;
-  setSetting('challenge_start', plan.start); setSetting('challenge_days', plan.days); setSetting('challenge_target', plan.target);
-  setSetting('challenge_n', n); setSetting('challenge_name_en', plan.name_en || ''); setSetting('challenge_name_ur', plan.name_ur || '');
-  forgetMilestones();
-  db.prepare('DELETE FROM challenge_plans WHERE id = ?').run(plan.id);
-  nextCheckDay = null;
-}
-let nextCheckDay = null;
-/** On (or after) the start day of the next planned challenge, it becomes the running one. Cheap: looks once a day, and again after an admin change. */
-export function rollIfDue() {
-  const today = dayOf();
-  if (nextCheckDay === today) return;
-  nextCheckDay = today;
-  const plan = one('SELECT * FROM challenge_plans WHERE start <= ? ORDER BY start DESC, id DESC LIMIT 1', today);
-  if (!plan) return;
-  tx(() => {
-    activate(plan);
-    db.prepare('DELETE FROM challenge_plans WHERE start <= ?').run(today); // any earlier plan that was never reached is skipped
-  });
-}
-
-export function planChallenge({ nameEn, nameUr, start, days, target }) {
-  if (!dateOk(start)) throw new HttpError(400, 'bad_date');
-  const d = Number(days ?? 40), t = Number(target ?? CFG.nationalTarget);
-  if (!Number.isInteger(d) || d < 1 || d > 365) throw new HttpError(400, 'bad_days');
-  if (!Number.isInteger(t) || t < 1_000_000 || t > 10_000_000_000) throw new HttpError(400, 'bad_target');
-  if (start < dayOf()) throw new HttpError(400, 'challenge_past_date');
-  const cur = getSetting('challenge_start');
-  const end = endOf(start, d);
-  if (cur && start <= endOf(cur, Number(getSetting('challenge_days', 40)))) throw new HttpError(400, 'challenge_overlap');
-  for (const p of all('SELECT start, days FROM challenge_plans')) if (start <= endOf(p.start, p.days) && end >= p.start) throw new HttpError(400, 'challenge_overlap');
-  if (one('SELECT COUNT(*) n FROM challenge_plans').n >= 20) throw new HttpError(400, 'too_many_plans');
-  db.prepare('INSERT INTO challenge_plans (name_en, name_ur, start, days, target, created_at) VALUES (?,?,?,?,?,?)').run(cleanName(nameEn), cleanName(nameUr), start, d, t, Date.now());
-  nextCheckDay = null;
-  return challengeAdminView();
-}
-export function unplanChallenge(id) {
-  if (!db.prepare('DELETE FROM challenge_plans WHERE id = ?').run(Number(id)).changes) throw new HttpError(404, 'not_found');
-  return challengeAdminView();
-}
-/** Names the running challenge (blank = the default "40-day challenge"). */
-export function nameChallenge({ nameEn, nameUr }) {
-  setSetting('challenge_name_en', cleanName(nameEn)); setSetting('challenge_name_ur', cleanName(nameUr));
-  natCache.at = 0;
-  return challengeAdminView();
-}
-export const challengeAdminView = () => ({ summary: challengeSummary(), series: challengeSeries(), plans: all('SELECT id, name_en nameEn, name_ur nameUr, start, days, target FROM challenge_plans ORDER BY start'), past: pastChallenges() });
-export const pastChallenges = () => all('SELECT n, name_en, name_ur, start, days, target, total, reached, done_at, top FROM challenge_past ORDER BY n DESC LIMIT 50')
-  .map((r) => ({ n: r.n, nameEn: r.name_en, nameUr: r.name_ur, start: r.start, end: endOf(r.start, r.days), days: r.days, target: r.target, total: r.total, reached: r.reached, doneAt: r.done_at, top: JSON.parse(r.top) }));
+export const challengeAdminView = () => ({ summary: challengeSummary(), series: challengeSeries() });
 
 const milestoneList = (upTo) => {
   const out = [];
@@ -784,9 +501,7 @@ const milestoneList = (upTo) => {
 /** Where the community stands: totals, today's required pace, ahead/behind, and a projection from the recent average. */
 export function challengeSummary(now = Date.now()) {
   const { start, days, target } = challengeConfig();
-  const extra = { n: Number(getSetting('challenge_n', 1)), nameEn: getSetting('challenge_name_en', ''), nameUr: getSetting('challenge_name_ur', ''),
-    next: one('SELECT name_en nameEn, name_ur nameUr, start, days FROM challenge_plans ORDER BY start LIMIT 1') || null, pastCount: one('SELECT COUNT(*) n FROM challenge_past').n };
-  if (!start) return { ...extra, state: 'waiting', days, target, total: 0, remaining: target, crores: 0, reached: 0, milestones: [] };
+  if (!start) return { state: 'waiting', days, target, total: 0, remaining: target, crores: 0, reached: 0, milestones: [] };
   const today = dayOf(now);
   const idx = dayNum(today) - dayNum(start) + 1;                 // 1 on the first day
   const end = dayStr(dayNum(start) + days - 1);
@@ -796,7 +511,7 @@ export function challengeSummary(now = Date.now()) {
   const crores = Math.floor(total / CRORE);
   const milestones = milestoneList(Math.max(crores, Math.floor(target / CRORE)));
   const out = {
-    ...extra, days, target, start, end, total, today: todayCount, crores, milestones,
+    days, target, start, end, total, today: todayCount, crores, milestones,
     reached: milestones.length ? milestones.at(-1).k : 0,
     remaining: Math.max(0, target - total),
     plannedPerDay: Math.round(target / days),
@@ -830,7 +545,7 @@ export function recordChallenge() {
   const now = Date.now();
   const crores = Math.floor(total / CRORE), seen = Number(getSetting('ch_m_max', '0'));
   if (crores > seen) { // only look at crores not yet recorded; ch_m_max is cleared together with the milestones
-    for (let k = seen + 1; k <= crores; k++) if (!getSetting(`ch_m_${k}`)) { setSetting(`ch_m_${k}`, now); hooks.milestone?.(k); }
+    for (let k = seen + 1; k <= crores; k++) if (!getSetting(`ch_m_${k}`)) setSetting(`ch_m_${k}`, now);
     setSetting('ch_m_max', crores);
   }
   if (total >= target && !getSetting('ch_done_at')) setSetting('ch_done_at', now);
@@ -852,7 +567,7 @@ export function publicStats() {
     const live = { today: one('SELECT COALESCE((SELECT total FROM day_totals WHERE day = ?), 0) n', dayOf()).n, membersToday: one('SELECT COUNT(*) n FROM daily d JOIN users u ON u.id = d.user_id AND u.held = 0 WHERE d.day = ? AND d.count > 0', dayOf()).n };
     natCache = { at: Date.now(), v: { total: r.total, pending: r.pending, members: r.members, ...live, asOf: Date.now(), challenge: challengeSummary() } };
   }
-  return { ...natCache.v, target: CFG.nationalTarget, circleUrl: circleUrl() };
+  return { ...natCache.v, target: CFG.nationalTarget };
 }
 
 export function getMe(userId) {
@@ -860,8 +575,6 @@ export function getMe(userId) {
   const day = dayOf(), wk = weekStart();
   const today = one('SELECT count FROM daily WHERE user_id = ? AND day = ?', userId, day)?.count ?? 0;
   const week = one('SELECT COALESCE(SUM(count),0) n FROM daily WHERE user_id = ? AND day >= ?', userId, wk).n;
-  const team = one(`SELECT COUNT(*) members FROM ancestors WHERE ancestor_id = ? AND depth > 0 AND depth <= ?`, userId, CFG.teamMaxDepth);
-  const direct = one('SELECT COUNT(*) n FROM users WHERE referrer_id = ?', userId).n;
   const gapDays = u.last_day ? dayNum(day) - dayNum(u.last_day) : null;
   const streakAlive = gapDays === 0 || gapDays === 1 || (gapDays === 2 && u.shields > 0); // a shield bridges one missed day
   return {
@@ -869,22 +582,18 @@ export function getMe(userId) {
     dailyGoal: u.daily_goal, hidePhone: !!u.hide_phone, hiddenFromRanks: !!u.hidden_from_ranks,
     // 'decided' once an organiser looked and kept it out ("keep held"), so the member isn't told "being checked" for ever
     flagState: !u.hidden_from_ranks ? null : one("SELECT 1 FROM flags WHERE user_id = ? AND status = 'open'", u.id) ? 'open' : one("SELECT 1 FROM flags WHERE user_id = ? AND status = 'confirmed'", u.id) ? 'decided' : 'open', emailVerified: !!u.email_verified_at,
-    invites: inviteStatus(userId),
-    inviter: u.referrer_id ? one('SELECT username FROM users WHERE id = ?', u.referrer_id)?.username ?? null : null, canLinkInviter: canLinkInviter(u),
     joinedDay: u.created_day,
     total: u.total, today, week,
     streak: streakAlive ? u.streak : 0, bestStreak: u.best_streak, shields: u.shields,
     ...levelFor(u.xp),
     badges: all('SELECT code FROM badges WHERE user_id = ? ORDER BY earned_at', userId).map((b) => b.code).filter((c) => BADGE_CODES.includes(c)),
     quests: questState(u).map(({ key, info, ...q }) => q),
-    // team = the whole referral tree (Qabila); the caravan summary is added by the route (caravan.js)
-    team: { members: team.members, direct, total: u.team_total },
     sunnah: { posted: one("SELECT COUNT(*) n FROM events WHERE user_id = ? AND kind = 'sunnah'", userId).n },
     pub: publicStats(),
-    circleUrl: circleUrl(), circleTeach: teachStatus(u.id), reminderTime: u.reminder_time, special: specialToday(), league: u.league,
+    special: specialToday(), league: u.league,
     unreadNews: one('SELECT COUNT(*) n FROM announcements WHERE created_at > ?', u.news_seen_at).n,
-    ...(hooks.profileExtra?.(userId) || { caravan: null, caravanInvites: 0, caravanRequests: 0 }), // caravan summary (caravan.js)
-    majlis: hooks.majlis?.(userId) ?? null, // Al-Burhan department (majlis.js)
+    ...(hooks.profileExtra?.(userId) || { caravan: null }), // caravan summary (caravan.js)
+    majlis: hooks.majlis?.(userId) ?? null, // the member's majlis (majlis.js)
   };
 }
 
@@ -905,30 +614,14 @@ export const person = ({ uid, av, dn, ...r }) => ({ ...r, avatar: avatarUrl(uid,
 export const VISIBLE = 'u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL';
 
 /**
-Two kinds of ranking here: people (type 'users') and referral trees (everyone under a member, at any depth: the Qabila, type 'trees').
- * Caravans are named groups and are ranked in caravan.js.
+ * People are ranked here (type 'users'). Caravans are ranked in caravan.js, cities in compete.js, majalis in majlis.js.
  */
-const membersOf = () => `(SELECT COUNT(*) FROM ancestors x WHERE x.ancestor_id = u.id AND x.depth > 0 AND x.depth <= ${CFG.teamMaxDepth})`;
-
 export function leaderboard(userId, type, period) {
-  if (type === 'teams') type = 'trees';
   const wk = weekStart();
   const ch = challengeConfig();
   const chFrom = ch.start || '9999-12-31', chTo = ch.start ? dayStr(dayNum(ch.start) + ch.days - 1) : '0000-01-01';
   const me = one('SELECT username FROM users WHERE id = ?', userId).username;
   const rows = cachedBoard(`${type}:${period}`, () => {
-    if (type === 'trees') {
-      // add up each member's days first (one row per member), then spread those totals up the tree: far fewer rows than joining every day
-      const from = period === 'week' ? wk : chFrom, to = period === 'week' ? '9999-12-31' : chTo;
-      const base = period !== 'all'
-        ? `WITH w AS (SELECT d.user_id, SUM(d.count) s FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 WHERE d.day >= ? AND d.day <= ? GROUP BY d.user_id)
-           SELECT a.ancestor_id id, SUM(w.s) score FROM w JOIN ancestors a ON a.user_id = w.user_id AND a.depth <= ${CFG.teamMaxDepth} GROUP BY a.ancestor_id`
-        : 'SELECT id, team_total score FROM users';
-      return all(`SELECT u.username, u.city, t.score, ${membersOf()} members
-                  FROM (${base}) t JOIN users u ON u.id = t.id
-                  WHERE ${VISIBLE} AND t.score > 0 AND EXISTS (SELECT 1 FROM users c WHERE c.referrer_id = u.id)
-                  ORDER BY t.score DESC LIMIT 50`, ...(period === 'all' ? [] : [from, to]));
-    }
     if (period === 'week' || period === 'challenge') {
       const [from, to] = period === 'week' ? [wk, '9999-12-31'] : [chFrom, chTo];
       return all(`SELECT u.username, u.city, u.id uid, u.avatar_v av, u.display_name dn, SUM(d.count) score FROM daily d JOIN users u ON u.id = d.user_id
@@ -953,67 +646,5 @@ export function leaderboard(userId, type, period) {
   return { rows: out, weekStart: wk };
 }
 
-/**
- * Group boards by metric. 'average' = this week's durood per active member (active = recited on any day this week, the group
- * owner included); 'growth' = this week's total minus last week's. Counts everyone under the owner (the Qabila). Same visibility rules as the total board; only groups with at least one invitee appear.
- */
-export function qabilaBoard(userId, metric) {
-  const wk = weekStart(), prev = dayStr(dayNum(wk) - 7);
-  const me = one('SELECT username FROM users WHERE id = ?', userId).username;
-  const rows = cachedBoard(`tree:${metric}`, () => {
-    const raw = all(`WITH w AS (
-        SELECT d.user_id, SUM(CASE WHEN d.day >= ? THEN d.count ELSE 0 END) wk, SUM(CASE WHEN d.day < ? THEN d.count ELSE 0 END) last,
-               MAX(CASE WHEN d.day >= ? AND d.count > 0 THEN 1 ELSE 0 END) active
-        FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 WHERE d.day >= ? GROUP BY d.user_id),
-      t AS (SELECT a.ancestor_id id, SUM(w.wk) week, SUM(w.last) last, SUM(w.active) active
-            FROM w JOIN ancestors a ON a.user_id = w.user_id AND a.depth <= ${CFG.teamMaxDepth} GROUP BY a.ancestor_id)
-      SELECT u.username, u.city, t.week, t.last, t.active, ${membersOf()} members
-      FROM t JOIN users u ON u.id = t.id
-      WHERE ${VISIBLE} AND EXISTS (SELECT 1 FROM users c WHERE c.referrer_id = u.id)`, wk, wk, wk, prev);
-    return raw.map((r) => ({
-      username: r.username, city: r.city, members: r.members, active: r.active,
-      score: metric === 'growth' ? r.week - r.last : r.active ? Math.round(r.week / r.active) : 0,
-    })).filter((r) => (metric === 'growth' ? r.score !== 0 : r.score > 0))
-      .sort((x, y) => y.score - x.score || x.username.localeCompare(y.username)).slice(0, 50);
-  });
-  return { rows: withMe(rows, me), weekStart: wk, metric };
-}
-
-export function teamView(userId) {
-  const wk = weekStart();
-  const direct = all(`SELECT u.username, u.city, u.id uid, u.avatar_v av, u.display_name dn, u.total, u.team_total, u.created_day,
-        COALESCE((SELECT SUM(count) FROM daily d WHERE d.user_id = u.id AND d.day >= ?), 0) week,
-        (SELECT COUNT(*) FROM ancestors a WHERE a.ancestor_id = u.id AND a.depth > 0) members
-      FROM users u WHERE u.referrer_id = ? AND u.deleted_at IS NULL AND u.suspended = 0 ORDER BY u.team_total DESC LIMIT 200`, wk, userId);
-  const week = one(`SELECT COALESCE(SUM(d.count),0) n FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 JOIN ancestors a ON a.user_id = d.user_id
-                    WHERE a.ancestor_id = ? AND d.day >= ? AND a.depth <= ?`, userId, wk, CFG.teamMaxDepth).n;
-  const byDepth = all(`SELECT depth, COUNT(*) n FROM ancestors WHERE ancestor_id = ? AND depth > 0 GROUP BY depth ORDER BY depth LIMIT 20`, userId);
-  const total = one('SELECT team_total FROM users WHERE id = ?', userId).team_total;
-  // the people above this member, nearest first; they already see this member's name, city and counts
-  const upline = all(`SELECT u.username, u.city, u.team_total, a.depth,
-        (SELECT COUNT(*) FROM ancestors x WHERE x.ancestor_id = u.id AND x.depth > 0) members
-      FROM ancestors a JOIN users u ON u.id = a.ancestor_id
-      WHERE a.user_id = ? AND a.depth > 0 AND u.deleted_at IS NULL ORDER BY a.depth LIMIT 20`, userId)
-    .map((u) => ({ username: u.username, city: u.city, team: u.team_total, members: u.members, depth: u.depth }));
-  const active = one(`SELECT COUNT(DISTINCT d.user_id) n FROM daily d JOIN users hu ON hu.id = d.user_id AND hu.held = 0 JOIN ancestors a ON a.user_id = d.user_id
-                      WHERE a.ancestor_id = ? AND a.depth > 0 AND a.depth <= ? AND d.day >= ? AND d.count > 0`, userId, CFG.teamMaxDepth, wk).n;
-  return {
-    total, week, byDepth, upline, active,
-    // there is no opt-out: inviters see their invitees' name, city and counts
-    direct: direct.map((d) => ({
-      username: d.username, displayName: d.dn, avatar: avatarUrl(d.uid, d.av), city: d.city, joined: d.created_day, members: d.members,
-      total: d.total, week: d.week, team: d.team_total,
-    })),
-  };
-}
-
 // first start after an upgrade: build the per-day public totals once
 if (!one('SELECT 1 FROM day_totals LIMIT 1') && one('SELECT 1 FROM daily LIMIT 1')) tx(() => rebuildDayTotals());
-
-// first start after an upgrade: count the active people under every member once
-if (getSetting('tree_active_v') !== '1') {
-  tx(() => {
-    db.exec(`UPDATE users SET tree_active = (SELECT COUNT(*) FROM ancestors a JOIN users u ON u.id = a.user_id WHERE a.ancestor_id = users.id AND a.depth > 0 AND u.total > 0)`);
-    setSetting('tree_active_v', '1');
-  });
-}

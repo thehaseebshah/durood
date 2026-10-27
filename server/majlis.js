@@ -1,5 +1,5 @@
-// Al-Burhan's departments (majalis). A member may belong to one; a member can propose a new one, which an admin approves.
-// Majalis are ranked each week like cities. Al-Burhan edition only (the routes are guarded in index.js).
+// Majalis: a member may belong to one; a member can propose a new one, which an admin approves.
+// Majalis are ranked each week like cities.
 import { db, tx } from './db.js';
 import { HttpError } from './auth.js';
 import { weekStart, hooks } from './game.js';
@@ -19,7 +19,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS majalis (
 )`);
 if (!db.prepare('PRAGMA table_info(users)').all().some((c) => c.name === 'majlis_id')) db.exec('ALTER TABLE users ADD COLUMN majlis_id INTEGER REFERENCES majalis(id)');
 
-// the majalis of Al-Burhan, there from the start
+// the nine default majalis, there from the start
 export const DEFAULT_MAJALIS = [['Shabab', 'شباب'], ['Ilm e Deen', 'علمِ دین'], ['Jamiaat', 'جامعات'], ['Tameeraat', 'تعمیرات'], ['Seerat', 'سیرت'],
   ['Islaah', 'اصلاح'], ['Atfaal', 'اطفال'], ['Qabail', 'قبائل'], ['Aamilah', 'عاملہ']];
 for (const [name, ur] of DEFAULT_MAJALIS) run("INSERT OR IGNORE INTO majalis (name, name_ur, status, created_at) VALUES (?, ?, 'approved', ?)", name, ur, Date.now());

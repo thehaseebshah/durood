@@ -19,7 +19,7 @@ import * as news from './news.js';
 import * as feedApi from './feed.js';
 import * as geo from './geo.js';
 import * as compete from './compete.js';
-import { CFG, dayOf, challengeAdminView, planChallenge, unplanChallenge, nameChallenge, pastChallenges, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, startLecture, completeLecture, answerQuiz, parseQuestions, claimCircle, getMe, weekStart, setSpecialDay, deleteSpecialDay, listSpecialDays, circleUrl, setCircleUrl, requestTeach, listTeachRequests, decideTeach, leaderboard, qabilaBoard, teamView, publicStats, linkInviter } from './game.js';
+import { dayOf, challengeAdminView, challengeSummary, challengeSeries, setChallenge, startChallengeIfNeeded, editEntry, history, anonymiseUser, listFlags, resolveFlag, setHidden, logDurood, getMe, setSpecialDay, deleteSpecialDay, listSpecialDays, leaderboard, publicStats } from './game.js';
 
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'public');
 const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -100,9 +100,8 @@ route('GET', '/api/username-check', { auth: false }, ({ query, ip }) => {
   return { ok: !handleTakenBy(u) };
 });
 
-// ---- caravans: a named group, joined by invitation or request (caravan.js) ----------------------------------------------------
+// ---- caravans: a named group an admin creates; every member joins one at sign-up and stays until the owner or an admin removes them (caravan.js) ------
 route('GET', '/api/caravan', ({ user }) => caravanApi.view(user));
-route('POST', '/api/caravan', ({ user, body }) => { rateLimit(`cvc:${user}`, 20, 3600e3); return { ...caravanApi.create(user, body.name), view: caravanApi.view(user), me: getMe(user) }; });
 route('PUT', '/api/caravan/name', ({ user, body }) => { rateLimit(`cvn:${user}`, 10, 3600e3); caravanApi.rename(user, body.name); return { view: caravanApi.view(user) }; });
 route('PUT', '/api/caravan/display-name', ({ user, body }) => { rateLimit(`cvdn:${user}`, 10, 3600e3); caravanApi.setDisplayName(user, body.displayName); return { view: caravanApi.view(user) }; });
 route('GET', '/api/caravan/name-check', ({ user, query }) => {
@@ -111,39 +110,24 @@ route('GET', '/api/caravan/name-check', ({ user, query }) => {
   const mine = one('SELECT c.id FROM caravan_members cm JOIN caravans c ON c.id = cm.caravan_id WHERE cm.user_id = ?', user);
   return { ok: !handleTakenBy(n, { exceptUserId: 0, exceptCaravanId: mine?.id ?? 0 }) };
 });
-// who's who for the caravan notifications
-const cvOf = (userId) => one('SELECT c.id, c.name, c.owner_id FROM caravan_members cm JOIN caravans c ON c.id = cm.caravan_id WHERE cm.user_id = ?', userId);
-const nameOf = (userId) => one('SELECT username FROM users WHERE id = ?', userId)?.username;
-route('POST', '/api/caravan/invite', ({ user, body }) => {
-  rateLimit(`cvi:${user}`, 60, 3600e3);
-  const r = caravanApi.invite(user, body.username);
-  news.notifyCaravan('invite', one('SELECT id FROM users WHERE username = ?', String(body.username ?? '').trim())?.id, nameOf(user), cvOf(user)?.name);
-  return { ...r, view: caravanApi.view(user) };
-});
-route('POST', '/api/caravan/join', ({ user, body }) => {
-  rateLimit(`cvj:${user}`, 20, 3600e3);
-  const r = caravanApi.requestJoin(user, body.name);
-  const c = one('SELECT name, owner_id FROM caravans WHERE name = ?', String(body.name ?? '').trim());
-  if (c) news.notifyCaravan(cvOf(user)?.name === c.name ? 'joined' : 'request', c.owner_id, nameOf(user), c.name); // an earlier invitation turns a request into a join
-  return { ...r, view: caravanApi.view(user), me: getMe(user) };
-});
-route('POST', '/api/caravan/invitations/:id', ({ user, params, body }) => {
-  const r = caravanApi.answerInvitation(user, Number(params.id), body.accept === true);
-  const c = body.accept === true && cvOf(user);
-  if (c) news.notifyCaravan('joined', c.owner_id, nameOf(user), c.name);
-  return { ...r, view: caravanApi.view(user), me: getMe(user) };
-});
-route('POST', '/api/caravan/requests/:username', ({ user, params, body }) => {
-  const r = caravanApi.answerRequest(user, params.username, body.accept === true);
-  const c = body.accept === true && cvOf(user);
-  if (c) news.notifyCaravan('accepted', one('SELECT id FROM users WHERE username = ?', params.username)?.id, nameOf(user), c.name);
-  return { ...r, view: caravanApi.view(user) };
-});
-route('POST', '/api/caravan/cancel', ({ user, body }) => ({ ...caravanApi.cancelPending(user, { username: body.username, caravanId: body.caravanId }), view: caravanApi.view(user) }));
-route('POST', '/api/caravan/leave', ({ user }) => ({ ...caravanApi.leave(user), view: caravanApi.view(user), me: getMe(user) }));
 route('POST', '/api/caravan/remove', ({ user, body }) => ({ ...caravanApi.removeByOwner(user, body.username), view: caravanApi.view(user) }));
-route('GET', '/api/caravan/search', ({ user, query }) => { rateLimit(`cvs:${user}`, 60, 60e3); return { usernames: caravanApi.searchInvitees(user, query.get('q')), caravans: caravanApi.searchCaravans(query.get('q')) }; });
 route('GET', '/api/admin/caravans', { auth: false, admin: true }, ({ query }) => ({ caravans: caravanApi.adminList(query.get('q') || '') }));
+// the only way a caravan comes to exist: an admin names it and picks an existing member (in no caravan yet) as its owner
+route('POST', '/api/admin/caravans', { auth: false, admin: true }, ({ body, admin }) => {
+  const r = caravanApi.adminCreate({ name: body.name, owner: body.owner, displayName: body.displayName });
+  profile.logAdmin('create-caravan', r.name, `owner ${r.owner}`, admin.actor);
+  return r;
+});
+route('POST', '/api/admin/caravans/:id/members', { auth: false, admin: true }, ({ params, body, admin }) => {
+  const r = caravanApi.adminAddMember(Number(params.id), body.username);
+  profile.logAdmin('caravan-add-member', String(body.username), `caravan ${params.id}`, admin.actor);
+  return r;
+});
+route('POST', '/api/admin/caravans/:id/remove', { auth: false, admin: true }, ({ params, body, admin }) => {
+  const r = caravanApi.adminRemove(Number(params.id), body.username);
+  profile.logAdmin('caravan-remove-member', String(body.username), `caravan ${params.id}`, admin.actor);
+  return r;
+});
 route('PUT', '/api/admin/caravans/:id', { auth: false, admin: true }, ({ params, body, admin }) => { const old = one('SELECT name FROM caravans WHERE id = ?', Number(params.id)); const r = caravanApi.adminRename(Number(params.id), body.name); profile.logAdmin('rename-caravan', old?.name, `to ${r.name}`, admin.actor); return r; });
 route('DELETE', '/api/admin/caravans/:id/display-name', { auth: false, admin: true }, ({ params, admin }) => { const id = Number(params.id); const r = caravanApi.adminClearDisplayName(id); profile.logAdmin('clear-caravan-display-name', String(id), '', admin.actor); return r; });
 route('DELETE', '/api/admin/caravans/:id', { auth: false, admin: true }, ({ params, admin }) => { const r = caravanApi.adminDelete(Number(params.id)); profile.logAdmin('delete-caravan', r.name, '', admin.actor); return { ok: true }; });
@@ -174,18 +158,19 @@ const B = (fn) => fn;
 route('GET', '/api/majalis', B(({ user }) => majlis.listMajalis(user)));
 route('PUT', '/api/me/majlis', B(({ user, body }) => { majlis.setMajlis(user, body.id); return { ...majlis.listMajalis(user), me: getMe(user) }; }));
 route('POST', '/api/majalis', B(({ user, body }) => { rateLimit(`mj:${user}`, 5, 86400e3); majlis.proposeMajlis(user, body.name, body.nameUr); return majlis.listMajalis(user); }));
+// is this code a caravan's name (or an admin code tied to a caravan)? Returns the caravan so the sign-up form can show who the person joins
 route('GET', '/api/invite-check', { auth: false }, ({ query, ip }) => {
   rateLimit(`inv:${ip}`, 60, 60e3);
   try {
     const r = access.resolveInvite(query.get('code'));
-    return { valid: true, kind: r.kind, from: r.kind === 'member' ? r.label : null };
+    return { valid: true, kind: r.kind, caravan: r.caravan.name, displayName: r.caravan.display_name || '', from: r.caravan.display_name || r.caravan.name };
   } catch (e) {
     if (e instanceof HttpError) return { valid: false, reason: e.code };
     throw e;
   }
 });
 
-route('GET', '/api/config', { auth: false }, () => ({ inviteOnly: access.INVITE_ONLY(), edition: 'public' }));
+route('GET', '/api/config', { auth: false }, () => ({ inviteOnly: true, signupsOpen: access.signupsOpen() }));
 
 route('POST', '/api/waitlist', { auth: false }, ({ body, ip }) => {
   rateLimit(`wl:${ip}`, 5, 3600e3);
@@ -198,8 +183,23 @@ route('POST', '/api/waitlist', { auth: false }, ({ body, ip }) => {
   return access.addToWaitlist({ name, phone, email, city: body.city });
 });
 
-route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
-  rateLimit(`reg:${ip}`, Number(process.env.REG_LIMIT_PER_HOUR) || 30, 3600e3);
+/**
+ * Creates a member and, when a caravan is given, puts them in it in the same transaction. The caller has already hashed the password.
+ * Throws username_taken / account_exists. Used by sign-up and by the admin's "create member".
+ */
+function insertMember({ username, email, phone, pass, lang: lg, place, hidePhone, via, code, caravanId }) {
+  if (handleTakenBy(username)) throw new HttpError(409, 'username_taken');
+  // one answer for both, so sign-up can't be used to test whether someone's email or number is registered
+  if (one('SELECT 1 FROM users WHERE email = ? OR phone = ?', email, phone)) throw new HttpError(409, 'account_exists');
+  const res = run(`INSERT INTO users (username, email, phone, pass, lang, city, city_id, country, created_day, created_at, invited_via, invite_code, hide_phone)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    username, email, phone, pass, lang(lg), place.name, place.id, place.cc, dayOf(), Date.now(), via, code ?? null, hidePhone ? 1 : 0);
+  const uid = Number(res.lastInsertRowid);
+  startChallengeIfNeeded(); // day 1 of the challenge is the day the first member joins
+  if (caravanId) caravanApi.join(caravanId, uid);
+  return { id: uid, confirmToken: makeToken(uid, 'confirm', 7 * 86400e3) };
+}
+function validateNewMember(body) {
   const username = String(body.username || '').trim();
   const email = String(body.email || '').trim().toLowerCase();
   const phone = normalizePhone(body.phone, body.phoneCountry);
@@ -210,36 +210,37 @@ route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
   if (password.length < 6 || password.length > 128) throw new HttpError(400, 'bad_password');
   const place = geo.cityById(body.cityId);          // the city is required: it decides which city board the member's durood counts for
   if (!place) throw new HttpError(400, 'city_required');
+  return { username, email, phone, password, place };
+}
 
+route('POST', '/api/register', { auth: false }, async ({ body, ip }) => {
+  rateLimit(`reg:${ip}`, Number(process.env.REG_LIMIT_PER_HOUR) || 30, 3600e3);
+  if (!access.signupsOpen()) throw new HttpError(403, 'signups_closed'); // the admin's kill switch
+  const { username, email, phone, password, place } = validateNewMember(body);
   const inviteRaw = body.invite ?? body.referral;
-  if (access.INVITE_ONLY() && !String(inviteRaw || '').trim()) throw new HttpError(400, 'invite_required');
+  if (!String(inviteRaw || '').trim()) throw new HttpError(400, 'invite_required'); // the code is a caravan's name: everyone joins one
   const pass = await oneAtATime(ip, () => hashPassword(password));
   const { id, confirmToken } = tx(() => {
-    // resolve again inside the transaction so a code can't be used past its limit by two people at once
-    let r = null;
-    if (String(inviteRaw || '').trim()) r = access.resolveInvite(inviteRaw);
-    if (handleTakenBy(username)) throw new HttpError(409, 'username_taken');
-    // one answer for both, so sign-up can't be used to test whether someone's email or number is registered
-    if (one('SELECT 1 FROM users WHERE email = ? OR phone = ?', email, phone)) throw new HttpError(409, 'account_exists');
-    if (r) access.consumeInvite(r);
-    const referrerId = r?.referrerId ?? null; // a member's own code, or the public code when an admin placed it under a member
-    const res = run(`INSERT INTO users (username, email, phone, pass, lang, city, city_id, country, referrer_id, created_day, created_at, invited_via, invite_code, hide_phone, placed)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      username, email, phone, pass, lang(body.lang), place.name, place.id, place.cc, referrerId, dayOf(), Date.now(),
-      r ? r.kind : 'open', r?.invite ? r.code : (r?.kind === 'public' ? r.code : null), body.hidePhone === true ? 1 : 0, r?.kind === 'public' && referrerId ? 1 : 0);
-    const uid = Number(res.lastInsertRowid);
-    startChallengeIfNeeded(); // day 1 of the challenge is the day the first member joins
-    run('INSERT INTO ancestors (user_id, ancestor_id, depth) VALUES (?,?,0)', uid, uid);
-    if (referrerId) {
-      run(`INSERT INTO ancestors (user_id, ancestor_id, depth)
-           SELECT ?, ancestor_id, depth + 1 FROM ancestors WHERE user_id = ?`, uid, referrerId);
-    }
-    if (referrerId && r.kind === 'member') setImmediate(() => news.notifyJoined(referrerId, username));
-    return { id: uid, confirmToken: makeToken(uid, 'confirm', 7 * 86400e3) };
+    // resolve again inside the transaction so a caravan can't be filled past its daily cap by two people at once
+    const r = access.resolveInvite(inviteRaw);
+    const out = insertMember({ username, email, phone, pass, lang: body.lang, place, hidePhone: body.hidePhone === true, via: r.kind, code: r.invite ? r.code : null, caravanId: r.caravan.id });
+    access.consumeInvite(r);
+    return out;
   });
   // a confirmation link goes out but never blocks sign-in: it tells us which addresses actually work
   sendMail(confirmEmail(email, `${baseUrl()}/?confirm=${confirmToken}`));
   return { token: tokenFor(id), me: getMe(id), device: signDevice(id) };
+});
+
+// An admin registers a member who is in no caravan yet (the first owner of a new caravan; then POST /api/admin/caravans makes them its owner).
+// Must come before /api/admin/members/:username.
+route('POST', '/api/admin/members/create', { auth: false, admin: true }, async ({ body, ip, admin }) => {
+  const { username, email, phone, password, place } = validateNewMember(body);
+  const pass = await oneAtATime(ip, () => hashPassword(password));
+  const { id, confirmToken } = tx(() => insertMember({ username, email, phone, pass, lang: body.lang, place, hidePhone: false, via: 'admin', code: null, caravanId: null }));
+  sendMail(confirmEmail(email, `${baseUrl()}/?confirm=${confirmToken}`));
+  profile.logAdmin('create-member', username, '', admin.actor);
+  return { ok: true, username, id };
 });
 
 let dummyHash = null;
@@ -294,7 +295,6 @@ route('POST', '/api/login', { auth: false }, async ({ body, ip }) => {
 
 route('GET', '/api/public', { auth: false }, () => publicStats());
 route('GET', '/api/me', ({ user }) => getMe(user));
-// "Who invited you?": a member who joined with the public or a founder code names the person who brought them (game.js linkInviter)
 route('PATCH', '/api/me', async ({ user, body }) => {
   // validate every field first so a bad one cannot leave the others half-applied
   let email = null, place = null, goal = null;
@@ -323,7 +323,6 @@ route('PATCH', '/api/me', async ({ user, body }) => {
     run('UPDATE users SET email = ?, email_verified_at = NULL WHERE id = ?', email, user);
     sendMail(confirmEmail(email, `${baseUrl()}/?confirm=${makeToken(user, 'confirm', 7 * 86400e3)}`));
   }
-  if (body.reminderTime !== undefined) news.setReminder(user, body.reminderTime);
   if (place) {
     const cur = one('SELECT city_id, city_changed_at FROM users WHERE id = ?', user);
     if (cur.city_id && cur.city_id !== place.id) {
@@ -437,14 +436,13 @@ route('DELETE', '/api/me', { admin: false }, async ({ user, body }) => {
 
 route('GET', '/api/leaderboard', ({ user, query }) => {
   const t = query.get('type');
-  const type = t === 'caravans' ? 'caravans' : t === 'trees' || t === 'teams' ? 'trees' : 'users';
+  const type = t === 'caravans' ? 'caravans' : 'users';
   const p = query.get('period');
   const period = p === 'all' ? 'all' : p === 'challenge' ? 'challenge' : 'week';
   const metric = query.get('metric');
   if (t === 'cities') return compete.cityBoard(user, metric === 'average' || metric === 'growth' ? metric : 'total');
   if (t === 'majalis') { return majlis.majlisBoard(user, metric === 'average' || metric === 'growth' ? metric : 'total'); }
   if (type === 'caravans') return caravanApi.board(user, period, metric === 'average' || metric === 'growth' ? metric : 'total');
-  if (type === 'trees' && (metric === 'average' || metric === 'growth')) return qabilaBoard(user, metric);
   return leaderboard(user, type, period);
 });
 
@@ -491,13 +489,14 @@ route('GET', '/api/news', ({ user }) => news.listNews(user));
 route('POST', '/api/news/seen', ({ user }) => news.markNewsSeen(user));
 // ---- admin ----
 const adm = { auth: false, admin: true };
-route('GET', '/api/admin/invites', adm, () => ({ invites: access.listInvites(), publicCode: access.publicCode() }));
-route('POST', '/api/admin/invites', adm, ({ body }) => access.createFounderCode({ label: body.label, maxUses: body.maxUses }));
+route('GET', '/api/admin/invites', adm, () => ({ invites: access.listInvites(), signups: access.signupSettings() }));
+route('POST', '/api/admin/invites', adm, ({ body }) => access.createFounderCode({ label: body.label, maxUses: body.maxUses, caravan: body.caravan }));
 route('POST', '/api/admin/invites/:code/revoke', adm, ({ params }) => access.revokeInvite(params.code));
-route('POST', '/api/admin/public-code', adm, ({ body }) => access.setPublicCode({ code: body.code, enabled: body.enabled, dailyCap: body.dailyCap, referrer: body.referrer }));
+// kill switch for sign-ups, and the daily cap on new members per caravan name
+route('POST', '/api/admin/signups', adm, ({ body }) => access.setSignups({ enabled: body.enabled, dailyCap: body.dailyCap }));
 route('GET', '/api/admin/waitlist', adm, ({ query }) => ({ requests: access.listWaitlist(query.get('status') || 'pending') }));
 route('POST', '/api/admin/waitlist/:id', adm, async ({ params, body }) => {
-  const r = access.resolveWaitlist(Number(params.id), body.action);
+  const r = access.resolveWaitlist(Number(params.id), body.action, body.caravan);
   if (r.code && r.email) { r.emailed = (await sendMail(inviteEmail(r.email, r.code))) && mailLive(); r.mailOff = !mailLive(); } // "emailed" only when an email really left
   return r;
 });
@@ -523,17 +522,7 @@ route('POST', '/api/admin/members/:username', adm, async ({ params, body, admin 
     profile.logAdmin('delete-account', params.username, '', admin.actor);
     return { ok: true };
   }
-  if (a === 'suspend' || a === 'unsuspend') { const r = access.setSuspended(params.username, a === 'suspend', !!body.branch, admin.role === 'owner'); profile.logAdmin(body.branch ? `${a}-branch` : a, params.username, '', admin.actor); return r; }
-  if (a === 'grant-invites') { // extra invites on top of what the member earns (negative takes some back)
-    const n = Number(body.count);
-    if (!Number.isInteger(n) || n < -100_000 || n > 100_000) throw new HttpError(400, 'bad_count');
-    const u = one('SELECT id, invite_bonus FROM users WHERE username = ? AND deleted_at IS NULL', params.username);
-    if (!u) throw new HttpError(404, 'not_found');
-    const bonus = Math.max(0, u.invite_bonus + n);
-    run('UPDATE users SET invite_bonus = ? WHERE id = ?', bonus, u.id);
-    profile.logAdmin('grant-invites', params.username, String(n), admin.actor);
-    return { ok: true, bonus, invites: access.inviteStatus(u.id) };
-  }
+  if (a === 'suspend' || a === 'unsuspend') { const r = access.setSuspended(params.username, a === 'suspend'); profile.logAdmin(a, params.username, '', admin.actor); return r; }
   if (a === 'hide-phone' || a === 'show-phone') { // after a complaint: stop offering this member's number to other members (they can change it back themselves)
     const u = one('SELECT id FROM users WHERE username = ? AND deleted_at IS NULL', params.username);
     if (!u) throw new HttpError(404, 'not_found');
@@ -569,7 +558,6 @@ route('GET', '/api/admin/export', adm, ({ query }) => ({ csv: news.exportCsv(que
 route('GET', '/api/admin/special-days', adm, () => ({ days: listSpecialDays() }));
 route('POST', '/api/admin/special-days', adm, ({ body }) => setSpecialDay(body));
 route('DELETE', '/api/admin/special-days/:day', adm, ({ params }) => deleteSpecialDay(params.day));
-// Al-Burhan oversight: phone numbers are not verified, so a moderator must be able to see who follows whom and break a wrong link
 route('GET', '/api/admin/majalis', { auth: false, admin: true }, () => { return { majalis: majlis.adminMajalis() }; });
 route('POST', '/api/admin/majalis/:id', { auth: false, admin: true }, ({ params, body, admin }) => { if (!['approve', 'reject'].includes(body.action)) throw new HttpError(400, 'bad_action'); const r = majlis.decideMajlis(params.id, body.action === 'approve'); profile.logAdmin(`majlis-${body.action === 'approve' ? 'approve' : 'reject'}`, r.name, '', admin.actor); return r; });
 route('GET', '/api/admin/audit', { auth: false, admin: true }, () => auditAsync());
@@ -737,7 +725,6 @@ export function createServer() {
 }
 
 geo.ensureCities();
-if (process.env.PUBLIC_FOUNDERS_CODE && !getSetting('public_code')) access.setPublicCode({ code: process.env.PUBLIC_FOUNDERS_CODE, enabled: true });
 
 // Refuse to start a production server that would silently fail members: no way to send reset emails, or a guessable admin key.
 function checkProduction() {
@@ -756,7 +743,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const port = Number(process.env.PORT) || 3000;
   news.startScheduler();
   const server = createServer();
-  server.listen(port, () => console.log(`Seerah Quest running on http://localhost:${port}`));
+  server.listen(port, () => console.log(`Durood Quest running on http://localhost:${port}`));
   // a deploy sends SIGTERM: stop taking new connections, let requests in flight finish, then leave (a write is never cut in half)
   for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => {
     console.log(`${sig}: draining`);
