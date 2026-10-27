@@ -8,8 +8,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sq-e2e-'));
-Object.assign(process.env, { DB_PATH: path.join(dir, 'e2e.db'), ADMIN_KEY: 'e2e-admin-key-long-enough-1234', EDITION: 'internal',
-  PUBLIC_FOUNDERS_CODE: 'E2ECODE', PUBLIC_CACHE_MS: '0', NODE_ENV: 'test', FLAG_NEW_HIGH: '1000000000' });
+Object.assign(process.env, { DB_PATH: path.join(dir, 'e2e.db'), ADMIN_KEY: 'e2e-admin-key-long-enough-1234',
+  PUBLIC_CACHE_MS: '0', NODE_ENV: 'test', FLAG_NEW_HIGH: '1000000000' });
 const require = createRequire(import.meta.url);
 let chromium;
 try { ({ chromium } = require('playwright')); } catch { console.error('Playwright is not installed (set NODE_PATH).'); process.exit(2); }
@@ -21,7 +21,14 @@ const B = `http://127.0.0.1:${server.address().port}`;
 const K = { 'x-admin-key': process.env.ADMIN_KEY };
 const api = (m, p, body, token, h = {}) => fetch(B + p, { method: m, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}), ...h }, body: body ? JSON.stringify(body) : undefined }).then((r) => r.json());
 let n = 0;
-const register = (u, invite = 'E2ECODE') => api('POST', '/api/register', { username: u, email: `${u}@e2e.pk`, phone: `0303${String(4000000 + ++n)}`, password: 'secret12', cityId: 1172451, invite, lang: 'en' });
+const register = (u, invite = 'e2e_cv') => api('POST', '/api/register', { username: u, email: `${u}@e2e.pk`, phone: `0303${String(4000000 + ++n)}`, password: 'secret12', cityId: 1172451, invite, lang: 'en' });
+// the first caravan is made by an admin: a member with no caravan, then a caravan with that member as owner (everyone else signs up with its name)
+const makeOwner = async (u, caravan) => {
+  await api('POST', '/api/admin/members/create', { username: u, email: `${u}@e2e.pk`, phone: `0303${String(4000000 + ++n)}`, password: 'secret12', cityId: 1172451, lang: 'en' }, null, K);
+  await api('POST', '/api/admin/caravans', { name: caravan, owner: u }, null, K);
+  return api('POST', '/api/login', { id: u, password: 'secret12' });
+};
+const TABS = ['home', 'feed', 'rank', 'caravan', 'sunnah', 'progress', 'settings'];
 
 let failed = 0;
 const ok = (cond, label) => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${label}`); if (!cond) failed++; };
@@ -45,28 +52,62 @@ try {
   const day = new Date(Date.now() + 5 * 3600e3).toISOString().slice(0, 10);
   await api('POST', '/api/admin/sunnahs', { sunnahs: [{ day, title_en: 'Smile at your brother', title_ur: 'مسکرا کر ملنا', desc_en: 'A smile is charity.', source: 'Tirmidhi 1956' }] }, null, K);
 
-  // ---- sign-up through the form -------------------------------------------------------------------------
+  const host = await makeOwner('e2e_host', 'e2e_cv');
+  ok(!!host.token && host.me?.caravan?.name === 'e2e_cv' && host.me.caravan.owner, 'an admin makes the first caravan and its owner');
+
+  // ---- sign-up through the form: the code is the caravan's name ------------------------------------------------
   {
     const page = await open(null);
     await page.locator('[data-act=mode][data-mode=register], [data-mode=register]').first().click().catch(() => {});
     await page.waitForTimeout(300);
     ok(await page.locator('form[data-form=register]').count() === 1, 'sign-up form shows');
+    ok((await page.textContent('label[for=f-invite]')).trim() === 'Caravan name', 'the code field is called Caravan name');
     await page.click('form[data-form=register] button[type=submit]'); await page.waitForTimeout(500);
     ok(await page.evaluate(() => document.activeElement?.name === 'invite'), 'an empty sign-up points at the first empty field');
-    await page.fill('[name=invite]', 'E2ECODE'); await page.click('form[data-form=register] button[type=submit]'); await page.waitForTimeout(500);
-    ok(await page.evaluate(() => document.activeElement?.name === 'username'), '...then the next one');
+    await page.fill('[name=invite]', 'nobody_here'); await page.waitForTimeout(900);
+    ok(await page.locator('#rcheck.bad').count() === 1, 'a caravan name that does not exist is told so while typing');
+    await page.fill('[name=invite]', 'E2E_CV'); await page.waitForTimeout(900);
+    ok(await page.locator('#rcheck.ok').count() === 1 && /You will join/.test(await page.textContent('#rcheck')), 'a real caravan name (any case) is accepted live');
+    await page.click('form[data-form=register] button[type=submit]'); await page.waitForTimeout(500);
+    ok(await page.evaluate(() => document.activeElement?.name === 'username'), '...then the next empty field');
+    // the whole form, city picked from the suggestions
+    await page.fill('[name=username]', 'e2e_form'); await page.fill('[name=email]', 'e2e_form@e2e.pk'); await page.fill('[name=phone]', '300 7770001');
+    await page.fill('[data-city]', 'Lahore'); await page.waitForTimeout(900);
+    await page.locator('li[data-act=pickcity]').first().click();
+    await page.fill('[name=password]', 'secret12');
+    await page.click('form[data-form=register] button[type=submit]'); await page.waitForTimeout(1500);
+    ok(await page.locator('nav.tabs').count() === 1, 'the form signs a new member in');
+    const me = await api('GET', '/api/me', null, await page.evaluate(() => localStorage.getItem('token')));
+    ok(me.caravan?.name === 'e2e_cv' && !me.caravan.owner, 'the new member is in the caravan they named');
     await page.close();
+    // the sign-up kill switch and the daily cap show a plain message
+    await api('POST', '/api/admin/signups', { enabled: false }, null, K);
+    const cl = await open(null);
+    await cl.locator('[data-mode=register]').first().click().catch(() => {}); await cl.waitForTimeout(400);
+    ok(await cl.locator('.notice', { hasText: 'closed' }).count() === 1, 'closed sign-ups say so on the form');
+    await cl.fill('[name=invite]', 'e2e_cv'); await cl.fill('[name=username]', 'e2e_late'); await cl.fill('[name=email]', 'e2e_late@e2e.pk'); await cl.fill('[name=phone]', '300 7770002');
+    await cl.fill('[data-city]', 'Lahore'); await cl.waitForTimeout(900); await cl.locator('li[data-act=pickcity]').first().click(); await cl.fill('[name=password]', 'secret12');
+    await cl.click('form[data-form=register] button[type=submit]'); await cl.waitForTimeout(900);
+    ok(/closed/i.test(await cl.textContent('.err')), 'a sign-up while closed shows the closed message');
+    await cl.close();
+    await api('POST', '/api/admin/signups', { enabled: true, dailyCap: 0 }, null, K);
+    const fl = await open(null);
+    await fl.locator('[data-mode=register]').first().click().catch(() => {}); await fl.waitForTimeout(400);
+    await fl.fill('[name=invite]', 'e2e_cv'); await fl.waitForTimeout(900);
+    ok(/reached its sign-up limit/.test(await fl.textContent('#rcheck')), 'a caravan at its daily limit says so while typing');
+    await fl.close();
+    await api('POST', '/api/admin/signups', { dailyCap: 200 }, null, K);
   }
 
-  const host = await register('e2e_host');
   const kid = await register('e2e_kid');
-  ok(!!host.token && !!kid.token, 'members register');
+  ok(!!kid.token && kid.me.caravan.name === 'e2e_cv', 'members register with the caravan name');
 
   // ---- Today: log durood, goal burst, points float, quest pops, units shown ----------------------------------
   {
     const page = await open(host.token, { touch: true });
-    ok(await page.locator('.startcard').count() === 1, 'new member sees Getting started');
     ok(await page.locator('.q[data-q=streak]').count() === 1, 'streak quest is listed');
+    ok(await page.locator('.q[data-q=sunnah]').count() === 1, 'the Sunnah quest is listed');
+    ok(await page.locator('.startcard, [data-act=pushon], .circlecard').count() === 0, 'no Getting started, reminder or circle cards');
     await page.fill('#manual', '150'); await page.click('[data-act=manual]'); await page.waitForTimeout(300);
     ok(await page.locator('.floatpts').count() === 1, 'earned points float up');
     ok(await page.locator('.burst').count() === 1, 'daily goal bursts');
@@ -135,106 +176,43 @@ try {
     await page.close();
   }
 
-  // ---- Qabila: invites breakdown, who invited you ------------------------------------------------------------
-  {
-    const page = await open(kid.token);
-    await go(page, 'qabila');
-    ok(await page.locator('.invsrc li').count() === 4, 'invite sources are listed');
-    await page.fill('.linkinv input', 'e2e_host'); await page.locator('.linkinv button').click(); await page.waitForTimeout(900);
-    ok(await page.locator('.linkinv').count() === 0, 'linking to the inviter closes the form');
-    const me = await api('GET', '/api/me', null, kid.token);
-    ok(me.inviter === 'e2e_host', 'the kid is now under the host');
-    await page.close();
-  }
-
-  // ---- Tasks: add with the + button, tick, undo ----------------------------------------------------------------
+  // ---- the Caravan page: members, the owner renames it, removes a member; a member with no caravan is told to ask an admin ----------
   {
     const page = await open(host.token);
-    await go(page, 'tasks');
-    await page.click('.hadd'); await page.waitForTimeout(400);
-    ok(await page.evaluate(() => document.activeElement?.name === 'title'), 'the + on Tasks focuses a new task');
-    await page.fill('[data-form=owntask] input[name=title]', 'Plan the circle');
-    const due = new Date(Date.now() + 5 * 3600e3 + 864e5).toISOString().slice(0, 10);
-    await page.fill('[data-form=owntask] input[type=date]', due).catch(() => {});
-    await page.click('[data-form=owntask] button[type=submit]'); await page.waitForTimeout(800);
-    ok(await page.locator('.trow', { hasText: 'Plan the circle' }).count() >= 1, 'own task is added');
-    await page.locator('.trow', { hasText: 'Plan the circle' }).first().locator('.tcheck').click(); await page.waitForTimeout(900);
-    ok((await api('GET', '/api/burhan', null, host.token)).assignments.some((a) => a.title === 'Plan the circle' && a.done), 'ticking completes the task');
-    await page.close();
-  }
-
-  // ---- caravan: create, invite by username, accept -------------------------------------------------------------------
-  {
-    const page = await open(host.token);
+    page.on('dialog', (d) => d.accept());
     await go(page, 'caravan');
-    await page.fill('#cv-new', 'e2e_cv'); await page.click('form[data-form=cvcreate] button[type=submit]'); await page.waitForTimeout(900);
-    ok((await api('GET', '/api/caravan', null, host.token)).caravan?.name === 'e2e_cv', 'a caravan is created');
-    await page.fill('#cvinvq', 'e2e_ki'); await page.waitForTimeout(900);
-    await page.locator('[data-act=cvinvite][data-u=e2e_kid]').click(); await page.waitForTimeout(700);
+    ok((await page.textContent('.cvname')).trim() === 'e2e_cv', 'the caravan page shows its name');
+    ok(await page.locator('.lb li').count() >= 3, 'the caravan lists its members');
+    ok(await page.locator('[data-act=cvleave], [data-form=cvcreate], #cvinvq, #cvjoinq').count() === 0, 'no create, join, invite or leave controls');
+    await page.fill('#cv-display', 'قافلۂ نور'); await page.click('form[data-form=cvdisplay] button[type=submit]'); await page.waitForTimeout(900);
+    ok((await page.textContent('.cvname'))?.trim() === 'قافلۂ نور' && (await page.textContent('.cvname + .muted')).includes('@e2e_cv'), 'the owner gives the caravan an Urdu display name; its handle stays beneath');
+    await page.fill('#cv-rename', 'e2e_cv2'); await page.click('form[data-form=cvrename] button[type=submit]'); await page.waitForTimeout(900);
+    ok((await api('GET', '/api/caravan', null, host.token)).caravan?.name === 'e2e_cv2', 'the owner renames the caravan');
+    await page.fill('#cv-rename', 'e2e_cv'); await page.click('form[data-form=cvrename] button[type=submit]'); await page.waitForTimeout(900);
+    await page.locator('[data-act=cvremove][data-u=e2e_kid]').click(); await page.waitForTimeout(900);
+    ok((await api('GET', '/api/me', null, kid.token)).caravan === null, 'the owner removes a member');
+    // rapid taps between pages skip animations without page errors
+    for (let i = 0; i < 20; i++) await page.evaluate((tb) => document.querySelector(`nav.tabs [data-tab=${tb}]`).click(), ['feed', 'rank', 'home'][i % 3]);
+    await page.waitForTimeout(800);
     await page.close();
     const kp = await open(kid.token);
     await go(kp, 'caravan');
-    await kp.locator('[data-act=cvaccept]').first().click(); await kp.waitForTimeout(900);
-    ok((await api('GET', '/api/caravan', null, host.token)).caravan?.members === 2, 'the invitee accepts and the caravan has two members');
+    ok(await kp.locator('.empty', { hasText: 'ask an admin' }).count() === 1 || await kp.locator('.empty', { hasText: 'Ask an admin' }).count() === 1, 'a member with no caravan is told to ask an admin');
     await kp.close();
-    // the owner gives it an Urdu display name; the page shows it, with the handle beneath
-    const op = await open(host.token);
-    await go(op, 'caravan');
-    await op.fill('#cv-display', 'قافلۂ نور'); await op.click('form[data-form=cvdisplay] button[type=submit]'); await op.waitForTimeout(900);
-    ok((await op.textContent('.cvname'))?.trim() === 'قافلۂ نور' && (await op.textContent('.cvname + .muted')).includes('@e2e_cv'), 'the owner gives the caravan an Urdu display name; its handle stays beneath');
-    // rapid taps between pages skip animations without page errors
-    for (let i = 0; i < 20; i++) await op.evaluate((tb) => document.querySelector(`nav.tabs [data-tab=${tb}]`).click(), ['feed', 'rank', 'home'][i % 3]);
-    await op.waitForTimeout(800);
-    await op.close();
+    const mine = (await api('GET', '/api/caravan', null, host.token)).caravan;
+    await api('POST', `/api/admin/caravans/${mine.id}/members`, { username: 'e2e_kid' }, null, K);
+    ok((await api('GET', '/api/me', null, kid.token)).caravan?.name === 'e2e_cv', 'an admin puts the member back');
   }
 
-  // ---- masul and razakar: a task given from My people is done on the razakar's Tasks page --------------------------------
+  // ---- the Sunnah page, the daily goal and the language from Settings ------------------------------------------------------
   {
-    await api('PUT', '/api/burhan/masul', { username: 'e2e_host' }, kid.token);
     const page = await open(host.token);
-    await go(page, 'people');
-    await page.locator('[data-act=openrazakar][data-u=e2e_kid]').click(); await page.waitForTimeout(900);
-    const due = new Date(Date.now() + 5 * 3600e3 + 2 * 864e5).toISOString().slice(0, 10);
-    await page.fill('form[data-form=assign] input[name=title]', 'Bring the banner');
-    await page.fill('form[data-form=assign] input[type=date]', due);
-    await page.click('form[data-form=assign] button[type=submit]'); await page.waitForTimeout(900);
-    ok((await api('GET', '/api/burhan', null, kid.token)).assignments.some((x) => x.title === 'Bring the banner'), 'the masul gives the razakar a task');
-    await page.close();
-    const kp = await open(kid.token);
-    await go(kp, 'tasks');
-    await kp.locator('.trow', { hasText: 'Bring the banner' }).first().locator('.tcheck').click(); await kp.waitForTimeout(1200);
-    const rep = await api('GET', '/api/burhan/razakars/e2e_kid', null, host.token);
-    ok(JSON.stringify(rep).includes('Bring the banner') && rep.assignments?.some?.((x) => x.title === 'Bring the banner' && x.done), 'the razakar completes it and the masul sees it done');
-    await kp.close();
-    // "Everyone I lead": one task for all of the masul's razakars from My people, without picking a team
-    const ep = await open(host.token); await go(ep, 'people');
-    await ep.click('[data-act=assignall]'); await ep.waitForTimeout(400);
-    const due2 = new Date(Date.now() + 5 * 3600e3 + 3 * 864e5).toISOString().slice(0, 10);
-    await ep.fill('form[data-form=everyoneassign] input[name=title]', 'Everyone: read one page');
-    await ep.fill('form[data-form=everyoneassign] input[type=date]', due2);
-    await ep.click('form[data-form=everyoneassign] button[type=submit]'); await ep.waitForTimeout(1000);
-    ok((await api('GET', '/api/burhan', null, kid.token)).assignments.some((x) => x.title === 'Everyone: read one page'), 'the masul gives a task to everyone they lead in one step');
-    await ep.close();
-  }
-
-  // ---- reflection, a lecture, the daily goal and the language from Settings ------------------------------------------------------
-  {
-    await api('POST', '/api/admin/lectures', { youtube_id: 'dQw4w9WgXcQ', title_en: 'E2E lecture', speaker: 'Test', min_seconds: 30, questions: [{ q_en: 'Where did the Prophet ﷺ migrate to?', options_en: ['Makkah', 'Madinah'], answer: 1 }] }, null, K);
-    const page = await open(host.token);
-    await page.fill('#refl', 'Patience is light.'); await page.click('[data-act=reflect]'); await page.waitForTimeout(900);
-    ok((await api('GET', '/api/feed', null, host.token)).reflection?.mine?.body === 'Patience is light.', 'a reflection is posted');
-    await page.reload(); await page.waitForTimeout(1200);
-    await page.locator('[data-act=watch]').first().click(); await page.waitForTimeout(900);
-    ok(await page.locator('.modal [data-act=pclose]').count() === 1, 'a lecture opens in the player');
-    await page.waitForTimeout(31500);
-    ok(await page.locator('#pclaim').isDisabled(), 'after watching, the reward still waits for the quiz');
-    await page.locator('input[name=qz0][value="1"]').check(); await page.click('[data-act=quizcheck]'); await page.waitForTimeout(800);
-    ok(!(await page.locator('#pclaim').isDisabled()), 'a passed quiz unlocks the reward');
-    await page.click('#pclaim'); await page.waitForTimeout(900);
-    ok((await api('GET', '/api/me', null, host.token)).quests.find((q) => q.id === 'lecture')?.done === true, 'the lecture reward is claimed');
-    for (let i = 0; i < 3 && await page.locator('.modal').count(); i++) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
-    ok(await page.locator('.modal').count() === 0, 'the player and any celebration close');
+    await go(page, 'sunnah');
+    ok(await page.locator('main h3', { hasText: 'Your sunnah posts' }).count() === 1, 'the Sunnah page lists your posts');
+    ok(await page.locator('.stream .fitem').count() >= 1, 'the Sunnah page shows the community photos');
+    ok(await page.locator('[data-act=watch], [data-tab=seerah], [data-tab=qabila], [data-tab=tasks], [data-tab=people]').count() === 0, 'no lecture, Seerah, Qabila or task links');
     await go(page, 'settings');
+    ok(await page.locator('#s-time, [data-act=pushon], [data-act=pushoff]').count() === 0, 'no reminder time or push settings');
     await page.fill('#s-goal', '250'); await page.click('form[data-form=settings] button[type=submit]'); await page.waitForTimeout(900);
     ok((await api('GET', '/api/me', null, host.token)).dailyGoal === 250, 'the daily goal is changed in Settings');
     await page.click('[data-act=fold][data-k=ssec]').catch(() => {}); await page.waitForTimeout(900);
@@ -304,35 +282,11 @@ try {
     await page.close();
   }
 
-  // ---- swipe a task: right completes it, left opens the reschedule sheet ---------------------------------------------------------
-  {
-    const due = new Date(Date.now() + 5 * 3600e3 + 3 * 864e5).toISOString().slice(0, 10);
-    await api('POST', '/api/tasks', { kind: 'task', title: 'Swipe me done', dueDay: due }, host.token);
-    await api('POST', '/api/tasks', { kind: 'task', title: 'Swipe me later', dueDay: due }, host.token);
-    const page = await open(host.token);
-    await go(page, 'tasks');
-    const swipe = async (title, dx) => {
-      const box = await page.locator('.trow', { hasText: title }).first().locator('.tfront').boundingBox();
-      const y = box.y + box.height / 2, x = box.x + box.width / 2;
-      await page.mouse.move(x, y); await page.mouse.down();
-      for (let i = 1; i <= 10; i++) { await page.mouse.move(x + (dx * i) / 10, y); await page.waitForTimeout(16); }
-      await page.mouse.up(); await page.waitForTimeout(1000);
-    };
-    await swipe('Swipe me done', 260);
-    ok((await api('GET', '/api/burhan', null, host.token)).assignments.some((x) => x.title === 'Swipe me done' && x.done), 'swiping right completes a task');
-    await swipe('Swipe me later', -260);
-    ok(await page.locator('[data-act=reschpick]').count() > 0, 'swiping left opens the reschedule sheet');
-    await page.locator('[data-act=reschpick]').first().click(); await page.waitForTimeout(900);
-    const moved = (await api('GET', '/api/burhan', null, host.token)).assignments.find((x) => x.title === 'Swipe me later');
-    ok(moved && moved.dueDay !== due, 'picking a day moves its deadline');
-    await page.close();
-  }
-
   // ---- every page, both languages, dark mode, desktop: renders, no sideways scroll, no errors -----------------------
   for (const [lang, mode, w] of [['en', 'light', 390], ['ur', 'light', 390], ['en', 'dark', 390], ['en', 'light', 1280]]) {
     await api('PATCH', '/api/me', { lang }, host.token);
     const page = await open(host.token, { lang, mode, w });
-    for (const tab of ['home', 'feed', 'rank', 'caravan', 'qabila', 'tasks', 'people', 'progress', 'settings']) {
+    for (const tab of TABS) {
       await go(page, tab);
       const blank = await page.evaluate(() => (document.querySelector('#main')?.innerText || '').trim().length < 20);
       ok(!blank, `${lang}/${mode}/${w}: ${tab} renders`);
@@ -348,7 +302,7 @@ try {
   try { AXE = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8'); } catch { console.log('skip axe-core is not installed; accessibility rules not run'); }
   if (AXE) {
     const found = new Map();
-    for (const mode of ['light', 'dark']) for (const tab of ['home', 'feed', 'rank', 'caravan', 'qabila', 'tasks', 'people', 'progress', 'settings']) {
+    for (const mode of ['light', 'dark']) for (const tab of TABS) {
       const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, bypassCSP: true }); // the app's CSP rightly refuses injected scripts
       const page = await ctx.newPage();
       await page.goto(B + '/');
@@ -394,9 +348,9 @@ try {
       document.querySelectorAll('body *').forEach((e) => { if (!e.offsetParent) return; const cs = getComputedStyle(e);
         if (['Top', 'Right', 'Bottom', 'Left'].some((sd) => parseFloat(cs['border' + sd + 'Width']) >= 1.5 && cs['border' + sd + 'Style'] !== 'none' && cs['border' + sd + 'Color'] === ink)) out.push(`${e.tagName.toLowerCase()}.${String(e.className).trim().split(/\s+/).join('.')}`); });
       return out; }).then((r) => r.forEach((x) => frames.add(`${where}: ${x}`)));
-    for (const tab of ['home', 'feed', 'rank', 'caravan', 'qabila', 'tasks', 'people', 'progress', 'settings']) { const page = await open(host.token); await go(page, tab); await scan(page, tab); await page.close(); }
+    for (const tab of TABS) { const page = await open(host.token); await go(page, tab); await scan(page, tab); await page.close(); }
     const page = await open(host.token); await go(page, 'feed'); await page.click('.hadd'); await page.waitForTimeout(400); await scan(page, 'add sheet'); await page.close();
-    const anon = await browser.newPage({ viewport: { width: 390, height: 844 } }); await anon.goto(B + '/?invite=E2ECODE'); await anon.evaluate(() => localStorage.setItem('intro', '1')); await anon.goto(B + '/?invite=E2ECODE'); await anon.waitForTimeout(700);
+    const anon = await browser.newPage({ viewport: { width: 390, height: 844 } }); await anon.goto(B + '/?invite=e2e_cv'); await anon.evaluate(() => localStorage.setItem('intro', '1')); await anon.goto(B + '/?invite=e2e_cv'); await anon.waitForTimeout(700);
     await anon.getByRole('button', { name: /join/i }).first().click().catch(() => {}); await anon.waitForTimeout(400); await scan(anon, 'sign-up'); await anon.close();
     ok(frames.size === 0, `no old-style hard frames anywhere${frames.size ? ': ' + [...frames].slice(0, 5).join('; ') : ''}`);
   }
@@ -427,7 +381,7 @@ try {
   {
     const page = await open(host.token, { w: 360, h: 780 }); const past = new Set();
     await page.addStyleTag({ content: 'html { font-size: 130% !important; }' });
-    for (const tab of ['home', 'feed', 'rank', 'caravan', 'qabila', 'tasks', 'people', 'progress', 'settings']) {
+    for (const tab of TABS) {
       await go(page, tab);
       (await page.evaluate(() => [...document.querySelectorAll('main *')].filter((e) => { const b = e.getBoundingClientRect(); return b.width && (b.right > innerWidth + 2 || b.left < -2) && !e.closest('.seg.five, .earned'); })
         .slice(0, 3).map((e) => `${e.tagName.toLowerCase()}.${String(e.className).split(' ')[0]}`))).forEach((x) => past.add(`${tab}: ${x}`));
@@ -444,7 +398,7 @@ try {
     const moving = new Set();
     const grab = async (w) => (await page.evaluate(() => document.getAnimations().filter((a) => a.playState === 'running' && (a.effect?.getTiming?.().duration || 0) > 50)
       .map((a) => `${a.animationName || a.transitionProperty || 'animation'} on ${a.effect?.target?.className || ''}`))).forEach((x) => moving.add(`${w}: ${x}`));
-    for (const tab of ['home', 'feed', 'rank', 'caravan', 'qabila', 'progress', 'settings']) { await page.evaluate((t) => (document.querySelector(`.sitem[data-tab=${t}]`) || document.querySelector(`[data-tab=${t}]`))?.click(), tab); await page.waitForTimeout(80); await grab(tab); await page.waitForTimeout(400); }
+    for (const tab of TABS) { await page.evaluate((t) => (document.querySelector(`.sitem[data-tab=${t}]`) || document.querySelector(`[data-tab=${t}]`))?.click(), tab); await page.waitForTimeout(80); await grab(tab); await page.waitForTimeout(400); }
     await page.click('.hadd').catch(() => {}); await page.waitForTimeout(80); await grab('add sheet'); await page.keyboard.press('Escape');
     await page.evaluate(() => document.querySelector('[data-tab=home]').click()); await page.waitForTimeout(500);
     await page.fill('#manual', '10'); await page.click('[data-act=manual]'); await page.waitForTimeout(150); await grab('after adding');
@@ -470,7 +424,7 @@ try {
   // ---- Tap targets: on a phone nothing a finger presses is under 24 px either way (WCAG 2.2 target size), every page with folds open ----
   {
     const small = new Set(), ids = new Set();
-    for (const tab of ['home', 'feed', 'rank', 'caravan', 'qabila', 'tasks', 'people', 'progress', 'settings']) {
+    for (const tab of TABS) {
       const page = await open(host.token); await go(page, tab);
       await page.$$eval('[data-act=fold][aria-expanded=false]', (els) => els.forEach((e) => e.click())).catch(() => {}); await page.waitForTimeout(400);
       (await page.evaluate(() => [...document.querySelectorAll('button, a[href], [role=button], [role=switch], input:not([type=hidden]), select')]
@@ -492,7 +446,7 @@ try {
     for (const mode of ['light', 'dark']) {
       const page = await open(host.token, { w: 1280, h: 900, mode });
       await page.addStyleTag({ content: '*, *::before, *::after { transition: none !important; animation: none !important; }' }); // read the settled look
-      for (const tab of ['home', 'feed', 'rank', 'caravan', 'qabila', 'tasks', 'people', 'progress', 'settings']) {
+      for (const tab of TABS) {
         await go(page, tab); await page.evaluate(() => document.activeElement?.blur());
         for (let i = 0; i < 40; i++) {
           await page.keyboard.press('Tab');
@@ -522,6 +476,28 @@ try {
       if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) wide.push(t);
     }
     ok(wide.length === 0, `admin (${label}): no tab runs off the screen${wide.length ? ': ' + wide.join(', ') : ''}`);
+    if (label === 'desktop') {
+      // sign-ups: the kill switch and a code for a caravan
+      await page.click('#tabs [data-tab=invites]'); await page.waitForTimeout(500);
+      await page.click('[data-a=signupsw]'); await page.waitForTimeout(700);
+      ok((await api('GET', '/api/config')).signupsOpen === false, 'the admin closes sign-ups');
+      await page.click('[data-a=signupsw]'); await page.waitForTimeout(700);
+      ok((await api('GET', '/api/config')).signupsOpen === true, '...and opens them again');
+      await page.fill('#fcv', 'e2e_cv'); await page.fill('#flabel', 'E2E lead'); await page.click('[data-a=fnew]'); await page.waitForTimeout(700);
+      ok(/New code for e2e_cv: [A-Z0-9]{4}-[A-Z0-9]{4}/.test(await page.textContent('#panel .msg')), 'a code is made for a caravan');
+      await page.fill('#fcv', 'no_such_cv'); await page.click('[data-a=fnew]'); await page.waitForTimeout(700);
+      ok(/No caravan has that name/.test(await page.textContent('#panel .msg')), 'a code for a missing caravan says so in plain words');
+      // members: create one with the form, then a caravan with that member as owner
+      await page.click('#tabs [data-tab=members]'); await page.waitForTimeout(500);
+      await page.fill('#cmu', 'e2e_owner2'); await page.fill('#cmp', 'secret12'); await page.fill('#cme', 'e2e_owner2@e2e.pk'); await page.fill('#cmph', '300 8880001');
+      await page.fill('#cmcity', 'Lahore'); await page.click('[data-a=cmfind]'); await page.waitForTimeout(900);
+      await page.click('[data-a=cmcreate]'); await page.waitForTimeout(1200);
+      ok(!!(await api('POST', '/api/login', { id: 'e2e_owner2', password: 'secret12' })).token, 'the admin creates a member with the form');
+      await page.click('#tabs [data-tab=caravans]'); await page.waitForTimeout(500);
+      await page.fill('#cvn', 'e2e_cv_two'); await page.fill('#cvo', 'e2e_owner2'); await page.click('[data-a=cvcreate]'); await page.waitForTimeout(1000);
+      ok((await api('POST', '/api/login', { id: 'e2e_owner2', password: 'secret12' })).me.caravan?.name === 'e2e_cv_two', 'the admin creates a caravan with that member as owner');
+      ok(await page.locator('td', { hasText: 'e2e_cv_two' }).count() >= 1, 'the new caravan is listed');
+    }
     await page.close();
   }
 } catch (e) {

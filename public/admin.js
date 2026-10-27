@@ -211,7 +211,6 @@ const views = {
   async members() {
     const q = window.__q || '';
     const { members } = await api('GET', `/members?q=${encodeURIComponent(q)}`);
-    const city = window.__city || [];
     return `<h3>Members</h3>
       <div class="inline"><div><label>Search name, email, phone or city</label><input id="q" value="${esc(q)}"></div><button class="chip solid" data-a="search">Search</button></div>
       ${members.length ? `<table><tr><th>Member</th><th>Counts</th><th>Status</th><th>Actions</th></tr>${members.map((m) => `<tr>
@@ -229,7 +228,7 @@ const views = {
       <div class="inline"><div><label>Username</label><input id="cmu" maxlength="20" autocapitalize="off" dir="ltr"></div><div><label>Password (6 or more)</label><input id="cmp" type="text" autocomplete="off" dir="ltr"></div></div>
       <div class="inline"><div><label>Email</label><input id="cme" type="email" dir="ltr"></div><div><label>Phone</label><input id="cmph" type="tel" dir="ltr" placeholder="300 1234567"></div><div><label>Phone country (2 letters)</label><input id="cmcc" maxlength="2" value="PK" dir="ltr" style="max-width:90px"></div></div>
       <div class="inline"><div><label>City (type two letters or more, then Find)</label><input id="cmcity" dir="auto"></div><button class="chip" data-a="cmfind">Find</button>
-        <div><label>Pick the city</label><select id="cmcityid">${city.length ? city.map((c) => `<option value="${c.id}">${esc(c.label)}</option>`).join('') : '<option value="">(search first)</option>'}</select></div></div>
+        <div><label>Pick the city</label><select id="cmcityid"><option value="">(search first)</option></select></div></div>
       <div class="inline"><button class="chip solid" data-a="cmcreate">Create member</button></div>` : ''}`;
   },
   async audit() {
@@ -344,15 +343,16 @@ document.addEventListener('click', (ev) => {
     cmfind: async () => {
       const q = $('#cmcity').value.trim();
       const cc = ($('#cmcc').value || 'PK').trim().toUpperCase();
-      if (q.length < 2) return say('Type at least two letters of the city.');
+      if (q.length < 2) { say('Type at least two letters of the city.'); return; }
       const res = await fetch(`/api/cities?q=${encodeURIComponent(q)}&cc=${encodeURIComponent(cc)}`);
-      window.__city = (await res.json().catch(() => ({}))).cities || [];
-      if (!window.__city.length) say('No city matches. Try the nearest bigger town.');
+      const cities = (await res.json().catch(() => ({}))).cities || [];
+      // fill the list in place: a full redraw would wipe the rest of the form
+      $('#cmcityid').innerHTML = cities.length ? cities.map((c) => `<option value="${c.id}">${esc(c.label)}</option>`).join('') : '<option value="">(no match: try the nearest bigger town)</option>';
+      return 'stay';
     },
     cmcreate: async () => {
       const body = { username: $('#cmu').value.trim(), password: $('#cmp').value, email: $('#cme').value.trim(), phone: $('#cmph').value.trim(), phoneCountry: ($('#cmcc').value || 'PK').trim().toUpperCase(), cityId: Number($('#cmcityid').value) || undefined };
       const r = await api('POST', '/members/create', body);
-      window.__city = [];
       say(`Member ${r.username} created. Next: Caravans, then create a caravan with them as owner (or add them to one).`);
     },
     suspend: async () => { await api('POST', `/members/${d.u}`, { action: 'suspend' }); say(`${d.u} suspended.`); },
