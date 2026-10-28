@@ -36,12 +36,13 @@ const feed = async (u, q = '') => (await api('GET', `/api/feed${q}`, { token: u.
 const { makeCaravan } = await import('./helpers.js');
 const make = (name, owner) => makeCaravan(api, name, owner);
 
+const { aliasFor } = await import('../server/auth.js');
 test('the feed shows announcements, caravan milestones to the right people only, and each crore to everyone', async () => {
   const root = await make('fd_caravan', 'fd_root');
   const kid = await signup('fd_kid', 'fd_caravan');
   const stranger = await signup('fd_stranger');
   await log(kid, 1000);                                             // d1k badge
-  const msIn = async (u) => (await feed(u)).items.filter((i) => i.type === 'milestone' && i.username === 'fd_kid' && i.code === 'd1k');
+  const msIn = async (u) => (await feed(u)).items.filter((i) => i.type === 'milestone' && (i.mine ? i.username === 'fd_kid' : i.username === aliasFor(db.prepare("SELECT id FROM users WHERE username = 'fd_kid'").get().id)) && i.code === 'd1k');
   assert.equal((await msIn(kid)).length, 1, 'the member sees their own milestone');
   assert.equal((await msIn(root)).length, 1, 'the others in their caravan see it');
   assert.equal((await msIn(stranger)).length, 0, 'someone outside the caravan does not');
@@ -116,4 +117,18 @@ test('caravan mates say MashaAllah on a milestone: once each, never on their own
   const item = (await api('GET', '/api/feed', { token: b.token })).items.find((x) => x.type === 'milestone' && x.id === ev.id);
   assert.equal(item.cheers, 1); assert.equal(item.cheered, true);
   assert.ok(c.token);
+});
+
+test('feed milestones show other members under a made-up name, flagged as such; your own show your username', async () => {
+  const { aliasFor } = await import('../server/auth.js');
+  const uid = (u) => db.prepare('SELECT id FROM users WHERE username = ?').get(u).id;
+  const a = await make('al_cv', 'al_owner'), b = await signup('al_mate', 'al_cv');
+  await api('POST', '/api/log', { token: b.token, body: { count: 1000, rid: crypto.randomUUID() } });
+  const items = (await feed(a)).items.filter((i) => i.type === 'milestone');
+  const theirs = items.find((i) => i.anon);
+  assert.ok(theirs);
+  assert.equal(theirs.username, aliasFor(uid('al_mate')));
+  assert.ok(!JSON.stringify(items).includes('al_mate'), 'the real username is not in the feed reply');
+  const mine = (await feed(b)).items.filter((i) => i.type === 'milestone' && i.mine);
+  assert.ok(mine.length && mine.every((i) => i.username === 'al_mate' && i.anon === false));
 });

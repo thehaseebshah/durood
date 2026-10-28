@@ -714,7 +714,7 @@ function feedItem(it) {
   if (it.type === 'milestone') {
     const b = t('badge')[it.code] || [it.code, ''];
     return `<div class="fitem ms ${it.mine ? 'mine' : ''}"><div class="flabel">${uiIcon('star', 12, 2)} ${t('ms_label')}<small class="when">${ago(it.at)}</small></div>
-      <b>${t('ms_text')(esc(it.username), esc(b[0]))}</b><div class="muted">${esc(b[1])}</div>
+      <b>${t('ms_text')(esc(it.username), esc(b[0]))}</b><div class="muted">${esc(b[1])}</div>${it.anon ? `<small class="muted aliasnote">${t('alias_note')}</small>` : ''}
       ${it.mine ? (it.cheers ? `<div class="cheerline">${t('cheered_n')(it.cheers)}</div>` : '')
         : `<button class="chip cheer ${it.cheered ? 'on' : ''}" data-act="cheer" data-id="${it.id}" ${it.cheered ? 'disabled' : ''} aria-pressed="${it.cheered}">${t('mashallah')}${it.cheers ? ` ${N(fmt(it.cheers))}` : ''}</button>`}</div>`;
   }
@@ -780,6 +780,7 @@ function rank() {
     <button class="${b.period === 'all' ? 'on' : ''}" data-act="board" data-period="all">${t('all_time')}</button></div>` : ''}
   ${list}
   ${note ? `<p class="note">${note}</p>` : ''}
+  ${b.type === 'users' || b.type === 'league' ? `<p class="note">${t('alias_board_note')}</p>` : ''}
   ${b.type === 'cities' ? `<p class="note">${t('cities_min')(b.data?.minActive || 5)}</p>` : ''}
   ${b.type === 'majalis' ? `<p class="note">${t('majalis_min')(b.data?.minActive || 3)}</p>` : ''}
   <p class="note">${t('self_reported')}</p>

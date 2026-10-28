@@ -1,5 +1,5 @@
 import { db, tx } from './db.js';
-import { HttpError, photoSig, avatarUrl } from './auth.js';
+import { HttpError, photoSig, avatarUrl, aliasFor } from './auth.js';
 import { CFG, dayOf, grant } from './game.js';
 import { cityPodium } from './compete.js';
 
@@ -158,7 +158,7 @@ export function feed(userId, before = Date.now() + 1) {
       WHERE e.kind = 'badge' AND e.created_at < ? AND u.deleted_at IS NULL AND u.suspended = 0
         AND (e.user_id = ? OR e.user_id IN (SELECT cm.user_id FROM caravan_members cm WHERE cm.caravan_id = (SELECT x.caravan_id FROM caravan_members x WHERE x.user_id = ?)))
       ORDER BY e.created_at DESC LIMIT ?`, cutoff, userId, userId, FEED_PAGE + 1)) {
-    items.push({ type: 'milestone', id: e.id, at: e.created_at, username: e.username, code: e.ref, mine: e.user_id === userId,
+    items.push({ type: 'milestone', id: e.id, at: e.created_at, username: e.user_id === userId ? e.username : aliasFor(e.user_id), anon: e.user_id !== userId, code: e.ref, mine: e.user_id === userId, // others appear under a made-up name, as on the rankings
       cheers: one('SELECT COUNT(*) n FROM cheers WHERE event_id = ?', e.id).n, cheered: !!one('SELECT 1 FROM cheers WHERE event_id = ? AND user_id = ?', e.id, userId) });
   }
   for (const c of all("SELECT key, value FROM settings WHERE key GLOB 'ch_m_[0-9]*'")) {

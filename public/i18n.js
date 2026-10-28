@@ -198,6 +198,8 @@ export const I18N = {
     more: 'Show more',
     ann_label: 'Announcement',
     ms_label: 'Milestone',
+    alias_note: 'A made-up name, not their real username.',
+    alias_board_note: 'Other members appear under made-up names, not their real usernames, to protect sincerity. Tap a row to see the real profile.',
     ms_text: (who, badge) => `${who} earned ${badge}`,
     crore_text: (k) => `${k} crore durood reached together`,
     reply_btn: 'Reply',
