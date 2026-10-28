@@ -277,6 +277,7 @@ function authView() {
       ${S.signupsOpen === false ? `<div class="notice" role="status">${t('signups_closed_note')}</div>` : ''}
       <label for="f-invite">${t('invite_code')}</label>
       <input id="f-invite" type="text" name="invite" value="${esc(S.ref)}" autocapitalize="none" autocomplete="off" required data-check="invite" dir="ltr" aria-describedby="rcheck">
+      <ul id="rsug" class="suggest" role="listbox" aria-label="${esc(t('cv_suggest'))}" hidden></ul>
       <div class="hint ${S.refName ? 'ok' : ''}" id="rcheck">${S.refName ? `${t('joining')} <bdi>${esc(S.refName)}</bdi> ✓` : t('invite_hint')}</div>
       <div id="lcv" hidden>
         <label for="f-cvname">${t('leader_name')}</label>
@@ -1292,6 +1293,11 @@ app.addEventListener('click', async (ev) => {
   if (act === 'intronext') { if (S.intro >= 2) { S.intro = null; ls.set('intro', '1'); } else S.intro += 1; return draw(); }
   if (act === 'introskip') { S.intro = null; ls.set('intro', '1'); return draw(); }
   if (act === 'goleague') { S.board.type = 'league'; return enterTab('rank'); }
+  if (act === 'pickcv') { // a suggested caravan: its exact name goes into the box and is checked
+    const box = $('#f-invite'); if (box) { box.value = el.dataset.name; box.dispatchEvent(new Event('input', { bubbles: true })); box.focus(); }
+    const sug = $('#rsug'); if (sug) sug.hidden = true;
+    return;
+  }
   if (act === 'pickcity') {
     const field = el.closest('.cityfield');
     field.querySelector('input[name=cityId]').value = el.dataset.id;
@@ -1622,10 +1628,14 @@ app.addEventListener('input', (ev) => {
       } catch { /* the server checks again at sign-up */ }
     } else {
       const out = $('#rcheck');
-      if (!v) { out.className = 'hint'; out.textContent = t('invite_hint'); const lc = $('#lcv'); if (lc) lc.hidden = true; return; }
+      if (!v) { out.className = 'hint'; out.textContent = t('invite_hint'); const lc = $('#lcv'); if (lc) lc.hidden = true; const sg = $('#rsug'); if (sg) sg.hidden = true; return; }
+      const sug = $('#rsug');
       try {
-        const r = await api(`/invite-check?code=${encodeURIComponent(v)}`);
+        const [r, near] = await Promise.all([api(`/invite-check?code=${encodeURIComponent(v)}`), v.length >= 2 ? api(`/caravan-suggest?q=${encodeURIComponent(v)}`).catch(() => ({ caravans: [] })) : { caravans: [] }]);
         if ($('#f-invite')?.value.trim() !== v) return; // typed on since: a newer check is coming
+        // caravans whose name looks like what was typed (a spelling slip is easy to make): tap one to use its exact name
+        const options = near.caravans.filter((c) => c.name.toLowerCase() !== v.toLowerCase());
+        if (sug) { sug.innerHTML = options.map((c) => `<li role="option" tabindex="-1" data-act="pickcv" data-name="${esc(c.name)}"><b>${esc(c.displayName || c.name)}</b>${c.displayName ? ` <small dir="ltr">${esc(c.name)}</small>` : ''} <small>${membersN(c.members)}</small></li>`).join(''); sug.hidden = !options.length || (r.valid && r.kind !== 'caravan'); }
         out.className = 'hint ' + (r.valid ? 'ok' : 'bad');
         const lead = r.valid && r.kind === 'leader'; // a leader code: the person starts their own caravan and names it
         const lc = $('#lcv'); if (lc) lc.hidden = !lead;

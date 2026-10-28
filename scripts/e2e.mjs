@@ -66,6 +66,10 @@ try {
     ok(await page.evaluate(() => document.activeElement?.name === 'invite'), 'an empty sign-up points at the first empty field');
     await page.fill('[name=invite]', 'nobody_here'); await page.waitForTimeout(900);
     ok(await page.locator('#rcheck.bad').count() === 1, 'a caravan name that does not exist is told so while typing');
+    await page.fill('[name=invite]', 'e2e_vc'); await page.waitForTimeout(1000); // a slip of the fingers
+    ok(await page.locator('#rsug li[data-act=pickcv]').count() >= 1, 'a misspelt caravan name offers the caravans that look like it');
+    await page.locator('#rsug li[data-act=pickcv]').first().click(); await page.waitForTimeout(900);
+    ok(await page.inputValue('[name=invite]') === 'e2e_cv' && await page.locator('#rcheck.ok').count() === 1, 'tapping a suggestion fills in the exact name');
     await page.fill('[name=invite]', 'E2E_CV'); await page.waitForTimeout(900);
     ok(await page.locator('#rcheck.ok').count() === 1 && /You will join/.test(await page.textContent('#rcheck')), 'a real caravan name (any case) is accepted live');
     await page.click('form[data-form=register] button[type=submit]'); await page.waitForTimeout(500);

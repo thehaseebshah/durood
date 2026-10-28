@@ -104,6 +104,7 @@ route('GET', '/api/username-check', { auth: false }, ({ query, ip }) => {
 route('GET', '/api/caravan', ({ user }) => caravanApi.view(user));
 route('PUT', '/api/caravan/name', ({ user, body }) => { rateLimit(`cvn:${user}`, 10, 3600e3); caravanApi.rename(user, body.name); return { view: caravanApi.view(user) }; });
 route('PUT', '/api/caravan/display-name', ({ user, body }) => { rateLimit(`cvdn:${user}`, 10, 3600e3); caravanApi.setDisplayName(user, body.displayName); return { view: caravanApi.view(user) }; });
+route('GET', '/api/caravan-suggest', { auth: false }, ({ query, ip }) => { rateLimit(`cvsug:${ip}`, 90, 60e3); return { caravans: caravanApi.suggest(query.get('q')) }; });
 route('GET', '/api/caravan/name-check', ({ user, query }) => {
   const n = String(query.get('u') || '').trim();
   if (!USERNAME.test(n) || isReserved(n)) return { ok: false, reason: 'bad_caravan_name' };

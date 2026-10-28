@@ -59,3 +59,6 @@ To protect ikhlas, the People ranking (week, challenge, all-time) and the weekly
 
 ## Contact numbers
 Only the leader (owner) of a caravan sees the phone number and the WhatsApp button of that caravan's members, on the member's profile sheet (`GET /api/members/:username` adds `phone` and `whatsapp: true` only then; `GET /api/wa/:username` is the same rule, logged). Nobody else gets either, and a member can hide their number even from their leader in Settings. Admins still see numbers on the admin page.
+
+## Caravan name suggestions at sign-up
+While someone types the caravan name, up to 8 caravans that start like it, contain it or are a near miss (a letter wrong, missing or swapped; matches the name or the display name) are listed under the box; tapping one fills in the exact name. `GET /api/caravan-suggest?q=` is public and rate limited (names are the public sign-up code anyway).

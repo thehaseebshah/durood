@@ -270,3 +270,17 @@ test('the caravan streak: three or more members, half of them reciting each day,
   await joined('st_caravan', 'st_late');
   assert.equal(caravan.streakStatus(id).streak, 1, 'today is now 2 of 5 (not yet half); yesterday still counts, and the newcomer is not counted for it');
 });
+
+test('caravan name suggestions for sign-up: starts like, contains, and spelling slips; no sign-in needed', async () => {
+  const { makeCaravan } = await import('./helpers.js');
+  for (const nm of ['sg_noor', 'sg_noorain', 'sg_madinah', 'sg_safar']) await makeCaravan(api, nm, `${nm}_o`);
+  const sug = async (q) => (await api('GET', `/api/caravan-suggest?q=${encodeURIComponent(q)}`)).caravans.map((c) => c.name);
+  assert.deepEqual((await sug('sg_no')).slice(0, 2).sort(), ['sg_noor', 'sg_noorain'], 'the start of a name');
+  assert.equal((await sug('sg_madina'))[0], 'sg_madinah', 'one letter short');
+  assert.equal((await sug('sg_saafr'))[0], 'sg_safar', 'letters swapped');
+  assert.equal((await sug('SG NOOR'))[0], 'sg_noor', 'case, spaces and punctuation do not matter');
+  assert.deepEqual(await sug('qqqqqqq'), []);
+  assert.deepEqual(await sug('s'), [], 'one letter is too little');
+  const one = (await api('GET', '/api/caravan-suggest?q=sg_safar')).caravans[0];
+  assert.deepEqual(Object.keys(one).sort(), ['displayName', 'members', 'name'], 'only what the name already gives away');
+});

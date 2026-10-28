@@ -274,6 +274,7 @@ export const I18N = {
     goal_word: 'Goal',
     q_weekgoal: 'Reach your goal on all 7 days (weekly total)',
     invite_code: 'Caravan name or leader code',
+    cv_suggest: 'Caravans that look like what you typed',
     invite_hint: 'Required. Type the name of the caravan you are joining, as a friend or your organiser gave it to you.',
     leader_ok: 'Leader code: you will start your own caravan', leader_name: 'Name your caravan', leader_name_hint: 'English letters (a–z), numbers or _, 3 to 20 characters. Your members will type this name to join you.',
     joining: 'You will join',

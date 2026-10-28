@@ -296,3 +296,44 @@ export function adminRename(id, rawName) {
 export function adminDelete(id) {
   return tx(() => { const c = one('SELECT name FROM caravans WHERE id = ?', id); if (!c) throw new HttpError(404, 'not_found'); dissolve(id); return { ok: true, name: c.name }; });
 }
+
+// ---- finding a caravan by a name that may be misspelt (sign-up) ---------------------------------------------------------------
+const flat = (x) => String(x ?? '').toLowerCase().replace(/[^a-z0-9\u0600-\u06ff]/g, '');
+// edit distance, stopping early once it is past `max`
+function distance(a, b, max) {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    let low = i;
+    for (let j = 1; j <= b.length; j++) { cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); low = Math.min(low, cur[j]); }
+    if (low > max) return max + 1;
+    prev = cur;
+  }
+  return prev[b.length];
+}
+/**
+ * Up to eight caravans whose name or display name starts like, contains, or is a near miss of what was typed (one or two letters
+ * wrong, swapped or missing). Caravan names are the public sign-up code, so this gives away nothing the name did not already.
+ */
+export function suggest(q) {
+  const typed = flat(q);
+  if (typed.length < 2) return [];
+  const max = typed.length <= 4 ? 1 : 2;
+  const scored = [];
+  for (const c of all(`SELECT c.id, c.name, c.display_name dn, (SELECT COUNT(*) FROM caravan_members cm JOIN users u ON u.id = cm.user_id WHERE cm.caravan_id = c.id AND ${LIVE}) members FROM caravans c`)) {
+    const names = [flat(c.name), flat(c.dn)].filter(Boolean);
+    let best = 99;
+    for (const n of names) {
+      if (n === typed) best = Math.min(best, 0);
+      else if (n.startsWith(typed)) best = Math.min(best, 1);
+      else if (n.includes(typed)) best = Math.min(best, 2);
+      else {
+        const d = Math.min(distance(typed, n, max), distance(typed, n.slice(0, typed.length + 1), max)); // a typo in the whole name, or in the start of a longer one
+        if (d <= max) best = Math.min(best, 2 + d);
+      }
+    }
+    if (best < 99) scored.push({ best, name: c.name, displayName: c.dn || '', members: c.members });
+  }
+  return scored.sort((a, b) => a.best - b.best || b.members - a.members || a.name.localeCompare(b.name)).slice(0, 8).map(({ best, ...r }) => r);
+}
