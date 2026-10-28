@@ -59,6 +59,27 @@ export async function checkPassword(pw, stored, { priority = false } = {}) {
 
 const TOKEN_DAYS = 90;
 /** `ver` is the member's token_ver: bumping it in the database signs them out of every device. */
+// ---- names on the rankings ----------------------------------------------------------------------------------------
+// To protect people's ikhlas the people rankings show other members under a made-up name, never their username, display name
+// or picture. The made-up name is always the same for the same member (it comes from the server's secret, so it cannot be
+// worked out from outside). Tapping a row opens the real profile through a signed `ref`, which only this server can make.
+const ADJ = ['Quiet', 'Humble', 'Patient', 'Gentle', 'Steady', 'Bright', 'Calm', 'Kind', 'Sincere', 'Grateful', 'Hopeful', 'Peaceful', 'Faithful', 'Radiant', 'Modest', 'Noble', 'Swift', 'Serene', 'Tender', 'Devoted', 'Mindful', 'Generous', 'Cheerful', 'Loyal', 'Honest', 'Graceful', 'Hidden', 'Early', 'Blessed', 'Luminous', 'Content', 'Thankful', 'Warm', 'Trusting', 'Wise', 'Fragrant', 'Joyful', 'Steadfast', 'Silent', 'Golden'];
+const NOUN = ['Lantern', 'Traveller', 'Falcon', 'Garden', 'Pearl', 'Dawn', 'River', 'Olive', 'Crescent', 'Date', 'Star', 'Compass', 'Mountain', 'Rose', 'Dove', 'Palm', 'Oasis', 'Candle', 'Well', 'Horizon', 'Meadow', 'Sparrow', 'Cedar', 'Breeze', 'Moon', 'Spring', 'Path', 'Harbour', 'Jasmine', 'Light', 'Seeker', 'Wanderer', 'Fig', 'Anchor', 'Lamp', 'Orchard', 'Reed', 'Shore', 'Summit', 'Wing'];
+const mac = (s, n) => crypto.createHmac('sha256', SECRET).update(s).digest('base64url').slice(0, n);
+export function aliasFor(userId) {
+  const b = crypto.createHmac('sha256', SECRET).update(`alias:${userId}`).digest();
+  return `${ADJ[b[0] % ADJ.length]} ${NOUN[b[1] % NOUN.length]} ${10 + ((b[2] << 8) | b[3]) % 90}`;
+}
+export const makeRef = (userId) => `${Number(userId).toString(36)}.${mac(`ref:${userId}`, 10)}`;
+/** The member id inside a genuine ref, or null. */
+export function readRef(ref) {
+  const [id36, sig] = String(ref ?? '').split('.');
+  const id = parseInt(id36, 36);
+  if (!Number.isInteger(id) || id < 1 || !sig) return null;
+  const want = mac(`ref:${id}`, 10);
+  return sig.length === want.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(want)) ? id : null;
+}
+
 export function signToken(userId, ver = 0) {
   const exp = Math.floor(Date.now() / 1000) + TOKEN_DAYS * 86400;
   const body = `${userId}.${exp}.${ver}`;

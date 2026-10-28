@@ -30,3 +30,11 @@ export async function makeCaravan(api, name, ownerName = `${name}_o`) {
   const l = await api('POST', '/api/login', { body: { id: ownerName, password: 'secret1' } });
   return { token: l.token, me: l.me };
 }
+
+/** The real username behind a row of a people ranking (other members appear there under made-up names with a signed ref). */
+export async function realName(row) {
+  if (!row.ref) return row.username;
+  const { readRef } = await import('../server/auth.js');
+  const id = readRef(row.ref);
+  return id ? db.prepare('SELECT username FROM users WHERE id = ?').get(id).username : null;
+}

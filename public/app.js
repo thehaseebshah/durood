@@ -624,7 +624,7 @@ function av(p, size = 36, link = true) {
   const inner = p.avatar
     ? `<img class="av" width="${size}" height="${size}" src="${esc(p.avatar)}" alt="" loading="lazy">`
     : `<span class="av ini" style="width:${size}px;height:${size}px;--h:${hueOf(p.username)};font-size:${Math.round(size * 0.44)}px" aria-hidden="true">${esc([...p.username][0] || '?').toUpperCase()}</span>`;
-  return link ? `<button class="avbtn" data-act="profile" data-u="${esc(p.username)}" aria-label="${esc(t('view_profile')(p.username))}">${inner}</button>` : inner;
+  return link ? `<button class="avbtn" data-act="profile" data-u="${esc(p.username)}"${p.ref ? ` data-ref="${esc(p.ref)}"` : ''} aria-label="${esc(t('view_profile')(p.username))}">${inner}</button>` : inner;
 }
 const nameLine = (p) => `<b>${esc(p.username)}</b>${p.displayName ? ` <small class="dn">${esc(p.displayName)}</small>` : ''}`;
 function profileModal() {
@@ -1340,8 +1340,9 @@ app.addEventListener('click', async (ev) => {
     } catch (e) { toast(errText(e)); if (e.message === 'bad_image' || e.message === 'duplicate_image') S.draft = null; return draw(); }
   }
   if (act === 'profile') {
+    const ref = el.dataset.ref; // a ranking row shows a made-up name; its ref opens the real profile
     S.profile = { username: el.dataset.u, data: null }; draw();
-    try { S.profile.data = await api(`/members/${encodeURIComponent(el.dataset.u)}`); } catch (e) { S.profile = null; toast(errText(e)); }
+    try { S.profile.data = await api(ref ? `/members/ref/${encodeURIComponent(ref)}` : `/members/${encodeURIComponent(el.dataset.u)}`); if (ref) S.profile.username = S.profile.data.username; } catch (e) { S.profile = null; toast(errText(e)); }
     return draw();
   }
   if (act === 'wachat') {

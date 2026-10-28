@@ -165,7 +165,9 @@ test('challenge boards cover the 40 days only and freeze after the end; all-time
   seedDay('ch_outside', 5, 5000);        // after the 10-day window ended: frozen out
   const tok = root.token;
   const ind = await api('GET', '/api/leaderboard?type=users&period=challenge', { token: tok });
-  const score = (rows, u) => rows.find((r) => r.username === u)?.score;
+  const { realName } = await import('./helpers.js');
+  const names = await Promise.all(ind.rows.map(realName));
+  const score = (rows, u) => (rows === ind.rows ? rows[names.indexOf(u)] : rows.find((r) => r.username === u))?.score;
   assert.equal(score(ind.rows, 'ch_root'), 300);
   assert.equal(score(ind.rows, 'ch_kid'), 200);
   assert.equal(score(ind.rows, 'ch_outside'), undefined, 'activity after day 10 is outside the challenge boards');

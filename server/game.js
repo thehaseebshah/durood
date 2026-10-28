@@ -1,5 +1,5 @@
 import { db, tx, getSetting, setSetting } from './db.js';
-import { HttpError, avatarUrl } from './auth.js';
+import { HttpError, avatarUrl, aliasFor, makeRef } from './auth.js';
 
 // ---- tunables -------------------------------------------------------------
 export const CFG = {
@@ -552,6 +552,15 @@ export function cachedBoard(key, compute) {
 export const withMe = (rows, me) => rows.map((r, i) => ({ rank: i + 1, ...r, me: r.username === me }));
 /** Turns the picture and name columns of a row (uid, av, dn) into what the client shows. */
 export const person = ({ uid, av, dn, ...r }) => ({ ...r, avatar: avatarUrl(uid, av), displayName: dn || '' });
+/**
+ * A row of a people ranking as the viewer may see it: their own row as it is, everyone else under a made-up name with no
+ * display name and no picture, plus a signed `ref` that opens the real profile when tapped. `row.uid` must be the member's id.
+ */
+export function anonymous(row, viewerId) {
+  const { uid, ...rest } = row;
+  if (uid === viewerId) return { ...rest, me: true };
+  return { ...rest, username: aliasFor(uid), displayName: '', avatar: null, ref: makeRef(uid), me: false };
+}
 export const VISIBLE = 'u.hidden_from_ranks = 0 AND u.suspended = 0 AND u.deleted_at IS NULL';
 
 /**
@@ -566,11 +575,11 @@ export function leaderboard(userId, type, period) {
     if (period === 'week' || period === 'challenge') {
       const [from, to] = period === 'week' ? [wk, '9999-12-31'] : [chFrom, chTo];
       return all(`SELECT u.username, u.city, u.id uid, u.avatar_v av, u.display_name dn, SUM(d.count) score FROM daily d JOIN users u ON u.id = d.user_id
-                  WHERE d.day >= ? AND d.day <= ? AND ${VISIBLE} GROUP BY u.id ORDER BY score DESC LIMIT 50`, from, to).map(person);
+                  WHERE d.day >= ? AND d.day <= ? AND ${VISIBLE} GROUP BY u.id ORDER BY score DESC LIMIT 50`, from, to).map((r) => ({ ...person(r), uid: r.uid }));
     }
-    return all(`SELECT username, city, id uid, avatar_v av, display_name dn, total score FROM users u WHERE ${VISIBLE} AND total > 0 ORDER BY total DESC LIMIT 50`).map(person);
+    return all(`SELECT username, city, id uid, avatar_v av, display_name dn, total score FROM users u WHERE ${VISIBLE} AND total > 0 ORDER BY total DESC LIMIT 50`).map((r) => ({ ...person(r), uid: r.uid }));
   });
-  const out = withMe(rows, me);
+  const out = withMe(rows, me).map((r) => anonymous(r, userId)); // other members appear under made-up names (see auth.js)
   // a member below the top 50 still sees where they stand (people boards only; worked out live, it is one aggregate)
   if (type === 'users' && !out.some((r) => r.me)) {
     const u = one(`SELECT u.id, u.total FROM users u WHERE u.id = ? AND ${VISIBLE}`, userId);

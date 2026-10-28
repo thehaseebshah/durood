@@ -1,6 +1,6 @@
 // Competition beyond the personal board: cities, weekly leagues, and the weekly close that decides them.
 import { db, tx, getSetting, setSetting } from './db.js';
-import { CFG, dayOf, dayNum, dayStr, weekStart, hooks, award, grant, evalBadges, person } from './game.js';
+import { CFG, dayOf, dayNum, dayStr, weekStart, hooks, award, grant, evalBadges, person, anonymous } from './game.js';
 import { cityLabel } from './geo.js';
 
 const one = (sql, ...a) => db.prepare(sql).get(...a);
@@ -76,7 +76,7 @@ export function leagueView(userId) {
   if (mine) {
     const rows = groupRows(week, mine.tier, mine.grp);
     const k = zone(rows.length);
-    out.rows = rows.map((r) => ({ rank: r.rank, username: r.username, avatar: r.avatar, displayName: r.displayName, city: r.city, score: r.score, me: r.id === userId, up: mine.tier < TIERS - 1 && r.rank <= k && r.score > 0, down: mine.tier > 0 && r.rank > rows.length - k }));
+    out.rows = rows.map((r) => ({ ...anonymous({ rank: r.rank, username: r.username, avatar: r.avatar, displayName: r.displayName, city: r.city, score: r.score, uid: r.id }, userId), up: mine.tier < TIERS - 1 && r.rank <= k && r.score > 0, down: mine.tier > 0 && r.rank > rows.length - k }));
   }
   const last = one('SELECT * FROM league_members WHERE week = ? AND user_id = ?', prevWeek(week), userId);
   if (last?.result) out.last = { result: last.result, rank: last.rank, tier: last.tier };

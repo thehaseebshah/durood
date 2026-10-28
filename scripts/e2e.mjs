@@ -360,8 +360,12 @@ try {
   // ---- Rankings: tapping a row anywhere (here its name) opens that member's profile, as tapping the photo does ----------------------
   {
     const page = await open(host.token); await go(page, 'rank');
-    const row = page.locator('.lb li:has(.avbtn)').first();
-    await row.locator('.name').click(); await page.waitForTimeout(700);
+    const row = page.locator('.lb li:not(.me):has(.avbtn)').first();
+    const shown = (await row.locator('.name').innerText()).split('\n')[0].trim();
+    ok(/^[A-Z][a-z]+ [A-Z][a-z]+ \d\d$/.test(shown), `another member appears under a made-up name on the ranking ("${shown}")`);
+    await row.locator('.name').click(); await page.waitForTimeout(900);
+    const real = (await page.locator('.modal .box.profile h3.in').innerText()).trim();
+    ok(real !== shown && /^[a-z0-9_]{3,20}$/.test(real), `tapping the row shows the real username ("${real}")`);
     ok(await page.locator('.modal .box.profile').count() === 1, 'tapping a ranking row opens the profile');
     ok(await page.locator('.modal .box.profile [data-act=wachat]').count() === 1, 'another member\'s profile offers a WhatsApp message by default');
     const hasNum = await page.evaluate(() => /\+?\d{10,}/.test(document.querySelector('.modal .box.profile').textContent));

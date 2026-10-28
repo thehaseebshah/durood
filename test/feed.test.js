@@ -70,7 +70,8 @@ test('rankings: people and caravans (named groups); the old tree board is gone',
   const outsider = await signup('rk_outsider');
   await log(root, 100); await log(friend, 50); await log(outsider, 400);
   const rows = async (type, q = '&period=week') => (await api('GET', `/api/leaderboard?type=${type}${q}`, { token: root.token })).rows;
-  const score = async (type, user = 'rk_root', q) => (await rows(type, q)).find((r) => r.username === user)?.score;
+  const { realName } = await import('./helpers.js');
+  const score = async (type, user = 'rk_root', q) => { const rs = await rows(type, q); const ns = await Promise.all(rs.map(realName)); return rs[ns.indexOf(user)]?.score; };
   assert.equal(await score('users'), 100);
   assert.equal(await score('users', 'rk_outsider'), 400);
   assert.equal(await score('trees'), 100, 'an unknown type is the people board; there are no trees any more');

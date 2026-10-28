@@ -75,7 +75,8 @@ test('profile picture: rebuilt without metadata or trailing data, served by a si
   const feedRows = (await api('GET', '/api/leaderboard?type=users&period=all', { token: other.token }));
   await api('POST', '/api/log', { token: u.token, body: { count: 5, rid: crypto.randomUUID() } });
   const lb = await api('GET', '/api/leaderboard?type=users&period=all', { token: other.token });
-  assert.equal(lb.rows.find((x) => x.username === 'pf_pic').avatar, r.avatar);
+  assert.equal(lb.rows.find((x) => x.username === 'pf_pic'), undefined, 'others appear under made-up names, without a picture');
+  assert.equal((await api('GET', '/api/leaderboard?type=users&period=all', { token: u.token })).rows.find((x) => x.me).avatar, r.avatar, 'your own row keeps your picture');
   assert.ok(feedRows.rows);
   // a new picture is a new version and the old address stops working
   const r2 = await upload(u, jpeg({ size: 3500 }));

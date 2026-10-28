@@ -166,3 +166,38 @@ test('a member below the top 50 of the people board still sees their own rank an
   const top = await api('GET', '/api/leaderboard?type=users&period=all', { token: ids[0] });
   assert.equal(top.you, undefined); // already on the board
 });
+
+test('people rankings hide other members behind made-up names; a signed ref opens the real profile', async () => {
+  const { readRef, aliasFor } = await import('../server/auth.js');
+  const uidOf = (u) => db.prepare('SELECT id FROM users WHERE username = ?').get(u).id;
+  const a = await signup('an_a'), b = await signup('an_b');
+  await api('PUT', '/api/me/profile', { token: b.token, body: { displayName: 'Bilal Khan', bio: '' } });
+  await api('POST', '/api/log', { token: a.token, body: { count: 80_000, rid: crypto.randomUUID() } });
+  await api('POST', '/api/log', { token: b.token, body: { count: 90_000, rid: crypto.randomUUID() } });
+  for (const q of ['week', 'all', 'challenge']) {
+    const rows = (await api('GET', `/api/leaderboard?type=users&period=${q}`, { token: a.token })).rows;
+    const mine = rows.find((r) => r.me);
+    if (mine) assert.equal(mine.username, 'an_a', 'you see your own username');
+    const other = rows.find((r) => r.ref && readRef(r.ref) === uidOf('an_b'));
+    if (q === 'challenge' && !other) continue; // outside the window in this test's schedule
+    assert.ok(other, q);
+    assert.equal(other.username, aliasFor(uidOf('an_b')), 'a made-up name, always the same for the same member');
+    assert.notEqual(other.username, 'an_b');
+    assert.equal(other.displayName, '', 'no display name');
+    assert.equal(other.avatar, null, 'no picture');
+    assert.equal(other.me, false);
+    assert.ok(!JSON.stringify(rows).includes('an_b') && !JSON.stringify(rows).includes('Bilal'), 'the real name is nowhere in the reply');
+  }
+  const rows = (await api('GET', '/api/leaderboard?type=users&period=week', { token: a.token })).rows;
+  const ref = rows.find((r) => r.ref && readRef(r.ref) === uidOf('an_b')).ref;
+  const prof = await api('GET', `/api/members/ref/${ref}`, { token: a.token });
+  assert.equal(prof.username, 'an_b', 'tapping the row shows the real profile');
+  assert.equal(prof.displayName, 'Bilal Khan');
+  assert.equal((await api('GET', `/api/members/ref/${ref.slice(0, -1)}x`, { token: a.token })).status, 404, 'a forged ref is refused');
+  assert.equal((await api('GET', '/api/members/ref/zzz.abc', { token: a.token })).status, 404);
+  assert.equal((await api('GET', `/api/members/ref/${ref}`)).status, 401, 'signed in only');
+  // the alias is the same for everyone looking, and different members get different aliases
+  const seenByB = (await api('GET', '/api/leaderboard?type=users&period=week', { token: b.token })).rows.find((r) => r.ref && readRef(r.ref) === uidOf('an_a'));
+  assert.equal(seenByB.username, aliasFor(uidOf('an_a')));
+  assert.notEqual(aliasFor(uidOf('an_a')), aliasFor(uidOf('an_b')));
+});

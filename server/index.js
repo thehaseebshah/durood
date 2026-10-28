@@ -10,7 +10,7 @@ import * as caravanApi from './caravan.js';
 import * as profile from './profile.js';
 import * as admins from './admins.js';
 import { USERNAME, isReserved, handleTaken as handleTakenBy } from './handles.js';
-import { HttpError, hashPassword, checkPassword, signToken, verifyToken, rateLimit, lockedOut, recordFailure, forgiveFailure, clearFailures, clientIp, rateIp, sameSecret, signDevice, deviceUser } from './auth.js';
+import { HttpError, readRef, hashPassword, checkPassword, signToken, verifyToken, rateLimit, lockedOut, recordFailure, forgiveFailure, clearFailures, clientIp, rateIp, sameSecret, signDevice, deviceUser } from './auth.js';
 import { auditAsync } from './audit.js';
 import * as access from './access.js';
 import { sendMail, mailLive, resetEmail, confirmEmail, inviteEmail, baseUrl } from './mail.js';
@@ -378,6 +378,14 @@ route('POST', '/api/me/phone', async ({ user, body }) => {
   profile.setPhone(user, phone);
   recordFailure(`phonechg:${user}`, 86400e3);
   return getMe(user);
+});
+// the profile behind a ranking row: the row carries a signed ref instead of the username (see auth.js)
+route('GET', '/api/members/ref/:ref', ({ user, params }) => {
+  rateLimit(`prof-view:${user}`, 120, 60e3);
+  const id = readRef(params.ref);
+  const u = id && one('SELECT username FROM users WHERE id = ?', id);
+  if (!u) throw new HttpError(404, 'not_found');
+  return profile.publicProfile(u.username);
 });
 route('GET', '/api/members/:username', ({ user, params }) => { rateLimit(`prof-view:${user}`, 120, 60e3); return profile.publicProfile(params.username); });
 // the chat address of a member who has not hidden their number: one signed-in request per chat, so numbers cannot be collected in bulk
