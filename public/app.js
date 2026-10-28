@@ -636,6 +636,7 @@ function profileModal() {
     ${p.displayName ? `<div class="pname" dir="auto">${esc(p.displayName)}</div>` : ''}
     ${p.bio ? `<p class="pbio" dir="auto">${esc(p.bio)}</p>` : ''}
     <p class="muted center">${p.city ? `${esc(cityName(p.city))} · ` : ''}${t('member_since')} ${esc(dayText(p.joined, SINCE))}${p.caravan ? ` · ${esc(p.caravan)}` : ''}</p>
+    ${p.phone ? `<p class="center"><bdi dir="ltr">${esc(p.phone)}</bdi></p>` : ''}
     ${p.whatsapp ? `<button class="blk wabtn" data-act="wachat" data-u="${esc(d.username)}"><span>${t('wa_message')}</span><b class="ar">→</b></button>` : ''}
     ${p.level ? `<div class="stats flat">${p.total != null ? cell(p.total, t('total'), 'durood') : ''}${cell(p.streak, t('streak_l'))}${cell(p.level, t('level'))}</div>` : ''}
     ${p.badges?.length ? `<div class="earned static">${p.badges.filter((c) => t('badge')[c]).map((c) => `<span title="${esc(t('badge')[c][0])}">${badgeSvg(c, true)}</span>`).join('')}</div>` : ''}</div></div>`;

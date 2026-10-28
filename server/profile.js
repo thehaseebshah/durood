@@ -97,7 +97,9 @@ export function setPhone(userId, phone) {
 }
 
 // ---- what anyone in the app may see ---------------------------------------------------------------------------------------------------
-export function publicProfile(username) {
+/** Only a caravan's leader (its owner) may see and use the contact details of the members of that caravan. */
+const leaderOf = (viewerId, targetId) => !!viewerId && !!one('SELECT 1 FROM caravans c JOIN caravan_members cm ON cm.caravan_id = c.id WHERE c.owner_id = ? AND cm.user_id = ? AND cm.user_id != c.owner_id', viewerId, targetId);
+export function publicProfile(username, viewerId = null) {
   const u = one(`SELECT id, username, display_name, bio, avatar_v, city, created_day, xp, streak, last_day, shields, total, hidden_from_ranks, held, phone, hide_phone FROM users WHERE username = ? AND deleted_at IS NULL AND suspended = 0`, String(username ?? ''));
   if (!u) throw new HttpError(404, 'not_found');
   const cv = one('SELECT c.name FROM caravan_members cm JOIN caravans c ON c.id = cm.caravan_id WHERE cm.user_id = ?', u.id);
@@ -109,13 +111,14 @@ export function publicProfile(username) {
   const badges = db.prepare('SELECT code FROM badges WHERE user_id = ? ORDER BY earned_at DESC LIMIT 6').all(u.id).map((b) => b.code);
   return { username: u.username, displayName: u.display_name, bio: u.bio, avatar: avatarUrl(u.id, u.avatar_v), city: u.city, joined: u.created_day, caravan: cv?.name ?? null,
     level: Math.floor(Math.sqrt(Math.max(0, u.xp) / 100)) + 1, streak, badges, total: onBoards ? u.total : null,
-    whatsapp: !!u.phone && !u.hide_phone }; // only whether a chat can be opened; the number itself is never in this reply
+    // contact details go to the leader of the member's own caravan, and only if the member has not hidden their number
+    ...(u.phone && !u.hide_phone && leaderOf(viewerId, u.id) ? { whatsapp: true, phone: u.phone } : { whatsapp: false }) };
 }
 
 /** The chat address for a member who has not hidden their number, handed out one signed-in request at a time (see rate limit in the route). */
 export function waLink(viewerId, username) {
   const u = one('SELECT id, phone, hide_phone FROM users WHERE username = ? AND deleted_at IS NULL AND suspended = 0', String(username ?? ''));
-  if (!u || !u.phone || u.hide_phone || u.id === viewerId) throw new HttpError(404, 'not_found');
+  if (!u || !u.phone || u.hide_phone || u.id === viewerId || !leaderOf(viewerId, u.id)) throw new HttpError(404, 'not_found');
   const now = Date.now();
   run('INSERT INTO wa_opens (viewer_id, target_id, at) VALUES (?,?,?)', viewerId, u.id, now);
   run('DELETE FROM wa_opens WHERE at < ?', now - 90 * 864e5);

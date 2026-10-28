@@ -56,3 +56,6 @@ Sign-up asks for a Majlis after the city: pick one, or choose "my majlis is not 
 ## Made-up names on the people rankings
 To protect ikhlas, the People ranking (week, challenge, all-time) and the weekly League show every other member under a made-up name (for example "Quiet Lantern 42"): no username, display name or picture. It is the same name for the same member every time (made from the server's secret). Your own row shows you as yourself. Each row carries a signed `ref`; tapping the row opens the real profile with the real username (`GET /api/members/ref/:ref`), so you can message them. Not changed: the caravan page, the feed and Sunnah photos still show real usernames.
 - The feed's achievement cards (milestones) use the same made-up names for other members and say so ("A made-up name, not their real username"); the ranking pages carry a note too. The Sunnah photo feed keeps real usernames.
+
+## Contact numbers
+Only the leader (owner) of a caravan sees the phone number and the WhatsApp button of that caravan's members, on the member's profile sheet (`GET /api/members/:username` adds `phone` and `whatsapp: true` only then; `GET /api/wa/:username` is the same rule, logged). Nobody else gets either, and a member can hide their number even from their leader in Settings. Admins still see numbers on the admin page.

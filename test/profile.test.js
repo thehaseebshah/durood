@@ -253,29 +253,37 @@ test('robots.txt keeps search engines out of the API, member photos and the admi
   for (const p of ['/api/', '/photos/', '/avatars/', '/admin.html']) assert.match(body, new RegExp(`Disallow: ${p.replace('.', '\\.')}`));
 });
 
-test('WhatsApp: a chat link for members who have not hidden their number, never the number in profiles', async () => {
-  const a = await signup('wa_a'), b = await signup('wa_b');
-  const prof = await api('GET', '/api/members/wa_b', { token: a.token });
+test('WhatsApp and contact numbers: only the leader of a member\'s own caravan, and never if the member hid it', async () => {
+  const { makeCaravan } = await import('./helpers.js');
+  const lead = await makeCaravan(api, 'wa_cv', 'wa_lead');
+  const b = await signup('wa_b', 'wa_cv'), c = await signup('wa_c', 'wa_cv'), outsider = await signup('wa_out');
+  // the leader sees the number and gets a chat link
+  const prof = await api('GET', '/api/members/wa_b', { token: lead.token });
   assert.equal(prof.whatsapp, true);
-  assert.ok(!JSON.stringify(prof).match(/\d{10}/), 'no phone number in the profile reply');
-  const link = await api('GET', '/api/wa/wa_b', { token: a.token });
+  assert.match(prof.phone, /^\+\d{10,15}$/);
+  const link = await api('GET', '/api/wa/wa_b', { token: lead.token });
   assert.equal(link.status, 200);
   assert.match(link.url, /^https:\/\/wa\.me\/\d{10,15}$/);
-  assert.equal((await api('GET', '/api/wa/wa_b')).status, 401, 'signed-in only');
-  assert.equal((await api('GET', '/api/wa/wa_a', { token: a.token })).status, 404, 'not your own');
-  assert.equal((await api('GET', '/api/wa/nobody_here', { token: a.token })).status, 404);
   assert.ok(db.prepare('SELECT COUNT(*) c FROM wa_opens').get().c >= 1, 'each open is logged');
-  // the member hides their number
-  const hide = await api('PATCH', '/api/me', { token: b.token, body: { hidePhone: true } });
-  assert.equal(hide.hidePhone, true);
-  assert.equal((await api('GET', '/api/members/wa_b', { token: a.token })).whatsapp, false);
-  assert.equal((await api('GET', '/api/wa/wa_b', { token: a.token })).status, 404);
+  // nobody else: not a fellow member, not a member of another caravan, not signed out
+  for (const viewer of [c, outsider]) {
+    const p = await api('GET', '/api/members/wa_b', { token: viewer.token });
+    assert.equal(p.whatsapp, false);
+    assert.equal(p.phone, undefined, 'no number in the reply');
+    assert.equal((await api('GET', '/api/wa/wa_b', { token: viewer.token })).status, 404);
+  }
+  assert.equal((await api('GET', '/api/wa/wa_b')).status, 401, 'signed in only');
+  assert.equal((await api('GET', '/api/wa/wa_lead', { token: lead.token })).status, 404, 'not your own');
+  assert.equal((await api('GET', '/api/wa/wa_out', { token: lead.token })).status, 404, 'a member of another caravan is not theirs to contact');
+  // a member who hides their number is hidden from the leader too
+  assert.equal((await api('PATCH', '/api/me', { token: b.token, body: { hidePhone: true } })).hidePhone, true);
+  assert.equal((await api('GET', '/api/members/wa_b', { token: lead.token })).whatsapp, false);
+  assert.equal((await api('GET', '/api/wa/wa_b', { token: lead.token })).status, 404);
   await api('PATCH', '/api/me', { token: b.token, body: { hidePhone: false } });
-  assert.equal((await api('GET', '/api/wa/wa_b', { token: a.token })).status, 200);
+  assert.equal((await api('GET', '/api/wa/wa_b', { token: lead.token })).status, 200);
   // an admin can hide it after a complaint
-  const adm = await api('POST', '/api/admin/members/wa_b', { headers: admin, body: { action: 'hide-phone' } });
-  assert.equal(adm.status, 200);
-  assert.equal((await api('GET', '/api/wa/wa_b', { token: a.token })).status, 404);
+  assert.equal((await api('POST', '/api/admin/members/wa_b', { headers: admin, body: { action: 'hide-phone' } })).status, 200);
+  assert.equal((await api('GET', '/api/wa/wa_b', { token: lead.token })).status, 404);
 });
 
 test('WhatsApp: sign-up can start with the number hidden', async () => {

@@ -385,9 +385,9 @@ route('GET', '/api/members/ref/:ref', ({ user, params }) => {
   const id = readRef(params.ref);
   const u = id && one('SELECT username FROM users WHERE id = ?', id);
   if (!u) throw new HttpError(404, 'not_found');
-  return profile.publicProfile(u.username);
+  return profile.publicProfile(u.username, user);
 });
-route('GET', '/api/members/:username', ({ user, params }) => { rateLimit(`prof-view:${user}`, 120, 60e3); return profile.publicProfile(params.username); });
+route('GET', '/api/members/:username', ({ user, params }) => { rateLimit(`prof-view:${user}`, 120, 60e3); return profile.publicProfile(params.username, user); });
 // the chat address of a member who has not hidden their number: one signed-in request per chat, so numbers cannot be collected in bulk
 route('GET', '/api/wa/:username', ({ user, params }) => { rateLimit(`wa:${user}`, 40, 3600e3); return profile.waLink(user, params.username); });
 

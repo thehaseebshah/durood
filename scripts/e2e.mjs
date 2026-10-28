@@ -367,9 +367,10 @@ try {
     const real = (await page.locator('.modal .box.profile h3.in').innerText()).trim();
     ok(real !== shown && /^[a-z0-9_]{3,20}$/.test(real), `tapping the row shows the real username ("${real}")`);
     ok(await page.locator('.modal .box.profile').count() === 1, 'tapping a ranking row opens the profile');
-    ok(await page.locator('.modal .box.profile [data-act=wachat]').count() === 1, 'another member\'s profile offers a WhatsApp message by default');
+    const inMine = /e2e_cv/.test(await page.locator('.modal .box.profile').innerText());
+    ok(await page.locator('.modal .box.profile [data-act=wachat]').count() === (inMine ? 1 : 0), 'the WhatsApp button shows only to the leader, for members of their own caravan');
     const hasNum = await page.evaluate(() => /\+?\d{10,}/.test(document.querySelector('.modal .box.profile').textContent));
-    ok(!hasNum, 'the profile sheet never shows a phone number');
+    ok(hasNum === inMine, 'a phone number shows on the profile sheet only to the leader');
     await page.close();
   }
 
