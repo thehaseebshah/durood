@@ -1,0 +1,12 @@
+{
+  "name": "tasbeeh-simple",
+  "version": "1.0.0",
+  "description": "One page: enter a phone number and today's tasbeeh count; new numbers also give a name and city.",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.5" },
+  "scripts": {
+    "start": "node --no-warnings server.js",
+    "test": "node --test --no-warnings test/*.test.js"
+  }
+}

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c0e2b">
+<title>Tasbeeh</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>Tasbeeh</h1>
+    <p class="sub">Enter your phone number and today's count.</p>
+  </header>
+
+  <form id="form" novalidate autocomplete="on">
+    <label for="phone">Phone number</label>
+    <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="0300 1234567" required dir="ltr">
+    <p class="hint" id="phone-hint"></p>
+
+    <div id="newcomer" hidden>
+      <p class="note">This number is new here. Please tell us who you are.</p>
+      <label for="name">Your name</label>
+      <input id="name" name="name" type="text" autocomplete="name" maxlength="60" placeholder="Your name">
+      <label for="city">City</label>
+      <select id="city" name="city"><option value="">Choose your city</option></select>
+    </div>
+
+    <label for="count">Today's tasbeeh count</label>
+    <input id="count" name="count" type="number" inputmode="numeric" min="1" max="1000000" step="1" placeholder="e.g. 313" required dir="ltr">
+
+    <p class="error" id="error" role="alert"></p>
+    <button id="submit" type="submit">Add</button>
+  </form>
+
+  <section id="stats" hidden aria-live="polite">
+    <h2>JazakAllah, added</h2>
+    <div class="grid">
+      <div class="card"><span class="label">Today</span><b id="you-today">0</b><small>everyone: <span id="all-today">0</span></small></div>
+      <div class="card"><span class="label">This week</span><b id="you-week">0</b><small>everyone: <span id="all-week">0</span></small></div>
+    </div>
+    <div class="card wide">
+      <span class="label">Overall target</span>
+      <b><span id="all-total">0</span> <small>of <span id="target">0</span></small></b>
+      <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="bar"><i id="fill"></i></div>
+      <small id="pct"></small>
+    </div>
+    <p class="note small">The first number in each box is yours; the total is everyone together.</p>
+  </section>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
