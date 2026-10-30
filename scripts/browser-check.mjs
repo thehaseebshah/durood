@@ -1,5 +1,6 @@
 // Walks the page in a real browser: node scripts/browser-check.mjs [http://localhost:8080]  (needs Playwright installed; not a dependency of the app)
 import { chromium } from 'playwright';
+const PHONE = '0300 70' + String(Math.floor(Math.random() * 90000 + 10000));
 const BASE = process.argv[2] || 'http://localhost:8787';
 const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!c) process.exitCode = 1; };
 await (async () => {
@@ -10,7 +11,7 @@ await (async () => {
   ok(await page.locator('#phone').isVisible() && await page.locator('#count').isVisible(), 'phone and count are visible at first');
   ok(!(await page.locator('#newcomer').isVisible()), 'name and city are hidden at first');
   ok(!(await page.locator('#stats').isVisible()), 'stats are hidden at first');
-  await page.fill('#phone', '0300 7000001'); await page.waitForTimeout(1000);
+  await page.fill('#phone', PHONE); await page.waitForTimeout(1000);
   ok(await page.locator('#newcomer').isVisible(), 'an unknown number reveals name and city');
   ok((await page.locator('#city option').count()) > 90 && (await page.locator('#city').evaluate((e) => e.tagName)) === 'SELECT', 'the city is a dropdown');
   await page.fill('#count', '313');
@@ -24,7 +25,7 @@ await (async () => {
   ok((await page.textContent('#target')) === '100,000,000', 'the overall target is shown');
     // the same number again: only the count is asked
   await page.reload(); await page.waitForTimeout(400);
-  await page.fill('#phone', '+92 300 7000001'); await page.waitForTimeout(1000);
+  await page.fill('#phone', PHONE); await page.waitForTimeout(1000);
   ok(!(await page.locator('#newcomer').isVisible()), 'a known number does not ask for a name or city');
   await page.fill('#count', '4500'); await page.click('#submit'); await page.waitForTimeout(800);
   ok((await page.textContent('#you-today')) === '4,813', 'a second entry adds up (313 + 4,500)');
