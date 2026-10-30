@@ -151,3 +151,23 @@ test('the scheduled run backs up and prunes old request ids', async () => {
   await pruneRids(env.DB);
   assert.equal(env.DB.raw.prepare("SELECT COUNT(*) n FROM rids WHERE rid = 'old-request-id'").get().n, 0);
 });
+
+test('/api/backup runs a backup only for the holder of the secret', async () => {
+  const sent = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (u, init) => { sent.push(JSON.parse(init.body)); return new Response(JSON.stringify({ ok: true, rows: 4 })); };
+  try {
+    const e2 = { DB: env.DB, SHEETS_URL: 'https://sheet.test/exec', SHEETS_TOKEN: 'sekrit' };
+    const ask = (headers) => worker.fetch(new Request('https://x.test/api/backup', { method: 'POST', headers }), e2);
+    assert.equal((await ask({})).status, 403, 'no secret');
+    assert.equal((await ask({ 'x-backup-token': 'wrong' })).status, 403);
+    assert.equal((await ask({ 'x-backup-token': 'sekrit!' })).status, 403, 'a longer guess');
+    assert.equal(sent.length, 0);
+    const ok = await ask({ 'x-backup-token': 'sekrit' });
+    assert.equal(ok.status, 200);
+    assert.deepEqual(await ok.json(), { ok: true, rows: 4 });
+    assert.equal(sent.length, 1);
+    const none = await worker.fetch(new Request('https://x.test/api/backup', { method: 'POST', headers: { 'x-backup-token': '' } }), { DB: env.DB });
+    assert.equal(none.status, 403, 'with no secret configured nobody gets in');
+  } finally { globalThis.fetch = realFetch; }
+});

@@ -16,12 +16,21 @@ const limited = (ip, max = 60) => {
   return h.length > max;
 };
 
+// comparing secrets without stopping at the first different character
+const same = (a, b) => { let d = a.length ^ b.length; for (let i = 0; i < Math.max(a.length, b.length); i++) d |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0); return d === 0; };
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const target = Number(env.TARGET) || 100_000_000;
     try {
       if (request.method === 'GET' && url.pathname === '/healthz') return reply(200, { ok: true, backup: await backupStatus(env.DB, !!env.SHEETS_URL) });
+      // run a backup now (to check the Google Sheet link): only with the same secret the sheet checks
+      if (request.method === 'POST' && url.pathname === '/api/backup') {
+        const given = request.headers.get('x-backup-token') || '';
+        if (!env.SHEETS_TOKEN || !same(given, env.SHEETS_TOKEN)) return reply(403, { error: 'forbidden' });
+        return reply(200, await sendBackup(env.DB, { url: env.SHEETS_URL, token: env.SHEETS_TOKEN }));
+      }
       if (request.method === 'GET' && url.pathname === '/api/cities') return reply(200, { cities: cityList() });
       if (request.method === 'POST' && (url.pathname === '/api/check' || url.pathname === '/api/entry')) {
         if (limited(request.headers.get('CF-Connecting-IP') || 'unknown')) return reply(429, { error: 'slow_down' });
