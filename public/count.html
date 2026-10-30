@@ -8,23 +8,24 @@
 <title>Tasbeeh</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/mihrab.css">
 </head>
-<body>
-<header class="hero">
-  <button type="button" id="theme" class="lang theme" aria-label="Theme"></button>
-  <button type="button" id="lang" class="lang" aria-label="Language"></button>
-  <p class="salawat" lang="ar" dir="rtl">اللّٰهُمَّ صَلِّ عَلٰى مُحَمَّدٍ وَعَلٰى اٰلِ مُحَمَّدٍ</p>
+<body class="app">
+<header class="bar">
+  <button type="button" id="theme" class="pill" aria-label="Theme"></button>
   <h1 data-i18n="title">Tasbeeh</h1>
-  <p class="sub" data-i18n="sub">Count together, every day.</p>
+  <button type="button" id="lang" class="pill" aria-label="Language"></button>
 </header>
 
-<main>
-  <form id="form" class="panel" novalidate autocomplete="on">
-    <label for="phone" data-i18n="phone">Phone number</label>
-    <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="0300 1234567" required dir="ltr">
-    <p class="hint" id="phone-hint"></p>
+<main class="count">
+  <form id="form" novalidate autocomplete="on">
+    <div class="field">
+      <label for="phone" data-i18n="phone">Phone number</label>
+      <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="0300 1234567" required dir="ltr">
+      <p class="hint" id="phone-hint"></p>
+    </div>
 
-    <div id="newcomer" hidden>
+    <div id="newcomer" class="field" hidden>
       <p class="welcome" data-i18n="welcome">New here? Welcome. Tell us who you are, just once.</p>
       <label for="name" data-i18n="name">Your name</label>
       <input id="name" name="name" type="text" autocomplete="name" maxlength="60" placeholder="Your name" data-i18n-ph="name">
@@ -32,10 +33,27 @@
       <select id="city" name="city"><option value="" data-i18n="choose_city">Choose your city</option></select>
     </div>
 
-    <label for="count" data-i18n="count">Today's tasbeeh count</label>
-    <input id="count" name="count" type="number" inputmode="numeric" min="1" max="1000000" step="1" placeholder="0" required dir="ltr" class="big">
+    <div class="arch" id="arch">
+      <svg viewBox="0 0 210 250" aria-hidden="true">
+        <defs><linearGradient id="archglow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="g0"/><stop offset="1" class="g1"/></linearGradient></defs>
+        <path class="niche" d="M8 248 V110 C8 56 66 38 105 4 C144 38 202 56 202 110 V248 Z"/>
+        <path class="niche2" d="M22 248 V112 C22 64 70 50 105 22 C140 50 188 64 188 112 V248"/>
+        <circle class="moon" cx="105" cy="44" r="7"/><circle class="moon-cut" cx="108" cy="42" r="6"/>
+      </svg>
+      <div class="in">
+        <span class="lab" data-i18n="count">Today's tasbeeh count</span>
+        <input id="count" name="count" type="text" readonly inputmode="none" placeholder="0" required dir="ltr" aria-label="Count" data-len="1">
+      </div>
+    </div>
+
     <div class="quick" id="quick" role="group" aria-label="Quick amounts" data-i18n-aria="quick">
-      <button type="button" data-n="33">33</button><button type="button" data-n="100">100</button><button type="button" data-n="313">313</button><button type="button" data-n="500">500</button><button type="button" data-n="1000">1,000</button>
+      <button type="button" data-n="33">+33</button><button type="button" data-n="100">+100</button><button type="button" data-n="313">+313</button><button type="button" data-n="500">+500</button><button type="button" data-n="1000">+1,000</button>
+    </div>
+    <div class="pad" id="pad" role="group" aria-label="Number pad" data-i18n-aria="pad" dir="ltr">
+      <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+      <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+      <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+      <button type="button" data-k="clear" class="soft" data-i18n-aria="clear" aria-label="Clear">C</button><button type="button" data-k="0">0</button><button type="button" data-k="back" class="soft" data-i18n-aria="back" aria-label="Delete">⌫</button>
     </div>
 
     <p class="error" id="error" role="alert"></p>
@@ -51,12 +69,12 @@
     <div class="card wide">
       <span class="label" data-i18n="target_label">Overall target</span>
       <p class="total"><b class="num" id="all-total">0</b> <small><span data-i18n="of">of</span> <span id="target">0</span></small></p>
-      <div class="bar" role="progressbar" aria-label="Progress to the overall target" data-i18n-aria="progress" aria-valuemin="0" aria-valuemax="100" id="bar"><i id="fill"></i></div>
+      <div class="bar-track" role="progressbar" aria-label="Progress to the overall target" data-i18n-aria="progress" aria-valuemin="0" aria-valuemax="100" id="bar"><i id="fill"></i></div>
       <small id="pct"></small>
     </div>
     <p class="foot" data-i18n="foot">The big number in each box is yours. "Everyone" is all of us together.</p>
   </section>
-  <p class="foot"><a href="/stats" id="stats-link" data-i18n="stats_link">See everyone's stats</a></p>
+  <p class="foot"><a href="/stats" id="stats-link" data-i18n="stats_link">See the road and everyone's stats</a></p>
 </main>
 <script src="/app.js"></script>
 </body>

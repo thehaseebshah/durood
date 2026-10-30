@@ -8,25 +8,25 @@ const fmt = (n) => Number(n).toLocaleString('en-US');
 const TEXT = {
   en: {
     title: 'Tasbeeh', sub: 'Count together, every day.', phone: 'Phone number', welcome: 'New here? Welcome. Tell us who you are, just once.',
-    name: 'Your name', city: 'City', choose_city: 'Choose your city', other_city: 'Other (outside Pakistan)', count: "Today's tasbeeh count", quick: 'Quick amounts',
+    name: 'Your name', city: 'City', choose_city: 'Choose your city', other_city: 'Other (outside Pakistan)', count: "Today's tasbeeh count", quick: 'Quick amounts', pad: 'Number pad', clear: 'Clear', back: 'Delete',
     add: 'Add to today', added: 'JazakAllah, added', today: 'Today', week: 'This week', everyone: 'everyone', target_label: 'Overall target', of: 'of',
     progress: 'Progress to the overall target', pct: (p) => `${p}% of the target`, foot: 'The big number in each box is yours. "Everyone" is all of us together.',
     hint_new: 'New number: please add your name and city below.', hint_back: 'Welcome back.', hint_saved: 'Saved.', switch: 'اردو',
     bad_phone: 'That does not look like a phone number. Include the full number, for example 0300 1234567.', bad_count: 'Enter a whole number, at least 1.',
     need_name: 'Please type your name.', need_city: 'Please choose your city.', slow_down: 'A lot of tries in a short time. Please wait a minute.',
     bad_request: 'Something went wrong. Please try again.', no_caravan: 'This link does not belong to a group. Please ask for a new link.', offline: 'Could not connect. Check your internet and try again.',
-    to_light: 'Switch to light mode', to_dark: 'Switch to dark mode', stats_link: "See everyone's stats",
+    to_light: 'Switch to light mode', to_dark: 'Switch to dark mode', stats_link: "See the road and everyone's stats",
   },
   ur: {
     title: 'تسبیح', sub: 'ہر روز، مل کر شمار کریں۔', phone: 'فون نمبر', welcome: 'نئے ہیں؟ خوش آمدید۔ بس ایک بار اپنا تعارف کروا دیں۔',
-    name: 'آپ کا نام', city: 'شہر', choose_city: 'اپنا شہر چنیں', other_city: 'دیگر (پاکستان سے باہر)', count: 'آج کی تسبیحات کی تعداد', quick: 'فوری مقدار',
+    name: 'آپ کا نام', city: 'شہر', choose_city: 'اپنا شہر چنیں', other_city: 'دیگر (پاکستان سے باہر)', count: 'آج کی تسبیحات کی تعداد', quick: 'فوری مقدار', pad: 'نمبر پیڈ', clear: 'صاف کریں', back: 'مٹائیں',
     add: 'آج میں شامل کریں', added: 'جزاک اللہ، شامل ہو گیا', today: 'آج', week: 'اس ہفتے', everyone: 'سب مل کر', target_label: 'مجموعی ہدف', of: 'میں سے',
     progress: 'مجموعی ہدف کی طرف پیش رفت', pct: (p) => `ہدف کا ${p}٪ مکمل`, foot: 'ہر خانے میں بڑا عدد آپ کا ہے۔ «سب مل کر» ہم سب کا مجموعہ ہے۔',
     hint_new: 'نیا نمبر: براہِ کرم نیچے اپنا نام اور شہر لکھیں۔', hint_back: 'دوبارہ خوش آمدید۔', hint_saved: 'محفوظ ہو گیا۔', switch: 'English',
     bad_phone: 'یہ فون نمبر درست نہیں لگتا۔ پورا نمبر لکھیں، مثلاً 0300 1234567۔', bad_count: 'پورا عدد لکھیں، کم از کم 1۔',
     need_name: 'براہِ کرم اپنا نام لکھیں۔', need_city: 'براہِ کرم اپنا شہر چنیں۔', slow_down: 'تھوڑی دیر میں بہت کوششیں ہو گئیں۔ ایک منٹ رکیں۔',
     bad_request: 'کچھ گڑبڑ ہو گئی۔ دوبارہ کوشش کریں۔', no_caravan: 'یہ لنک کسی گروپ کا نہیں ہے۔ براہِ کرم نیا لنک مانگیں۔', offline: 'رابطہ نہیں ہو سکا۔ انٹرنیٹ دیکھیں اور دوبارہ کوشش کریں۔',
-    to_light: 'روشن موڈ پر جائیں', to_dark: 'تاریک موڈ پر جائیں', stats_link: 'سب کے اعداد و شمار دیکھیں',
+    to_light: 'روشن موڈ پر جائیں', to_dark: 'تاریک موڈ پر جائیں', stats_link: 'راستہ اور سب کے اعداد و شمار دیکھیں',
   },
 };
 let lang = 'en';
@@ -149,15 +149,37 @@ function showStats(s, animate = true) {
   if (animate && first) $('stats').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
 }
 
+// the count is typed on the number pad (or a keyboard); the quick amounts add to it
+const MAX_DIGITS = 7;
+let digits = '';
+function setCount(v) {
+  digits = String(v).replace(/\D/g, '').replace(/^0+/, '').slice(0, MAX_DIGITS);
+  $('count').value = digits ? fmt(digits) : ''; $('count').dataset.len = String(Math.max(1, digits.length));
+  $('arch').classList.remove('bump'); void $('arch').offsetWidth; $('arch').classList.add('bump');
+  if (digits) clearFail();
+}
+const countValue = () => Number(digits || 0);
+$('pad').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[data-k]'); if (!b) return;
+  const k = b.dataset.k;
+  if (k === 'clear') setCount(''); else if (k === 'back') setCount(digits.slice(0, -1)); else setCount(digits + k);
+});
 $('quick').addEventListener('click', (ev) => {
   const b = ev.target.closest('button[data-n]'); if (!b) return;
-  $('count').value = String((Number($('count').value) || 0) + Number(b.dataset.n)); $('count').focus();
+  setCount(String(Math.min(10 ** MAX_DIGITS - 1, countValue() + Number(b.dataset.n))));
+});
+// a real keyboard works too, whenever no other box is being typed in
+addEventListener('keydown', (ev) => {
+  if (ev.ctrlKey || ev.metaKey || ev.altKey || /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName) && document.activeElement !== $('count')) return;
+  if (/^\d$/.test(ev.key)) { setCount(digits + ev.key); ev.preventDefault(); }
+  else if (ev.key === 'Backspace') { setCount(digits.slice(0, -1)); ev.preventDefault(); }
+  else if (ev.key === 'Enter' && document.activeElement === $('count')) { ev.preventDefault(); $('form').requestSubmit(); }
 });
 
 $('form').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   clearFail();
-  const phone = $('phone').value.trim(), count = Number($('count').value);
+  const phone = $('phone').value.trim(), count = countValue();
   if (!phone) { fail('bad_phone'); $('phone').focus(); return; }
   if (!Number.isInteger(count) || count < 1) { fail('bad_count'); $('count').focus(); return; }
   const body = { phone, count, rid };
@@ -167,7 +189,7 @@ $('form').addEventListener('submit', async (ev) => {
     const out = await call('/api/entry', body);
     known = true; lastChecked = phone; showNewcomer(false); say('phone-hint', t('hint_saved'));
     try { localStorage.setItem('phone', phone); } catch { /* ignore */ }   // remembered on this device, so next time only the count is needed
-    $('count').value = ''; rid = crypto.randomUUID();
+    setCount(''); rid = crypto.randomUUID();
     showStats(out);
   } catch (e) {
     if (e.code === 'need_name' || e.code === 'need_city') { known = false; showNewcomer(true); $(e.code === 'need_name' ? 'name' : 'city').focus(); }

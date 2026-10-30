@@ -67,8 +67,8 @@ input.big { font-size: 2.4rem; font-weight: 800; text-align: center; min-height:
 .total { margin: 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .total .num { display: inline-block; }
 .card small { color: var(--muted); }
-.bar { height: 14px; border-radius: 7px; background: var(--line); overflow: hidden; margin: 10px 0 6px; }
-.bar i { display: block; height: 100%; width: 0; min-width: 4px; background: linear-gradient(90deg, var(--ok), #3fb883); border-radius: 7px; transition: width .8s cubic-bezier(.2, .8, .2, 1); }
+.bar-track { height: 14px; border-radius: 7px; background: var(--line); overflow: hidden; margin: 10px 0 6px; }
+.bar-track i { display: block; height: 100%; width: 0; min-width: 4px; background: linear-gradient(90deg, var(--ok), #3fb883); border-radius: 7px; transition: width .8s cubic-bezier(.2, .8, .2, 1); }
 .foot { margin: 14px 4px 0; color: var(--muted); font-size: .85rem; text-align: center; }
 [hidden] { display: none !important; }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
@@ -88,7 +88,7 @@ html[lang=ur] .primary { padding-block: 10px; }
 html[lang=ur] input.big, html[lang=ur] .num { font-family: 'Inter', system-ui, sans-serif; }
 html[dir=rtl] select { background-position: 22px 50%, 16px 50%; }
 html[dir=rtl] .card::before { background: linear-gradient(270deg, var(--gold), var(--gold2)); }
-html[dir=rtl] .bar i { margin-inline-start: auto; }
+html[dir=rtl] .bar-track i { margin-inline-start: auto; }
 
 .theme { inset-inline-end: auto; inset-inline-start: 14px; padding: 0; width: 44px; font-size: 1.15rem; }
 input[type=number] { appearance: textfield; -moz-appearance: textfield; }

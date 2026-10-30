@@ -8,27 +8,44 @@
 <title>Tasbeeh stats</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/mihrab.css">
 <link rel="stylesheet" href="/stats.css">
 </head>
-<body>
-<header class="hero">
-  <button type="button" id="theme" class="lang theme" aria-label="Theme"></button>
-  <button type="button" id="lang" class="lang" aria-label="Language"></button>
-  <p class="salawat" lang="ar" dir="rtl">اللّٰهُمَّ صَلِّ عَلٰى مُحَمَّدٍ وَعَلٰى اٰلِ مُحَمَّدٍ</p>
-  <h1 data-i18n="title">Tasbeeh stats</h1>
-  <p class="sub" data-i18n="sub">All of us, together. Members appear under made-up names.</p>
+<body class="app">
+<header class="bar">
+  <button type="button" id="theme" class="pill" aria-label="Theme"></button>
+  <h1 id="title" data-i18n="title">Tasbeeh stats</h1>
+  <button type="button" id="lang" class="pill" aria-label="Language"></button>
 </header>
-<main class="wide-main">
+<main class="page">
+  <section class="hero-arch">
+    <div class="arch" id="arch" role="img" aria-labelledby="archlabel">
+      <svg viewBox="0 0 210 250" aria-hidden="true">
+        <defs><clipPath id="archclip"><path d="M8 248 V110 C8 56 66 38 105 4 C144 38 202 56 202 110 V248 Z"/></clipPath></defs>
+        <rect class="fillrect" id="archfill" x="0" y="250" width="210" height="0" clip-path="url(#archclip)"/>
+        <path class="niche" fill="none" d="M8 248 V110 C8 56 66 38 105 4 C144 38 202 56 202 110 V248 Z"/>
+        <path class="niche2" d="M22 248 V112 C22 64 70 50 105 22 C140 50 188 64 188 112 V248"/>
+        <circle class="moon" cx="105" cy="44" r="7"/><circle class="moon-cut" cx="108" cy="42" r="6"/>
+      </svg>
+      <div class="in">
+        <span class="lab" id="archlabel" data-i18n="overall">Overall target</span>
+        <b class="total" id="total">0</b>
+        <span class="of"><span data-i18n="of">of</span> <span id="target">0</span></span>
+        <span class="pctt" id="pct"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card block road-block">
+    <h2 data-i18n="road_h">The road to the target</h2>
+    <div class="road" id="road"></div>
+    <p class="road-note" data-i18n="road_note">The nearer the dome, the nearer the caravan is to its own target. Distances are not to scale.</p>
+  </section>
+
   <div class="tabs scope" role="tablist" id="scope">
     <button type="button" role="tab" data-scope="local" id="scope-local"></button>
     <button type="button" role="tab" data-scope="global" data-i18n="everyone">Everyone</button>
   </div>
-  <section class="card wide" id="overall">
-    <span class="label" data-i18n="overall">Overall target</span>
-    <p class="total"><b class="num" id="total">0</b> <small><span data-i18n="of">of</span> <span id="target">0</span></small></p>
-    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="bar"><i id="fill"></i></div>
-    <small id="pct"></small>
-  </section>
   <div class="grid4">
     <div class="card"><span class="label" data-i18n="today">Today</span><b class="num" id="today">0</b><small><span id="active-today">0</span> <span data-i18n="counting">people counting</span></small></div>
     <div class="card"><span class="label" data-i18n="week">This week</span><b class="num" id="week">0</b><small><span id="active-week">0</span> <span data-i18n="counting">people counting</span></small></div>

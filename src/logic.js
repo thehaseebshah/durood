@@ -224,6 +224,19 @@ async function globalRankings(db, salt, now) {
   };
 }
 
+/** The caravans ranked against each other, always live (a handful of rows), so a new caravan shows up at once; only the member counts come from the snapshot. */
+async function liveCaravans(db, gsnap, now) {
+  const today = dayOf(now), wk = weekStart(today);
+  const [cars, days] = await Promise.all([
+    db.prepare('SELECT id, slug, name, target, total FROM caravans ORDER BY id').all(),
+    db.prepare('SELECT caravan_id id, SUM(total) week, SUM(CASE WHEN day = ? THEN total ELSE 0 END) today FROM day_totals WHERE day >= ? GROUP BY caravan_id').bind(today, wk).all(),
+  ]);
+  const byDay = new Map(days.results.map((r) => [r.id, r]));
+  const members = new Map((gsnap.caravans || []).map((c) => [c.slug, c.members]));
+  return cars.results.map((r) => ({ slug: r.slug, name: r.name, target: r.target, members: members.get(r.slug) ?? 0, total: num(r.total), week: num(byDay.get(r.id)?.week), today: num(byDay.get(r.id)?.today) }))
+    .sort((a, b) => b.total - a.total);
+}
+
 async function snapshot(db, key, today, now, compute) {
   const saved = await db.prepare('SELECT value FROM meta WHERE key = ?').bind(key).first();
   let snap = null;
@@ -257,6 +270,7 @@ export async function publicStats(db, { caravan, salt = '', now = Date.now(), da
   ]);
   const snap = await snapshot(db, `public_rankings:${cid}`, today, now, () => rankings(db, caravan, salt, now));
   const gsnap = await snapshot(db, 'public_global', today, now, () => globalRankings(db, salt, now));
+  const live = await liveCaravans(db, gsnap, now);
   const series = lastDays(daily.results, now, days), gseries = lastDays(gDaily.results, now, days);
   const sumWeek = (ser) => ser.filter((x) => x.day >= wk).reduce((a, x) => a + x.total, 0);
   return {
@@ -266,6 +280,6 @@ export async function publicStats(db, { caravan, salt = '', now = Date.now(), da
       target: num(gTotal?.t), name: 'everyone', total: num(gTotal?.n), members: gsnap.members, today: gseries.at(-1).total, week: sumWeek(gseries), daily: gseries,
       active: gsnap.active, top: gsnap.top, cities: gsnap.cities,
     },
-    caravans: gsnap.caravans.map(({ slug, ...c }) => ({ ...c, mine: slug === caravan.slug })),
+    caravans: live.map(({ slug, ...c }) => ({ ...c, members: slug === caravan.slug ? num(members?.n) : c.members, mine: slug === caravan.slug })),
   };
 }

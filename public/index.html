@@ -8,14 +8,20 @@
 <title>Tasbeeh</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/mihrab.css">
 </head>
-<body>
-<header class="hero">
-  <p class="salawat" lang="ar" dir="rtl">اللّٰهُمَّ صَلِّ عَلٰى مُحَمَّدٍ وَعَلٰى اٰلِ مُحَمَّدٍ</p>
-  <h1>Tasbeeh</h1>
-  <p class="sub">Count together, every day.</p>
-</header>
-<main>
+<body class="app">
+<header class="bar"><span class="pill ghost">·</span><h1>Tasbeeh</h1><span class="pill ghost">·</span></header>
+<main class="count landing">
+  <div class="arch">
+    <svg viewBox="0 0 210 250" aria-hidden="true">
+      <defs><linearGradient id="archglow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="g0"/><stop offset="1" class="g1"/></linearGradient></defs>
+      <path class="niche" d="M8 248 V110 C8 56 66 38 105 4 C144 38 202 56 202 110 V248 Z"/>
+      <path class="niche2" d="M22 248 V112 C22 64 70 50 105 22 C140 50 188 64 188 112 V248"/>
+      <circle class="moon" cx="105" cy="44" r="7"/><circle class="moon-cut" cx="108" cy="42" r="6"/>
+    </svg>
+    <div class="in"><span class="lab">Count together, every day.</span></div>
+  </div>
   <section class="panel">
     <p class="welcome">Every group counts with its own link. Please use the link your group was given.</p>
     <p class="hint">Don't have one? Ask the person who runs your group.</p>
