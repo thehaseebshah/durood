@@ -13,10 +13,12 @@ This branch holds content only; the app lives on the main branch. PDF guides can
 | `assets/shots/` | Real screenshots of the app (dark mode), captured by `tools/capture.mjs` (used by 001) |
 | `assets/tour/` | Every screen of the app (light mode) for the full tour, captured by `tools/capture-tour.mjs`: phone views, whole pages, animation frames and `manifest.json` (page heights and where each UI element sits) |
 | `assets/full/` | Every screen of the released app (the Al-Burhan edition: tasks, My people, majalis too), light mode, captured by `tools/capture-full.mjs` (used by 003) |
+| `assets/tasbeeh/` | The Tasbeeh page (branch `tasbeeh-cloudflare`), dark mode, every step typed character by character, captured by `tools/capture-tasbeeh.mjs` (used by 004) |
 | `assets/fonts/`, `assets/icon-512.png` | The app's own fonts (Inter, Noto Nastaliq Urdu, Amiri) and icon |
 | `tools/capture.mjs` | Starts the app on a throwaway database, seeds a demo community over the past week, screenshots the screens |
 | `tools/capture-tour.mjs` | The same for every screen, with whole scrolling pages, frame-by-frame animations and measured element positions for spotlights |
 | `tools/capture-full.mjs` | The same for the released app, with tasks and routines, My people, murabbi and masul (the Mamulaat app stood in for), majalis, the Learn pages, the admin page, and real tick and swipe animations |
+| `tools/capture-tasbeeh.mjs` | Runs the Tasbeeh page's real Worker on node:sqlite with a seeded demo community and captures each step for a how-to |
 | `tools/render.mjs` | Renders a `scene.html` to MP4 frame by frame (exact timing on any machine); `--jobs 4` splits the work over four browsers |
 | `tools/sfx.mjs` | Synthesises the sound effects from the scene's cue list (no music, no samples) |
 | `tools/poster.mjs` | Renders a `poster.html` to PNG (1080 × 1920 unless the page sets another size) |
@@ -31,6 +33,7 @@ This branch holds content only; the app lives on the main branch. PDF guides can
 | 001 | [Every durood counts](videos/001-every-durood-counts/post.md) | 56 s | Promo |
 | 002 | [The full tour](videos/002-the-full-tour/post.md) | 4 min 10 s | Promo: every feature of the public edition, chapter by chapter, in the app's Swiss style |
 | 003 | [Everything](videos/003-everything/post.md) | 4 min 59 s | Promo: the whole released app, with tasks, routines, My people and majalis |
+| 004 | [How to add your tasbeeh](videos/004-tasbeeh-how-to/post.md) | 62 s | How-to: the Tasbeeh page (branch `tasbeeh-cloudflare`), step by step |
 
 ## Posters
 
@@ -63,8 +66,8 @@ node tools/render.mjs videos/002-the-full-tour --jobs 4
 ## House rules
 
 - **Real screens only.** Every app screen shown is a screenshot of the actual app (the capture tools), never a mock-up. The people in them are a seeded demo community: **men only, with made-up names**, never real members.
-- **Each video keeps the app version it was made from.** 001 was captured from app commit `99dde04`, 002 from `ea51602` and 003 from `75f51db`; recapture from that commit to change only the data.
-- **Style:** each promo has its own look (001: night sky and gold, dark screens; 002: the app's Swiss white, black and green, light screens). Common to all: heavy Inter, the eight-point star, Urdu in Nastaliq with every English line.
+- **Each video keeps the app version it was made from.** 001 was captured from app commit `99dde04`, 002 from `ea51602` and 003 from `75f51db`, 004 from the Tasbeeh page at `390b631`; recapture from that commit to change only the data.
+- **Style:** each promo has its own look (001: night sky and gold, dark screens; 002 and 003: the app's Swiss white, black and green, light screens; 004: the Tasbeeh page's navy and gold with a bead ring). Common to all: heavy Inter, the eight-point star, Urdu in Nastaliq with every English line.
 - **Keep text clear of the platform's buttons:** nothing important in the bottom 300 px or the right-hand 120 px.
 - **No music.** Sound effects only (synthesised); add a recitation or voice-over in the app you post from, if wanted.
 - Quran, hadith and figures are quoted with their source and checked by someone qualified before posting.

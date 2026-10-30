@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>004 · How to add your tasbeeh</title>
+<style>
+@font-face { font-family: 'Inter'; src: url('../../assets/fonts/inter-latin.woff2') format('woff2'); font-weight: 100 900; }
+@font-face { font-family: 'Nastaliq'; src: url('../../assets/fonts/nastaliq-ur-400.woff2') format('woff2'); font-weight: 400; }
+@font-face { font-family: 'Nastaliq'; src: url('../../assets/fonts/nastaliq-ur-700.woff2') format('woff2'); font-weight: 700; }
+
+/* the Tasbeeh page's own colours: night navy and gold */
+:root { --navy: #0c0e2b; --navy2: #171a3d; --line: #2b2f5e; --gold: #e8c26a; --gold2: #ffe3a3; --ink: #f2f2f7; --soft: #a4a6c2; --ok: #6bd49a; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; }
+body { position: relative; font-family: 'Inter', sans-serif; color: var(--ink); background: var(--navy); -webkit-font-smoothing: antialiased; }
+.abs { position: absolute; }
+.ur { font-family: 'Nastaliq', serif; direction: rtl; }
+.gold { color: var(--gold); }
+
+#bg { inset: 0; background:
+  radial-gradient(900px 700px at 50% 1250px, rgba(232, 194, 106, .16), rgba(232, 194, 106, 0) 70%),
+  radial-gradient(1000px 800px at 85% -100px, rgba(80, 90, 200, .25), rgba(80, 90, 200, 0) 70%),
+  linear-gradient(#07081d, #0c0e2b 45%, #101338); }
+#dots { inset: 0; opacity: .5; background-image: radial-gradient(rgba(164, 166, 194, .16) 1.6px, transparent 1.7px); background-size: 40px 40px;
+  -webkit-mask: linear-gradient(transparent, #000 30%, #000 70%, transparent); mask: linear-gradient(transparent, #000 30%, #000 70%, transparent); }
+
+/* a ring of 33 beads, counting */
+#ring { left: 50%; top: 50%; width: 1040px; height: 1040px; margin: -520px 0 0 -520px; }
+#ring circle { fill: #2b2f5e; }
+#ring circle.on { fill: var(--gold); }
+
+/* ---------- the phone ---------- */
+#phone { left: 240px; top: 640px; width: 600px; height: 1252px; border-radius: 76px; padding: 20px; background: linear-gradient(150deg, #2c2f4f, #090a1c 40%, #1b1e3b);
+  box-shadow: 0 0 0 2px #3a3f72, 0 0 0 3px rgba(232, 194, 106, .25), 0 50px 120px rgba(0, 0, 0, .6), 0 0 180px rgba(232, 194, 106, .12); }
+#screen { position: relative; width: 560px; height: 1212px; border-radius: 58px; overflow: hidden; background: var(--navy); }
+#shots { position: absolute; left: 0; top: 0; width: 560px; }
+#shots img { position: absolute; left: 0; top: 0; width: 560px; display: none; }
+#island { position: absolute; left: 50%; top: 14px; width: 128px; height: 36px; margin-left: -64px; border-radius: 20px; background: #000; z-index: 5; }
+#spot { position: absolute; border: 4px solid var(--gold); border-radius: 18px; box-shadow: 0 0 0 3000px rgba(4, 5, 20, .55), 0 0 30px rgba(232, 194, 106, .6); opacity: 0; z-index: 3; }
+#tap { position: absolute; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; border: 5px solid var(--gold2); background: rgba(255, 227, 163, .25); opacity: 0; z-index: 4; }
+
+/* ---------- words ---------- */
+#veil { left: 0; right: 0; top: 0; height: 700px; background: linear-gradient(#07081d 0%, rgba(9, 10, 32, .97) 80%, rgba(12, 14, 43, 0)); }
+#brand { left: 84px; right: 140px; top: 100px; display: flex; align-items: center; justify-content: space-between; }
+#brand .l { display: flex; align-items: center; gap: 16px; font-weight: 800; font-size: 26px; letter-spacing: 7px; text-transform: uppercase; color: var(--gold); }
+#brand .l i { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--gold); position: relative; }
+#brand .l i::after { content: ''; position: absolute; left: 50%; top: -10px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--gold); }
+#bars { display: flex; gap: 10px; }
+#bars b { width: 64px; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; position: relative; }
+#bars b i { position: absolute; inset: 0; background: var(--gold); transform-origin: left; transform: scaleX(0); }
+
+.cap { left: 84px; right: 140px; top: 178px; }
+.cap .k { font-weight: 800; font-size: 26px; letter-spacing: 6px; text-transform: uppercase; color: var(--gold); }
+.cap .t { margin-top: 14px; font-weight: 800; font-size: 64px; line-height: 1.04; letter-spacing: -2px; }
+.cap .u { margin-top: 12px; font-size: 42px; line-height: 1.85; color: var(--soft); text-align: right; }
+.cap .n { margin-top: 2px; font-weight: 600; font-size: 30px; line-height: 1.3; color: var(--gold2); }
+
+/* intro and end */
+.big { left: 84px; right: 84px; text-align: center; }
+#introK { top: 650px; font-weight: 800; font-size: 30px; letter-spacing: 10px; text-transform: uppercase; color: var(--gold); }
+#introT { top: 712px; font-weight: 900; font-size: 128px; line-height: .95; letter-spacing: -5px; }
+#introU { top: 975px; font-size: 64px; line-height: 1.8; color: var(--gold2); }
+#introN { top: 1140px; font-weight: 700; font-size: 36px; color: var(--soft); }
+#endT { top: 680px; font-weight: 900; font-size: 140px; letter-spacing: -5px; color: var(--gold); }
+#endE { top: 880px; left: 190px; right: 190px; font-weight: 700; font-size: 46px; line-height: 1.15; }
+#endU { top: 1010px; left: 190px; right: 190px; font-size: 42px; line-height: 1.9; color: var(--soft); }
+
+/* good to know */
+.tip { left: 84px; right: 140px; display: flex; gap: 30px; align-items: flex-start; padding: 34px 36px; border-radius: 28px; background: rgba(23, 26, 61, .94); border: 2px solid var(--line); box-shadow: 0 30px 60px rgba(0, 0, 0, .4); }
+.tip .no { flex: none; width: 70px; height: 70px; border-radius: 50%; display: grid; place-items: center; background: var(--gold); color: var(--navy); font-weight: 900; font-size: 36px; }
+.tip .e { font-weight: 800; font-size: 44px; line-height: 1.12; letter-spacing: -1px; }
+.tip .u { margin-top: 8px; font-size: 34px; line-height: 1.85; color: var(--soft); text-align: right; }
+</style>
+</head>
+<body>
+<div class="abs" id="bg"></div>
+<div class="abs" id="dots"></div>
+<svg class="abs" id="ring" viewBox="-520 -520 1040 1040"></svg>
+
+<div class="abs" id="phone"><div id="screen"><div id="shots"></div><div id="island"></div><div id="spot"></div><div id="tap"></div></div></div>
+
+<div class="abs" id="veil"></div>
+<div class="abs" id="brand"><div class="l"><i></i>Tasbeeh · How to</div><div id="bars"><b><i></i></b><b><i></i></b><b><i></i></b><b><i></i></b><b><i></i></b></div></div>
+<div id="caps"></div>
+
+<div class="abs big" id="introK">Tasbeeh · a quick guide</div>
+<div class="abs big" id="introT">How to add<br><span class="gold">your tasbeeh</span></div>
+<div class="abs big ur" id="introU">اپنی تسبیح کیسے درج کریں</div>
+<div class="abs big" id="introN">5 easy steps · under a minute</div>
+
+<div id="tips"></div>
+
+<div class="abs big" id="endT">JazakAllah</div>
+<div class="abs big" id="endE">Every count you add joins<br>everyone's target.</div>
+<div class="abs big ur" id="endU">آپ کی ہر تسبیح<br>سب کے ہدف میں شامل ہوتی ہے</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const DURATION = 62;
+const S = 560 / 390;                 // page px to screen px
+const PHONE_Y = 640, SCREEN_X = 20, SCREEN_Y = 20;
+
+// ---------- storyboard ----------
+// what the phone shows: [time, view, scroll]; typing is one view per character
+const SHOW = [[0, 'open']];
+const typing = (prefix, n, t0, dt) => { for (let i = 0; i <= n; i++) SHOW.push([t0 + i * dt, `${prefix}-${String(i).padStart(2, '0')}`]); };
+typing('phone', 12, 10.0, 0.09);
+SHOW.push([12.2, 'newcomer']);
+typing('name', 10, 15.6, 0.1);
+SHOW.push([17.7, 'city-focus'], [18.7, 'city']);
+typing('count', 3, 23.0, 0.16);
+SHOW.push([26.9, 'stats']);
+SHOW.push([39.4, 'open']);
+typing('back', 12, 40.0, 0.07);
+SHOW.push([41.3, 'welcome']);
+typing('more', 3, 43.3, 0.16);
+SHOW.push([45.1, 'stats-2']);
+SHOW.sort((a, b) => a[0] - b[0]);
+
+// page scroll (page px): pairs of [time, y]; the page glides to the totals after Add
+const SCROLL = [[0, 0], [26.9, 0], [27.6, 91], [39.3, 91], [39.4, 0], [45.1, 0], [45.8, 91], [99, 91]];
+// camera: [time, zoom, focus y on the page, lift (canvas px)]
+const CAM = [[0, 1, 400, 0], [9.2, 1, 211, 0], [9.9, 1.3, 211, 110], [12.6, 1.3, 211, 110], [13.4, 1.14, 420, 40], [22.4, 1.14, 420, 40], [23.0, 1.25, 340, 90],
+  [26.6, 1.25, 340, 90], [27.4, 1, 500, 0], [34.6, 1, 500, 0], [35.2, 1.12, 760, -40], [39.0, 1.12, 760, -40], [39.6, 1.3, 211, 110], [44.0, 1.3, 211, 110],
+  [44.8, 1, 400, 0], [99, 1, 400, 0]];
+// spotlights: [from, to, element]
+const SPOTS = [[5.4, 8.7, 'title'], [9.6, 11.9, 'phone'], [12.5, 15.3, 'newcomer'], [15.5, 17.4, 'name'], [17.7, 22.0, 'city'], [22.9, 25.1, 'count'], [25.3, 26.85, 'add'],
+  [28.4, 31.4, 'today'], [31.6, 34.4, 'week'], [34.8, 38.9, 'target'], [41.3, 43.0, 'hint'], [43.1, 44.4, 'count'], [44.5, 45.0, 'add'], [45.9, 49.6, 'today']];
+const TAPS = [[26.5, 'add'], [44.7, 'add']];
+// words: [from, to, step (0 = none), kicker, title, urdu, note]
+const CAPS = [
+  [4.4, 9.0, 1, 'Step 1', 'Open the Tasbeeh link you were sent.', 'آپ کو بھیجا گیا تسبیح کا لنک کھولیں', 'No app to install. No password.'],
+  [9.0, 13.4, 2, 'Step 2', 'Type your phone number.', 'اپنا فون نمبر لکھیں', 'Your number is how the page knows you.'],
+  [13.4, 22.5, 3, 'Step 3 · first time only', 'A new number asks for your name and city.', 'نیا نمبر ہو تو اپنا نام اور شہر لکھیں', 'Asked only once. Outside Pakistan? Choose “Other”.'],
+  [22.5, 28.0, 4, 'Step 4', 'Type today’s count, then press Add.', 'آج کی تعداد لکھیں اور Add دبائیں', ''],
+  [28.0, 31.5, 5, 'Step 5 · your totals', 'Today: the big number is yours.', 'آج: بڑا نمبر آپ کا، نیچے سب کا', 'Underneath: everyone together today.'],
+  [31.5, 34.6, 5, 'Step 5 · your totals', 'This week, counted from Monday.', 'اس ہفتے کی تعداد، پیر سے', 'Yours, and everyone’s this week.'],
+  [34.6, 39.3, 5, 'Step 5 · your totals', 'Everyone together, towards the target.', 'سب مل کر، ہدف کی طرف', 'The bar shows how far we have come.'],
+  [39.3, 45.6, 0, 'Next time', 'Just your number and your count.', 'اگلی بار: صرف نمبر اور تعداد', 'It says “Welcome back.” No name, no city.'],
+  [45.6, 50.0, 0, 'Next time', 'It all adds up: 313 + 100 = 413.', 'سب جمع ہوتا ہے: <bdi dir="ltr">313 + 100 = 413</bdi>', 'Add as many times a day as you like.'],
+];
+const TIPS = [
+  [50.6, 'Add as often as you like. It all adds up.', 'جتنی بار چاہیں درج کریں، سب جمع ہوتا ہے'],
+  [51.6, 'Pressed Add twice by mistake? It counts once.', 'غلطی سے دو بار دبا دیا؟ ایک ہی بار گنا جائے گا'],
+  [52.6, 'Days follow Pakistan time. Weeks start on Monday.', 'دن پاکستان کے وقت سے، ہفتہ پیر سے'],
+];
+const TIPS_AT = 50.0, END_AT = 57.0;
+
+// sound: a whoosh for each new caption, a bead click for each key and tap, a soft bloom when the totals appear
+const CUES = [{ t: 0, k: 'swell' }, { t: 3.3, k: 'whoosh' }];
+CAPS.forEach((c, i) => { if (i && CAPS[i - 1][4] !== c[4]) CUES.push({ t: c[0], k: c[2] === CAPS[i - 1][2] ? 'tick' : 'whoosh' }); });
+SHOW.forEach(([t, v]) => { if (/-(0[1-9]|1\d)$/.test(v)) CUES.push({ t, k: 'tap' }); });
+TAPS.forEach(([t]) => CUES.push({ t, k: 'thump' }));
+CUES.push({ t: 27.0, k: 'bloom' }, { t: 45.2, k: 'bloom' }, { t: TIPS_AT, k: 'whoosh' }, ...TIPS.map(([t]) => ({ t, k: 'thump' })), { t: END_AT, k: 'bloom' });
+CUES.sort((a, b) => a.t - b.t);
+
+// ---------- helpers ----------
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ease = (x) => { x = clamp(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const out = (x) => 1 - Math.pow(1 - clamp(x), 3);
+const fade = (t, a, b, i = .4, o = .3) => clamp((t - a) / i) * clamp((b - t) / o);
+function track(keys, t) {        // eased between keyframes
+  let i = 0; while (i < keys.length - 1 && keys[i + 1][0] <= t) i++;
+  const a = keys[i], b = keys[Math.min(i + 1, keys.length - 1)];
+  if (b === a || t <= a[0]) return a.slice(1);
+  const k = ease((t - a[0]) / (b[0] - a[0]));
+  return a.slice(1).map((v, j) => v + (b[j + 1] - v) * k);
+}
+const viewAt = (t) => { let v = SHOW[0][1]; for (const [s, n] of SHOW) if (s <= t) v = n; return v; };
+
+// ---------- build ----------
+let M;
+const imgs = {};
+const ring = $('ring');
+for (let i = 0; i < 33; i++) {
+  const a = (i / 33) * Math.PI * 2 - Math.PI / 2;
+  ring.insertAdjacentHTML('beforeend', `<circle cx="${(Math.cos(a) * 490).toFixed(1)}" cy="${(Math.sin(a) * 490).toFixed(1)}" r="${i === 0 ? 20 : 14}"/>`);
+}
+const beads = [...ring.querySelectorAll('circle')];
+$('caps').innerHTML = CAPS.map((c, i) => `<div class="abs cap" id="cap${i}"><div class="k">${c[3]}</div><div class="t">${c[4]}</div><div class="u ur">${c[5]}</div>${c[6] ? `<div class="n">${c[6]}</div>` : ''}</div>`).join('');
+$('tips').innerHTML = TIPS.map((c, i) => `<div class="abs tip" id="tip${i}" style="top:${560 + i * 300}px"><div class="no">${i + 1}</div><div><div class="e">${c[1]}</div><div class="u ur">${c[2]}</div></div></div>`).join('');
+
+function seek(t) {
+  // intro, the ring of beads (one lights up every quarter second), the end
+  const intro = fade(t, 0.2, 3.6, .7, .5), end = clamp((t - END_AT) / .8);
+  for (const [id, d] of [['introK', 0], ['introT', .25], ['introU', .6], ['introN', .9]]) {
+    const el = $(id), k = fade(t, 0.2 + d, 3.6, .7, .5);
+    el.style.opacity = k; el.style.transform = `translateY(${(1 - out((t - 0.2 - d) / .8)) * 40 - (t > 3.1 ? out((t - 3.1) / .5) * 60 : 0)}px)`;
+  }
+  const ringOn = Math.max(intro, end);
+  ring.style.opacity = ringOn * .9;
+  ring.style.transform = `rotate(${t * 4}deg) scale(${0.92 + ringOn * .08})`;
+  const lit = Math.floor(t * 4) % 34;
+  beads.forEach((b, i) => b.classList.toggle('on', i < lit));
+  for (const [id, d] of [['endT', 0], ['endE', .35], ['endU', .7]]) {
+    const el = $(id), k = clamp((t - END_AT - .3 - d) / .7);
+    el.style.opacity = k; el.style.transform = `translateY(${(1 - out(k)) * 50}px)`;
+  }
+
+  // the phone rises in after the title and sinks away for the tips and the end
+  const rise = 1 - out((t - 3.2) / 1.2), sink = ease((t - TIPS_AT) / .8);
+  const [z, fy, lift] = track(CAM, t), sc = track(SCROLL, t)[0];
+  const ph = $('phone');
+  ph.style.opacity = 1 - sink * .75 - end * .25;
+  const oy = SCREEN_Y + (fy - sc) * S;
+  ph.style.transformOrigin = `300px ${oy}px`;
+  ph.style.transform = `translateY(${rise * 1400 + sink * 420 - lift}px) scale(${z * (1 - sink * .06)})`;
+
+  // the screen
+  const v = viewAt(t);
+  for (const [n, img] of Object.entries(imgs)) img.style.display = n === v ? 'block' : 'none';
+  $('shots').style.transform = `translateY(${-sc * S}px)`;
+  const R = M.views[v].r;
+  let spot = null, sk = 0;
+  for (const [a, b, key] of SPOTS) if (t >= a - .05 && t < b + .3 && R[key]) { const k = fade(t, a, b, .3, .3); if (k > sk) { sk = k; spot = R[key]; } }
+  const sp = $('spot');
+  if (spot) {
+    const pad = 8, [x, y, w, h] = spot;
+    Object.assign(sp.style, { left: `${x * S - pad}px`, top: `${(y - sc) * S - pad}px`, width: `${w * S + pad * 2}px`, height: `${h * S + pad * 2}px`, opacity: sk });
+  } else sp.style.opacity = 0;
+  const tp = $('tap'); tp.style.opacity = 0;
+  for (const [a, key] of TAPS) if (t >= a && t < a + .6) {
+    const tr = M.views[viewAt(a)].r[key], k = (t - a) / .6;
+    Object.assign(tp.style, { left: `${(tr[0] + tr[2] / 2) * S}px`, top: `${(tr[1] + tr[3] / 2 - sc) * S}px`, opacity: 1 - k, transform: `scale(${.5 + k * 1.2})` });
+  }
+
+  // the words
+  let step = 0;
+  CAPS.forEach((c, i) => {
+    const el = $(`cap${i}`), k = fade(t, c[0], c[1], .45, .3);
+    el.style.opacity = k; el.style.transform = `translateY(${(1 - out((t - c[0]) / .5)) * 30}px)`;
+    if (t >= c[0] && t < c[1]) step = c[2] || (t >= 39.3 ? 6 : 0);
+  });
+  const chrome = clamp((t - 4.2) / .5) * (1 - clamp((t - END_AT) / .5));
+  $('brand').style.opacity = chrome; $('veil').style.opacity = chrome;
+  if (t >= TIPS_AT) step = 6;
+  [...$('bars').querySelectorAll('i')].forEach((b, i) => { b.style.transform = `scaleX(${step > i ? 1 : 0})`; });
+
+  // good to know
+  TIPS.forEach((c, i) => {
+    const el = $(`tip${i}`), k = clamp((t - c[0]) / .5) * (1 - clamp((t - END_AT) / .4));
+    el.style.opacity = k; el.style.transform = `translateX(${(1 - out((t - c[0]) / .6)) * 120}px)`;
+  });
+  const gk = clamp((t - TIPS_AT) / .4) * (1 - clamp((t - END_AT) / .4));
+  $('tipsHead').style.opacity = gk;
+}
+
+$('tips').insertAdjacentHTML('afterbegin', `<div class="abs cap" id="tipsHead"><div class="k">Good to know</div><div class="t">Three things to remember.</div><div class="u ur">تین باتیں یاد رکھیں</div></div>`);
+
+window.DURATION = DURATION; window.CUES = CUES; window.POSTER = 31; window.seek = seek;
+window.ready = (async () => {
+  M = await (await fetch('../../assets/tasbeeh/manifest.json')).json();
+  for (const n of new Set(SHOW.map((s) => s[1]))) {
+    if (!M.views[n]) throw new Error(`no capture for ${n}`);
+    const img = new Image(); img.src = `../../assets/tasbeeh/${n}.png`; $('shots').appendChild(img); imgs[n] = img;
+  }
+  await Promise.all([document.fonts.ready, document.fonts.load('900 56px Inter'), document.fonts.load('400 40px Nastaliq'), ...Object.values(imgs).map((i) => i.decode())]);
+  seek(0);
+})();
+
+// played in a browser: real time, click to restart
+if (!navigator.webdriver) {
+  let t0 = performance.now();
+  document.addEventListener('click', () => { t0 = performance.now(); });
+  const frame = () => { seek(((performance.now() - t0) / 1000) % DURATION); requestAnimationFrame(frame); };
+  window.ready.then(() => requestAnimationFrame(frame));
+}
+</script>
+</body>
+</html>
