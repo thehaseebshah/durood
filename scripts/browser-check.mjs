@@ -1,6 +1,6 @@
 // Walks the page in a real browser: node scripts/browser-check.mjs [http://localhost:8080]  (needs Playwright installed; not a dependency of the app)
 import { chromium } from 'playwright';
-const BASE = process.argv[2] || 'http://localhost:8080';
+const BASE = process.argv[2] || 'http://localhost:8787';
 const ok = (c, m) => { console.log(c ? 'ok  ' : 'FAIL', m); if (!c) process.exitCode = 1; };
 await (async () => {
   const b = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});

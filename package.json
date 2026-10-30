@@ -1,12 +1,18 @@
 {
-  "name": "tasbeeh-simple",
-  "version": "1.0.0",
-  "description": "One page: enter a phone number and today's tasbeeh count; new numbers also give a name and city.",
+  "name": "tasbeeh",
+  "version": "2.0.0",
+  "description": "One page: enter a phone number and today's tasbeeh count; new numbers also give a name and city. Cloudflare Workers + D1.",
   "private": true,
   "type": "module",
   "engines": { "node": ">=22.5" },
   "scripts": {
-    "start": "node --no-warnings server.js",
-    "test": "node --test --no-warnings test/*.test.js"
+    "test": "node --test --no-warnings test/*.test.js",
+    "dev": "wrangler dev",
+    "db:local": "wrangler d1 migrations apply tasbeeh --local",
+    "db:remote": "wrangler d1 migrations apply tasbeeh --remote",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
   }
 }

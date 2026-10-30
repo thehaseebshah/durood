@@ -1,8 +1,11 @@
 node_modules/
+.wrangler/
+.dev.vars
 data/
 android-app/
 guide/
 *.db
 *.db-wal
 *.db-shm
+restore.sql
 .DS_Store

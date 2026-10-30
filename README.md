@@ -1,6 +1,6 @@
-# Tasbeeh (simple)
+# Tasbeeh
 
-One web page. No accounts, no passwords.
+One web page, free to run on **Cloudflare Workers + D1**. No accounts, no passwords.
 
 1. Enter a **phone number** and **today's tasbeeh count**.
 2. If the phone number is already known, that is all: press Add.
@@ -9,30 +9,38 @@ One web page. No accounts, no passwords.
 
 The phone number is the only identity. Anyone who knows a number can add counts under it, so keep this for a community that trusts each other.
 
-## Run
+## Put it online (free, about 10 minutes, no card needed)
+You need a free Cloudflare account and Node 22 on your computer.
 ```
-node --no-warnings server.js        # http://localhost:8080  (Node 22.5 or newer, no npm install)
-npm test                            # unit tests
+npm install
+npx wrangler login                          # opens a browser: sign in to Cloudflare
+npx wrangler d1 create tasbeeh              # prints a database_id: paste it into wrangler.toml
+npm run db:remote                           # creates the tables
+npm run deploy                              # prints your address, https://tasbeeh.<you>.workers.dev
 ```
-Settings (environment): `PORT`, `DB_PATH` (default `data/tasbeeh.db`), `TARGET` (default 100,000,000), and for the sheet backup `SHEETS_URL`, `SHEETS_TOKEN`, `BACKUP_HOURS`.
+Optional, for the Google Sheet backup (see [docs/google-sheets-backup.md](docs/google-sheets-backup.md)):
+```
+npx wrangler secret put SHEETS_URL
+npx wrangler secret put SHEETS_TOKEN
+```
+Change the overall target with `TARGET` in `wrangler.toml`. A custom address (your own domain) can be added in the Cloudflare dashboard.
 
-## Backup to Google Sheets, twice a day
-So the counts survive losing the server. Set-up and restore steps: [docs/google-sheets-backup.md](docs/google-sheets-backup.md).
-
-## Deploy on Fly.io
+## Try it on your own computer
 ```
-fly apps create <name>            # and put the name in fly.toml
-fly volumes create tasbeeh_data --region sin --size 1
-fly secrets set SHEETS_URL=... SHEETS_TOKEN=...
-fly deploy
+npm run db:local && npm run dev             # http://localhost:8787, with a local copy of D1
+npm test                                    # unit tests (no Cloudflare tools needed)
+node scripts/browser-check.mjs http://localhost:8787   # walks the page in a real browser (needs Playwright installed separately)
 ```
-`/healthz` shows whether the sheet backup is configured and when the last good one was.
 
-## Checking the page in a real browser
-`node scripts/browser-check.mjs http://localhost:8080` walks the whole page (needs Playwright installed separately; the app itself has no dependencies).
+## What it costs and what the free plan allows
+Nothing: it stays on Cloudflare's free plan. The page files are static and do not count as Worker requests. The free plan allows about 100,000 Worker requests and, for D1, 100,000 row writes and 5 million row reads a day, plus 5 GB of storage. One entry writes about six rows and reads about ten, so a few thousand entries a day fit comfortably. Cloudflare's limits can change: check the dashboard now and then. If a limit is reached, new entries are refused until the next day (midnight UTC) and nothing is lost.
+
+## Backup and restore
+Twice a day (06:00 and 18:00 Pakistan time) everything is copied to a Google Sheet, so the counts survive losing the Cloudflare account. If that ever happens: `node scripts/restore-sql.mjs People.csv Daily.csv > restore.sql`, then `npx wrangler d1 execute tasbeeh --remote --file=restore.sql`. Details in [docs/google-sheets-backup.md](docs/google-sheets-backup.md).
 
 ## Rules in short
 - Days are Pakistan time (UTC+5); weeks start on Monday.
 - No daily limit. One entry can be at most 1,000,000 (a guard against an extra zero).
 - Pressing the button twice counts once.
 - Phone numbers are stored as `+92...`; `0300 1234567`, `+92 300 1234567` and `923001234567` are the same person.
+- The server keeps one row per person per day, plus running totals, so every request touches only a few rows.

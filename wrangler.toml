@@ -1,0 +1,24 @@
+# Cloudflare Workers + D1. The page (public/) is static files; the Worker answers /api/* and /healthz and runs the backup twice a day.
+name = "tasbeeh"
+main = "src/worker.js"
+compatibility_date = "2026-10-01"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+# only these go to the Worker first; everything else is a file in public/ and costs no Worker request
+run_worker_first = ["/api/*", "/healthz"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tasbeeh"
+database_id = "REPLACE-WITH-THE-ID-FROM-wrangler-d1-create"
+migrations_dir = "migrations"
+
+[triggers]
+# 01:00 and 13:00 UTC = 06:00 and 18:00 in Pakistan: the Google Sheet backup
+crons = ["0 1 * * *", "0 13 * * *"]
+
+[vars]
+TARGET = "100000000"
+# secrets (not in this file):  wrangler secret put SHEETS_URL   and   wrangler secret put SHEETS_TOKEN
