@@ -25,8 +25,18 @@ CREATE TABLE people_new (
   UNIQUE (caravan_id, phone)
 );
 INSERT INTO people_new (id, caravan_id, phone, name, city, created_at, total) SELECT id, 1, phone, name, city, created_at, total FROM people;
+-- person_days points at people, so it is rebuilt together with it (the parent is never dropped while a child still refers to it)
+CREATE TABLE person_days_new (
+  person_id INTEGER NOT NULL REFERENCES people_new(id),
+  day       TEXT NOT NULL,
+  count     INTEGER NOT NULL,
+  PRIMARY KEY (person_id, day)
+) WITHOUT ROWID;
+INSERT INTO person_days_new (person_id, day, count) SELECT person_id, day, count FROM person_days;
+DROP TABLE person_days;
 DROP TABLE people;
 ALTER TABLE people_new RENAME TO people;
+ALTER TABLE person_days_new RENAME TO person_days;
 
 CREATE TABLE day_totals_new (
   caravan_id INTEGER NOT NULL REFERENCES caravans(id),
