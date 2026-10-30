@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0c0e2b">
+<script src="/theme.js"></script>
+<title>Tasbeeh stats</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/stats.css">
+</head>
+<body>
+<header class="hero">
+  <button type="button" id="theme" class="lang theme" aria-label="Theme"></button>
+  <button type="button" id="lang" class="lang" aria-label="Language"></button>
+  <p class="salawat" lang="ar" dir="rtl">اللّٰهُمَّ صَلِّ عَلٰى مُحَمَّدٍ وَعَلٰى اٰلِ مُحَمَّدٍ</p>
+  <h1 data-i18n="title">Tasbeeh stats</h1>
+  <p class="sub" data-i18n="sub">All of us, together. Members appear under made-up names.</p>
+</header>
+<main class="wide-main">
+  <section class="card wide" id="overall">
+    <span class="label" data-i18n="overall">Overall target</span>
+    <p class="total"><b class="num" id="total">0</b> <small><span data-i18n="of">of</span> <span id="target">0</span></small></p>
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="bar"><i id="fill"></i></div>
+    <small id="pct"></small>
+  </section>
+  <div class="grid4">
+    <div class="card"><span class="label" data-i18n="today">Today</span><b class="num" id="today">0</b><small><span id="active-today">0</span> <span data-i18n="counting">people counting</span></small></div>
+    <div class="card"><span class="label" data-i18n="week">This week</span><b class="num" id="week">0</b><small><span id="active-week">0</span> <span data-i18n="counting">people counting</span></small></div>
+    <div class="card"><span class="label" data-i18n="members">Members</span><b class="num" id="members">0</b><small><span id="ncities">0</span> <span data-i18n="cities_word">cities</span></small></div>
+    <div class="card"><span class="label" data-i18n="avg">Average per member</span><b class="num" id="avg">0</b><small data-i18n="avg_note">all time</small></div>
+  </div>
+
+  <section class="card block">
+    <h2 data-i18n="last14">Last 14 days</h2>
+    <div class="chart" id="chart" role="img" aria-label="Daily totals"></div>
+  </section>
+
+  <section class="card block">
+    <h2 data-i18n="people">Top members</h2>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" data-tab="today" data-i18n="today">Today</button>
+      <button type="button" role="tab" data-tab="week" data-i18n="week">This week</button>
+      <button type="button" role="tab" data-tab="all" data-i18n="alltime">All time</button>
+    </div>
+    <ol class="rank" id="people"></ol>
+    <p class="note" data-i18n="alias_note">Names are made up and cannot be traced back to anyone.</p>
+  </section>
+
+  <section class="card block">
+    <h2 data-i18n="citiesh">City rankings</h2>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" data-ctab="today" data-i18n="today">Today</button>
+      <button type="button" role="tab" data-ctab="week" data-i18n="week">This week</button>
+      <button type="button" role="tab" data-ctab="total" data-i18n="alltime">All time</button>
+    </div>
+    <ol class="rank" id="cities"></ol>
+  </section>
+
+  <p class="foot"><span data-i18n="updated">Rankings refresh about every 15 minutes.</span> <a href="/" data-i18n="back">Back to counting</a></p>
+</main>
+<script src="/stats.js"></script>
+</body>
+</html>

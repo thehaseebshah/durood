@@ -171,3 +171,21 @@ test('/api/backup runs a backup only for the holder of the secret', async () => 
     assert.equal(none.status, 403, 'with no secret configured nobody gets in');
   } finally { globalThis.fetch = realFetch; }
 });
+
+test('the public stats show made-up names, cities and totals, and no phone numbers or real names', async () => {
+  const e = { DB: createD1(), TARGET: '1000' };
+  await entry({ phone: '0300 5550001', count: 500, name: 'Zainab Secret', city: 'Lahore' }, e);
+  await entry({ phone: '0300 5550002', count: 200, name: 'Hamza Private', city: 'Lahore' }, e);
+  await entry({ phone: '0300 5550003', count: 50, name: 'Idris Hidden', city: 'Karachi' }, e);
+  const r = await call('GET', '/api/stats', null, e);
+  assert.equal(r.status, 200);
+  assert.equal(r.total, 750); assert.equal(r.today, 750); assert.equal(r.members, 3); assert.equal(r.target, 1000);
+  assert.deepEqual(r.cities.map((c) => [c.city, c.total, c.members]), [['Lahore', 700, 2], ['Karachi', 50, 1]]);
+  assert.deepEqual(r.top.all.map((p) => p.count), [500, 200, 50]);
+  assert.equal(r.daily.length, 14); assert.equal(r.daily.at(-1).total, 750);
+  assert.equal(r.active.today, 3);
+  const text = JSON.stringify(r);
+  for (const secret of ['Zainab', 'Secret', 'Hamza', 'Idris', '555000', '+92']) assert.ok(!text.includes(secret), `leaked ${secret}`);
+  assert.match(r.top.all[0].name, /^[A-Z][a-z]+ [A-Z][a-z]+ \d{3}$/);
+  assert.equal(r.top.all[0].name, (await call('GET', '/api/stats', null, e)).top.all[0].name, 'the same person keeps the same name');
+});

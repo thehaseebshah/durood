@@ -1,6 +1,6 @@
 // The Cloudflare Worker: three small API calls, a health check and the twice-a-day backup. The page itself (public/) is served by
 // Cloudflare as static files, so it does not count against the Worker's request allowance.
-import { addEntry, check, cityList, stats, backupStatus, sendBackup, pruneRids, Bad } from './logic.js';
+import { addEntry, check, cityList, stats, publicStats, backupStatus, sendBackup, pruneRids, Bad } from './logic.js';
 
 const HEADERS = {
   'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
@@ -30,6 +30,13 @@ export default {
         const given = request.headers.get('x-backup-token') || '';
         if (!env.SHEETS_TOKEN || !same(given, env.SHEETS_TOKEN)) return reply(403, { error: 'forbidden' });
         return reply(200, await sendBackup(env.DB, { url: env.SHEETS_URL, token: env.SHEETS_TOKEN }));
+      }
+      // the public stats page: made-up names only, never a phone number or a real name
+      if (request.method === 'GET' && url.pathname === '/api/stats') {
+        if (limited(request.headers.get('CF-Connecting-IP') || 'unknown', 120)) return reply(429, { error: 'slow_down' });
+        const res = reply(200, await publicStats(env.DB, { target, salt: env.SHEETS_TOKEN || '' }));
+        res.headers.set('Cache-Control', 'public, max-age=30');
+        return res;
       }
       if (request.method === 'GET' && url.pathname === '/api/cities') return reply(200, { cities: cityList() });
       if (request.method === 'POST' && (url.pathname === '/api/check' || url.pathname === '/api/entry')) {

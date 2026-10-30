@@ -1,0 +1,28 @@
+.wide-main { max-width: 640px; display: flex; flex-direction: column; gap: 12px; }
+.grid4 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (min-width: 700px) { .grid4 { grid-template-columns: repeat(4, 1fr); } .wide-main { max-width: 760px; } }
+.block { padding: 18px 16px; }
+.block h2 { margin: 6px 0 12px; font-size: 1.1rem; }
+.chart { display: flex; align-items: flex-end; gap: 4px; height: 150px; direction: ltr; }
+.chart div { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; min-width: 0; }
+.chart i { display: block; width: 100%; min-height: 3px; border-radius: 5px 5px 2px 2px; background: linear-gradient(180deg, var(--gold2), var(--gold)); transition: height .6s cubic-bezier(.2, .8, .2, 1); }
+.chart div.now i { background: linear-gradient(180deg, #8ee6b6, var(--ok)); }
+.chart small { font-size: .62rem; margin-top: 4px; color: var(--muted); }
+.chart b { font-size: .6rem; font-weight: 700; color: var(--muted); margin-bottom: 2px; white-space: nowrap; }
+.tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.tabs button { flex: 1; min-height: 40px; border: 1.5px solid var(--line); border-radius: 999px; background: transparent; color: var(--ink); font: inherit; font-size: .9rem; font-weight: 700; cursor: pointer; }
+.tabs button[aria-selected=true] { background: linear-gradient(180deg, var(--gold2), var(--gold)); color: var(--goldink); border-color: transparent; }
+.rank { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.rank li { display: grid; grid-template-columns: 2.2em 1fr auto; align-items: center; gap: 4px 10px; }
+.rank .n { font-weight: 800; color: var(--gold); text-align: center; font-variant-numeric: tabular-nums; }
+.rank .who { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank .v { font-weight: 800; font-variant-numeric: tabular-nums; direction: ltr; }
+.rank .sub2 { grid-column: 2 / 4; color: var(--muted); font-size: .78rem; margin-top: -4px; }
+.rank .track { grid-column: 2 / 4; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.rank .track i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold2)); border-radius: 3px; }
+html[dir=rtl] .rank .track i { margin-inline-start: auto; }
+.empty { color: var(--muted); text-align: center; padding: 14px 0; }
+.note { margin: 12px 2px 0; color: var(--muted); font-size: .8rem; }
+.foot a { color: var(--gold); font-weight: 700; }
+.wide-main .card::before { display: none; }
+.wide-main .card:not(.block) { padding-top: 16px; }

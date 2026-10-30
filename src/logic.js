@@ -117,3 +117,66 @@ export async function backupStatus(db, configured) {
 }
 
 export const pruneRids = (db, now = Date.now()) => db.prepare('DELETE FROM rids WHERE created_at < ?').bind(now - 2 * 86400e3).run();
+
+// ---- the public stats page ----
+// People are shown only under made-up names. The name comes from a hash of the person's id (and a secret salt), so it is stable from day to day
+// but cannot be traced back to a phone number or a real name.
+const ADJ = ['Calm', 'Humble', 'Radiant', 'Gentle', 'Steady', 'Swift', 'Bright', 'Noble', 'Quiet', 'Grateful', 'Patient', 'Golden', 'Silver', 'Kind', 'Wise', 'Brave',
+  'Faithful', 'Serene', 'Joyful', 'Luminous', 'Generous', 'Tender', 'Mindful', 'Devoted', 'Graceful', 'Sincere', 'Peaceful', 'Blessed', 'Hopeful', 'Gleaming', 'Thankful', 'Cheerful'];
+const NOUN = ['Falcon', 'Lantern', 'Crescent', 'Garden', 'River', 'Star', 'Palm', 'Pearl', 'Olive', 'Jasmine', 'Dove', 'Moon', 'Dawn', 'Oasis', 'Cedar', 'Compass',
+  'Rose', 'Sparrow', 'Meadow', 'Lotus', 'Horizon', 'Candle', 'Breeze', 'Fig', 'Willow', 'Amber', 'Comet', 'Orchard', 'Canyon', 'Fountain', 'Summit', 'Harbor'];
+export function alias(id, salt = '') {
+  let h = 0x811c9dc5;
+  for (const c of `${salt}:${id}`) { h ^= c.charCodeAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
+  h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d) >>> 0; h = Math.imul(h ^ (h >>> 12), 0x297a2d39) >>> 0; h = (h ^ (h >>> 15)) >>> 0;
+  return `${ADJ[h % 32]} ${NOUN[(h >>> 5) % 32]} ${100 + ((h >>> 10) % 900)}`;
+}
+
+export const SNAPSHOT_MS = 15 * 60e3;   // the rankings are worked out at most this often (they scan every member), everything else is live
+
+async function rankings(db, salt, now) {
+  const today = dayOf(now), wk = weekStart(today);
+  const top = (rows) => rows.results.map((r, i) => ({ rank: i + 1, name: alias(r.id, salt), count: r.n }));
+  const [all, week, day, cities, active] = await Promise.all([
+    db.prepare('SELECT id, total n FROM people WHERE total > 0 ORDER BY total DESC, id LIMIT 10').all(),
+    db.prepare('SELECT person_id id, SUM(count) n FROM person_days WHERE day >= ? GROUP BY person_id ORDER BY n DESC, id LIMIT 10').bind(wk).all(),
+    db.prepare('SELECT person_id id, count n FROM person_days WHERE day = ? ORDER BY count DESC, person_id LIMIT 10').bind(today).all(),
+    db.prepare(`SELECT p.city, COUNT(*) members, SUM(p.total) total,
+        COALESCE(SUM(w.week), 0) week, COALESCE(SUM(w.today), 0) today
+      FROM people p LEFT JOIN (SELECT person_id, SUM(count) week, SUM(CASE WHEN day = ? THEN count ELSE 0 END) today FROM person_days WHERE day >= ? GROUP BY person_id) w ON w.person_id = p.id
+      GROUP BY p.city ORDER BY total DESC`).bind(today, wk).all(),
+    db.prepare('SELECT COUNT(DISTINCT person_id) week, COUNT(DISTINCT CASE WHEN day = ? THEN person_id END) today FROM person_days WHERE day >= ?').bind(today, wk).first(),
+  ]);
+  return {
+    at: now,
+    top: { today: top(day), week: top(week), all: top(all) },
+    cities: cities.results.map((r, i) => ({ rank: i + 1, city: r.city, members: r.members, total: num(r.total), week: num(r.week), today: num(r.today) })),
+    active: { today: num(active?.today), week: num(active?.week) },
+  };
+}
+
+/** Everything the public page shows. Totals and the daily chart are live; rankings come from a snapshot at most 15 minutes old. */
+export async function publicStats(db, { target, salt = '', now = Date.now(), days = 14 }) {
+  const today = dayOf(now), wk = weekStart(today), from = dayOf(now - (days - 1) * 86400e3);
+  const [total, members, daily, saved] = await Promise.all([
+    db.prepare("SELECT value n FROM meta WHERE key = 'total'").first(),
+    db.prepare('SELECT COUNT(*) n FROM people').first(),
+    db.prepare('SELECT day, total FROM day_totals WHERE day >= ? ORDER BY day').bind(from).all(),
+    db.prepare("SELECT value FROM meta WHERE key = 'public_rankings'").first(),
+  ]);
+  let snap = null;
+  try { snap = saved ? JSON.parse(saved.value) : null; } catch { /* recompute */ }
+  if (!snap || snap.at > now || now - snap.at > SNAPSHOT_MS || snap.day !== today) {
+    snap = { ...(await rankings(db, salt, now)), day: today };
+    await db.prepare("INSERT INTO meta (key, value) VALUES ('public_rankings', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(JSON.stringify(snap)).run().catch(() => {});
+  }
+  const byDay = new Map(daily.results.map((r) => [r.day, r.total]));
+  const series = [];
+  for (let t = now - (days - 1) * 86400e3; series.length < days; t += 86400e3) { const d = dayOf(t); series.push({ day: d, total: num(byDay.get(d)) }); }
+  const todayTotal = num(byDay.get(today));
+  const week = series.filter((s) => s.day >= wk).reduce((a, s) => a + s.total, 0);
+  return {
+    target, total: num(total?.n), members: num(members?.n), today: todayTotal, week, daily: series,
+    active: snap.active, top: snap.top, cities: snap.cities, updated: snap.at,
+  };
+}

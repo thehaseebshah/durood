@@ -12,7 +12,7 @@ const TEXT = {
     bad_phone: 'That does not look like a phone number. Include the full number, for example 0300 1234567.', bad_count: 'Enter a whole number, at least 1.',
     need_name: 'Please type your name.', need_city: 'Please choose your city.', slow_down: 'A lot of tries in a short time. Please wait a minute.',
     bad_request: 'Something went wrong. Please try again.', offline: 'Could not connect. Check your internet and try again.',
-    to_light: 'Switch to light mode', to_dark: 'Switch to dark mode',
+    to_light: 'Switch to light mode', to_dark: 'Switch to dark mode', stats_link: "See everyone's stats",
   },
   ur: {
     title: 'تسبیح', sub: 'ہر روز، مل کر شمار کریں۔', phone: 'فون نمبر', welcome: 'نئے ہیں؟ خوش آمدید۔ بس ایک بار اپنا تعارف کروا دیں۔',
@@ -23,7 +23,7 @@ const TEXT = {
     bad_phone: 'یہ فون نمبر درست نہیں لگتا۔ پورا نمبر لکھیں، مثلاً 0300 1234567۔', bad_count: 'پورا عدد لکھیں، کم از کم 1۔',
     need_name: 'براہِ کرم اپنا نام لکھیں۔', need_city: 'براہِ کرم اپنا شہر چنیں۔', slow_down: 'تھوڑی دیر میں بہت کوششیں ہو گئیں۔ ایک منٹ رکیں۔',
     bad_request: 'کچھ گڑبڑ ہو گئی۔ دوبارہ کوشش کریں۔', offline: 'رابطہ نہیں ہو سکا۔ انٹرنیٹ دیکھیں اور دوبارہ کوشش کریں۔',
-    to_light: 'روشن موڈ پر جائیں', to_dark: 'تاریک موڈ پر جائیں',
+    to_light: 'روشن موڈ پر جائیں', to_dark: 'تاریک موڈ پر جائیں', stats_link: 'سب کے اعداد و شمار دیکھیں',
   },
 };
 let lang = 'en';

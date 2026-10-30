@@ -44,3 +44,11 @@ Twice a day (06:00 and 18:00 Pakistan time) everything is copied to a Google She
 - Pressing the button twice counts once.
 - Phone numbers are stored as `+92...`; `0300 1234567`, `+92 300 1234567` and `923001234567` are the same person.
 - The server keeps one row per person per day, plus running totals, so every request touches only a few rows.
+
+## Public stats page
+
+`/stats` shows the overall target, today / this week, a 14-day chart, top members (today, this week, all time) and city rankings. Members appear only under made-up names (for example "Calm Falcon 482") derived from a hash of their id, never a phone number, real name or city. The rankings are recalculated at most every 15 minutes to stay inside the free D1 read allowance; totals and the chart are live.
+
+## Automatic deploys
+
+`.github/workflows/deploy.yml` runs the tests, applies the D1 migrations and deploys on every push to `tasbeeh-cloudflare`. One-time setup: add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as GitHub repository secrets.
