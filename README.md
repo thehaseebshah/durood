@@ -55,7 +55,7 @@ Twice a day (06:00 and 18:00 Pakistan time) everything is copied to a Google She
 
 ## Caravans (groups)
 
-Every group counts with its own link, `/c/<name>-<code>`; the plain address is only a landing page. The first caravan is created by the migration (its link is `/c/tasbeeh-<random>`, shown on the admin page).
+Every group counts with its own link, `/c/<name>` (for example `/c/madinah`; a number is added if the name is taken); the plain address is only a landing page. The first caravan is created by the migration (its link is `/c/tasbeeh-<random>`, shown on the admin page; delete it once you have your own).
 
 - **Admin page:** `/admin`. Unlock with the admin key (the `ADMIN_KEY` secret: `npx wrangler secret put ADMIN_KEY`), type a name (and optionally a target) and get the link to share.
 - Members, counts, targets, rankings and the stats page are per caravan. The same phone number can be in several caravans and counts separately in each.

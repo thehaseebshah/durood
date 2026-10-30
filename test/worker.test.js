@@ -210,13 +210,14 @@ test('admin: only the admin key creates or lists caravans', async () => {
   assert.equal(noKey.status, 403, 'with no key set on the server nobody gets in');
   const made = await admin('POST', { name: 'Faisalabad Team' }, undefined, e);
   assert.equal(made.status, 200);
-  assert.match(made.slug, /^faisalabad-team-[a-z2-9]{5}$/);
+  assert.equal(made.slug, 'faisalabad-team');
+  assert.equal((await admin('POST', { name: 'Faisalabad  Team' }, undefined, e)).slug, 'faisalabad-team-2', 'a name that is taken gets a number');
   assert.equal(made.target, 100_000_000);
   assert.equal((await admin('POST', { name: 'X' }, undefined, e)).error, 'need_name');
   assert.equal((await admin('POST', { name: 'Big', target: 'lots' }, undefined, e)).error, 'bad_target');
   assert.equal((await admin('POST', { name: 'Small', target: 500 }, undefined, e)).target, 500);
   const list = await admin('GET', null, undefined, e);
-  assert.deepEqual(list.caravans.map((c) => c.name), ['Tasbeeh', 'Faisalabad Team', 'Small']);
+  assert.deepEqual(list.caravans.map((c) => c.name), ['Tasbeeh', 'Faisalabad Team', 'Faisalabad  Team'.replace(/\s+/g, ' '), 'Small']);
 });
 
 test('caravans are separate: members, counts, stats, and the same number can be in two', async () => {

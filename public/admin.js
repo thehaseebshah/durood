@@ -1,7 +1,7 @@
 // The admin page: unlock with the admin key, create a caravan (a group with its own link), copy the links. The key is only kept for this tab.
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => Number(n).toLocaleString('en-US');
-const ERR = { forbidden: 'That key is not right.', slow_down: 'Too many tries. Please wait a minute.', need_name: 'Please type a name (2 to 60 letters).', bad_target: 'The target must be a whole number.', server_error: 'Something went wrong. Try again.' };
+const ERR = { forbidden: 'That key is not right.', slow_down: 'Too many tries. Please wait a minute.', need_name: 'Please type a name (2 to 60 letters).', name_taken: 'That name is used too many times; pick another.', bad_target: 'The target must be a whole number.', server_error: 'Something went wrong. Try again.' };
 let key = '';
 try { key = sessionStorage.getItem('adminKey') || ''; } catch { /* private mode */ }
 

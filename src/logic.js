@@ -35,22 +35,21 @@ export async function getCaravan(db, slug) {
 }
 
 const slugOf = (name) => String(name).normalize('NFKD').replace(/[^\x00-\x7f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'caravan';
-const randomPart = (n = 5) => { const a = crypto.getRandomValues(new Uint8Array(n)); return [...a].map((b) => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]).join(''); };
-
-/** Admin: a new caravan with a link nobody can guess from the name alone (name + a few random letters). */
+/** Admin: a new caravan; its link is simply its name (/c/madinah), with -2, -3 ... added when that name is taken. */
 export async function createCaravan(db, { name, target }, defaultTarget = DEFAULT_TARGET, now = Date.now()) {
   const nm = String(name ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
   if ([...nm].length < 2 || [...nm].length > 60) throw new Bad(422, 'need_name');
   const tg = target === undefined || target === '' || target === null ? defaultTarget : Number(target);
   if (!Number.isInteger(tg) || tg < 1 || tg > 1e12) throw new Bad(422, 'bad_target');
-  for (let i = 0; i < 5; i++) {
-    const slug = `${slugOf(nm)}-${randomPart()}`;
+  const base = slugOf(nm);
+  for (let i = 1; i <= 50; i++) {
+    const slug = i === 1 ? base : `${base}-${i}`;
     try {
       await db.prepare('INSERT INTO caravans (slug, name, target, total, created_at) VALUES (?, ?, ?, 0, ?)').bind(slug, nm, tg, now).run();
       return { slug, name: nm, target: tg };
     } catch (e) { if (!/UNIQUE|constraint/i.test(String(e?.message || e))) throw e; }
   }
-  throw new Bad(500, 'server_error');
+  throw new Bad(409, 'name_taken');
 }
 
 /** Admin: every caravan with its size. */
