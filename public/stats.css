@@ -26,3 +26,4 @@ html[dir=rtl] .rank .track i { margin-inline-start: auto; }
 .foot a { color: var(--gold); font-weight: 700; }
 .wide-main .card::before { display: none; }
 .wide-main .card:not(.block) { padding-top: 16px; }
+.tabs.scope { margin: 0 0 4px; } .tabs.scope button { font-size: 1rem; min-height: 46px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 12px; }

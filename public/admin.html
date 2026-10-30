@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0c0e2b">
+<script src="/theme.js"></script>
+<title>Tasbeeh admin</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/admin.css">
+</head>
+<body>
+<header class="hero small">
+  <button type="button" id="theme" class="lang theme" aria-label="Theme"></button>
+  <h1>Caravans</h1>
+  <p class="sub">One link per group. Share the link; each group counts on its own.</p>
+</header>
+<main class="wide-main">
+  <form id="unlock" class="panel">
+    <label for="key">Admin key</label>
+    <input id="key" type="password" autocomplete="current-password" dir="ltr" required>
+    <p class="error" id="unlock-error" role="alert"></p>
+    <button class="primary" type="submit">Unlock</button>
+  </form>
+
+  <div id="admin" hidden>
+    <form id="create" class="panel">
+      <label for="name">Name of the new caravan</label>
+      <input id="name" type="text" maxlength="60" placeholder="e.g. Faisalabad team" required>
+      <label for="target">Target (optional)</label>
+      <input id="target" type="number" min="1" step="1" placeholder="100000000" dir="ltr">
+      <p class="error" id="create-error" role="alert"></p>
+      <button class="primary" type="submit">Create caravan and get its link</button>
+    </form>
+
+    <section id="made" class="panel made" hidden aria-live="polite">
+      <span class="label">Share this link</span>
+      <input id="made-link" readonly dir="ltr">
+      <button type="button" class="primary" id="made-copy">Copy link</button>
+    </section>
+
+    <h2 class="list-h">All caravans</h2>
+    <ul id="list" class="caravans"></ul>
+  </div>
+</main>
+<script src="/admin.js"></script>
+</body>
+</html>

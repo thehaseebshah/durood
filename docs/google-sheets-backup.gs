@@ -10,17 +10,20 @@ function doPost(e) {
     try {
       const ss = SpreadsheetApp.getActiveSpreadsheet();
       // People: everyone, rewritten each time
-      const people = sheet(ss, 'People', ['phone', 'name', 'city', 'joined']);
-      writeAll(people, [['phone', 'name', 'city', 'joined']].concat(body.people.map((p) => [p.phone, p.name, p.city, p.joined])), [1]);
+      const people = sheet(ss, 'People', ['phone', 'name', 'city', 'joined', 'caravan']);
+      writeAll(people, [['phone', 'name', 'city', 'joined', 'caravan']].concat(body.people.map((p) => [p.phone, p.name, p.city, p.joined, p.caravan || ''])), [1]);
+      // Caravans: the groups (name, link name, target)
+      const cars = sheet(ss, 'Caravans', ['slug', 'name', 'target']);
+      writeAll(cars, [['slug', 'name', 'target']].concat((body.caravans || []).map((c) => [c.slug, c.name, c.target])), [1]);
       // Daily: one row per person per day; the days in this backup replace the same days from before, older days stay
-      const daily = sheet(ss, 'Daily', ['day', 'phone', 'count']);
+      const daily = sheet(ss, 'Daily', ['day', 'phone', 'count', 'caravan']);
       const sent = {};
       body.daily.forEach((r) => { sent[r.day] = true; });
-      const have = daily.getLastRow() > 1 ? daily.getRange(2, 1, daily.getLastRow() - 1, 3).getValues() : [];
+      const have = daily.getLastRow() > 1 ? daily.getRange(2, 1, daily.getLastRow() - 1, 4).getValues() : [];
       const kept = have.filter((r) => !sent[dayText(r[0])]);
-      const rows = kept.map((r) => [dayText(r[0]), String(r[1]), r[2]]).concat(body.daily.map((r) => [r.day, r.phone, r.count]));
+      const rows = kept.map((r) => [dayText(r[0]), String(r[1]), r[2], String(r[3] || '')]).concat(body.daily.map((r) => [r.day, r.phone, r.count, r.caravan || '']));
       rows.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
-      writeAll(daily, [['day', 'phone', 'count']].concat(rows), [1, 2]);
+      writeAll(daily, [['day', 'phone', 'count', 'caravan']].concat(rows), [1, 2]);
       // Totals: one line per backup, so the history of the overall count is kept too
       const totals = sheet(ss, 'Totals', ['sent at', 'people', 'total', 'today']);
       totals.appendRow([body.sentAt, body.totals.people, body.totals.total, body.totals.today]);

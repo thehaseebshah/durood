@@ -22,39 +22,82 @@ export const cityList = () => [...CITIES, OTHER_CITY];
 
 const num = (v) => Number(v ?? 0);
 
-/** Today, this week and the overall figures for a person and for everyone. A few rows each, however many people there are. */
-export async function stats(db, personId, target, now = Date.now()) {
+// ---- caravans ----
+export const DEFAULT_TARGET = 100_000_000;
+const SLUG = /^[a-z0-9][a-z0-9-]{0,62}$/;
+
+/** The caravan a link belongs to. Every link names one: with no (or a wrong) name there is nothing to count into. */
+export async function getCaravan(db, slug) {
+  const s = String(slug || '').toLowerCase();
+  const row = SLUG.test(s) ? await db.prepare('SELECT id, slug, name, target FROM caravans WHERE slug = ?').bind(s).first() : null;
+  if (!row) throw new Bad(404, 'no_caravan');
+  return row;
+}
+
+const slugOf = (name) => String(name).normalize('NFKD').replace(/[^\x00-\x7f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'caravan';
+const randomPart = (n = 5) => { const a = crypto.getRandomValues(new Uint8Array(n)); return [...a].map((b) => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]).join(''); };
+
+/** Admin: a new caravan with a link nobody can guess from the name alone (name + a few random letters). */
+export async function createCaravan(db, { name, target }, defaultTarget = DEFAULT_TARGET, now = Date.now()) {
+  const nm = String(name ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+  if ([...nm].length < 2 || [...nm].length > 60) throw new Bad(422, 'need_name');
+  const tg = target === undefined || target === '' || target === null ? defaultTarget : Number(target);
+  if (!Number.isInteger(tg) || tg < 1 || tg > 1e12) throw new Bad(422, 'bad_target');
+  for (let i = 0; i < 5; i++) {
+    const slug = `${slugOf(nm)}-${randomPart()}`;
+    try {
+      await db.prepare('INSERT INTO caravans (slug, name, target, total, created_at) VALUES (?, ?, ?, 0, ?)').bind(slug, nm, tg, now).run();
+      return { slug, name: nm, target: tg };
+    } catch (e) { if (!/UNIQUE|constraint/i.test(String(e?.message || e))) throw e; }
+  }
+  throw new Bad(500, 'server_error');
+}
+
+/** Admin: every caravan with its size. */
+export async function listCaravans(db, now = Date.now()) {
+  const today = dayOf(now);
+  const rows = (await db.prepare(`SELECT c.slug, c.name, c.target, c.total, c.created_at,
+      (SELECT COUNT(*) FROM people p WHERE p.caravan_id = c.id) members,
+      COALESCE((SELECT total FROM day_totals d WHERE d.caravan_id = c.id AND d.day = ?), 0) today
+    FROM caravans c ORDER BY c.id`).bind(today).all()).results;
+  return rows.map((r) => ({ slug: r.slug, name: r.name, target: r.target, total: num(r.total), members: num(r.members), today: num(r.today), created: dayOf(r.created_at) }));
+}
+
+/** Today, this week and the overall figures for a person and for everyone in the caravan. A few rows each, however many people there are. */
+export async function stats(db, personId, caravan, now = Date.now()) {
   const today = dayOf(now), wk = weekStart(today);
   const [youToday, youWeek, youTotal, allToday, allWeek, allTotal] = await Promise.all([
     db.prepare('SELECT count n FROM person_days WHERE person_id = ? AND day = ?').bind(personId, today).first(),
     db.prepare('SELECT COALESCE(SUM(count), 0) n FROM person_days WHERE person_id = ? AND day >= ?').bind(personId, wk).first(),
     db.prepare('SELECT total n FROM people WHERE id = ?').bind(personId).first(),
-    db.prepare('SELECT total n FROM day_totals WHERE day = ?').bind(today).first(),
-    db.prepare('SELECT COALESCE(SUM(total), 0) n FROM day_totals WHERE day >= ?').bind(wk).first(),
-    db.prepare("SELECT value n FROM meta WHERE key = 'total'").first(),
+    db.prepare('SELECT total n FROM day_totals WHERE caravan_id = ? AND day = ?').bind(caravan.id, today).first(),
+    db.prepare('SELECT COALESCE(SUM(total), 0) n FROM day_totals WHERE caravan_id = ? AND day >= ?').bind(caravan.id, wk).first(),
+    db.prepare('SELECT total n FROM caravans WHERE id = ?').bind(caravan.id).first(),
   ]);
   return {
     you: { today: num(youToday?.n), week: num(youWeek?.n), total: num(youTotal?.n) },
     everyone: { today: num(allToday?.n), week: num(allWeek?.n), total: num(allTotal?.n) },
-    target,
+    target: caravan.target,
+    caravan: { slug: caravan.slug, name: caravan.name },
   };
 }
 
-export async function check(db, { phone }) {
+export async function check(db, { phone }, caravan) {
   const p = normalisePhone(phone);
   if (!p) throw new Bad(400, 'bad_phone');
-  return { known: !!(await db.prepare('SELECT 1 x FROM people WHERE phone = ?').bind(p).first()) };
+  return { known: !!(await db.prepare('SELECT 1 x FROM people WHERE phone = ? AND caravan_id = ?').bind(p, caravan.id).first()) };
 }
 
-/** Adds today's count. A number we do not know must come with a name and a city from the list. */
-export async function addEntry(db, { phone, count, rid, name, city }, target, now = Date.now()) {
+/** Adds today's count. A number we do not know in this caravan must come with a name and a city from the list. */
+export async function addEntry(db, { phone, count, rid, name, city }, caravan, now = Date.now()) {
   const p = normalisePhone(phone);
   if (!p) throw new Bad(400, 'bad_phone');
   const n = Number(count);
   if (!Number.isInteger(n) || n < 1 || n > MAX_ONE_ENTRY) throw new Bad(400, 'bad_count');
   if (typeof rid !== 'string' || !/^[\w-]{8,64}$/.test(rid)) throw new Bad(400, 'bad_request');
-  const today = dayOf(now);
-  let person = await db.prepare('SELECT id FROM people WHERE phone = ?').bind(p).first();
+  const today = dayOf(now), cid = caravan.id;
+  const find = () => db.prepare('SELECT id FROM people WHERE phone = ? AND caravan_id = ?').bind(p, cid).first();
+  let person = await find();
   let nm = '', ct = '';
   if (!person) {
     nm = String(name ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -66,31 +109,32 @@ export async function addEntry(db, { phone, count, rid, name, city }, target, no
   try {
     await db.batch([
       db.prepare('INSERT INTO rids (rid, created_at) VALUES (?, ?)').bind(rid, now),
-      db.prepare('INSERT OR IGNORE INTO people (phone, name, city, created_at, total) VALUES (?, ?, ?, ?, 0)').bind(p, nm || 'unknown', ct || OTHER_CITY, now),
-      db.prepare('INSERT INTO person_days (person_id, day, count) SELECT id, ?, ? FROM people WHERE phone = ? ON CONFLICT(person_id, day) DO UPDATE SET count = count + excluded.count').bind(today, n, p),
-      db.prepare('UPDATE people SET total = total + ? WHERE phone = ?').bind(n, p),
-      db.prepare('INSERT INTO day_totals (day, total) VALUES (?, ?) ON CONFLICT(day) DO UPDATE SET total = total + excluded.total').bind(today, n),
-      db.prepare("UPDATE meta SET value = CAST(value AS INTEGER) + ? WHERE key = 'total'").bind(n),
+      db.prepare('INSERT OR IGNORE INTO people (caravan_id, phone, name, city, created_at, total) VALUES (?, ?, ?, ?, ?, 0)').bind(cid, p, nm || 'unknown', ct || OTHER_CITY, now),
+      db.prepare('INSERT INTO person_days (person_id, day, count) SELECT id, ?, ? FROM people WHERE phone = ? AND caravan_id = ? ON CONFLICT(person_id, day) DO UPDATE SET count = count + excluded.count').bind(today, n, p, cid),
+      db.prepare('UPDATE people SET total = total + ? WHERE phone = ? AND caravan_id = ?').bind(n, p, cid),
+      db.prepare('INSERT INTO day_totals (caravan_id, day, total) VALUES (?, ?, ?) ON CONFLICT(caravan_id, day) DO UPDATE SET total = total + excluded.total').bind(cid, today, n),
+      db.prepare('UPDATE caravans SET total = total + ? WHERE id = ?').bind(n, cid),
     ]);
   } catch (e) {
     if (!/UNIQUE|constraint/i.test(String(e?.message || e))) throw e;
-    person = await db.prepare('SELECT id FROM people WHERE phone = ?').bind(p).first();
-    return { ok: true, created: false, duplicate: true, ...(person ? await stats(db, person.id, target, now) : {}) };
+    person = await find();
+    return { ok: true, created: false, duplicate: true, ...(person ? await stats(db, person.id, caravan, now) : {}) };
   }
-  person = await db.prepare('SELECT id FROM people WHERE phone = ?').bind(p).first();
-  return { ok: true, created: nm !== '', duplicate: false, ...(await stats(db, person.id, target, now)) };
+  person = await find();
+  return { ok: true, created: nm !== '', duplicate: false, ...(await stats(db, person.id, caravan, now)) };
 }
 
-/** What the Google Sheet gets: everyone, each person's total per day for the last few days, and the overall figures. */
+/** What the Google Sheet gets: every caravan, everyone in them, each person's total per day for the last few days, and the overall figures. */
 export async function backupPayload(db, { now = Date.now(), days = 3 } = {}) {
   const today = dayOf(now), from = dayOf(now - (days - 1) * 86400e3);
-  const people = (await db.prepare('SELECT phone, name, city, created_at FROM people ORDER BY id').all()).results
-    .map((r) => ({ phone: r.phone, name: r.name, city: r.city, joined: dayOf(r.created_at) }));
-  const daily = (await db.prepare('SELECT d.day, p.phone, d.count FROM person_days d JOIN people p ON p.id = d.person_id WHERE d.day >= ? ORDER BY d.day, p.id').bind(from).all()).results
-    .map((r) => ({ day: r.day, phone: r.phone, count: r.count }));
-  const total = num((await db.prepare("SELECT value n FROM meta WHERE key = 'total'").first())?.n);
-  const todayTotal = num((await db.prepare('SELECT total n FROM day_totals WHERE day = ?').bind(today).first())?.n);
-  return { sentAt: new Date(now).toISOString(), from, today, people, daily, totals: { people: people.length, total, today: todayTotal } };
+  const caravans = (await db.prepare('SELECT slug, name, target FROM caravans ORDER BY id').all()).results.map((r) => ({ slug: r.slug, name: r.name, target: r.target }));
+  const people = (await db.prepare('SELECT p.phone, p.name, p.city, p.created_at, c.slug FROM people p JOIN caravans c ON c.id = p.caravan_id ORDER BY p.id').all()).results
+    .map((r) => ({ phone: r.phone, name: r.name, city: r.city, joined: dayOf(r.created_at), caravan: r.slug }));
+  const daily = (await db.prepare('SELECT d.day, p.phone, d.count, c.slug FROM person_days d JOIN people p ON p.id = d.person_id JOIN caravans c ON c.id = p.caravan_id WHERE d.day >= ? ORDER BY d.day, p.id').bind(from).all()).results
+    .map((r) => ({ day: r.day, phone: r.phone, count: r.count, caravan: r.slug }));
+  const total = num((await db.prepare('SELECT COALESCE(SUM(total), 0) n FROM caravans').first())?.n);
+  const todayTotal = num((await db.prepare('SELECT COALESCE(SUM(total), 0) n FROM day_totals WHERE day = ?').bind(today).first())?.n);
+  return { sentAt: new Date(now).toISOString(), from, today, caravans, people, daily, totals: { people: people.length, total, today: todayTotal } };
 }
 
 /** One backup to the sheet; never throws. Records the result in `meta` so /healthz can show it. */
@@ -134,18 +178,18 @@ export function alias(id, salt = '') {
 
 export const SNAPSHOT_MS = 15 * 60e3;   // the rankings are worked out at most this often (they scan every member), everything else is live
 
-async function rankings(db, salt, now) {
-  const today = dayOf(now), wk = weekStart(today);
+async function rankings(db, caravan, salt, now) {
+  const today = dayOf(now), wk = weekStart(today), cid = caravan.id;
   const top = (rows) => rows.results.map((r, i) => ({ rank: i + 1, name: alias(r.id, salt), count: r.n }));
   const [all, week, day, cities, active] = await Promise.all([
-    db.prepare('SELECT id, total n FROM people WHERE total > 0 ORDER BY total DESC, id LIMIT 10').all(),
-    db.prepare('SELECT person_id id, SUM(count) n FROM person_days WHERE day >= ? GROUP BY person_id ORDER BY n DESC, id LIMIT 10').bind(wk).all(),
-    db.prepare('SELECT person_id id, count n FROM person_days WHERE day = ? ORDER BY count DESC, person_id LIMIT 10').bind(today).all(),
+    db.prepare('SELECT id, total n FROM people WHERE caravan_id = ? AND total > 0 ORDER BY total DESC, id LIMIT 10').bind(cid).all(),
+    db.prepare('SELECT d.person_id id, SUM(d.count) n FROM person_days d JOIN people p ON p.id = d.person_id WHERE p.caravan_id = ? AND d.day >= ? GROUP BY d.person_id ORDER BY n DESC, id LIMIT 10').bind(cid, wk).all(),
+    db.prepare('SELECT d.person_id id, d.count n FROM person_days d JOIN people p ON p.id = d.person_id WHERE p.caravan_id = ? AND d.day = ? ORDER BY d.count DESC, d.person_id LIMIT 10').bind(cid, today).all(),
     db.prepare(`SELECT p.city, COUNT(*) members, SUM(p.total) total,
         COALESCE(SUM(w.week), 0) week, COALESCE(SUM(w.today), 0) today
       FROM people p LEFT JOIN (SELECT person_id, SUM(count) week, SUM(CASE WHEN day = ? THEN count ELSE 0 END) today FROM person_days WHERE day >= ? GROUP BY person_id) w ON w.person_id = p.id
-      GROUP BY p.city ORDER BY total DESC`).bind(today, wk).all(),
-    db.prepare('SELECT COUNT(DISTINCT person_id) week, COUNT(DISTINCT CASE WHEN day = ? THEN person_id END) today FROM person_days WHERE day >= ?').bind(today, wk).first(),
+      WHERE p.caravan_id = ? GROUP BY p.city ORDER BY total DESC`).bind(today, wk, cid).all(),
+    db.prepare('SELECT COUNT(DISTINCT d.person_id) week, COUNT(DISTINCT CASE WHEN d.day = ? THEN d.person_id END) today FROM person_days d JOIN people p ON p.id = d.person_id WHERE p.caravan_id = ? AND d.day >= ?').bind(today, cid, wk).first(),
   ]);
   return {
     at: now,
@@ -155,28 +199,74 @@ async function rankings(db, salt, now) {
   };
 }
 
-/** Everything the public page shows. Totals and the daily chart are live; rankings come from a snapshot at most 15 minutes old. */
-export async function publicStats(db, { target, salt = '', now = Date.now(), days = 14 }) {
-  const today = dayOf(now), wk = weekStart(today), from = dayOf(now - (days - 1) * 86400e3);
-  const [total, members, daily, saved] = await Promise.all([
-    db.prepare("SELECT value n FROM meta WHERE key = 'total'").first(),
+// Everyone, across all caravans: the same shapes as one caravan, plus the caravans ranked against each other (never their link names).
+async function globalRankings(db, salt, now) {
+  const today = dayOf(now), wk = weekStart(today);
+  const top = (rows) => rows.results.map((r, i) => ({ rank: i + 1, name: alias(r.id, salt), count: r.n }));
+  const [all, week, day, cities, active, cars, carDays, members] = await Promise.all([
+    db.prepare('SELECT id, total n FROM people WHERE total > 0 ORDER BY total DESC, id LIMIT 10').all(),
+    db.prepare('SELECT person_id id, SUM(count) n FROM person_days WHERE day >= ? GROUP BY person_id ORDER BY n DESC, id LIMIT 10').bind(wk).all(),
+    db.prepare('SELECT person_id id, count n FROM person_days WHERE day = ? ORDER BY count DESC, person_id LIMIT 10').bind(today).all(),
+    db.prepare(`SELECT p.city, COUNT(*) members, SUM(p.total) total, COALESCE(SUM(w.week), 0) week, COALESCE(SUM(w.today), 0) today
+      FROM people p LEFT JOIN (SELECT person_id, SUM(count) week, SUM(CASE WHEN day = ? THEN count ELSE 0 END) today FROM person_days WHERE day >= ? GROUP BY person_id) w ON w.person_id = p.id
+      GROUP BY p.city ORDER BY total DESC`).bind(today, wk).all(),
+    db.prepare('SELECT COUNT(DISTINCT person_id) week, COUNT(DISTINCT CASE WHEN day = ? THEN person_id END) today FROM person_days WHERE day >= ?').bind(today, wk).first(),
+    db.prepare('SELECT c.id, c.slug, c.name, c.target, c.total, COUNT(p.id) members FROM caravans c LEFT JOIN people p ON p.caravan_id = c.id GROUP BY c.id ORDER BY c.total DESC, c.id').all(),
+    db.prepare('SELECT caravan_id id, SUM(total) week, SUM(CASE WHEN day = ? THEN total ELSE 0 END) today FROM day_totals WHERE day >= ? GROUP BY caravan_id').bind(today, wk).all(),
     db.prepare('SELECT COUNT(*) n FROM people').first(),
-    db.prepare('SELECT day, total FROM day_totals WHERE day >= ? ORDER BY day').bind(from).all(),
-    db.prepare("SELECT value FROM meta WHERE key = 'public_rankings'").first(),
   ]);
+  const byCar = new Map(carDays.results.map((r) => [r.id, r]));
+  return {
+    at: now, members: num(members?.n),
+    top: { today: top(day), week: top(week), all: top(all) },
+    cities: cities.results.map((r, i) => ({ rank: i + 1, city: r.city, members: r.members, total: num(r.total), week: num(r.week), today: num(r.today) })),
+    active: { today: num(active?.today), week: num(active?.week) },
+    caravans: cars.results.map((r) => ({ slug: r.slug, name: r.name, target: r.target, members: num(r.members), total: num(r.total), week: num(byCar.get(r.id)?.week), today: num(byCar.get(r.id)?.today) })),
+  };
+}
+
+async function snapshot(db, key, today, now, compute) {
+  const saved = await db.prepare('SELECT value FROM meta WHERE key = ?').bind(key).first();
   let snap = null;
   try { snap = saved ? JSON.parse(saved.value) : null; } catch { /* recompute */ }
   if (!snap || snap.at > now || now - snap.at > SNAPSHOT_MS || snap.day !== today) {
-    snap = { ...(await rankings(db, salt, now)), day: today };
-    await db.prepare("INSERT INTO meta (key, value) VALUES ('public_rankings', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").bind(JSON.stringify(snap)).run().catch(() => {});
+    snap = { ...(await compute()), day: today };
+    await db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').bind(key, JSON.stringify(snap)).run().catch(() => {});
   }
-  const byDay = new Map(daily.results.map((r) => [r.day, r.total]));
+  return snap;
+}
+
+const lastDays = (rows, now, days) => {
+  const byDay = new Map(rows.map((r) => [r.day, num(r.total)]));
   const series = [];
-  for (let t = now - (days - 1) * 86400e3; series.length < days; t += 86400e3) { const d = dayOf(t); series.push({ day: d, total: num(byDay.get(d)) }); }
-  const todayTotal = num(byDay.get(today));
-  const week = series.filter((s) => s.day >= wk).reduce((a, s) => a + s.total, 0);
+  for (let t = now - (days - 1) * 86400e3; series.length < days; t += 86400e3) { const d = dayOf(t); series.push({ day: d, total: byDay.get(d) || 0 }); }
+  return series;
+};
+
+/**
+ * Everything the public page shows: this caravan, everyone (`global`), and the caravans ranked against each other (`caravans`, with the viewer's own marked).
+ * Totals and the daily charts are live; rankings come from snapshots at most 15 minutes old.
+ */
+export async function publicStats(db, { caravan, salt = '', now = Date.now(), days = 14 }) {
+  const today = dayOf(now), wk = weekStart(today), from = dayOf(now - (days - 1) * 86400e3), cid = caravan.id;
+  const [total, members, daily, gTotal, gDaily] = await Promise.all([
+    db.prepare('SELECT total n FROM caravans WHERE id = ?').bind(cid).first(),
+    db.prepare('SELECT COUNT(*) n FROM people WHERE caravan_id = ?').bind(cid).first(),
+    db.prepare('SELECT day, total FROM day_totals WHERE caravan_id = ? AND day >= ? ORDER BY day').bind(cid, from).all(),
+    db.prepare('SELECT COALESCE(SUM(total), 0) n, COALESCE(SUM(target), 0) t FROM caravans').first(),
+    db.prepare('SELECT day, SUM(total) total FROM day_totals WHERE day >= ? GROUP BY day ORDER BY day').bind(from).all(),
+  ]);
+  const snap = await snapshot(db, `public_rankings:${cid}`, today, now, () => rankings(db, caravan, salt, now));
+  const gsnap = await snapshot(db, 'public_global', today, now, () => globalRankings(db, salt, now));
+  const series = lastDays(daily.results, now, days), gseries = lastDays(gDaily.results, now, days);
+  const sumWeek = (ser) => ser.filter((x) => x.day >= wk).reduce((a, x) => a + x.total, 0);
   return {
-    target, total: num(total?.n), members: num(members?.n), today: todayTotal, week, daily: series,
+    target: caravan.target, name: caravan.name, total: num(total?.n), members: num(members?.n), today: series.at(-1).total, week: sumWeek(series), daily: series,
     active: snap.active, top: snap.top, cities: snap.cities, updated: snap.at,
+    global: {
+      target: num(gTotal?.t), name: 'everyone', total: num(gTotal?.n), members: gsnap.members, today: gseries.at(-1).total, week: sumWeek(gseries), daily: gseries,
+      active: gsnap.active, top: gsnap.top, cities: gsnap.cities,
+    },
+    caravans: gsnap.caravans.map(({ slug, ...c }) => ({ ...c, mine: slug === caravan.slug })),
   };
 }

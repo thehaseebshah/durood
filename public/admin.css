@@ -1,0 +1,14 @@
+.hero.small { padding-bottom: 70px; }
+.wide-main { max-width: 640px; display: flex; flex-direction: column; gap: 14px; }
+#admin { display: flex; flex-direction: column; gap: 14px; }
+.made input { margin: 8px 0; font-size: .95rem; }
+.list-h { margin: 8px 4px 0; font-size: 1.1rem; }
+.caravans { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.caravans li { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; }
+.caravans b { font-size: 1.1rem; }
+.caravans .meta { color: var(--muted); font-size: .85rem; margin: 2px 0 8px; }
+.caravans .link { direction: ltr; font-size: .8rem; word-break: break-all; color: var(--muted); }
+.caravans .acts { display: flex; gap: 8px; margin-top: 10px; }
+.caravans .acts button, .caravans .acts a { flex: 1; min-height: 40px; display: grid; place-items: center; border: 1.5px solid var(--line); border-radius: 999px; background: transparent; color: var(--ink); font: inherit; font-size: .88rem; font-weight: 700; text-decoration: none; cursor: pointer; }
+.caravans .acts button:hover, .caravans .acts a:hover { border-color: var(--gold); }
+.primary { margin-top: 14px; }

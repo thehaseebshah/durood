@@ -11,53 +11,15 @@
 </head>
 <body>
 <header class="hero">
-  <button type="button" id="theme" class="lang theme" aria-label="Theme"></button>
-  <button type="button" id="lang" class="lang" aria-label="Language"></button>
   <p class="salawat" lang="ar" dir="rtl">اللّٰهُمَّ صَلِّ عَلٰى مُحَمَّدٍ وَعَلٰى اٰلِ مُحَمَّدٍ</p>
-  <h1 data-i18n="title">Tasbeeh</h1>
-  <p class="sub" data-i18n="sub">Count together, every day.</p>
+  <h1>Tasbeeh</h1>
+  <p class="sub">Count together, every day.</p>
 </header>
-
 <main>
-  <form id="form" class="panel" novalidate autocomplete="on">
-    <label for="phone" data-i18n="phone">Phone number</label>
-    <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="0300 1234567" required dir="ltr">
-    <p class="hint" id="phone-hint"></p>
-
-    <div id="newcomer" hidden>
-      <p class="welcome" data-i18n="welcome">New here? Welcome. Tell us who you are, just once.</p>
-      <label for="name" data-i18n="name">Your name</label>
-      <input id="name" name="name" type="text" autocomplete="name" maxlength="60" placeholder="Your name" data-i18n-ph="name">
-      <label for="city" data-i18n="city">City</label>
-      <select id="city" name="city"><option value="" data-i18n="choose_city">Choose your city</option></select>
-    </div>
-
-    <label for="count" data-i18n="count">Today's tasbeeh count</label>
-    <input id="count" name="count" type="number" inputmode="numeric" min="1" max="1000000" step="1" placeholder="0" required dir="ltr" class="big">
-    <div class="quick" id="quick" role="group" aria-label="Quick amounts" data-i18n-aria="quick">
-      <button type="button" data-n="33">33</button><button type="button" data-n="100">100</button><button type="button" data-n="313">313</button><button type="button" data-n="500">500</button><button type="button" data-n="1000">1,000</button>
-    </div>
-
-    <p class="error" id="error" role="alert"></p>
-    <button id="submit" type="submit" class="primary" data-i18n="add">Add to today</button>
-  </form>
-
-  <section id="stats" class="results" hidden aria-live="polite">
-    <h2><span class="spark" aria-hidden="true">✦</span> <span data-i18n="added">JazakAllah, added</span></h2>
-    <div class="grid">
-      <div class="card"><span class="label" data-i18n="today">Today</span><b class="num" id="you-today">0</b><small><span data-i18n="everyone">everyone</span> <span id="all-today">0</span></small></div>
-      <div class="card"><span class="label" data-i18n="week">This week</span><b class="num" id="you-week">0</b><small><span data-i18n="everyone">everyone</span> <span id="all-week">0</span></small></div>
-    </div>
-    <div class="card wide">
-      <span class="label" data-i18n="target_label">Overall target</span>
-      <p class="total"><b class="num" id="all-total">0</b> <small><span data-i18n="of">of</span> <span id="target">0</span></small></p>
-      <div class="bar" role="progressbar" aria-label="Progress to the overall target" data-i18n-aria="progress" aria-valuemin="0" aria-valuemax="100" id="bar"><i id="fill"></i></div>
-      <small id="pct"></small>
-    </div>
-    <p class="foot" data-i18n="foot">The big number in each box is yours. "Everyone" is all of us together.</p>
+  <section class="panel">
+    <p class="welcome">Every group counts with its own link. Please use the link your group was given.</p>
+    <p class="hint">Don't have one? Ask the person who runs your group.</p>
   </section>
-  <p class="foot"><a href="/stats" data-i18n="stats_link">See everyone's stats</a></p>
 </main>
-<script src="/app.js"></script>
 </body>
 </html>

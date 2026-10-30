@@ -19,6 +19,10 @@
   <p class="sub" data-i18n="sub">All of us, together. Members appear under made-up names.</p>
 </header>
 <main class="wide-main">
+  <div class="tabs scope" role="tablist" id="scope">
+    <button type="button" role="tab" data-scope="local" id="scope-local"></button>
+    <button type="button" role="tab" data-scope="global" data-i18n="everyone">Everyone</button>
+  </div>
   <section class="card wide" id="overall">
     <span class="label" data-i18n="overall">Overall target</span>
     <p class="total"><b class="num" id="total">0</b> <small><span data-i18n="of">of</span> <span id="target">0</span></small></p>
@@ -35,6 +39,16 @@
   <section class="card block">
     <h2 data-i18n="last14">Last 14 days</h2>
     <div class="chart" id="chart" role="img" aria-label="Daily totals"></div>
+  </section>
+
+  <section class="card block">
+    <h2 data-i18n="caravans_h">Caravan leaderboard</h2>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" data-vtab="today" data-i18n="today">Today</button>
+      <button type="button" role="tab" data-vtab="week" data-i18n="week">This week</button>
+      <button type="button" role="tab" data-vtab="total" data-i18n="alltime">All time</button>
+    </div>
+    <ol class="rank" id="caravans"></ol>
   </section>
 
   <section class="card block">
@@ -58,7 +72,7 @@
     <ol class="rank" id="cities"></ol>
   </section>
 
-  <p class="foot"><span data-i18n="updated">Rankings refresh about every 15 minutes.</span> <a href="/" data-i18n="back">Back to counting</a></p>
+  <p class="foot"><span data-i18n="updated">Rankings refresh about every 15 minutes.</span> <a href="/" id="back" data-i18n="back">Back to counting</a></p>
 </main>
 <script src="/stats.js"></script>
 </body>

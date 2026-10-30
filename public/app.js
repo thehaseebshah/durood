@@ -1,6 +1,9 @@
 // The page: phone + count; a number we do not know yet also gives a name and a city; then today's, this week's and the overall figures.
 // English and Urdu: the switch in the top corner is remembered on this device.
 const $ = (id) => document.getElementById(id);
+// a caravan has its own link, /c/<name>-<code>; the plain address is the first caravan
+const slug = (location.pathname.match(/^\/c\/([a-z0-9-]+)/) || [])[1] || '';
+let caravanName = '';
 const fmt = (n) => Number(n).toLocaleString('en-US');
 const TEXT = {
   en: {
@@ -11,7 +14,7 @@ const TEXT = {
     hint_new: 'New number: please add your name and city below.', hint_back: 'Welcome back.', hint_saved: 'Saved.', switch: 'اردو',
     bad_phone: 'That does not look like a phone number. Include the full number, for example 0300 1234567.', bad_count: 'Enter a whole number, at least 1.',
     need_name: 'Please type your name.', need_city: 'Please choose your city.', slow_down: 'A lot of tries in a short time. Please wait a minute.',
-    bad_request: 'Something went wrong. Please try again.', offline: 'Could not connect. Check your internet and try again.',
+    bad_request: 'Something went wrong. Please try again.', no_caravan: 'This link does not belong to a group. Please ask for a new link.', offline: 'Could not connect. Check your internet and try again.',
     to_light: 'Switch to light mode', to_dark: 'Switch to dark mode', stats_link: "See everyone's stats",
   },
   ur: {
@@ -22,7 +25,7 @@ const TEXT = {
     hint_new: 'نیا نمبر: براہِ کرم نیچے اپنا نام اور شہر لکھیں۔', hint_back: 'دوبارہ خوش آمدید۔', hint_saved: 'محفوظ ہو گیا۔', switch: 'English',
     bad_phone: 'یہ فون نمبر درست نہیں لگتا۔ پورا نمبر لکھیں، مثلاً 0300 1234567۔', bad_count: 'پورا عدد لکھیں، کم از کم 1۔',
     need_name: 'براہِ کرم اپنا نام لکھیں۔', need_city: 'براہِ کرم اپنا شہر چنیں۔', slow_down: 'تھوڑی دیر میں بہت کوششیں ہو گئیں۔ ایک منٹ رکیں۔',
-    bad_request: 'کچھ گڑبڑ ہو گئی۔ دوبارہ کوشش کریں۔', offline: 'رابطہ نہیں ہو سکا۔ انٹرنیٹ دیکھیں اور دوبارہ کوشش کریں۔',
+    bad_request: 'کچھ گڑبڑ ہو گئی۔ دوبارہ کوشش کریں۔', no_caravan: 'یہ لنک کسی گروپ کا نہیں ہے۔ براہِ کرم نیا لنک مانگیں۔', offline: 'رابطہ نہیں ہو سکا۔ انٹرنیٹ دیکھیں اور دوبارہ کوشش کریں۔',
     to_light: 'روشن موڈ پر جائیں', to_dark: 'تاریک موڈ پر جائیں', stats_link: 'سب کے اعداد و شمار دیکھیں',
   },
 };
@@ -40,10 +43,12 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function applyLang() {
   document.documentElement.lang = lang; document.documentElement.dir = lang === 'ur' ? 'rtl' : 'ltr';
-  document.title = t('title');
+  document.title = caravanName || t('title');
   for (const el of document.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n);
   for (const el of document.querySelectorAll('[data-i18n-ph]')) el.placeholder = t(el.dataset.i18nPh);
   for (const el of document.querySelectorAll('[data-i18n-aria]')) el.setAttribute('aria-label', t(el.dataset.i18nAria));
+  if (caravanName) document.querySelector('h1').textContent = caravanName;
+  $('stats-link').href = `/c/${slug}/stats`;
   $('lang').textContent = t('switch'); $('lang').lang = lang === 'ur' ? 'en' : 'ur';
   paintTheme();
   for (const o of $('city').options) if (o.value) o.textContent = o.value === 'Other' ? t('other_city') : (lang === 'ur' && cityNamesUr[o.value]) || o.value;
@@ -68,7 +73,7 @@ function clearFail() { delete $('error').dataset.code; say('error', ''); }
 
 async function call(path, body) {
   let res;
-  try { res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); }
+  try { res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, caravan: slug }) }); }
   catch { throw Object.assign(new Error('offline'), { code: 'offline' }); }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(data.error || 'bad_request'), { code: data.error || 'bad_request' });
@@ -85,7 +90,7 @@ function showNewcomer(show) {
 let timer;
 $('phone').addEventListener('input', () => {
   clearTimeout(timer);
-  known = null; showNewcomer(false); say('phone-hint', '');
+  known = null; lastChecked = ''; showNewcomer(false); say('phone-hint', '');
   timer = setTimeout(checkPhone, 450);
 });
 $('phone').addEventListener('change', () => { clearTimeout(timer); checkPhone(); });
@@ -101,6 +106,17 @@ async function loadCities() {
   cityNamesUr = ur;
   const select = $('city');
   for (const c of cities) { const o = document.createElement('option'); o.value = c; select.append(o); }
+  applyLang();
+}
+
+// the group's name replaces the title; a link that belongs to no group says so instead of showing a form that cannot work
+async function loadCaravan() {
+  try {
+    const r = await fetch(`/api/caravan?c=${encodeURIComponent(slug)}`);
+    if (r.status === 404) { fail('no_caravan'); $('form').querySelectorAll('input, select, button').forEach((el) => { el.disabled = true; }); return; }
+    const c = await r.json();
+    caravanName = c.name;
+  } catch { /* the entry itself reports connection problems */ }
   applyLang();
 }
 
@@ -162,3 +178,4 @@ $('form').addEventListener('submit', async (ev) => {
 try { const saved = localStorage.getItem('phone'); if (saved) { $('phone').value = saved; checkPhone(); } } catch { /* private mode: nothing is remembered */ }
 applyLang();
 loadCities();
+loadCaravan();

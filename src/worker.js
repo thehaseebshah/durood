@@ -1,6 +1,6 @@
-// The Cloudflare Worker: three small API calls, a health check and the twice-a-day backup. The page itself (public/) is served by
+// The Cloudflare Worker: a few small API calls (counting, stats, caravans for the admin), a health check and the twice-a-day backup. The page itself (public/) is served by
 // Cloudflare as static files, so it does not count against the Worker's request allowance.
-import { addEntry, check, cityList, stats, publicStats, backupStatus, sendBackup, pruneRids, Bad } from './logic.js';
+import { addEntry, check, cityList, stats, publicStats, getCaravan, createCaravan, listCaravans, DEFAULT_TARGET, backupStatus, sendBackup, pruneRids, Bad } from './logic.js';
 
 const HEADERS = {
   'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
@@ -22,7 +22,7 @@ const same = (a, b) => { let d = a.length ^ b.length; for (let i = 0; i < Math.m
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    const target = Number(env.TARGET) || 100_000_000;
+    const defaultTarget = Number(env.TARGET) || DEFAULT_TARGET;
     try {
       if (request.method === 'GET' && url.pathname === '/healthz') return reply(200, { ok: true, backup: await backupStatus(env.DB, !!env.SHEETS_URL) });
       // run a backup now (to check the Google Sheet link): only with the same secret the sheet checks
@@ -31,12 +31,31 @@ export default {
         if (!env.SHEETS_TOKEN || !same(given, env.SHEETS_TOKEN)) return reply(403, { error: 'forbidden' });
         return reply(200, await sendBackup(env.DB, { url: env.SHEETS_URL, token: env.SHEETS_TOKEN }));
       }
-      // the public stats page: made-up names only, never a phone number or a real name
+      // the public stats page of one caravan: made-up names only, never a phone number or a real name
       if (request.method === 'GET' && url.pathname === '/api/stats') {
         if (limited(request.headers.get('CF-Connecting-IP') || 'unknown', 120)) return reply(429, { error: 'slow_down' });
-        const res = reply(200, await publicStats(env.DB, { target, salt: env.SHEETS_TOKEN || '' }));
+        const caravan = await getCaravan(env.DB, url.searchParams.get('c'));
+        const res = reply(200, await publicStats(env.DB, { caravan, salt: env.SHEETS_TOKEN || '' }));
         res.headers.set('Cache-Control', 'public, max-age=30');
         return res;
+      }
+      // the name of the caravan a link belongs to (the page shows it, and says so when the link is wrong)
+      if (request.method === 'GET' && url.pathname === '/api/caravan') {
+        const c = await getCaravan(env.DB, url.searchParams.get('c'));
+        return reply(200, { slug: c.slug, name: c.name, target: c.target });
+      }
+      // admin: list and create caravans, with the admin key (a secret set on the server)
+      if (url.pathname === '/api/admin/caravans') {
+        if (limited(`admin:${request.headers.get('CF-Connecting-IP') || 'unknown'}`, 20)) return reply(429, { error: 'slow_down' });
+        const given = request.headers.get('x-admin-key') || '';
+        if (!env.ADMIN_KEY || !same(given, env.ADMIN_KEY)) return reply(403, { error: 'forbidden' });
+        if (request.method === 'GET') return reply(200, { caravans: await listCaravans(env.DB) });
+        if (request.method === 'POST') {
+          const text = await request.text();
+          if (text.length > 2048) return reply(413, { error: 'too_big' });
+          let body; try { body = JSON.parse(text || '{}'); } catch { return reply(400, { error: 'bad_json' }); }
+          return reply(200, await createCaravan(env.DB, body && typeof body === 'object' ? body : {}, defaultTarget));
+        }
       }
       if (request.method === 'GET' && url.pathname === '/api/cities') return reply(200, { cities: cityList() });
       if (request.method === 'POST' && (url.pathname === '/api/check' || url.pathname === '/api/entry')) {
@@ -45,8 +64,12 @@ export default {
         if (text.length > 4096) return reply(413, { error: 'too_big' });
         let body; try { body = JSON.parse(text || '{}'); } catch { return reply(400, { error: 'bad_json' }); }
         if (!body || typeof body !== 'object') body = {};
-        return reply(200, url.pathname === '/api/check' ? await check(env.DB, body) : await addEntry(env.DB, body, target));
+        const caravan = await getCaravan(env.DB, body.caravan);
+        return reply(200, url.pathname === '/api/check' ? await check(env.DB, body, caravan) : await addEntry(env.DB, body, caravan));
       }
+      // a caravan's own links: /c/<name>-<code> is the counting page, /c/<name>-<code>/stats its stats page
+      const m = request.method === 'GET' && url.pathname.match(/^\/c\/([a-z0-9-]+)(\/stats)?\/?$/);
+      if (m && env.ASSETS) return env.ASSETS.fetch(new Request(new URL(m[2] ? '/stats' : '/count', url), request));
       // anything else is a page file: Cloudflare serves it from public/ before the Worker is asked; this is only the fallback
       if (env.ASSETS) return env.ASSETS.fetch(request);
       return reply(404, { error: 'not_found' });

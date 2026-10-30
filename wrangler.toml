@@ -7,7 +7,7 @@ compatibility_date = "2026-10-01"
 directory = "./public"
 binding = "ASSETS"
 # only these go to the Worker first; everything else is a file in public/ and costs no Worker request
-run_worker_first = ["/api/*", "/healthz"]
+run_worker_first = ["/api/*", "/healthz", "/c/*"]
 
 [[d1_databases]]
 binding = "DB"

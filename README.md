@@ -52,3 +52,12 @@ Twice a day (06:00 and 18:00 Pakistan time) everything is copied to a Google She
 ## Automatic deploys
 
 `.github/workflows/deploy.yml` runs the tests, applies the D1 migrations and deploys on every push to `tasbeeh-cloudflare`. One-time setup: add `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as GitHub repository secrets.
+
+## Caravans (groups)
+
+Every group counts with its own link, `/c/<name>-<code>`; the plain address is only a landing page. The first caravan is created by the migration (its link is `/c/tasbeeh-<random>`, shown on the admin page).
+
+- **Admin page:** `/admin`. Unlock with the admin key (the `ADMIN_KEY` secret: `npx wrangler secret put ADMIN_KEY`), type a name (and optionally a target) and get the link to share.
+- Members, counts, targets, rankings and the stats page are per caravan. The same phone number can be in several caravans and counts separately in each.
+- `/c/<link>/stats` shows the caravan's own stats, an "Everyone" view across all caravans, and the caravan leaderboard (caravans ranked against each other; link names are never shown).
+- The Google Sheet backup has a `caravan` column on People and Daily and a `Caravans` sheet; `restore-sql.mjs People.csv Daily.csv Caravans.csv` puts everything back, including the first caravan's link.

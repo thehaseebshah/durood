@@ -7,7 +7,11 @@ import { createD1 } from './d1.js';
 
 const env = { DB: createD1(), TARGET: '100000000' };
 let ip = 0;
+// every link names a caravan, so the tests name the first one unless a test says otherwise
+const firstSlug = (e) => e.DB.raw.prepare('SELECT slug FROM caravans ORDER BY id').get().slug;
 const call = async (method, path, body, e = env) => {
+  if (method === 'GET' && /^\/api\/(stats|caravan)(\?|$)/.test(path) && !/[?&]c=/.test(path)) path += `${path.includes('?') ? '&' : '?'}c=${firstSlug(e)}`;
+  if (method === 'POST' && body && !('caravan' in body) && /^\/api\/(check|entry)$/.test(path)) body = { ...body, caravan: firstSlug(e) };
   const res = await worker.fetch(new Request(`https://x.test${path}`, { method, body: body ? JSON.stringify(body) : undefined, headers: { 'CF-Connecting-IP': `10.0.0.${++ip % 250}` } }), e);
   return { status: res.status, headers: res.headers, ...(await res.json()) };
 };
@@ -57,7 +61,7 @@ test('the answer carries today, this week and the overall target, for the person
 test('the figures stay exact: the overall total equals everything added, and each person\'s total equals their days', async () => {
   const raw = env.DB.raw;
   const sumDays = raw.prepare('SELECT SUM(count) n FROM person_days').get().n;
-  assert.equal(Number(raw.prepare("SELECT value FROM meta WHERE key = 'total'").get().value), sumDays);
+  assert.equal(Number(raw.prepare('SELECT total FROM caravans WHERE id = 1').get().total), sumDays);
   assert.equal(raw.prepare('SELECT SUM(total) n FROM day_totals').get().n, sumDays);
   assert.equal(raw.prepare('SELECT SUM(total) n FROM people').get().n, sumDays);
   assert.equal(raw.prepare('SELECT COUNT(*) n FROM people p WHERE p.total != (SELECT SUM(count) FROM person_days d WHERE d.person_id = p.id)').get().n, 0);
@@ -113,9 +117,9 @@ test('too many tries from one address in a minute are slowed down', async () => 
 test('the backup payload has everyone, the recent days per person and the totals', async () => {
   const p = await backupPayload(env.DB);
   assert.ok(p.people.length >= 6);
-  assert.deepEqual(p.people[0], { phone: '+923001111111', name: 'Amina Khan', city: 'Lahore', joined: dayOf() });
+  assert.deepEqual(p.people[0], { phone: '+923001111111', name: 'Amina Khan', city: 'Lahore', joined: dayOf(), caravan: firstSlug(env) });
   assert.equal(p.daily.find((r) => r.phone === '+923001111111').count, 318, 'all the entries of the day are one row (313 + 5 later)');
-  assert.equal(p.totals.total, Number(env.DB.raw.prepare("SELECT value FROM meta WHERE key = 'total'").get().value));
+  assert.equal(p.totals.total, Number(env.DB.raw.prepare('SELECT SUM(total) t FROM caravans').get().t));
   assert.equal(p.from, dayOf(Date.now() - 2 * 86400e3));
 });
 
@@ -173,7 +177,8 @@ test('/api/backup runs a backup only for the holder of the secret', async () => 
 });
 
 test('the public stats show made-up names, cities and totals, and no phone numbers or real names', async () => {
-  const e = { DB: createD1(), TARGET: '1000' };
+  const e = { DB: createD1() };
+  e.DB.raw.exec('UPDATE caravans SET target = 1000');
   await entry({ phone: '0300 5550001', count: 500, name: 'Zainab Secret', city: 'Lahore' }, e);
   await entry({ phone: '0300 5550002', count: 200, name: 'Hamza Private', city: 'Lahore' }, e);
   await entry({ phone: '0300 5550003', count: 50, name: 'Idris Hidden', city: 'Karachi' }, e);
@@ -188,4 +193,90 @@ test('the public stats show made-up names, cities and totals, and no phone numbe
   for (const secret of ['Zainab', 'Secret', 'Hamza', 'Idris', '555000', '+92']) assert.ok(!text.includes(secret), `leaked ${secret}`);
   assert.match(r.top.all[0].name, /^[A-Z][a-z]+ [A-Z][a-z]+ \d{3}$/);
   assert.equal(r.top.all[0].name, (await call('GET', '/api/stats', null, e)).top.all[0].name, 'the same person keeps the same name');
+});
+
+// ---- caravans ----
+const ADMIN = { ADMIN_KEY: 'a-long-admin-key' };
+const admin = async (method, body, key = ADMIN.ADMIN_KEY, e) => {
+  const res = await worker.fetch(new Request('https://x.test/api/admin/caravans', { method, body: body ? JSON.stringify(body) : undefined, headers: { 'x-admin-key': key, 'CF-Connecting-IP': `10.1.0.${++ip % 250}` } }), { ...e, ...ADMIN });
+  return { status: res.status, ...(await res.json()) };
+};
+
+test('admin: only the admin key creates or lists caravans', async () => {
+  const e = { DB: createD1() };
+  assert.equal((await admin('GET', null, 'wrong', e)).status, 403);
+  assert.equal((await admin('POST', { name: 'Hack' }, '', e)).status, 403);
+  const noKey = await worker.fetch(new Request('https://x.test/api/admin/caravans', { headers: { 'CF-Connecting-IP': '10.9.9.9' } }), { DB: e.DB });
+  assert.equal(noKey.status, 403, 'with no key set on the server nobody gets in');
+  const made = await admin('POST', { name: 'Faisalabad Team' }, undefined, e);
+  assert.equal(made.status, 200);
+  assert.match(made.slug, /^faisalabad-team-[a-z2-9]{5}$/);
+  assert.equal(made.target, 100_000_000);
+  assert.equal((await admin('POST', { name: 'X' }, undefined, e)).error, 'need_name');
+  assert.equal((await admin('POST', { name: 'Big', target: 'lots' }, undefined, e)).error, 'bad_target');
+  assert.equal((await admin('POST', { name: 'Small', target: 500 }, undefined, e)).target, 500);
+  const list = await admin('GET', null, undefined, e);
+  assert.deepEqual(list.caravans.map((c) => c.name), ['Tasbeeh', 'Faisalabad Team', 'Small']);
+});
+
+test('caravans are separate: members, counts, stats, and the same number can be in two', async () => {
+  const e = { DB: createD1() };
+  const a = await admin('POST', { name: 'Team A', target: 1000 }, undefined, e);
+  const b = await admin('POST', { name: 'Team B' }, undefined, e);
+  const go = (path, body, caravan) => call('POST', path, { caravan, ...body }, e);
+  const phone = '0300 7770001';
+  assert.equal((await go('/api/entry', { rid: crypto.randomUUID(), phone, count: 100, name: 'Sana', city: 'Lahore' }, a.slug)).you.total, 100);
+  assert.equal((await go('/api/check', { phone }, a.slug)).known, true);
+  assert.equal((await go('/api/check', { phone }, b.slug)).known, false, 'not a member of B yet');
+  assert.equal((await go('/api/check', { phone }, firstSlug(e))).known, false, 'nor of the first caravan');
+  assert.equal((await go('/api/entry', { rid: crypto.randomUUID(), phone, count: 7 }, b.slug)).error, 'need_name');
+  const inB = await go('/api/entry', { rid: crypto.randomUUID(), phone, count: 7, name: 'Sana', city: 'Karachi' }, b.slug);
+  assert.deepEqual([inB.you.total, inB.everyone.total, inB.caravan.name], [7, 7, 'Team B']);
+  const inA = await go('/api/entry', { rid: crypto.randomUUID(), phone, count: 5 }, a.slug);
+  assert.deepEqual([inA.you.total, inA.everyone.total, inA.target], [105, 105, 1000]);
+  const sa = await call('GET', `/api/stats?c=${a.slug}`, null, e), sb = await call('GET', `/api/stats?c=${b.slug}`, null, e), sm = await call('GET', `/api/stats?c=${firstSlug(e)}`, null, e);
+  assert.deepEqual([sa.total, sb.total, sm.total], [105, 7, 0]);
+  assert.deepEqual([sa.members, sb.members, sm.members], [1, 1, 0]);
+  assert.deepEqual(sa.cities.map((c) => c.city), ['Lahore']);
+  assert.deepEqual(sb.cities.map((c) => c.city), ['Karachi']);
+  assert.equal(sa.name, 'Team A');
+});
+
+test('an unknown or malformed caravan link is refused, and the caravan pages are served for a link', async () => {
+  const e = { DB: createD1(), ASSETS: { fetch: async (req) => new Response(`asset ${new URL(req.url).pathname}`) } };
+  assert.equal((await call('GET', '/api/caravan?c=nope-12345', null, e)).error, 'no_caravan');
+  assert.equal((await call('GET', '/api/caravan?c=../etc', null, e)).error, 'no_caravan');
+  assert.equal((await call('POST', '/api/check', { caravan: 'nope-12345', phone: '0300 1112223' }, e)).error, 'no_caravan');
+  assert.equal((await call('GET', '/api/caravan', null, e)).name, 'Tasbeeh');
+  const text = async (path) => (await worker.fetch(new Request(`https://x.test${path}`), e)).text();
+  assert.equal(await text('/c/team-a-abcde'), 'asset /count');
+  assert.equal(await text('/c/team-a-abcde/stats'), 'asset /stats');
+});
+
+test('there is no caravan-less link: the API needs a caravan, and the plain address is only a landing page', async () => {
+  const e = { DB: createD1(), ASSETS: { fetch: async (req) => new Response(`asset ${new URL(req.url).pathname}`) } };
+  const bare = async (method, path, body) => { const r = await worker.fetch(new Request(`https://x.test${path}`, { method, body: body && JSON.stringify(body), headers: { 'CF-Connecting-IP': '10.2.0.1' } }), e); return { status: r.status, text: await r.text() }; };
+  for (const [m, p, b] of [['GET', '/api/stats'], ['GET', '/api/caravan'], ['POST', '/api/check', { phone: '0300 1112223' }], ['POST', '/api/entry', { rid: crypto.randomUUID(), phone: '0300 1112223', count: 5, name: 'Ali', city: 'Lahore' }]]) {
+    const r = await bare(m, p, b); assert.equal(r.status, 404, `${m} ${p}`); assert.match(r.text, /no_caravan/);
+  }
+  assert.equal(e.DB.raw.prepare('SELECT COUNT(*) n FROM people').get().n, 0, 'nothing was counted');
+  assert.match(firstSlug(e), /^tasbeeh-[0-9a-f]{8}$/, 'the first caravan has an unguessable link of its own');
+  assert.equal((await bare('GET', '/')).text, 'asset /');
+});
+
+test('the stats page also carries everyone, and the caravans ranked against each other without their link names', async () => {
+  const e = { DB: createD1() };
+  const a = await admin('POST', { name: 'Team A', target: 1000 }, undefined, e), b = await admin('POST', { name: 'Team B', target: 2000 }, undefined, e);
+  const go = (caravan, phone, count, city) => call('POST', '/api/entry', { caravan, rid: crypto.randomUUID(), phone, count, name: 'Person Name', city }, e);
+  await go(a.slug, '0300 8880001', 300, 'Lahore'); await go(b.slug, '0300 8880002', 900, 'Karachi'); await go(b.slug, '0300 8880003', 100, 'Lahore');
+  const r = await call('GET', `/api/stats?c=${a.slug}`, null, e);
+  assert.deepEqual([r.name, r.total, r.members], ['Team A', 300, 1]);
+  assert.deepEqual([r.global.total, r.global.members, r.global.today, r.global.target], [1300, 3, 1300, 100_000_000 + 1000 + 2000]);
+  assert.deepEqual(r.global.cities.map((c) => [c.city, c.total]), [['Karachi', 900], ['Lahore', 400]]);
+  assert.deepEqual(r.global.top.all.map((p) => p.count), [900, 300, 100]);
+  assert.deepEqual(r.caravans.map((c) => [c.name, c.total, c.members, c.mine]), [['Team B', 1000, 2, false], ['Team A', 300, 1, true], ['Tasbeeh', 0, 0, false]]);
+  const text = JSON.stringify(r);
+  assert.ok(!text.includes(a.slug) && !text.includes(b.slug) && !text.includes(firstSlug(e)), 'no caravan link name is ever shown');
+  const rb = await call('GET', `/api/stats?c=${b.slug}`, null, e);
+  assert.deepEqual(rb.caravans.filter((c) => c.mine).map((c) => c.name), ['Team B']);
 });
