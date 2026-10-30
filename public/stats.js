@@ -3,12 +3,12 @@ const $ = (id) => document.getElementById(id);
 const slug = (location.pathname.match(/^\/c\/([a-z0-9-]+)/) || [])[1] || '';
 const fmt = (n) => Number(n).toLocaleString('en-US');
 const TEXT = {
-  en: { title: 'Tasbeeh stats', sub: 'All of us, together. Members appear under made-up names.', overall: 'Overall target', of: 'of', today: 'Today', week: 'This week', alltime: 'All time',
+  en: { title: 'Tasbeeh stats', sub: 'All of us, together. Members appear under made-up names.', overall: 'Counted so far', of: 'of', today: 'Today', week: 'This week', alltime: 'All time',
     counting: 'people counting', members: 'Members', cities_word: 'cities', avg: 'Average per member', avg_note: 'all time', last14: 'Last 14 days', people: 'Top members',
     alias_note: 'Names are made up and cannot be traced back to anyone.', citiesh: 'City rankings', updated: 'Rankings refresh about every 15 minutes.', back: 'Back to counting',
     pct: (p) => `${p}% of the target`, mem: (n) => `${fmt(n)} ${n === 1 ? 'member' : 'members'}`, empty: 'Nothing yet. Be the first!', other: 'Other (outside Pakistan)',
     to_light: 'Switch to light mode', to_dark: 'Switch to dark mode', switch: 'اردو', err: 'Could not load the stats. Please try again soon.', gone: 'This link does not belong to a group.', road_h: 'The road to the target', road_note: 'The nearer the dome, the nearer the caravan is to its own target. Distances are not to scale.', dest: 'Target', roadlabel: 'Caravans on the road to their targets', everyone: 'Everyone', caravans_h: 'Caravan leaderboard', you: 'your caravan' },
-  ur: { title: 'تسبیح کے اعداد و شمار', sub: 'ہم سب مل کر۔ اراکین فرضی ناموں سے دکھائے جاتے ہیں۔', overall: 'مجموعی ہدف', of: 'میں سے', today: 'آج', week: 'اس ہفتے', alltime: 'کل ملا کر',
+  ur: { title: 'تسبیح کے اعداد و شمار', sub: 'ہم سب مل کر۔ اراکین فرضی ناموں سے دکھائے جاتے ہیں۔', overall: 'اب تک کی گنتی', of: 'میں سے', today: 'آج', week: 'اس ہفتے', alltime: 'کل ملا کر',
     counting: 'افراد شمار کر رہے ہیں', members: 'اراکین', cities_word: 'شہر', avg: 'فی رکن اوسط', avg_note: 'کل ملا کر', last14: 'پچھلے 14 دن', people: 'سرفہرست اراکین',
     alias_note: 'نام فرضی ہیں اور کسی تک نہیں پہنچتے۔', citiesh: 'شہروں کی درجہ بندی', updated: 'درجہ بندی تقریباً ہر 15 منٹ بعد تازہ ہوتی ہے۔', back: 'شمار پر واپس',
     pct: (p) => `ہدف کا ${p}٪ مکمل`, mem: (n) => `${fmt(n)} اراکین`, empty: 'ابھی کچھ نہیں۔ پہلے آپ بنیں!', other: 'دیگر (پاکستان سے باہر)',
