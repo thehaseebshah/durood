@@ -33,10 +33,16 @@ JSON
 npx @google/clasp push --force
 
 echo "4/6  Publishing the script as a web app..."
-npx @google/clasp create-deployment --description "backup receiver" >/dev/null
-DEPLOY_ID="$(npx @google/clasp list-deployments | grep -o 'AKfy[A-Za-z0-9_-]*' | tail -1)"
+DEPLOY_OUT="$(npx @google/clasp create-deployment --description "backup receiver $(date +%s)" 2>&1)"; echo "$DEPLOY_OUT"
+# the address of the web app is the id Google just printed for the new deployment (never the "@HEAD" test one)
+DEPLOY_ID="$(printf '%s' "$DEPLOY_OUT" | grep -o 'AKfy[A-Za-z0-9_-]*' | head -1)"
+if [ -z "$DEPLOY_ID" ]; then DEPLOY_ID="$(npx @google/clasp list-deployments | grep -v HEAD | grep -o 'AKfy[A-Za-z0-9_-]*' | tail -1)"; fi
 [ -n "$DEPLOY_ID" ] || { echo "Could not read the deployment id. Run: npx @google/clasp list-deployments"; exit 1; }
 URL="https://script.google.com/macros/s/${DEPLOY_ID}/exec"
+# a working web app answers a wrong secret with a small JSON message; Google's "unable to open the file" page means the address is not a web app
+if ! curl -sL -m 40 -X POST -H 'Content-Type: text/plain' -d '{}' "$URL" | grep -q 'bad token'; then
+  echo "     (the web app does not answer yet; this is normal until you allow it in the next step)"
+fi
 
 echo "5/6  Giving the address and the secret to the Worker..."
 cd ..
