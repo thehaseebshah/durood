@@ -19,6 +19,18 @@ const limited = (ip, max = 60) => {
 // comparing secrets without stopping at the first different character
 const same = (a, b) => { let d = a.length ^ b.length; for (let i = 0; i < Math.max(a.length, b.length); i++) d |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0); return d === 0; };
 
+// the web-app manifest of one caravan: installing from /c/madinah gives an app called Madinah that opens on /c/madinah
+const manifestOf = (c) => ({
+  id: `/c/${c.slug}`, name: c.name, short_name: [...c.name].slice(0, 12).join(''), description: 'Count tasbeeh together, every day.',
+  start_url: `/c/${c.slug}`, scope: '/c/', display: 'standalone', orientation: 'portrait', lang: 'en',
+  background_color: '#0a0c24', theme_color: '#0c0e2b',
+  icons: [
+    { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+    { src: '/icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+  ],
+});
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -70,9 +82,19 @@ export default {
         if (url.pathname === '/api/note') return reply(200, await setNote(env.DB, body, caravan));
         return reply(200, await addEntry(env.DB, body, caravan));
       }
+      const mf = request.method === 'GET' && url.pathname.match(/^\/c\/([a-z0-9-]+)\/manifest\.webmanifest$/);
+      if (mf) {
+        const c = await getCaravan(env.DB, mf[1]);
+        return new Response(JSON.stringify(manifestOf(c)), { headers: { 'Content-Type': 'application/manifest+json', 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff' } });
+      }
       // a caravan's own links: /c/<name>-<code> is the counting page, /c/<name>-<code>/stats its stats page
       const m = request.method === 'GET' && url.pathname.match(/^\/c\/([a-z0-9-]+)(\/stats)?\/?$/);
-      if (m && env.ASSETS) return env.ASSETS.fetch(new Request(new URL(m[2] ? '/stats' : '/count', url), request));
+      if (m && env.ASSETS) {
+        const page = await env.ASSETS.fetch(new Request(new URL(m[2] ? '/stats' : '/count', url), request));
+        // each caravan's pages point at their own manifest, so "install" gives an app for that caravan
+        return typeof HTMLRewriter === 'undefined' || !page.ok ? page
+          : new HTMLRewriter().on('head', { element(e) { e.append(`<link rel="manifest" href="/c/${m[1]}/manifest.webmanifest">`, { html: true }); } }).transform(page);
+      }
       // anything else is a page file: Cloudflare serves it from public/ before the Worker is asked; this is only the fallback
       if (env.ASSETS) return env.ASSETS.fetch(request);
       return reply(404, { error: 'not_found' });

@@ -324,3 +324,16 @@ test('a retried entry (same request id) keeps one history row', async () => {
   await post('/api/entry', body, e); await post('/api/entry', body, e);
   assert.equal((await post('/api/history', { phone: '0300 6663333' }, e)).entries.length, 1);
 });
+
+// ---- installable app ----
+test('each caravan has its own web-app manifest, so installing gives an app for that caravan', async () => {
+  const e = { DB: createD1() };
+  const a = await admin('POST', { name: 'Madinah Circle Of Friends' }, undefined, e);
+  const r = await worker.fetch(new Request(`https://x.test/c/${a.slug}/manifest.webmanifest`), e);
+  assert.equal(r.status, 200); assert.match(r.headers.get('content-type'), /manifest\+json/);
+  const m = await r.json();
+  assert.deepEqual([m.name, m.short_name, m.start_url, m.id, m.scope, m.display], ['Madinah Circle Of Friends', 'Madinah Circ', `/c/${a.slug}`, `/c/${a.slug}`, '/c/', 'standalone']);
+  assert.ok(m.start_url.startsWith(m.scope));
+  assert.ok(m.icons.some((i) => i.sizes === '512x512' && i.purpose === 'maskable') && m.icons.some((i) => i.sizes === '192x192'));
+  assert.equal((await worker.fetch(new Request('https://x.test/c/nope-12345/manifest.webmanifest'), e)).status, 404);
+});

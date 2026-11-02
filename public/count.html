@@ -7,6 +7,10 @@
 <script src="/theme.js"></script>
 <title>Tasbeeh</title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -68,7 +72,9 @@
     <p class="foot" data-i18n="foot">The big number in each box is yours. "Everyone" is all of us together.</p>
   </section>
   <p class="foot"><a href="/stats" id="stats-link" data-i18n="stats_link">See everyone's stats</a></p>
+  <div id="pwa" class="pwa" hidden></div>
 </main>
 <script src="/app.js"></script>
+<script src="/pwa.js" defer></script>
 </body>
 </html>

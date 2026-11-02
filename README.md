@@ -65,3 +65,7 @@ Every group counts with its own link, `/c/<name>` (for example `/c/madinah`; a n
 ## History and private notes
 
 After a number is recognised, **My history** shows that person's own days and each count they added, newest first, with a streak and totals. Each count can carry an optional note (200 characters) that can be added or edited later from the history. Notes and per-entry history are looked up by phone number only (the same trust as adding a count) and are never in the public stats or the Google Sheet backup, so a restore from the sheet brings back the per-day totals but not the notes. Entries made before this feature show as "Earlier entries" under their day.
+
+## Install as an app (PWA)
+
+Each caravan page can be installed to the home screen (Android/desktop Chrome: "Install this app" button or the browser's install option; iPhone: Share, then Add to Home Screen). The Worker serves a manifest per caravan (`/c/<name>/manifest.webmanifest`), so the installed app is named after the caravan and opens on its link. `public/sw.js` keeps the page shell so an already visited page opens even with a poor connection; counting itself always needs the network. Icons are in `public/icons/` (`icon.svg` is the source).

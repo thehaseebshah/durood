@@ -125,3 +125,6 @@ html[data-theme=light] .linklike { color: #8a6d2f; }
 .hentry-top b { direction: ltr; unicode-bidi: isolate; }
 .foot a { color: var(--gold); font-weight: 700; }
 html[data-theme=light] .foot a { color: #8a6d2f; }
+
+.pwa { margin-top: 14px; text-align: center; }
+.pwa .hint { margin: 0; }
