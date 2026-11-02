@@ -61,3 +61,7 @@ Every group counts with its own link, `/c/<name>` (for example `/c/madinah`; a n
 - Members, counts, targets, rankings and the stats page are per caravan. The same phone number can be in several caravans and counts separately in each.
 - `/c/<link>/stats` shows the caravan's own stats, an "Everyone" view across all caravans, and the caravan leaderboard (caravans ranked against each other; link names are never shown).
 - The Google Sheet backup has a `caravan` column on People and Daily and a `Caravans` sheet; `restore-sql.mjs People.csv Daily.csv Caravans.csv` puts everything back, including the first caravan's link.
+
+## History and private notes
+
+After a number is recognised, **My history** shows that person's own days and each count they added, newest first, with a streak and totals. Each count can carry an optional note (200 characters) that can be added or edited later from the history. Notes and per-entry history are looked up by phone number only (the same trust as adding a count) and are never in the public stats or the Google Sheet backup, so a restore from the sheet brings back the per-day totals but not the notes. Entries made before this feature show as "Earlier entries" under their day.

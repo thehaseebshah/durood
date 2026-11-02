@@ -1,6 +1,6 @@
 // The Cloudflare Worker: a few small API calls (counting, stats, caravans for the admin), a health check and the twice-a-day backup. The page itself (public/) is served by
 // Cloudflare as static files, so it does not count against the Worker's request allowance.
-import { addEntry, check, cityList, stats, publicStats, getCaravan, createCaravan, listCaravans, DEFAULT_TARGET, backupStatus, sendBackup, pruneRids, Bad } from './logic.js';
+import { addEntry, check, history, setNote, cityList, stats, publicStats, getCaravan, createCaravan, listCaravans, DEFAULT_TARGET, backupStatus, sendBackup, pruneRids, Bad } from './logic.js';
 
 const HEADERS = {
   'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
@@ -58,14 +58,17 @@ export default {
         }
       }
       if (request.method === 'GET' && url.pathname === '/api/cities') return reply(200, { cities: cityList() });
-      if (request.method === 'POST' && (url.pathname === '/api/check' || url.pathname === '/api/entry')) {
+      if (request.method === 'POST' && ['/api/check', '/api/entry', '/api/history', '/api/note'].includes(url.pathname)) {
         if (limited(request.headers.get('CF-Connecting-IP') || 'unknown')) return reply(429, { error: 'slow_down' });
         const text = await request.text();
         if (text.length > 4096) return reply(413, { error: 'too_big' });
         let body; try { body = JSON.parse(text || '{}'); } catch { return reply(400, { error: 'bad_json' }); }
         if (!body || typeof body !== 'object') body = {};
         const caravan = await getCaravan(env.DB, body.caravan);
-        return reply(200, url.pathname === '/api/check' ? await check(env.DB, body, caravan) : await addEntry(env.DB, body, caravan));
+        if (url.pathname === '/api/check') return reply(200, await check(env.DB, body, caravan));
+        if (url.pathname === '/api/history') return reply(200, await history(env.DB, body, caravan));
+        if (url.pathname === '/api/note') return reply(200, await setNote(env.DB, body, caravan));
+        return reply(200, await addEntry(env.DB, body, caravan));
       }
       // a caravan's own links: /c/<name>-<code> is the counting page, /c/<name>-<code>/stats its stats page
       const m = request.method === 'GET' && url.pathname.match(/^\/c\/([a-z0-9-]+)(\/stats)?\/?$/);

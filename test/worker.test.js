@@ -11,7 +11,7 @@ let ip = 0;
 const firstSlug = (e) => e.DB.raw.prepare('SELECT slug FROM caravans ORDER BY id').get().slug;
 const call = async (method, path, body, e = env) => {
   if (method === 'GET' && /^\/api\/(stats|caravan)(\?|$)/.test(path) && !/[?&]c=/.test(path)) path += `${path.includes('?') ? '&' : '?'}c=${firstSlug(e)}`;
-  if (method === 'POST' && body && !('caravan' in body) && /^\/api\/(check|entry)$/.test(path)) body = { ...body, caravan: firstSlug(e) };
+  if (method === 'POST' && body && !('caravan' in body) && /^\/api\/(check|entry|history|note)$/.test(path)) body = { ...body, caravan: firstSlug(e) };
   const res = await worker.fetch(new Request(`https://x.test${path}`, { method, body: body ? JSON.stringify(body) : undefined, headers: { 'CF-Connecting-IP': `10.0.0.${++ip % 250}` } }), e);
   return { status: res.status, headers: res.headers, ...(await res.json()) };
 };
@@ -280,4 +280,47 @@ test('the stats page also carries everyone, and the caravans ranked against each
   assert.ok(!text.includes(a.slug) && !text.includes(b.slug) && !text.includes(firstSlug(e)), 'no caravan link name is ever shown');
   const rb = await call('GET', `/api/stats?c=${b.slug}`, null, e);
   assert.deepEqual(rb.caravans.filter((c) => c.mine).map((c) => c.name), ['Team B']);
+});
+
+// ---- history and private notes ----
+test('history: each count is kept with its optional note, newest first, and only for the phone number asked about', async () => {
+  const e = { DB: createD1() };
+  const phone = '0300 6660001', other = '0300 6660002';
+  await entry({ phone, count: 313, name: 'Hira', city: 'Lahore', note: '  after   fajr  ' }, e);
+  await entry({ phone, count: 100 }, e);
+  await entry({ phone: other, count: 7, name: 'Zaid', city: 'Multan', note: 'private to Zaid' }, e);
+  const h = await post('/api/history', { phone }, e);
+  assert.equal(h.known, true); assert.equal(h.total, 413);
+  assert.deepEqual(h.entries.map((x) => [x.count, x.note]), [[100, ''], [313, 'after fajr']], 'newest first, note tidied');
+  assert.deepEqual(h.days.map((d) => [d.day, d.count]), [[dayOf(), 413]]);
+  assert.ok(!JSON.stringify(h).includes('Zaid') && !JSON.stringify(h).includes('private to'), "another person's entries never show up");
+  const none = await post('/api/history', { phone: '0300 6669999' }, e);
+  assert.deepEqual([none.known, none.entries.length], [false, 0]);
+  assert.equal((await post('/api/history', { phone: 'abc' }, e)).error, 'bad_phone');
+  // notes are not in the public stats or in the backup
+  const pub = JSON.stringify(await call('GET', '/api/stats', null, e)), bk = JSON.stringify(await backupPayload(e.DB));
+  assert.ok(!pub.includes('fajr') && !bk.includes('fajr') && !bk.includes('private to'), 'notes stay private');
+});
+
+test('notes: too long is refused and nothing is counted; a person can change only their own notes', async () => {
+  const e = { DB: createD1() };
+  const long = 'x'.repeat(201);
+  assert.equal((await entry({ phone: '0300 6661111', count: 5, name: 'Hira', city: 'Lahore', note: long }, e)).error, 'note_too_long');
+  assert.equal(e.DB.raw.prepare('SELECT COUNT(*) n FROM people').get().n, 0, 'a refused entry creates nothing');
+  await entry({ phone: '0300 6661111', count: 5, name: 'Hira', city: 'Lahore', note: 'first' }, e);
+  await entry({ phone: '0300 6662222', count: 6, name: 'Omar', city: 'Lahore', note: 'omars' }, e);
+  const mine = (await post('/api/history', { phone: '0300 6661111' }, e)).entries[0];
+  const theirs = (await post('/api/history', { phone: '0300 6662222' }, e)).entries[0];
+  assert.equal((await post('/api/note', { phone: '0300 6661111', id: mine.id, note: 'edited' }, e)).note, 'edited');
+  assert.equal((await post('/api/note', { phone: '0300 6661111', id: theirs.id, note: 'hijack' }, e)).error, 'no_entry', "someone else's entry cannot be edited");
+  assert.equal((await post('/api/note', { phone: '0300 6661111', id: mine.id, note: '' }, e)).note, '');
+  assert.equal((await post('/api/history', { phone: '0300 6662222' }, e)).entries[0].note, 'omars');
+  assert.equal((await post('/api/note', { phone: '0300 6661111', id: mine.id, note: long }, e)).error, 'note_too_long');
+});
+
+test('a retried entry (same request id) keeps one history row', async () => {
+  const e = { DB: createD1() };
+  const body = { rid: crypto.randomUUID(), phone: '0300 6663333', count: 9, name: 'Hira', city: 'Lahore', note: 'once' };
+  await post('/api/entry', body, e); await post('/api/entry', body, e);
+  assert.equal((await post('/api/history', { phone: '0300 6663333' }, e)).entries.length, 1);
 });

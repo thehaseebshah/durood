@@ -88,12 +88,20 @@ export async function check(db, { phone }, caravan) {
 }
 
 /** Adds today's count. A number we do not know in this caravan must come with a name and a city from the list. */
-export async function addEntry(db, { phone, count, rid, name, city }, caravan, now = Date.now()) {
+export const MAX_NOTE = 200;
+const cleanNote = (v) => {
+  const n = String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim();
+  if ([...n].length > MAX_NOTE) throw new Bad(422, 'note_too_long');
+  return n;
+};
+
+export async function addEntry(db, { phone, count, rid, name, city, note }, caravan, now = Date.now()) {
   const p = normalisePhone(phone);
   if (!p) throw new Bad(400, 'bad_phone');
   const n = Number(count);
   if (!Number.isInteger(n) || n < 1 || n > MAX_ONE_ENTRY) throw new Bad(400, 'bad_count');
   if (typeof rid !== 'string' || !/^[\w-]{8,64}$/.test(rid)) throw new Bad(400, 'bad_request');
+  const nt = cleanNote(note);
   const today = dayOf(now), cid = caravan.id;
   const find = () => db.prepare('SELECT id FROM people WHERE phone = ? AND caravan_id = ?').bind(p, cid).first();
   let person = await find();
@@ -113,6 +121,7 @@ export async function addEntry(db, { phone, count, rid, name, city }, caravan, n
       db.prepare('UPDATE people SET total = total + ? WHERE phone = ? AND caravan_id = ?').bind(n, p, cid),
       db.prepare('INSERT INTO day_totals (caravan_id, day, total) VALUES (?, ?, ?) ON CONFLICT(caravan_id, day) DO UPDATE SET total = total + excluded.total').bind(cid, today, n),
       db.prepare('UPDATE caravans SET total = total + ? WHERE id = ?').bind(n, cid),
+      db.prepare('INSERT INTO entries (person_id, day, count, note, created_at) SELECT id, ?, ?, ?, ? FROM people WHERE phone = ? AND caravan_id = ?').bind(today, n, nt, now, p, cid),
     ]);
   } catch (e) {
     if (!/UNIQUE|constraint/i.test(String(e?.message || e))) throw e;
@@ -121,6 +130,35 @@ export async function addEntry(db, { phone, count, rid, name, city }, caravan, n
   }
   person = await find();
   return { ok: true, created: nm !== '', duplicate: false, ...(await stats(db, person.id, caravan, now)) };
+}
+
+/** A person's own history: their days, and each count they added with its note. Only ever returned for the phone number asked about. */
+export async function history(db, { phone }, caravan, now = Date.now()) {
+  const p = normalisePhone(phone);
+  if (!p) throw new Bad(400, 'bad_phone');
+  const person = await db.prepare('SELECT id, total FROM people WHERE phone = ? AND caravan_id = ?').bind(p, caravan.id).first();
+  if (!person) return { known: false, total: 0, days: [], entries: [] };
+  const [days, entries] = await Promise.all([
+    db.prepare('SELECT day, count FROM person_days WHERE person_id = ? ORDER BY day DESC LIMIT 366').bind(person.id).all(),
+    db.prepare('SELECT id, day, count, note, created_at FROM entries WHERE person_id = ? ORDER BY id DESC LIMIT 300').bind(person.id).all(),
+  ]);
+  return {
+    known: true, total: num(person.total), today: dayOf(now),
+    days: days.results.map((r) => ({ day: r.day, count: r.count })),
+    entries: entries.results.map((r) => ({ id: r.id, day: r.day, count: r.count, note: r.note, at: r.created_at })),
+  };
+}
+
+/** Change (or clear) the note of one of the person's own entries. */
+export async function setNote(db, { phone, id, note }, caravan) {
+  const p = normalisePhone(phone);
+  if (!p) throw new Bad(400, 'bad_phone');
+  const eid = Number(id);
+  if (!Number.isInteger(eid) || eid < 1) throw new Bad(400, 'bad_request');
+  const nt = cleanNote(note);
+  const r = await db.prepare('UPDATE entries SET note = ? WHERE id = ? AND person_id = (SELECT id FROM people WHERE phone = ? AND caravan_id = ?)').bind(nt, eid, p, caravan.id).run();
+  if (!r.meta?.changes) throw new Bad(404, 'no_entry');
+  return { ok: true, note: nt };
 }
 
 /** What the Google Sheet gets: every caravan, everyone in them, each person's total per day for the last few days, and the overall figures. */

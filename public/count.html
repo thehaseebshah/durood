@@ -38,9 +38,20 @@
       <button type="button" data-n="33">33</button><button type="button" data-n="100">100</button><button type="button" data-n="313">313</button><button type="button" data-n="500">500</button><button type="button" data-n="1000">1,000</button>
     </div>
 
+    <label for="note" data-i18n="note_label">Note (optional, only you can see it)</label>
+    <input id="note" name="note" type="text" maxlength="200" autocomplete="off" placeholder="e.g. after Fajr" data-i18n-ph="note_ph">
+
     <p class="error" id="error" role="alert"></p>
     <button id="submit" type="submit" class="primary" data-i18n="add">Add to today</button>
+    <button id="history-btn" type="button" class="ghost" hidden data-i18n="history_btn">My history</button>
   </form>
+
+  <section id="history" class="panel history" hidden>
+    <div class="history-head"><h2 data-i18n="history_h">Your history</h2><button type="button" id="history-close" class="ghost small" data-i18n="close">Close</button></div>
+    <p class="hint" data-i18n="history_private">Only you can see this page and your notes.</p>
+    <div class="grid3" id="history-sum"></div>
+    <div id="history-list" aria-live="polite"></div>
+  </section>
 
   <section id="stats" class="results" hidden aria-live="polite">
     <h2><span class="spark" aria-hidden="true">✦</span> <span data-i18n="added">JazakAllah, added</span></h2>
