@@ -71,7 +71,8 @@ test('there is no limit per day; only one absurd entry is refused', async () => 
   const phone = '0302 5555555';
   assert.equal((await entry({ phone, count: 4500, name: 'Hamza', city: 'Quetta' })).you.today, 4500);
   assert.equal((await entry({ phone, count: 6600 })).you.today, 11100, 'a second batch the same day is fine');
-  assert.equal((await entry({ phone, count: 1_000_001 })).error, 'bad_count');
+  assert.equal((await entry({ phone, count: 10_000_001 })).error, 'bad_count');
+  assert.equal((await entry({ phone, count: 1_283_994 })).status, 200, 'a count over a million is allowed');
   for (const count of [0, -5, 1.5, 'x', null]) assert.equal((await entry({ phone, count })).error, 'bad_count', String(count));
 });
 

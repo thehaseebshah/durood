@@ -3,7 +3,7 @@
 import CITIES from '../public/cities.json' with { type: 'json' };
 
 export const OTHER_CITY = 'Other';
-export const MAX_ONE_ENTRY = 1_000_000;   // only a guard against an extra zero; there is no limit per day
+export const MAX_ONE_ENTRY = 10_000_000;   // only a guard against an extra zero; there is no limit per day
 export class Bad extends Error { constructor(status, code) { super(code); this.status = status; this.code = code; } }
 
 // days are Pakistan time (UTC+5); the week starts on Monday

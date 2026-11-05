@@ -12,7 +12,7 @@ const TEXT = {
     add: 'Add to today', added: 'JazakAllah, added', today: 'Today', week: 'This week', everyone: 'everyone', target_label: 'Overall target', of: 'of',
     progress: 'Progress to the overall target', pct: (p) => `${p}% of the target`, foot: 'The big number in each box is yours. "Everyone" is all of us together.',
     hint_new: 'New number: please add your name and city below.', hint_back: 'Welcome back.', hint_saved: 'Saved.', switch: 'اردو',
-    bad_phone: 'That does not look like a phone number. Include the full number, for example 0300 1234567.', bad_count: 'Enter a whole number, at least 1.',
+    bad_phone: 'That does not look like a phone number. Include the full number, for example 0300 1234567.', bad_count: 'Enter a whole number from 1 to 10,000,000.',
     need_name: 'Please type your name.', need_city: 'Please choose your city.', slow_down: 'A lot of tries in a short time. Please wait a minute.',
     bad_request: 'Something went wrong. Please try again.', no_caravan: 'This link does not belong to a group. Please ask for a new link.', offline: 'Could not connect. Check your internet and try again.',
     to_light: 'Switch to light mode', to_dark: 'Switch to dark mode', stats_link: "See everyone's stats", note_label: 'Note (optional, only you can see it)', note_ph: 'e.g. after Fajr', note_too_long: 'The note is too long (200 characters at most).', history_btn: 'My history', history_h: 'Your history', history_private: 'Only you can see this page and your notes.', close: 'Close', hist_total: 'Total', hist_days: 'Days', hist_streak: 'Day streak', hist_empty: 'Nothing here yet. Your counts will appear after your first entry.', hist_earlier: 'Earlier entries', add_note: 'Add a note', edit_note: 'Edit', save: 'Save', cancel: 'Cancel', note_saved: 'Saved', hist_load: 'Could not load your history. Please try again.', no_entry: 'That entry was not found.',
@@ -23,7 +23,7 @@ const TEXT = {
     add: 'آج میں شامل کریں', added: 'جزاک اللہ، شامل ہو گیا', today: 'آج', week: 'اس ہفتے', everyone: 'سب مل کر', target_label: 'مجموعی ہدف', of: 'میں سے',
     progress: 'مجموعی ہدف کی طرف پیش رفت', pct: (p) => `ہدف کا ${p}٪ مکمل`, foot: 'ہر خانے میں بڑا عدد آپ کا ہے۔ «سب مل کر» ہم سب کا مجموعہ ہے۔',
     hint_new: 'نیا نمبر: براہِ کرم نیچے اپنا نام اور شہر لکھیں۔', hint_back: 'دوبارہ خوش آمدید۔', hint_saved: 'محفوظ ہو گیا۔', switch: 'English',
-    bad_phone: 'یہ فون نمبر درست نہیں لگتا۔ پورا نمبر لکھیں، مثلاً 0300 1234567۔', bad_count: 'پورا عدد لکھیں، کم از کم 1۔',
+    bad_phone: 'یہ فون نمبر درست نہیں لگتا۔ پورا نمبر لکھیں، مثلاً 0300 1234567۔', bad_count: 'پورا عدد لکھیں، 1 سے 10,000,000 تک۔',
     need_name: 'براہِ کرم اپنا نام لکھیں۔', need_city: 'براہِ کرم اپنا شہر چنیں۔', slow_down: 'تھوڑی دیر میں بہت کوششیں ہو گئیں۔ ایک منٹ رکیں۔',
     bad_request: 'کچھ گڑبڑ ہو گئی۔ دوبارہ کوشش کریں۔', no_caravan: 'یہ لنک کسی گروپ کا نہیں ہے۔ براہِ کرم نیا لنک مانگیں۔', offline: 'رابطہ نہیں ہو سکا۔ انٹرنیٹ دیکھیں اور دوبارہ کوشش کریں۔',
     to_light: 'روشن موڈ پر جائیں', to_dark: 'تاریک موڈ پر جائیں', stats_link: 'سب کے اعداد و شمار دیکھیں', note_label: 'نوٹ (اختیاری، صرف آپ کو نظر آئے گا)', note_ph: 'مثلاً نمازِ فجر کے بعد', note_too_long: 'نوٹ بہت لمبا ہے (زیادہ سے زیادہ 200 حروف)۔', history_btn: 'میری تاریخ', history_h: 'آپ کی تاریخ', history_private: 'یہ صفحہ اور آپ کے نوٹ صرف آپ دیکھ سکتے ہیں۔', close: 'بند کریں', hist_total: 'کل', hist_days: 'دن', hist_streak: 'مسلسل دن', hist_empty: 'ابھی کچھ نہیں۔ پہلی انٹری کے بعد آپ کی گنتی یہاں نظر آئے گی۔', hist_earlier: 'پچھلی انٹریاں', add_note: 'نوٹ لکھیں', edit_note: 'تبدیل کریں', save: 'محفوظ کریں', cancel: 'منسوخ', note_saved: 'محفوظ ہو گیا', hist_load: 'تاریخ نہیں آ سکی۔ دوبارہ کوشش کریں۔', no_entry: 'یہ انٹری نہیں ملی۔',
@@ -163,7 +163,7 @@ $('form').addEventListener('submit', async (ev) => {
   clearFail();
   const phone = $('phone').value.trim(), count = Number($('count').value);
   if (!phone) { fail('bad_phone'); $('phone').focus(); return; }
-  if (!Number.isInteger(count) || count < 1) { fail('bad_count'); $('count').focus(); return; }
+  if (!Number.isInteger(count) || count < 1 || count > 10_000_000) { fail('bad_count'); $('count').focus(); return; }
   const body = { phone, count, rid };
   if ($('note').value.trim()) body.note = $('note').value;
   if (!$('newcomer').hidden) { body.name = $('name').value; body.city = $('city').value; }
